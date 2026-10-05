@@ -1,2 +1,9 @@
-# AppComunidadVecinos
-App Comunidad Vecinos
+# App Comunidad Vecinos
+
+Primer módulo de gestión para la Asociación de Propietarios de Parcelas de Peñarrubia: CRUD de comunidades de vecinos.
+
+## Ejecutar
+
+No requiere dependencias ni proceso de compilación. Abrí `index.html` en un navegador moderno.
+
+Incluye altas, consulta, búsqueda, edición y eliminación. Para esta primera iteración, los registros se guardan en el almacenamiento local del navegador. La autenticación y los permisos por rol quedan fuera del alcance de este módulo inicial.
