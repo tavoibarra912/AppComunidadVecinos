@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Gestión de comunidades y propietarios de la Asociación Peñarrubia" />
+  <title>Peñarrubia · Comunidades y Propietarios</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#comunidades" aria-label="Inicio de Peñarrubia">peñarrubia<span>·</span></a>
+    <div class="account"><span class="avatar">A</span> Administrador</div>
+  </header>
+  <nav class="mobile-nav" aria-label="Navegación móvil">
+    <a class="mobile-nav-item active" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
+    <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
+  </nav>
+  <main class="layout">
+    <aside class="sidebar" aria-label="Navegación">
+      <p class="sidebar-label">GESTIÓN</p>
+      <a class="nav-item active" href="#comunidades" id="nav-comunidades">Comunidades</a>
+      <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
+      <a class="nav-item muted" href="#" aria-disabled="true">Incidencias</a>
+    </aside>
+
+    <!-- SECCIÓN: COMUNIDADES -->
+    <section class="content" id="comunidades">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
+          <h1>Comunidades de vecinos</h1>
+          <p class="subtitle">Consulta y gestiona las comunidades vinculadas a Peñarrubia.</p>
+        </div>
+        <button class="primary-button" id="new-community" type="button">Nueva comunidad</button>
+      </div>
+      <div class="toolbar">
+        <label class="search-field" for="search">
+          <span class="sr-only">Buscar comunidades</span>
+          <input id="search" type="search" placeholder="Buscar por nombre, NIF o municipio" autocomplete="off" />
+        </label>
+        <p id="result-count" aria-live="polite"></p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Comunidad</th>
+              <th>NIF</th>
+              <th>Dirección</th>
+              <th>Municipio</th>
+              <th class="col-contact">Contacto</th>
+              <th class="col-actions"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="community-list"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" hidden>
+          <h2>No hay comunidades que mostrar</h2>
+          <p>Crea una comunidad o cambia los criterios de búsqueda.</p>
+        </div>
+        <div class="pagination-bar" id="pagination-bar">
+          <div class="pagination-size">
+            <label for="page-size">Mostrar:</label>
+            <select id="page-size" class="pagination-select">
+              <option value="5" selected>5 por página</option>
+              <option value="10">10 por página</option>
+            </select>
+          </div>
+          <p class="pagination-info" id="pagination-info" aria-live="polite"></p>
+          <div class="pagination-controls">
+            <button class="secondary-button pagination-btn" id="prev-page" type="button" aria-label="Página anterior">
+              &larr; Anterior
+            </button>
+            <span class="page-current" id="page-current"></span>
+            <button class="secondary-button pagination-btn" id="next-page" type="button" aria-label="Página siguiente">
+              Siguiente &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: PROPIETARIOS -->
+    <section class="content" id="propietarios" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
+          <h1>Propietarios</h1>
+          <p class="subtitle">Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.</p>
+        </div>
+        <button class="primary-button" id="new-owner" type="button">Nuevo propietario</button>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-filters">
+          <label class="search-field" for="search-owners">
+            <span class="sr-only">Buscar propietarios</span>
+            <input id="search-owners" type="search" placeholder="Buscar por nombre, DNI, parcela o comunidad" autocomplete="off" />
+          </label>
+          <div class="filter-group">
+            <label for="filter-community" class="sr-only">Filtrar por comunidad</label>
+            <select id="filter-community" class="filter-select">
+              <option value="">Todas las comunidades</option>
+            </select>
+            <label for="filter-member" class="sr-only">Filtrar por asociado</label>
+            <select id="filter-member" class="filter-select">
+              <option value="">Todos los estados</option>
+              <option value="true">Solo asociados</option>
+              <option value="false">No asociados</option>
+            </select>
+          </div>
+        </div>
+        <p id="owner-result-count" aria-live="polite"></p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Propietario</th>
+              <th>DNI / NIE</th>
+              <th>Parcela / Inmueble</th>
+              <th>Comunidad</th>
+              <th class="col-contact">Contacto</th>
+              <th>Condición</th>
+              <th class="col-actions"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="owner-list"></tbody>
+        </table>
+        <div class="empty-state" id="owner-empty-state" hidden>
+          <h2>No hay propietarios que mostrar</h2>
+          <p>Crea un propietario o ajusta los criterios de búsqueda.</p>
+        </div>
+        <div class="pagination-bar" id="owner-pagination-bar">
+          <div class="pagination-size">
+            <label for="owner-page-size">Mostrar:</label>
+            <select id="owner-page-size" class="pagination-select">
+              <option value="5" selected>5 por página</option>
+              <option value="10">10 por página</option>
+            </select>
+          </div>
+          <p class="pagination-info" id="owner-pagination-info" aria-live="polite"></p>
+          <div class="pagination-controls">
+            <button class="secondary-button pagination-btn" id="owner-prev-page" type="button" aria-label="Página anterior">
+              &larr; Anterior
+            </button>
+            <span class="page-current" id="owner-page-current"></span>
+            <button class="secondary-button pagination-btn" id="owner-next-page" type="button" aria-label="Página siguiente">
+              Siguiente &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- DIÁLOGOS DE COMUNIDAD -->
+  <!-- Diálogo de formulario para Crear / Editar Comunidad -->
+  <dialog id="community-dialog" aria-labelledby="dialog-title">
+    <form id="community-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">COMUNIDADES</p>
+          <h2 id="dialog-title">Nueva comunidad</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">Los campos marcados con * son obligatorios.</p>
+      <div class="form-grid">
+        <label class="full">Nombre de la comunidad *
+          <input name="name" maxlength="100" required />
+        </label>
+        <label>NIF *
+          <input name="nif" maxlength="9" required pattern="H[0-9]{8}" placeholder="H12345678" title="El NIF debe ser H seguido de 8 dígitos." />
+        </label>
+        <label>Teléfono *
+          <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+        </label>
+        <label>Otro teléfono *
+          <input name="otherPhone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+        </label>
+        <label class="full">Dirección *
+          <input name="address" maxlength="140" required />
+        </label>
+        <label>Municipio *
+          <select name="city" required disabled>
+            <option value="">Cargando municipios…</option>
+          </select>
+        </label>
+        <label>Provincia *
+          <select name="province" required disabled>
+            <option value="">Cargando provincias…</option>
+          </select>
+        </label>
+        <label>Código postal *
+          <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}" placeholder="00000" />
+        </label>
+        <label>Email de contacto *
+          <input name="email" type="email" required maxlength="120" placeholder="contacto@comunidad.es" />
+        </label>
+        <label class="full">Observaciones
+          <textarea name="notes" rows="3" maxlength="500"></textarea>
+        </label>
+      </div>
+      <p class="form-error" id="form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="cancel-dialog">Cancelar</button>
+        <button class="primary-button" type="submit">Guardar comunidad</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de consulta completa de Comunidad (Más info) -->
+  <dialog id="detail-dialog" aria-labelledby="detail-dialog-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">COMUNIDADES</p>
+          <h2 id="detail-dialog-title">Información de la comunidad</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-detail-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">Consulta detallada de todos los datos registrados de la comunidad.</p>
+      <div class="detail-grid">
+        <div class="detail-item full">
+          <span class="detail-label">Nombre de la comunidad</span>
+          <span class="detail-value highlight" id="detail-name"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">NIF</span>
+          <span class="detail-value badge" id="detail-nif"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Propietarios censados</span>
+          <span class="detail-value badge" id="detail-owners-count">0</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Teléfono</span>
+          <span class="detail-value" id="detail-phone"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Otro teléfono</span>
+          <span class="detail-value" id="detail-otherPhone"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Dirección</span>
+          <span class="detail-value" id="detail-address"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Municipio</span>
+          <span class="detail-value" id="detail-city"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Provincia</span>
+          <span class="detail-value" id="detail-province"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Código postal</span>
+          <span class="detail-value" id="detail-postalCode"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Email de contacto</span>
+          <span class="detail-value" id="detail-email"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Observaciones</span>
+          <span class="detail-value" id="detail-notes"></span>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="close-detail-btn">Cerrar</button>
+        <button class="primary-button" type="button" id="detail-edit-btn">Editar comunidad</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Diálogo de confirmación para eliminar Comunidad -->
+  <dialog id="delete-dialog" aria-labelledby="delete-title">
+    <form method="dialog">
+      <h2 id="delete-title">¿Eliminar comunidad?</h2>
+      <p id="delete-message"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" value="cancel">Cancelar</button>
+        <button class="danger-button" id="confirm-delete" value="confirm">Eliminar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIÁLOGOS DE PROPIETARIOS -->
+  <!-- Diálogo de formulario para Crear / Editar Propietario -->
+  <dialog id="owner-dialog" aria-labelledby="owner-dialog-title">
+    <form id="owner-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">PROPIETARIOS</p>
+          <h2 id="owner-dialog-title">Nuevo propietario</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-owner-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">Los campos marcados con * son obligatorios.</p>
+      <div class="form-grid">
+        <label>Nombre *
+          <input name="name" maxlength="60" required placeholder="Nombre" />
+        </label>
+        <label>Apellidos *
+          <input name="surname" maxlength="80" required placeholder="Primer y segundo apellido" />
+        </label>
+        <label>DNI / NIE *
+          <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI (8 dígitos + letra) o NIE (X/Y/Z + 7 dígitos + letra)." />
+        </label>
+        <label>Comunidad vinculada *
+          <select name="communityId" required>
+            <option value="">Selecciona una comunidad…</option>
+          </select>
+        </label>
+        <label>Parcela / Inmueble *
+          <input name="plot" maxlength="50" required placeholder="Ej: Parcela 14, Chalet B" />
+        </label>
+        <label>Condición de asociado *
+          <select name="isMember" required>
+            <option value="true" selected>Sí (Asociado / Socio de Peñarrubia)</option>
+            <option value="false">No (Propietario no asociado)</option>
+          </select>
+        </label>
+        <label>Teléfono principal *
+          <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+        </label>
+        <label>Otro teléfono
+          <input name="otherPhone" maxlength="9" inputmode="numeric" placeholder="600000000 (opcional)" />
+        </label>
+        <label class="full">Email de contacto *
+          <input name="email" type="email" required maxlength="120" placeholder="propietario@email.es" />
+        </label>
+        <label class="full">IBAN / Domiciliación bancaria (para cuotas)
+          <input name="iban" maxlength="34" placeholder="ES00 0000 0000 0000 0000 0000 (opcional)" />
+        </label>
+        <label class="full">Dirección habitual / postal *
+          <input name="address" maxlength="140" required placeholder="Calle, número, piso..." />
+        </label>
+        <label>Código postal *
+          <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}" placeholder="00000" />
+        </label>
+        <label>Municipio *
+          <select name="city" required disabled>
+            <option value="">Cargando municipios…</option>
+          </select>
+        </label>
+        <label class="full">Provincia *
+          <select name="province" required disabled>
+            <option value="">Cargando provincias…</option>
+          </select>
+        </label>
+        <label class="full">Observaciones
+          <textarea name="notes" rows="3" maxlength="500" placeholder="Observaciones relativas al propietario, avisos o preferencias..."></textarea>
+        </label>
+      </div>
+      <p class="form-error" id="owner-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="cancel-owner-dialog">Cancelar</button>
+        <button class="primary-button" type="submit">Guardar propietario</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de consulta completa de Propietario (Más info) -->
+  <dialog id="owner-detail-dialog" aria-labelledby="owner-detail-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">PROPIETARIOS</p>
+          <h2 id="owner-detail-title">Ficha del propietario</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-owner-detail-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">Consulta detallada de todos los datos registrados del asociado/propietario.</p>
+      <div class="detail-grid">
+        <div class="detail-item full">
+          <span class="detail-label">Nombre completo</span>
+          <span class="detail-value highlight" id="owner-detail-name"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">DNI / NIE</span>
+          <span class="detail-value badge" id="owner-detail-dni"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Condición en la asociación</span>
+          <span class="detail-value" id="owner-detail-member"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Comunidad vinculada</span>
+          <span class="detail-value" id="owner-detail-community"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Parcela / Inmueble</span>
+          <span class="detail-value" id="owner-detail-plot"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Teléfono principal</span>
+          <span class="detail-value" id="owner-detail-phone"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Otro teléfono</span>
+          <span class="detail-value" id="owner-detail-otherPhone"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Email de contacto</span>
+          <span class="detail-value" id="owner-detail-email"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">IBAN / Domiciliación</span>
+          <span class="detail-value" id="owner-detail-iban"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Dirección habitual</span>
+          <span class="detail-value" id="owner-detail-address"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Municipio</span>
+          <span class="detail-value" id="owner-detail-city"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Provincia</span>
+          <span class="detail-value" id="owner-detail-province"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Código postal</span>
+          <span class="detail-value" id="owner-detail-postalCode"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Observaciones</span>
+          <span class="detail-value" id="owner-detail-notes"></span>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="close-owner-detail-btn">Cerrar</button>
+        <button class="primary-button" type="button" id="owner-detail-edit-btn">Editar propietario</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Diálogo de confirmación para eliminar Propietario -->
+  <dialog id="owner-delete-dialog" aria-labelledby="owner-delete-title">
+    <form method="dialog">
+      <h2 id="owner-delete-title">¿Eliminar propietario?</h2>
+      <p id="owner-delete-message"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" value="cancel">Cancelar</button>
+        <button class="danger-button" id="confirm-owner-delete" value="confirm">Eliminar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="municipios-ine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
