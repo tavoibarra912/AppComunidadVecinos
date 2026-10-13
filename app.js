@@ -371,6 +371,26 @@ const ownerSeeds = [
   }
 ];
 
+const defaultAdminEmails = [
+  {
+    id: "email-seed-1",
+    ownerId: "own-seed-1",
+    ownerName: "Carlos Ruiz Mendoza",
+    ownerDni: "47895231P",
+    ownerCommunity: "Residencial Peñarrubia",
+    ownerPlot: "Parcela 14",
+    subject: "[Peñarrubia] Solicitud de verificación y aprobación de documentación - Propietario: Carlos Ruiz Mendoza (47895231P)",
+    date: "12/10/2026, 18:25",
+    timestamp: Date.now() - 3600000,
+    read: false,
+    docs: [
+      { key: "dni", title: "Copia de DNI (ambas caras)", fileName: "DNI_47895231P_ambas_caras.pdf", validation: "Validado por sistema (DNI Español)", legibility: "98% (Óptima)" },
+      { key: "bankReceipt", title: "Recibo bancario o certificado", fileName: "Certificado_Titularidad_CaixaBank_47895231P.pdf", validation: "Validado por sistema (IBAN ES66)", legibility: "96% (Óptima)" },
+      { key: "propertyDeed", title: "Copia de la escritura", fileName: "Escritura_Notarial_Parcela_14.pdf", validation: "Validado por sistema (Escritura notarial)", legibility: "95% (Óptima)" }
+    ]
+  }
+];
+
 // ==========================================
 // 2. ESTADO GLOBAL DE LA APLICACIÓN
 // ==========================================
@@ -639,26 +659,6 @@ function getDocBadgeText(status, owner) {
 }
 
 // --- Gestión de Buzón y Correos Electrónicos al Administrador ---
-
-const defaultAdminEmails = [
-  {
-    id: "email-seed-1",
-    ownerId: "own-seed-1",
-    ownerName: "Carlos Ruiz Mendoza",
-    ownerDni: "47895231P",
-    ownerCommunity: "Residencial Peñarrubia",
-    ownerPlot: "Parcela 14",
-    subject: "[Peñarrubia] Solicitud de verificación y aprobación de documentación - Propietario: Carlos Ruiz Mendoza (47895231P)",
-    date: "12/10/2026, 18:25",
-    timestamp: Date.now() - 3600000,
-    read: false,
-    docs: [
-      { key: "dni", title: "Copia de DNI (ambas caras)", fileName: "DNI_47895231P_ambas_caras.pdf", validation: "Validado por sistema (DNI Español)", legibility: "98% (Óptima)" },
-      { key: "bankReceipt", title: "Recibo bancario o certificado", fileName: "Certificado_Titularidad_CaixaBank_47895231P.pdf", validation: "Validado por sistema (IBAN ES66)", legibility: "96% (Óptima)" },
-      { key: "propertyDeed", title: "Copia de la escritura", fileName: "Escritura_Notarial_Parcela_14.pdf", validation: "Validado por sistema (Escritura notarial)", legibility: "95% (Óptima)" }
-    ]
-  }
-];
 
 function loadAdminEmails() {
   try {
@@ -1269,22 +1269,34 @@ function handleRouting() {
   const isOwners = hash === "#propietarios";
 
   if (isOwners) {
-    secComunidades.hidden = true;
-    secPropietarios.hidden = false;
+    if (secComunidades) {
+      secComunidades.hidden = true;
+      secComunidades.style.display = "none";
+    }
+    if (secPropietarios) {
+      secPropietarios.hidden = false;
+      secPropietarios.style.display = "block";
+    }
 
-    navComunidades.classList.remove("active");
-    navPropietarios.classList.add("active");
+    if (navComunidades) navComunidades.classList.remove("active");
+    if (navPropietarios) navPropietarios.classList.add("active");
     if (mobileNavComunidades) mobileNavComunidades.classList.remove("active");
     if (mobileNavPropietarios) mobileNavPropietarios.classList.add("active");
 
     document.title = "Peñarrubia · Propietarios";
     renderOwners();
   } else {
-    secPropietarios.hidden = true;
-    secComunidades.hidden = false;
+    if (secPropietarios) {
+      secPropietarios.hidden = true;
+      secPropietarios.style.display = "none";
+    }
+    if (secComunidades) {
+      secComunidades.hidden = false;
+      secComunidades.style.display = "block";
+    }
 
-    navPropietarios.classList.remove("active");
-    navComunidades.classList.add("active");
+    if (navPropietarios) navPropietarios.classList.remove("active");
+    if (navComunidades) navComunidades.classList.add("active");
     if (mobileNavPropietarios) mobileNavPropietarios.classList.remove("active");
     if (mobileNavComunidades) mobileNavComunidades.classList.add("active");
 
@@ -1292,6 +1304,31 @@ function handleRouting() {
     renderCommunities();
   }
 }
+
+function navigateToSection(targetHash) {
+  if (window.location.hash !== targetHash) {
+    window.location.hash = targetHash;
+  }
+  handleRouting();
+}
+
+[navComunidades, mobileNavComunidades].forEach(el => {
+  if (el) {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateToSection("#comunidades");
+    });
+  }
+});
+
+[navPropietarios, mobileNavPropietarios].forEach(el => {
+  if (el) {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateToSection("#propietarios");
+    });
+  }
+});
 
 window.addEventListener("hashchange", handleRouting);
 
