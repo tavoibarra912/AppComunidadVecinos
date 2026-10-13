@@ -741,3 +741,1155 @@ select {
     justify-content: space-between;
   }
 }
+
+/* ==========================================================================
+   MÓDULO DE DOCUMENTACIÓN, VALIDACIÓN AUTOMÁTICA Y APROBACIÓN ADMINISTRATIVA
+   ========================================================================== */
+
+/* Barra superior: Acciones, Buzón y Selector de Rol */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar-btn-inbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f7f6;
+  border: 1px solid #c9e6e3;
+  color: #116f6a;
+  padding: 7px 13px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.topbar-btn-inbox:hover {
+  background: #def0ee;
+  border-color: #198b84;
+}
+
+.badge-counter {
+  background: #e53e3e;
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 7px;
+  line-height: 16px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.role-selector-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.role-select {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nav);
+  cursor: pointer;
+}
+
+.role-select:focus {
+  outline: 2px solid var(--brand);
+}
+
+/* Pestañas de Diálogo (Tabs) */
+.dialog-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #e2e8f0;
+  margin: 16px 0 20px;
+  padding-bottom: 2px;
+}
+
+.dialog-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: -4px;
+  transition: all 0.15s ease;
+}
+
+.dialog-tab:hover {
+  color: var(--ink);
+}
+
+.dialog-tab.active {
+  color: var(--brand-dark);
+  border-bottom-color: var(--brand);
+  font-weight: 700;
+}
+
+.tab-badge {
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.dialog-tab.active .tab-badge {
+  background: #d9f0ee;
+  color: var(--brand-dark);
+}
+
+.tab-pane {
+  display: block;
+}
+
+.tab-pane[hidden] {
+  display: none;
+}
+
+/* Callout informativo de Documentación */
+.docs-callout {
+  display: flex;
+  gap: 14px;
+  background: #f0f7f6;
+  border-left: 4px solid var(--brand);
+  padding: 14px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1b3842;
+}
+
+.docs-callout-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.docs-callout p {
+  margin: 4px 0 0;
+  color: #486581;
+}
+
+/* Contenedor y Tarjetas de Subida de Documentos */
+.docs-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.doc-upload-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s;
+}
+
+.doc-upload-card.has-doc {
+  border-color: #cbd5e1;
+}
+
+.doc-upload-card.is-valid {
+  border-color: #a7f3d0;
+  background: #fafffd;
+}
+
+.doc-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.doc-card-title-wrap {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.doc-card-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.doc-upload-card.is-valid .doc-card-num {
+  background: #198b84;
+  color: white;
+}
+
+.doc-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+
+.doc-card-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* Dropzone */
+.doc-dropzone {
+  position: relative;
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 18px 16px;
+  text-align: center;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doc-dropzone:hover,
+.doc-dropzone.dragover {
+  border-color: var(--brand);
+  background: #f0f7f6;
+}
+
+.doc-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.dropzone-text {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+}
+
+.dropzone-browse {
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.dropzone-formats {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Barra de muestra rápida de prueba */
+.doc-sample-bar {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sample-doc-btn {
+  background: #f1f5f9;
+  border: 1px dashed #94a3b8;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.sample-doc-btn:hover {
+  background: #e2e8f0;
+  border-color: #64748b;
+  color: #0f172a;
+}
+
+/* Resultado de Validación Automática */
+.doc-validation-result {
+  margin-top: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.doc-validation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.doc-file-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-file-icon {
+  font-size: 24px;
+}
+
+.doc-file-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  margin: 0;
+}
+
+.doc-file-size {
+  font-size: 11px;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.doc-file-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-doc-action {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.btn-doc-action:hover {
+  background: #e2e8f0;
+}
+
+.btn-doc-action.danger {
+  color: var(--danger);
+  border-color: #fecaca;
+}
+
+.btn-doc-action.danger:hover {
+  background: #fee2e2;
+}
+
+/* Indicador de Legibilidad y Calidad */
+.legibility-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.legibility-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.score-bar-wrap {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #198b84);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.score-bar-fill.warning {
+  background: #f59e0b;
+}
+
+.score-bar-fill.danger {
+  background: var(--danger);
+}
+
+/* Checklist de comprobaciones automáticas */
+.checks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.check-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.check-icon.passed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.check-icon.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Barra resumen inferior */
+.docs-summary-bar {
+  margin-top: 24px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.docs-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.docs-summary-subtext {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* Estados de Badges de Documentación */
+.status-badge.doc-approved {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.status-badge.doc-pending-admin {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-badge.doc-incomplete {
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.status-badge.doc-none {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.status-badge.doc-rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+/* Botón de acción Documentos en tabla */
+.icon-action-btn.btn-docs {
+  color: #0284c7;
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.icon-action-btn.btn-docs:hover {
+  background: #e0f2fe;
+  border-color: #0284c7;
+}
+
+/* Sección de Documentación en Ficha de Detalle */
+.detail-docs-section {
+  grid-column: 1 / -1;
+  margin-top: 18px;
+  padding-top: 22px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.detail-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.detail-section-heading h3 {
+  font-size: 18px;
+  margin: 2px 0 0;
+  color: var(--ink);
+}
+
+.detail-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-doc-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-doc-card.approved {
+  border-color: #a7f3d0;
+  background: #f0fdf4;
+}
+
+.detail-doc-card.pending {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.detail-doc-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.detail-doc-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.detail-doc-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+.detail-doc-metrics {
+  font-size: 11px;
+  color: #334155;
+  background: #ffffff;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+}
+
+.detail-doc-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Panel de Aprobación Administrativa */
+.admin-approval-panel {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-top: 12px;
+}
+
+.admin-approval-panel.pending-box {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.admin-approval-panel.approved-box {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.admin-approval-panel.rejected-box {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.approval-flex-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.approval-info-col h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.approval-info-col p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.approval-buttons-wrap {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-approve-success {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 9px 15px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.btn-approve-success:hover {
+  background: #059669;
+}
+
+.btn-reject-danger {
+  background: #ffffff;
+  color: #dc2626;
+  border: 1px solid #f87171;
+  padding: 9px 15px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+
+.btn-reject-danger:hover {
+  background: #fee2e2;
+}
+
+/* Modal Emergente de Éxito al Usuario */
+.success-modal-content {
+  max-width: 540px;
+  padding: 28px 32px;
+  text-align: center;
+}
+
+.success-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #e6f6f4;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+}
+
+.success-lead {
+  font-size: 14px;
+  color: #475569;
+  margin: 10px 0 20px;
+  line-height: 1.5;
+}
+
+.success-audit-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: left;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.audit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.audit-check {
+  color: #10b981;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.audit-item strong {
+  display: block;
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.success-next-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.step-badge {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.step-badge.highlight {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0284c7;
+  color: white;
+  font-weight: 800;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.step-badge.highlight .step-num {
+  background: #10b981;
+}
+
+/* Modal de Correo Electrónico Recibido por el Administrador */
+.email-modal-content {
+  max-width: 680px;
+  padding: 24px 30px;
+}
+
+.email-envelope {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  margin-bottom: 20px;
+}
+
+.email-meta-bar {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 14px 18px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.email-meta-row {
+  display: flex;
+  gap: 10px;
+}
+
+.email-meta-label {
+  width: 55px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.email-meta-value {
+  color: #1e293b;
+}
+
+.email-meta-value.email-subject {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.email-body-content {
+  padding: 24px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.email-branding {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+}
+
+.email-brand-logo {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--nav);
+}
+
+.email-brand-logo span {
+  color: var(--brand);
+}
+
+.email-badge-tag {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.email-salutation {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.email-table-wrap {
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.email-docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.email-docs-table th,
+.email-docs-table td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.email-docs-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #475569;
+}
+
+.email-alert-notice {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  padding: 12px 14px;
+  border-radius: 4px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #92400e;
+}
+
+.email-alert-notice p {
+  margin: 0;
+}
+
+/* Buzón de Notificaciones */
+.inbox-modal-content {
+  max-width: 620px;
+}
+
+.inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  margin: 16px 0 20px;
+}
+
+.inbox-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inbox-item:hover {
+  background: #f8fafc;
+  border-color: var(--brand);
+}
+
+.inbox-item.unread {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  font-weight: 600;
+}
+
+.inbox-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.inbox-item-title {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.inbox-item-meta {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* Visor de Documento */
+.viewer-modal-content {
+  max-width: 880px;
+  padding: 24px 30px;
+}
+
+.doc-viewer-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  margin: 16px 0 20px;
+}
+
+.doc-viewer-preview-pane {
+  background: #0f172a;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  color: white;
+  overflow: hidden;
+}
+
+.doc-viewer-preview-pane img {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.doc-viewer-info-pane {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 18px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.viewer-pane-heading {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.viewer-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.viewer-meta-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.viewer-meta-val {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.viewer-checks-wrap h4 {
+  font-size: 12px;
+  margin: 0 0 6px;
+  color: #475569;
+}
+
+.viewer-checks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.viewer-checks-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Representación visual oficial de documentos para preview */
+.official-preview-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fdfbf7;
+  color: #1e293b;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  font-family: monospace, sans-serif;
+  position: relative;
+  border: 2px solid #e2d9cc;
+}
+
+.preview-dni-card {
+  background: linear-gradient(135deg, #f7efe4 0%, #e8dcce 100%);
+  border: 2px solid #c9b9a6;
+  position: relative;
+}
+
+.preview-dni-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1.5px solid #ab9780;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.preview-dni-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #5c432d;
+}
+
+.preview-dni-chip {
+  width: 32px;
+  height: 24px;
+  background: #f59e0b;
+  border-radius: 4px;
+  border: 1px solid #b45309;
+}
+
+.preview-dni-body {
+  display: flex;
+  gap: 14px;
+}
+
+.preview-dni-photo {
+  width: 80px;
+  height: 100px;
+  background: #cbd5e1;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: #475569;
+  font-size: 10px;
+  border: 1px solid #94a3b8;
+}
+
+.preview-dni-data {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.preview-dni-mrz {
+  margin-top: 12px;
+  background: #334155;
+  color: #38bdf8;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 760px) {
+  .doc-viewer-body {
+    grid-template-columns: 1fr;
+  }
+  .dialog-tabs {
+    flex-direction: column;
+    border-bottom: none;
+  }
+  .dialog-tab {
+    border-bottom: none;
+    border-left: 3px solid transparent;
+  }
+  .dialog-tab.active {
+    border-left-color: var(--brand);
+  }
+  .approval-flex-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

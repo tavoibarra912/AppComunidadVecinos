@@ -51,3 +51,36 @@ Gestión completa de los propietarios y asociados vinculados a las comunidades d
   - Diálogo de confirmación accesible para eliminación.
   - Paginación configurable (5 o 10 por página) sincronizada con los filtros aplicados.
   - Navegación responsive entre secciones (sidebar en escritorio y barra superior en móviles).
+
+---
+
+## 3. Módulo de Documentación y Aprobación Administrativa
+
+Permite a los propietarios adjuntar toda la documentación reglamentaria tanto en el alta de nuevo usuario como en la posterior edición de su ficha:
+
+- **Documentación Requerida:**
+  1. **Copia de DNI (ambas caras):** Documento de identidad español escaneado o fotografiado (ambas caras en un único archivo o documento).
+  2. **Recibo bancario o certificado de titularidad:** Justificante bancario que acredite la cuenta donde se domiciliará el pago de las cuotas.
+  3. **Copia de la escritura del inmueble:** Título o escritura acreditativa de la propiedad de la parcela/vivienda.
+
+- **Validación Automática del Sistema (Motor Client-Side):**
+  - **DNI Español:** Verificación de algoritmo oficial de control (módulo 23), detección de anverso y reverso, y ratio de aspecto.
+  - **Inspección de Legibilidad (Canvas Pixel Analysis):** Cálculo en tiempo real de resolución útil, luminancia media (evita documentos quemados u oscuros) y desviación típica de contraste (garantiza nitidez suficiente del texto impreso).
+  - **Recibo Bancario:** Comprobación de coincidencia del IBAN con la cuenta domiciliada del propietario.
+  - **Escritura:** Comprobación de vinculación a la parcela y legibilidad documental.
+  - **Asistente de Pruebas Rápidas:** Botones *"✨ Cargar de prueba válido"* para generar al vuelo documentos vectoriales/canvas de prueba válidos y agilizar testeos.
+
+- **Confirmación Inmediata al Usuario (Modal Emergente):**
+  - Tras procesar y superar las validaciones automáticas, el usuario recibe un diálogo modal emergente (`#doc-success-dialog`) confirmando que la documentación se ha cargado correctamente y queda a la espera de la resolución administrativa.
+
+- **Notificación por Email y Aprobación del Administrador:**
+  - **Envío de Notificación:** Al completar la subida, el sistema despacha una notificación por correo electrónico al Administrador solicitando la verificación y aprobación.
+  - **Plantilla de Email Interactiva (`#admin-email-dialog`):** Simula el correo recibido con remitente, asunto, resumen del propietario y botón directo *"Revisar y Aprobar Documentación"*.
+  - **Buzón del Administrador (`#admin-inbox-dialog`):** Contador de notificaciones pendientes en la barra superior con historial de avisos.
+  - **Panel de Aprobación Administrativa:** En la ficha del propietario, el Administrador puede inspeccionar el estado de cada documento, auditar el desglose de legibilidad y resolver el expediente mediante:
+    - **Aprobar Documentación:** Concede el estado oficial de documentación validada.
+    - **Solicitar Subsanación / Rechazar:** Permite especificar los motivos para que el propietario reenvíe los archivos requeridos.
+
+- **Aislamiento y Persistencia:**
+  - Toda la documentación queda vinculada **única y exclusivamente** al perfil del propietario en cuestión (`owner.documents` dentro de `penarrubia.owners.v1`), garantizando la privacidad e integridad de los datos.
+
