@@ -7,6 +7,8 @@
 const COMMUNITIES_STORAGE_KEY = "penarrubia.communities.v1";
 const OWNERS_STORAGE_KEY = "penarrubia.owners.v1";
 const ADMIN_EMAILS_STORAGE_KEY = "penarrubia.admin_emails.v1";
+const OWNER_NOTIFICATIONS_STORAGE_KEY = "penarrubia.owner_notifications.v1";
+const CURRENT_OWNER_ID = "own-seed-1"; // Carlos Ruiz Mendoza
 
 const PROVINCES = {
   "01": "Álava", "02": "Albacete", "03": "Alicante", "04": "Almería", "05": "Ávila",
@@ -391,6 +393,39 @@ const defaultAdminEmails = [
   }
 ];
 
+const defaultOwnerNotifications = [
+  {
+    id: "notif-seed-1",
+    ownerId: "own-seed-1",
+    title: "Documentación recibida y pre-validada",
+    type: "info",
+    date: "12/10/2026, 18:30",
+    timestamp: Date.now() - 3600000,
+    read: false,
+    message: "Tus 3 documentos obligatorios (DNI ambas caras, recibo bancario y copia de escritura) han sido verificados automáticamente por el sistema con legibilidad óptima (98%). El expediente está ahora a la espera de revisión y convalidación formal por parte del Administrador."
+  },
+  {
+    id: "notif-seed-2",
+    ownerId: "own-seed-1",
+    title: "Convocatoria de Junta General Ordinaria",
+    type: "info",
+    date: "10/10/2026, 10:00",
+    timestamp: Date.now() - 86400000 * 2,
+    read: true,
+    message: "Estimado asociado, se convoca la próxima Junta General Ordinaria de Residencial Peñarrubia para el 25 de octubre a las 18:30h en el local social de la comunidad."
+  },
+  {
+    id: "notif-seed-3",
+    ownerId: "own-seed-1",
+    title: "Confirmación de domiciliación bancaria",
+    type: "success",
+    date: "05/10/2026, 12:15",
+    timestamp: Date.now() - 86400000 * 7,
+    read: true,
+    message: "Se ha confirmado la domiciliación bancaria para el cobro de las cuotas de comunidad en la cuenta CaixaBank (ES66 2100 0418 4502 0005 4321)."
+  }
+];
+
 // ==========================================
 // 2. ESTADO GLOBAL DE LA APLICACIÓN
 // ==========================================
@@ -398,6 +433,7 @@ const defaultAdminEmails = [
 let communities = loadCommunities();
 let owners = loadOwners();
 let adminEmails = loadAdminEmails();
+let ownerNotifications = loadOwnerNotifications();
 
 let editingCommunityId = null;
 let deletingCommunityId = null;
@@ -433,8 +469,15 @@ const mobileNavComunidades = document.querySelector("#mobile-nav-comunidades");
 const mobileNavPropietarios = document.querySelector("#mobile-nav-propietarios");
 const secComunidades = document.querySelector("#comunidades");
 const secPropietarios = document.querySelector("#propietarios");
+const sidebarLabel = document.querySelector("#sidebar-label");
 
 // Elementos de Comunidades
+const comHeadingEyebrow = document.querySelector("#comunidades-heading-eyebrow");
+const comHeadingTitle = document.querySelector("#comunidades-heading-title");
+const comHeadingSubtitle = document.querySelector("#comunidades-heading-subtitle");
+const newCommunityBtn = document.querySelector("#new-community");
+const thComContact = document.querySelector("#th-com-contact");
+const comToolbar = document.querySelector("#comunidades-toolbar");
 const communityList = document.querySelector("#community-list");
 const communityEmpty = document.querySelector("#empty-state");
 const communityCount = document.querySelector("#result-count");
@@ -456,8 +499,16 @@ const closeDetailDialog = document.querySelector("#close-detail-dialog");
 const closeDetailBtn = document.querySelector("#close-detail-btn");
 const detailEditBtn = document.querySelector("#detail-edit-btn");
 const detailOwnersCount = document.querySelector("#detail-owners-count");
+const detailItemPhone = document.querySelector("#detail-item-phone");
+const detailItemOtherPhone = document.querySelector("#detail-item-otherPhone");
+const detailItemEmail = document.querySelector("#detail-item-email");
 
 // Elementos de Propietarios
+const ownersHeadingEyebrow = document.querySelector("#owners-heading-eyebrow");
+const ownersHeadingTitle = document.querySelector("#owners-heading-title");
+const ownersHeadingSubtitle = document.querySelector("#owners-heading-subtitle");
+const newOwnerBtn = document.querySelector("#new-owner");
+const ownersToolbar = document.querySelector("#owners-toolbar");
 const ownerList = document.querySelector("#owner-list");
 const ownerEmpty = document.querySelector("#owner-empty-state");
 const ownerCount = document.querySelector("#owner-result-count");
@@ -532,6 +583,14 @@ const adminInboxDialog = document.querySelector("#admin-inbox-dialog");
 const closeAdminInboxDialog = document.querySelector("#close-admin-inbox-dialog");
 const closeAdminInboxBtn = document.querySelector("#close-admin-inbox-btn");
 const adminInboxList = document.querySelector("#admin-inbox-list");
+
+const topbarOwnerInboxBtn = document.querySelector("#topbar-owner-inbox-btn");
+const ownerInboxBadgeCount = document.querySelector("#owner-inbox-badge-count");
+const ownerInboxDialog = document.querySelector("#owner-inbox-dialog");
+const closeOwnerInboxDialog = document.querySelector("#close-owner-inbox-dialog");
+const closeOwnerInboxBtn = document.querySelector("#close-owner-inbox-btn");
+const markAllOwnerNotifsReadBtn = document.querySelector("#mark-all-owner-notifs-read-btn");
+const ownerInboxList = document.querySelector("#owner-inbox-list");
 
 const docViewerDialog = document.querySelector("#doc-viewer-dialog");
 const closeDocViewerDialog = document.querySelector("#close-doc-viewer-dialog");
@@ -681,6 +740,107 @@ function updateInboxBadge() {
     inboxBadgeCount.textContent = unreadCount;
     inboxBadgeCount.style.display = unreadCount > 0 ? "inline-block" : "none";
   }
+}
+
+// --- Gestión de Buzón y Notificaciones del Propietario ---
+
+function loadOwnerNotifications() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(OWNER_NOTIFICATIONS_STORAGE_KEY));
+    if (Array.isArray(saved) && saved.length > 0) return saved;
+    return defaultOwnerNotifications;
+  } catch {
+    return defaultOwnerNotifications;
+  }
+}
+
+function saveOwnerNotifications() {
+  localStorage.setItem(OWNER_NOTIFICATIONS_STORAGE_KEY, JSON.stringify(ownerNotifications));
+  updateOwnerInboxBadge();
+}
+
+function updateOwnerInboxBadge() {
+  const unreadCount = ownerNotifications.filter(n => !n.read && n.ownerId === CURRENT_OWNER_ID).length;
+  if (ownerInboxBadgeCount) {
+    ownerInboxBadgeCount.textContent = unreadCount;
+    ownerInboxBadgeCount.style.display = unreadCount > 0 ? "inline-block" : "none";
+  }
+}
+
+function addOwnerNotification({ ownerId, title, type = "info", message }) {
+  const dateStr = new Date().toLocaleString("es-ES", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
+  const notif = {
+    id: "notif-" + Date.now(),
+    ownerId: ownerId || CURRENT_OWNER_ID,
+    title,
+    type,
+    date: dateStr,
+    timestamp: Date.now(),
+    read: false,
+    message
+  };
+  ownerNotifications.unshift(notif);
+  saveOwnerNotifications();
+}
+
+function openOwnerInbox() {
+  renderOwnerInbox();
+  ownerInboxDialog.showModal();
+}
+
+function renderOwnerInbox() {
+  if (!ownerInboxList) return;
+  ownerInboxList.replaceChildren();
+  const myNotifs = ownerNotifications.filter(n => n.ownerId === CURRENT_OWNER_ID);
+
+  if (myNotifs.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.style.padding = "24px";
+    empty.innerHTML = "<p>No tienes avisos en tu buzón actualmente.</p>";
+    ownerInboxList.append(empty);
+    return;
+  }
+
+  myNotifs.forEach(n => {
+    const card = document.createElement("div");
+    card.className = `notif-card ${n.read ? "" : "unread"}`;
+
+    let typeTag = '<span class="notif-tag info">Aviso</span>';
+    let typeIcon = "ℹ️";
+    if (n.type === "success") {
+      typeTag = '<span class="notif-tag success">Aprobado</span>';
+      typeIcon = "✅";
+    } else if (n.type === "warning") {
+      typeTag = '<span class="notif-tag warning">Requerimiento</span>';
+      typeIcon = "⚠️";
+    }
+
+    card.innerHTML = `
+      <div class="notif-card-header">
+        <div class="notif-card-title-wrap">
+          <span>${typeIcon}</span>
+          <span>${n.title}</span>
+          ${typeTag}
+        </div>
+        <span class="notif-card-date">${n.date}</span>
+      </div>
+      <p class="notif-card-message">${n.message}</p>
+    `;
+
+    card.addEventListener("click", () => {
+      if (!n.read) {
+        n.read = true;
+        saveOwnerNotifications();
+        card.classList.remove("unread");
+      }
+    });
+
+    ownerInboxList.append(card);
+  });
 }
 
 function sendAdminEmailNotification(owner, docsMap) {
@@ -1261,12 +1421,66 @@ function selectLocationInForm(formEl, city, province) {
 }
 
 // ==========================================
-// 6. ENRUTAMIENTO Y NAVEGACIÓN
+// 6. ENRUTAMIENTO, NAVEGACIÓN Y ROLES
 // ==========================================
+
+function applyRoleUI() {
+  const isOwner = activeRole === "owner";
+
+  // 1. Selector y perfil en topbar
+  if (userAvatar) userAvatar.textContent = isOwner ? "C" : "A";
+  if (userRoleLabel) userRoleLabel.textContent = isOwner ? "Propietario (Carlos Ruiz)" : "Administrador";
+
+  // 2. Buzones en topbar
+  if (topbarInboxBtn) {
+    topbarInboxBtn.style.display = isOwner ? "none" : "";
+  }
+  if (topbarOwnerInboxBtn) {
+    topbarOwnerInboxBtn.style.display = isOwner ? "" : "none";
+    if (isOwner) updateOwnerInboxBadge();
+  }
+
+  // 3. Etiqueta y opciones en Sidebar / Navegación
+  if (sidebarLabel) {
+    sidebarLabel.textContent = isOwner ? "MI ÁREA PERSONAL" : "GESTIÓN ADMINISTRADOR";
+  }
+  if (navComunidades) navComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
+  if (mobileNavComunidades) mobileNavComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
+  if (navPropietarios) navPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
+  if (mobileNavPropietarios) mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
+
+  // 4. Sección Comunidades
+  if (comHeadingEyebrow) comHeadingEyebrow.textContent = isOwner ? "MI COMUNIDAD ASIGNADA" : "ASOCIACIÓN DE PROPIETARIOS";
+  if (comHeadingTitle) comHeadingTitle.textContent = isOwner ? "Comunidad de vecinos" : "Comunidades de vecinos";
+  if (comHeadingSubtitle) comHeadingSubtitle.textContent = isOwner 
+    ? "Consulta los datos de la comunidad a la que perteneces (sólo lectura)." 
+    : "Consulta y gestiona las comunidades vinculadas a Peñarrubia.";
+  if (newCommunityBtn) newCommunityBtn.style.display = isOwner ? "none" : "";
+  if (comToolbar) comToolbar.style.display = isOwner ? "none" : "";
+  if (thComContact) thComContact.style.display = isOwner ? "none" : "";
+  if (communityPaginationBar) communityPaginationBar.style.display = isOwner ? "none" : "";
+
+  // 5. Sección Propietarios
+  if (ownersHeadingEyebrow) ownersHeadingEyebrow.textContent = isOwner ? "MI CUENTA Y DOCUMENTACIÓN" : "ASOCIACIÓN DE PROPIETARIOS";
+  if (ownersHeadingTitle) ownersHeadingTitle.textContent = isOwner ? "Mi Perfil de Propietario" : "Propietarios";
+  if (ownersHeadingSubtitle) ownersHeadingSubtitle.textContent = isOwner 
+    ? "Consulta tu expediente de asociado, adjunta tus documentos requeridos y comprueba su estado de aprobación." 
+    : "Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.";
+  if (newOwnerBtn) newOwnerBtn.style.display = isOwner ? "none" : "";
+  if (ownersToolbar) ownersToolbar.style.display = isOwner ? "none" : "";
+  if (ownerPaginationBar) ownerPaginationBar.style.display = isOwner ? "none" : "";
+
+  // 6. Banners informativos de modo propietario
+  const bannerCom = document.querySelector("#owner-view-banner-com");
+  if (bannerCom) bannerCom.style.display = isOwner ? "flex" : "none";
+  const bannerOwn = document.querySelector("#owner-view-banner-own");
+  if (bannerOwn) bannerOwn.style.display = isOwner ? "flex" : "none";
+}
 
 function handleRouting() {
   const hash = (window.location.hash || "#comunidades").toLowerCase();
   const isOwners = hash === "#propietarios";
+  const isOwner = activeRole === "owner";
 
   if (isOwners) {
     if (secComunidades) {
@@ -1283,7 +1497,7 @@ function handleRouting() {
     if (mobileNavComunidades) mobileNavComunidades.classList.remove("active");
     if (mobileNavPropietarios) mobileNavPropietarios.classList.add("active");
 
-    document.title = "Peñarrubia · Propietarios";
+    document.title = isOwner ? "Peñarrubia · Mi Perfil" : "Peñarrubia · Propietarios";
     renderOwners();
   } else {
     if (secPropietarios) {
@@ -1300,7 +1514,7 @@ function handleRouting() {
     if (mobileNavPropietarios) mobileNavPropietarios.classList.remove("active");
     if (mobileNavComunidades) mobileNavComunidades.classList.add("active");
 
-    document.title = "Peñarrubia · Comunidades";
+    document.title = isOwner ? "Peñarrubia · Mi Comunidad" : "Peñarrubia · Comunidades";
     renderCommunities();
   }
 }
@@ -1389,12 +1603,20 @@ function renderCommunityPagination(totalItems) {
 }
 
 function renderCommunities() {
-  const items = filteredCommunities();
+  const isOwner = activeRole === "owner";
+  let items = filteredCommunities();
+
+  if (isOwner) {
+    const currentOwner = owners.find(o => o.id === CURRENT_OWNER_ID) || ownerSeeds[0];
+    items = communities.filter(c => c.id === currentOwner.communityId || c.name === currentOwner.communityName);
+    if (items.length === 0 && communities.length > 0) items = [communities[0]];
+  }
+
   const totalPages = Math.max(1, Math.ceil(items.length / communityPageSize));
   if (communityCurrentPage > totalPages) communityCurrentPage = totalPages;
 
-  const startIndex = (communityCurrentPage - 1) * communityPageSize;
-  const pagedItems = items.slice(startIndex, startIndex + communityPageSize);
+  const startIndex = isOwner ? 0 : (communityCurrentPage - 1) * communityPageSize;
+  const pagedItems = isOwner ? items : items.slice(startIndex, startIndex + communityPageSize);
 
   communityList.replaceChildren();
 
@@ -1433,19 +1655,21 @@ function renderCommunities() {
     tdCity.textContent = `${c.city}, ${c.province}`;
     row.append(tdCity);
 
-    // 5. Contacto
-    const tdContact = document.createElement("td");
-    tdContact.className = "col-contact";
-    const phoneSpan = document.createElement("span");
-    phoneSpan.textContent = c.phone || "—";
-    tdContact.append(phoneSpan);
-    if (c.email) {
-      const emailSpan = document.createElement("span");
-      emailSpan.className = "community-notes";
-      emailSpan.textContent = c.email;
-      tdContact.append(emailSpan);
+    // 5. Contacto (Sólo se muestra en modo Administrador)
+    if (!isOwner) {
+      const tdContact = document.createElement("td");
+      tdContact.className = "col-contact";
+      const phoneSpan = document.createElement("span");
+      phoneSpan.textContent = c.phone || "—";
+      tdContact.append(phoneSpan);
+      if (c.email) {
+        const emailSpan = document.createElement("span");
+        emailSpan.className = "community-notes";
+        emailSpan.textContent = c.email;
+        tdContact.append(emailSpan);
+      }
+      row.append(tdContact);
     }
-    row.append(tdContact);
 
     // 6. Acciones
     const actions = document.createElement("td");
@@ -1454,7 +1678,7 @@ function renderCommunities() {
     const btnInfo = document.createElement("button");
     btnInfo.type = "button";
     btnInfo.className = "icon-action-btn btn-info";
-    btnInfo.title = "Más info";
+    btnInfo.title = isOwner ? "Ver datos de mi comunidad" : "Más info";
     btnInfo.setAttribute("aria-label", `Más información de ${c.name}`);
     btnInfo.innerHTML = `
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1465,43 +1689,53 @@ function renderCommunities() {
     `;
     btnInfo.addEventListener("click", () => openCommunityDetail(c.id));
 
-    const btnEdit = document.createElement("button");
-    btnEdit.type = "button";
-    btnEdit.className = "icon-action-btn btn-edit";
-    btnEdit.title = "Editar";
-    btnEdit.setAttribute("aria-label", `Editar ${c.name}`);
-    btnEdit.innerHTML = `
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-        <path d="m15 5 4 4"></path>
-      </svg>
-    `;
-    btnEdit.addEventListener("click", () => openCommunityEditor(c.id));
+    if (!isOwner) {
+      const btnEdit = document.createElement("button");
+      btnEdit.type = "button";
+      btnEdit.className = "icon-action-btn btn-edit";
+      btnEdit.title = "Editar";
+      btnEdit.setAttribute("aria-label", `Editar ${c.name}`);
+      btnEdit.innerHTML = `
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+          <path d="m15 5 4 4"></path>
+        </svg>
+      `;
+      btnEdit.addEventListener("click", () => openCommunityEditor(c.id));
 
-    const btnDelete = document.createElement("button");
-    btnDelete.type = "button";
-    btnDelete.className = "icon-action-btn btn-delete";
-    btnDelete.title = "Eliminar";
-    btnDelete.setAttribute("aria-label", `Eliminar ${c.name}`);
-    btnDelete.innerHTML = `
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 6h18"></path>
-        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-        <line x1="10" y1="11" x2="10" y2="17"></line>
-        <line x1="14" y1="11" x2="14" y2="17"></line>
-      </svg>
-    `;
-    btnDelete.addEventListener("click", () => openCommunityDelete(c.id));
+      const btnDelete = document.createElement("button");
+      btnDelete.type = "button";
+      btnDelete.className = "icon-action-btn btn-delete";
+      btnDelete.title = "Eliminar";
+      btnDelete.setAttribute("aria-label", `Eliminar ${c.name}`);
+      btnDelete.innerHTML = `
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      `;
+      btnDelete.addEventListener("click", () => openCommunityDelete(c.id));
 
-    actions.append(btnInfo, btnEdit, btnDelete);
+      actions.append(btnInfo, btnEdit, btnDelete);
+    } else {
+      actions.append(btnInfo);
+    }
+
     row.append(actions);
     communityList.append(row);
   });
 
   communityEmpty.hidden = items.length !== 0;
-  communityCount.textContent = `${items.length} ${items.length === 1 ? "comunidad" : "comunidades"}`;
-  renderCommunityPagination(items.length);
+  communityCount.textContent = isOwner
+    ? "1 comunidad asignada"
+    : `${items.length} ${items.length === 1 ? "comunidad" : "comunidades"}`;
+  
+  if (!isOwner) {
+    renderCommunityPagination(items.length);
+  }
 }
 
 function openCommunityEditor(id = null) {
@@ -1533,6 +1767,7 @@ function openCommunityDetail(id) {
   viewingCommunityId = id;
 
   const linkedOwners = owners.filter(o => o.communityId === c.id || o.communityName === c.name);
+  const isOwner = activeRole === "owner";
 
   document.querySelector("#detail-name").textContent = c.name || "—";
   document.querySelector("#detail-nif").textContent = c.nif || "—";
@@ -1545,6 +1780,12 @@ function openCommunityDetail(id) {
   document.querySelector("#detail-email").textContent = c.email || "—";
   document.querySelector("#detail-notes").textContent = c.notes ? c.notes : "Sin observaciones registradas.";
   detailOwnersCount.textContent = `${linkedOwners.length} ${linkedOwners.length === 1 ? "propietario" : "propietarios"}`;
+
+  // Ocultar datos de contacto y botón de edición en modo propietario
+  if (detailItemPhone) detailItemPhone.style.display = isOwner ? "none" : "";
+  if (detailItemOtherPhone) detailItemOtherPhone.style.display = isOwner ? "none" : "";
+  if (detailItemEmail) detailItemEmail.style.display = isOwner ? "none" : "";
+  if (detailEditBtn) detailEditBtn.style.display = isOwner ? "none" : "";
 
   communityDetailDialog.showModal();
 }
@@ -1765,12 +2006,19 @@ function renderOwnerPagination(totalItems) {
 }
 
 function renderOwners() {
-  const items = filteredOwners();
+  const isOwner = activeRole === "owner";
+  let items = filteredOwners();
+
+  if (isOwner) {
+    items = owners.filter(o => o.id === CURRENT_OWNER_ID || o.dni === "47895231P");
+    if (items.length === 0 && owners.length > 0) items = [owners[0]];
+  }
+
   const totalPages = Math.max(1, Math.ceil(items.length / ownerPageSize));
   if (ownerCurrentPage > totalPages) ownerCurrentPage = totalPages;
 
-  const startIndex = (ownerCurrentPage - 1) * ownerPageSize;
-  const pagedItems = items.slice(startIndex, startIndex + ownerPageSize);
+  const startIndex = isOwner ? 0 : (ownerCurrentPage - 1) * ownerPageSize;
+  const pagedItems = isOwner ? items : items.slice(startIndex, startIndex + ownerPageSize);
 
   ownerList.replaceChildren();
 
@@ -1850,7 +2098,7 @@ function renderOwners() {
     const btnInfo = document.createElement("button");
     btnInfo.type = "button";
     btnInfo.className = "icon-action-btn btn-info";
-    btnInfo.title = "Más info y aprobación";
+    btnInfo.title = isOwner ? "Ver mi expediente y documentos" : "Más info y aprobación";
     btnInfo.setAttribute("aria-label", `Ficha detallada de ${o.name} ${o.surname}`);
     btnInfo.innerHTML = `
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1864,7 +2112,7 @@ function renderOwners() {
     const btnDocs = document.createElement("button");
     btnDocs.type = "button";
     btnDocs.className = "icon-action-btn btn-docs";
-    btnDocs.title = "Subir y gestionar documentación";
+    btnDocs.title = isOwner ? "Gestionar / subir mi documentación" : "Subir y gestionar documentación";
     btnDocs.setAttribute("aria-label", `Documentación de ${o.name} ${o.surname}`);
     btnDocs.innerHTML = `
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1876,7 +2124,7 @@ function renderOwners() {
     const btnEdit = document.createElement("button");
     btnEdit.type = "button";
     btnEdit.className = "icon-action-btn btn-edit";
-    btnEdit.title = "Editar datos personales";
+    btnEdit.title = isOwner ? "Editar mis datos personales" : "Editar datos personales";
     btnEdit.setAttribute("aria-label", `Editar ${o.name} ${o.surname}`);
     btnEdit.innerHTML = `
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1886,30 +2134,40 @@ function renderOwners() {
     `;
     btnEdit.addEventListener("click", () => openOwnerEditor(o.id, "data"));
 
-    const btnDelete = document.createElement("button");
-    btnDelete.type = "button";
-    btnDelete.className = "icon-action-btn btn-delete";
-    btnDelete.title = "Eliminar";
-    btnDelete.setAttribute("aria-label", `Eliminar ${o.name} ${o.surname}`);
-    btnDelete.innerHTML = `
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 6h18"></path>
-        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-        <line x1="10" y1="11" x2="10" y2="17"></line>
-        <line x1="14" y1="11" x2="14" y2="17"></line>
-      </svg>
-    `;
-    btnDelete.addEventListener("click", () => openOwnerDelete(o.id));
+    if (!isOwner) {
+      const btnDelete = document.createElement("button");
+      btnDelete.type = "button";
+      btnDelete.className = "icon-action-btn btn-delete";
+      btnDelete.title = "Eliminar";
+      btnDelete.setAttribute("aria-label", `Eliminar ${o.name} ${o.surname}`);
+      btnDelete.innerHTML = `
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      `;
+      btnDelete.addEventListener("click", () => openOwnerDelete(o.id));
 
-    actions.append(btnInfo, btnDocs, btnEdit, btnDelete);
+      actions.append(btnInfo, btnDocs, btnEdit, btnDelete);
+    } else {
+      actions.append(btnInfo, btnDocs, btnEdit);
+    }
+
     row.append(actions);
     ownerList.append(row);
   });
 
   ownerEmpty.hidden = items.length !== 0;
-  ownerCount.textContent = `${items.length} ${items.length === 1 ? "propietario" : "propietarios"}`;
-  renderOwnerPagination(items.length);
+  ownerCount.textContent = isOwner
+    ? "1 perfil de propietario registrado"
+    : `${items.length} ${items.length === 1 ? "propietario" : "propietarios"}`;
+
+  if (!isOwner) {
+    renderOwnerPagination(items.length);
+  }
 }
 
 
@@ -2121,6 +2379,10 @@ function handleDocSampleLoad(docType) {
 }
 
 function openOwnerEditor(id = null, defaultTab = "data") {
+  const isOwner = activeRole === "owner";
+  if (isOwner) {
+    id = CURRENT_OWNER_ID;
+  }
   editingOwnerId = id;
   ownerForm.reset();
   ownerError.textContent = "";
@@ -2128,7 +2390,15 @@ function openOwnerEditor(id = null, defaultTab = "data") {
   updateCommunitySelectors();
 
   const o = owners.find(item => item.id === id);
-  document.querySelector("#owner-dialog-title").textContent = o ? "Editar propietario" : "Nuevo propietario";
+  if (isOwner) {
+    document.querySelector("#owner-dialog-title").textContent = "Editar mi perfil de propietario";
+    ownerForm.elements.communityId.disabled = true;
+    ownerForm.elements.isMember.disabled = true;
+  } else {
+    document.querySelector("#owner-dialog-title").textContent = o ? "Editar propietario" : "Nuevo propietario";
+    ownerForm.elements.communityId.disabled = false;
+    ownerForm.elements.isMember.disabled = false;
+  }
 
   if (o) {
     Object.entries(o).forEach(([key, value]) => {
@@ -2270,6 +2540,57 @@ function renderDetailDocsGrid(o) {
 function renderDetailApprovalPanel(o, docStatus) {
   ownerDetailApprovalPanel.replaceChildren();
 
+  // En modo Propietario: sólo información de estado para el usuario (sin controles administrativos)
+  if (activeRole === "owner") {
+    if (docStatus === "approved") {
+      ownerDetailApprovalPanel.className = "admin-approval-panel approved-box";
+      ownerDetailApprovalPanel.innerHTML = `
+        <div class="approval-flex-row">
+          <div class="approval-info-col">
+            <h4 style="color: #15803d;">✓ Expediente Documental Aprobado Oficialmente</h4>
+            <p>Toda tu documentación reglamentaria ha sido verificada y formalmente <strong>convalidada por el Administrador</strong>. Tu perfil de asociado está al día.</p>
+          </div>
+        </div>
+      `;
+    } else if (docStatus === "pending_admin") {
+      ownerDetailApprovalPanel.className = "admin-approval-panel pending-box";
+      ownerDetailApprovalPanel.innerHTML = `
+        <div class="approval-flex-row">
+          <div class="approval-info-col">
+            <h4>⏳ Documentación en Revisión por el Administrador</h4>
+            <p>Tus documentos han superado la validación automática de formato y legibilidad del sistema. El Administrador ha sido notificado y resolverá la aprobación de tu expediente en breve.</p>
+          </div>
+        </div>
+      `;
+    } else if (docStatus === "rejected") {
+      const reason = o.documents?.dni?.adminApproval?.notes || "Documentación no conforme o incompleta.";
+      ownerDetailApprovalPanel.className = "admin-approval-panel rejected-box";
+      ownerDetailApprovalPanel.innerHTML = `
+        <div class="approval-flex-row">
+          <div class="approval-info-col">
+            <h4 style="color: #b91c1c;">⚠️ Requerimiento de Subsanación</h4>
+            <p>El Administrador solicita correcciones en tu documentación: <em>“${reason}”</em>. Por favor, pulsa en 'Gestionar documentos' para volver a adjuntar los archivos requeridos.</p>
+          </div>
+        </div>
+      `;
+    } else {
+      ownerDetailApprovalPanel.className = "admin-approval-panel";
+      ownerDetailApprovalPanel.innerHTML = `
+        <div class="approval-flex-row">
+          <div class="approval-info-col">
+            <h4>⚠️ Documentación Obligatoria Pendiente</h4>
+            <p>Por favor, sube la copia de tu DNI (ambas caras), recibo bancario y escritura para que el Administrador pueda convalidar tu expediente.</p>
+          </div>
+        </div>
+      `;
+    }
+    ownerDetailEditBtn.textContent = "Editar mis datos";
+    return;
+  }
+
+  // En modo Administrador: controles completos de verificación, convalidación y rechazo
+  ownerDetailEditBtn.textContent = "Editar propietario";
+
   if (docStatus === "pending_admin") {
     ownerDetailApprovalPanel.className = "admin-approval-panel pending-box";
     ownerDetailApprovalPanel.innerHTML = `
@@ -2390,6 +2711,15 @@ function approveAllOwnerDocs(ownerId) {
 
   saveOwners();
   renderOwners();
+
+  // Notificar al buzón personal del propietario
+  addOwnerNotification({
+    ownerId,
+    title: "Documentación oficial convalidada",
+    type: "success",
+    message: "El Administrador ha verificado y aprobado formalmente toda tu documentación (DNI, domiciliación bancaria y escritura). Tu expediente está al corriente."
+  });
+
   openOwnerDetail(ownerId);
   toast("¡Documentación aprobada formalmente por el Administrador!");
 }
@@ -2455,6 +2785,15 @@ function openDocRejectDialog(ownerId) {
 
     saveOwners();
     renderOwners();
+
+    // Notificar al buzón personal del propietario
+    addOwnerNotification({
+      ownerId,
+      title: "Requerimiento de subsanación documental",
+      type: "warning",
+      message: `El Administrador ha revisado tu documentación y solicita subsanación: “${reason}”. Por favor, accede a tu perfil y vuelve a adjuntar los documentos solicitados.`
+    });
+
     docRejectDialog.close();
     openOwnerDetail(ownerId);
     toast("Documentación rechazada. Se ha solicitado subsanación al propietario.");
@@ -2519,20 +2858,23 @@ function openDocViewer(owner, docKey, docObj = null) {
     previewPane.innerHTML = `<p>Visualización del archivo ${doc.fileName}</p>`;
   }
 
-  // Botón rápido de aprobación individual
-  docViewerQuickApproveBtn.onclick = () => {
-    doc.adminApproval = {
-      status: "approved",
-      reviewedAt: new Date().toLocaleString("es-ES"),
-      reviewedBy: "Administrador",
-      notes: "Aprobación individual desde visor."
+  // Botón rápido de aprobación individual (sólo disponible para Administrador)
+  if (docViewerQuickApproveBtn) {
+    docViewerQuickApproveBtn.style.display = activeRole === "owner" ? "none" : "";
+    docViewerQuickApproveBtn.onclick = () => {
+      doc.adminApproval = {
+        status: "approved",
+        reviewedAt: new Date().toLocaleString("es-ES"),
+        reviewedBy: "Administrador",
+        notes: "Aprobación individual desde visor."
+      };
+      saveOwners();
+      renderOwners();
+      if (viewingOwnerId) openOwnerDetail(viewingOwnerId);
+      docViewerDialog.close();
+      toast(`Documento "${doc.title}" aprobado.`);
     };
-    saveOwners();
-    renderOwners();
-    if (viewingOwnerId) openOwnerDetail(viewingOwnerId);
-    docViewerDialog.close();
-    toast(`Documento "${doc.title}" aprobado.`);
-  };
+  }
 
   docViewerDialog.showModal();
 }
@@ -2678,15 +3020,26 @@ ownerForm.addEventListener("submit", event => {
     // 1. Remitir aviso por correo electrónico al Administrador
     const emailSent = sendAdminEmailNotification(data, currentEditingDocs);
 
-    // 2. Mostrar mensaje emergente al usuario confirmando el proceso completado con éxito
+    // 2. Notificar en el buzón personal del propietario
+    addOwnerNotification({
+      ownerId: data.id,
+      title: "Documentación enviada para aprobación",
+      type: "info",
+      message: "Tus 3 documentos obligatorios han superado la validación automática del sistema y se ha notificado al Administrador para su convalidación."
+    });
+
+    // 3. Mostrar mensaje emergente al usuario confirmando el proceso completado con éxito
     document.querySelector("#success-audit-dni").textContent = `${currentEditingDocs.dni?.autoValidation?.typeVerified || "DNI español verificado"} · Legibilidad ${currentEditingDocs.dni?.autoValidation?.legibilityScore || 98}% (Óptima)`;
     document.querySelector("#success-audit-bank").textContent = `${currentEditingDocs.bankReceipt?.autoValidation?.typeVerified || "Certificado bancario con IBAN verificado"} · Legibilidad ${currentEditingDocs.bankReceipt?.autoValidation?.legibilityScore || 96}%`;
     document.querySelector("#success-audit-deed").textContent = `${currentEditingDocs.propertyDeed?.autoValidation?.typeVerified || "Escritura notarial de propiedad verificada"} · Legibilidad ${currentEditingDocs.propertyDeed?.autoValidation?.legibilityScore || 95}%`;
 
-    btnViewAdminEmail.onclick = () => {
-      docSuccessDialog.close();
-      openAdminEmail(emailSent.id);
-    };
+    if (btnViewAdminEmail) {
+      btnViewAdminEmail.style.display = activeRole === "owner" ? "none" : "";
+      btnViewAdminEmail.onclick = () => {
+        docSuccessDialog.close();
+        openAdminEmail(emailSent.id);
+      };
+    }
 
     docSuccessDialog.showModal();
   }
@@ -2946,44 +3299,63 @@ btnSampleDeed.addEventListener("click", () => handleDocSampleLoad("propertyDeed"
 closeDocSuccessBtn.addEventListener("click", () => docSuccessDialog.close());
 
 // Buzón de Avisos y Notificaciones del Administrador
-topbarInboxBtn.addEventListener("click", openAdminInbox);
-closeAdminInboxDialog.addEventListener("click", () => adminInboxDialog.close());
-closeAdminInboxBtn.addEventListener("click", () => adminInboxDialog.close());
+if (topbarInboxBtn) topbarInboxBtn.addEventListener("click", openAdminInbox);
+if (closeAdminInboxDialog) closeAdminInboxDialog.addEventListener("click", () => adminInboxDialog.close());
+if (closeAdminInboxBtn) closeAdminInboxBtn.addEventListener("click", () => adminInboxDialog.close());
+
+// Buzón de Avisos y Notificaciones del Propietario
+if (topbarOwnerInboxBtn) topbarOwnerInboxBtn.addEventListener("click", openOwnerInbox);
+if (closeOwnerInboxDialog) closeOwnerInboxDialog.addEventListener("click", () => ownerInboxDialog.close());
+if (closeOwnerInboxBtn) closeOwnerInboxBtn.addEventListener("click", () => ownerInboxDialog.close());
+if (markAllOwnerNotifsReadBtn) {
+  markAllOwnerNotifsReadBtn.addEventListener("click", () => {
+    ownerNotifications.forEach(n => {
+      if (n.ownerId === CURRENT_OWNER_ID) n.read = true;
+    });
+    saveOwnerNotifications();
+    updateOwnerInboxBadge();
+    renderOwnerInbox();
+    toast("Todos los avisos marcados como leídos.");
+  });
+}
 
 // Diálogo de Email del Administrador
-closeAdminEmailDialog.addEventListener("click", () => adminEmailDialog.close());
-closeAdminEmailBtn.addEventListener("click", () => adminEmailDialog.close());
+if (closeAdminEmailDialog) closeAdminEmailDialog.addEventListener("click", () => adminEmailDialog.close());
+if (closeAdminEmailBtn) closeAdminEmailBtn.addEventListener("click", () => adminEmailDialog.close());
 
 // Visor de Documento
-closeDocViewerDialog.addEventListener("click", () => docViewerDialog.close());
-closeDocViewerBtn.addEventListener("click", () => docViewerDialog.close());
+if (closeDocViewerDialog) closeDocViewerDialog.addEventListener("click", () => docViewerDialog.close());
+if (closeDocViewerBtn) closeDocViewerBtn.addEventListener("click", () => docViewerDialog.close());
 
 // Diálogo de Rechazo
-closeDocRejectDialog.addEventListener("click", () => docRejectDialog.close());
-cancelDocRejectBtn.addEventListener("click", () => docRejectDialog.close());
+if (closeDocRejectDialog) closeDocRejectDialog.addEventListener("click", () => docRejectDialog.close());
+if (cancelDocRejectBtn) cancelDocRejectBtn.addEventListener("click", () => docRejectDialog.close());
 
 // Selector de Modo de Rol (Administrador / Propietario)
-activeRoleSelect.addEventListener("change", () => {
-  activeRole = activeRoleSelect.value;
-  if (activeRole === "owner") {
-    userAvatar.textContent = "C";
-    userRoleLabel.textContent = "Propietario (Carlos Ruiz)";
-    toast("Modo Propietario activado. Visualizando la plataforma como asociado.");
-  } else {
-    userAvatar.textContent = "A";
-    userRoleLabel.textContent = "Administrador";
-    toast("Modo Administrador activado. Gestión completa y aprobación habilitada.");
-  }
-});
+if (activeRoleSelect) {
+  activeRoleSelect.addEventListener("change", () => {
+    activeRole = activeRoleSelect.value;
+    applyRoleUI();
+    renderCommunities();
+    renderOwners();
+    if (activeRole === "owner") {
+      toast("Modo Propietario activado. Visualizando la plataforma como asociado.");
+    } else {
+      toast("Modo Administrador activado. Gestión completa y aprobación habilitada.");
+    }
+  });
+}
 
 // ==========================================
 // 10. INICIALIZACIÓN
 // ==========================================
 
+applyRoleUI();
 renderCommunities();
 renderOwners();
 loadLocations();
 updateCommunitySelectors();
 updateInboxBadge();
+updateOwnerInboxBadge();
 handleRouting();
 

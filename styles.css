@@ -1897,3 +1897,104 @@ select {
   }
 }
 
+/* Modo Propietario y Notificaciones de Usuario */
+.topbar-btn-owner {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.topbar-btn-owner:hover {
+  background: #dcfce7;
+  border-color: #22c55e;
+}
+
+.notif-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 18px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.notif-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.notif-card.unread {
+  background: #f8fafc;
+  border-left: 4px solid var(--brand);
+}
+
+.notif-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.notif-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.notif-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.notif-tag.info {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.notif-tag.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.notif-tag.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.notif-card-date {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.notif-card-message {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.owner-view-banner {
+  background: #f0f7f6;
+  border: 1px solid #c9e6e3;
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #116f6a;
+}
+
