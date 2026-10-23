@@ -6,9 +6,34 @@
 
 const COMMUNITIES_STORAGE_KEY = "penarrubia.communities.v1";
 const OWNERS_STORAGE_KEY = "penarrubia.owners.v1";
+const PROPERTIES_STORAGE_KEY = "penarrubia.properties.v1";
 const ADMIN_EMAILS_STORAGE_KEY = "penarrubia.admin_emails.v1";
 const OWNER_NOTIFICATIONS_STORAGE_KEY = "penarrubia.owner_notifications.v1";
 const CURRENT_OWNER_ID = "own-seed-1"; // Carlos Ruiz Mendoza
+
+// SUPOSICIÓN: "caching de moneda" = catálogo de monedas en combo, cacheado en memoria.
+const CURRENCY_CATALOG = [
+  { code: "EUR", name: "Euro (EUR)" },
+  { code: "USD", name: "Dólar estadounidense (USD)" },
+  { code: "GBP", name: "Libra esterlina (GBP)" },
+  { code: "CHF", name: "Franco suizo (CHF)" }
+];
+
+const PROPERTY_TYPE_LABELS = {
+  parcela: "Parcela",
+  vivienda: "Vivienda",
+  local: "Local",
+  garaje: "Plaza de garaje",
+  trastero: "Trastero"
+};
+
+const PROPERTY_USE_LABELS = {
+  residencial: "Residencial",
+  comercial: "Comercial",
+  garaje: "Garaje",
+  trastero: "Trastero",
+  otros: "Otros"
+};
 
 const PROVINCES = {
   "01": "Álava", "02": "Albacete", "03": "Alicante", "04": "Almería", "05": "Ávila",
@@ -373,6 +398,31 @@ const ownerSeeds = [
   }
 ];
 
+const propertySeeds = [
+  { id: "prop-seed-1", communityId: "com-seed-1", communityName: "Residencial Peñarrubia", propertyType: "parcela", plot: "Parcela 14", cadastralRef: "9872028VK4797S0001WX", registryNumber: "1420", floor: "", door: "", areaM2: "420", participationCoef: "4.2500", propertyUse: "residencial", address: "Calle de la Sierra, 14, Parcela 14" },
+  { id: "prop-seed-2", communityId: "com-seed-1", communityName: "Residencial Peñarrubia", propertyType: "parcela", plot: "Parcela 22", cadastralRef: "9872028VK4797S0002WX", registryNumber: "1421", floor: "", door: "", areaM2: "380", participationCoef: "3.8000", propertyUse: "residencial", address: "Calle de la Sierra, 22" },
+  { id: "prop-seed-3", communityId: "com-seed-1", communityName: "Residencial Peñarrubia", propertyType: "parcela", plot: "Parcela 30", cadastralRef: "", registryNumber: "", floor: "", door: "", areaM2: "350", participationCoef: "3.5000", propertyUse: "residencial", address: "Calle de la Sierra, 30" },
+  { id: "prop-seed-4", communityId: "com-seed-2", communityName: "Edificio Los Olivos", propertyType: "vivienda", plot: "Piso 3º B", cadastralRef: "0796301VK4709F0003BB", registryNumber: "88", floor: "3", door: "B", areaM2: "95", participationCoef: "6.1250", propertyUse: "residencial", address: "Avenida de Europa, 6, 3º B" },
+  { id: "prop-seed-5", communityId: "com-seed-2", communityName: "Edificio Los Olivos", propertyType: "garaje", plot: "Plaza G-12", cadastralRef: "", registryNumber: "", floor: "-1", door: "12", areaM2: "12", participationCoef: "0.8000", propertyUse: "garaje", address: "Avenida de Europa, 6, G-12" },
+  { id: "prop-seed-6", communityId: "com-seed-3", communityName: "Comunidad Vista Bella", propertyType: "vivienda", plot: "Chalet 7", cadastralRef: "0301501YH0001A0007WX", registryNumber: "207", floor: "", door: "", areaM2: "180", participationCoef: "8.0000", propertyUse: "residencial", address: "Calle Mayor, 45, Chalet 7" },
+  { id: "prop-seed-7", communityId: "com-seed-4", communityName: "Urbanización El Pinar", propertyType: "parcela", plot: "Parcela 5", cadastralRef: "2906704VG4720N0005WX", registryNumber: "55", floor: "", door: "", areaM2: "510", participationCoef: "5.1000", propertyUse: "residencial", address: "Camino del Pinar, 8, Parcela 5" },
+  { id: "prop-seed-8", communityId: "com-seed-5", communityName: "Residencial Las Flores", propertyType: "vivienda", plot: "Vivienda 12-A", cadastralRef: "4109101TG3440N0012AA", registryNumber: "12", floor: "1", door: "A", areaM2: "88", participationCoef: "4.4000", propertyUse: "residencial", address: "Plaza de las Flores, 12, Puerta A" },
+  { id: "prop-seed-9", communityId: "com-seed-5", communityName: "Residencial Las Flores", propertyType: "local", plot: "Local 1", cadastralRef: "", registryNumber: "", floor: "0", door: "1", areaM2: "64", participationCoef: "3.2000", propertyUse: "comercial", address: "Plaza de las Flores, 12, Local 1" },
+  { id: "prop-seed-10", communityId: "com-seed-6", communityName: "Parque San Juan", propertyType: "vivienda", plot: "Ático 4", cadastralRef: "4625003YF2462S0004WX", registryNumber: "404", floor: "4", door: "Ático", areaM2: "110", participationCoef: "7.0000", propertyUse: "residencial", address: "Gran Vía del Marqués, 78, Ático 4" },
+  { id: "prop-seed-11", communityId: "com-seed-7", communityName: "Altos de Peñarrubia", propertyType: "parcela", plot: "Parcela 31", cadastralRef: "5029701XL7450N0031WX", registryNumber: "31", floor: "", door: "", areaM2: "390", participationCoef: "4.9000", propertyUse: "residencial", address: "Paseo de la Ribera, 3, Parcela 31" }
+];
+
+const PLOT_TO_PROPERTY_ID = {
+  "Parcela 14": "prop-seed-1",
+  "Parcela 22": "prop-seed-2",
+  "Piso 3º B": "prop-seed-4",
+  "Chalet 7": "prop-seed-6",
+  "Parcela 5": "prop-seed-7",
+  "Vivienda 12-A": "prop-seed-8",
+  "Ático 4": "prop-seed-10",
+  "Parcela 31": "prop-seed-11"
+};
+
 const defaultAdminEmails = [
   {
     id: "email-seed-1",
@@ -431,9 +481,15 @@ const defaultOwnerNotifications = [
 // ==========================================
 
 let communities = loadCommunities();
+let properties = loadProperties();
 let owners = loadOwners();
 let adminEmails = loadAdminEmails();
 let ownerNotifications = loadOwnerNotifications();
+let currenciesCache = null;
+let contactVerify = {
+  phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
+  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
+};
 
 let editingCommunityId = null;
 let deletingCommunityId = null;
@@ -463,7 +519,33 @@ let postalIndex = new Map();
 // ==========================================
 
 // Navegación
+const navHome = document.querySelector("#nav-home");
+const mobileNavHome = document.querySelector("#mobile-nav-home");
+const secHome = document.querySelector("#home");
 const navComunidades = document.querySelector("#nav-comunidades");
+
+// Elementos de la Sección Home / Dashboard
+const homeGreetingTitle = document.querySelector("#home-greeting-title");
+const homeGreetingDesc = document.querySelector("#home-greeting-desc");
+const homeHeroRoleBadge = document.querySelector("#home-hero-role-badge");
+const homeHeroActions = document.querySelector("#home-hero-actions");
+const homeKpiComms = document.querySelector("#home-kpi-comms");
+const homeKpiCommsLabel = document.querySelector("#home-kpi-comms-label");
+const homeKpiOwners = document.querySelector("#home-kpi-owners");
+const homeKpiOwnersLabel = document.querySelector("#home-kpi-owners-label");
+const homeKpiMembers = document.querySelector("#home-kpi-members");
+const homeKpiMembersLabel = document.querySelector("#home-kpi-members-label");
+const homeKpiMembersSub = document.querySelector("#home-kpi-members-sub");
+const homeKpiPendingDocs = document.querySelector("#home-kpi-pending-docs");
+const homeKpiPendingLabel = document.querySelector("#home-kpi-pending-label");
+const homeKpiPendingSub = document.querySelector("#home-kpi-pending-sub");
+const homeDocSummaryList = document.querySelector("#home-doc-summary-list");
+const homeQuickActionsContainer = document.querySelector("#home-quick-actions-container");
+const homeActivityTitle = document.querySelector("#home-activity-title");
+const homeActivitySubtitle = document.querySelector("#home-activity-subtitle");
+const homeTodayDay = document.querySelector("#home-today-day");
+const homeTodayMonth = document.querySelector("#home-today-month");
+
 const navPropietarios = document.querySelector("#nav-propietarios");
 const mobileNavComunidades = document.querySelector("#mobile-nav-comunidades");
 const mobileNavPropietarios = document.querySelector("#mobile-nav-propietarios");
@@ -520,6 +602,17 @@ const ownerForm = document.querySelector("#owner-form");
 const ownerDialog = document.querySelector("#owner-dialog");
 const ownerDeleteDialog = document.querySelector("#owner-delete-dialog");
 const ownerError = document.querySelector("#owner-form-error");
+const ownerValidationDialog = document.querySelector("#owner-validation-dialog");
+const ownerValidationList = document.querySelector("#owner-validation-list");
+const propertyComboInput = document.querySelector("#property-combo-input");
+const propertyComboList = document.querySelector("#property-combo-list");
+const propertyIdInput = document.querySelector("#property-id");
+const phoneVerifyPanel = document.querySelector("#phone-verify-panel");
+const emailVerifyPanel = document.querySelector("#email-verify-panel");
+const phoneVerifyStatus = document.querySelector("#phone-verify-status");
+const emailVerifyStatus = document.querySelector("#email-verify-status");
+const phoneVerifyCodeInput = document.querySelector("#phone-verify-code");
+const emailVerifyCodeInput = document.querySelector("#email-verify-code");
 
 const ownerPaginationBar = document.querySelector("#owner-pagination-bar");
 const ownerPageSizeSelect = document.querySelector("#owner-page-size");
@@ -628,7 +721,6 @@ function isValidDniNie(value) {
   const str = value.trim().toUpperCase();
   const letters = "TRWAGMYFPDXBNJZSQVHLCKE";
 
-  // DNI: 8 dígitos + 1 letra
   const dniMatch = str.match(/^(\d{8})([A-Z])$/);
   if (dniMatch) {
     const num = parseInt(dniMatch[1], 10);
@@ -636,7 +728,6 @@ function isValidDniNie(value) {
     return letters[num % 23] === letter;
   }
 
-  // NIE: X, Y o Z + 7 dígitos + 1 letra
   const nieMatch = str.match(/^([XYZ])(\d{7})([A-Z])$/);
   if (nieMatch) {
     const prefix = nieMatch[1] === "X" ? "0" : (nieMatch[1] === "Y" ? "1" : "2");
@@ -648,22 +739,224 @@ function isValidDniNie(value) {
   return false;
 }
 
-/**
- * Valida formato IBAN español (ES + 22 dígitos numéricos)
- */
-function isValidIban(value) {
-  if (!value) return true; // Es campo opcional
-  const clean = value.replace(/\s+/g, "").toUpperCase();
-  return /^ES\d{22}$/.test(clean);
+function isValidCif(value) {
+  if (!value) return false;
+  const str = value.trim().toUpperCase();
+  if (!/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(str)) return false;
+  const digits = str.slice(1, 8);
+  let sumA = 0;
+  let sumB = 0;
+  for (let i = 0; i < digits.length; i++) {
+    const n = Number(digits[i]);
+    if ((i + 1) % 2 === 0) {
+      sumA += n;
+    } else {
+      const doubled = (n * 2).toString();
+      sumB += Number(doubled[0]) + (Number(doubled[1]) || 0);
+    }
+  }
+  const control = (10 - ((sumA + sumB) % 10)) % 10;
+  const last = str[8];
+  const letterControl = "JABCDEFGHI";
+  if ("PQRSNW".includes(str[0])) return last === letterControl[control];
+  if ("ABEH".includes(str[0])) return last === String(control);
+  return last === String(control) || last === letterControl[control];
 }
 
-/**
- * Formatea un IBAN con espacios cada 4 caracteres para facilitar la lectura
- */
+function detectDocumentType(value) {
+  const str = (value || "").trim().toUpperCase();
+  if (/^[XYZ]/.test(str)) return "NIE";
+  if (/^[ABCDEFGHJNPQRSUVW]/.test(str) && !/^\d/.test(str) && str.length === 9 && !/^[XYZ]/.test(str) && /[A-Z]\d{7}/.test(str) && !/^\d{8}/.test(str)) {
+    if (/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(str) && !/^\d{8}[A-Z]$/.test(str)) return "CIF";
+  }
+  if (/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(str) && !/^\d{8}[A-Z]$/.test(str)) return "CIF";
+  return "DNI";
+}
+
+function isValidIdentityDocument(value, documentType) {
+  const str = (value || "").trim().toUpperCase();
+  if (documentType === "CIF") return isValidCif(str);
+  if (documentType === "NIE") return /^[XYZ]\d{7}[A-Z]$/.test(str) && isValidDniNie(str);
+  return /^\d{8}[A-Z]$/.test(str) && isValidDniNie(str);
+}
+
+function isValidIban(value) {
+  if (!value) return true;
+  const clean = digitsIban(value);
+  if (!/^ES\d{22}$/.test(clean)) return false;
+
+  let remainder = 0;
+  for (const char of clean.slice(4) + clean.slice(0, 4)) {
+    const digits = /[A-Z]/.test(char) ? String(char.charCodeAt(0) - 55) : char;
+    for (const digit of digits) {
+      remainder = (remainder * 10 + Number(digit)) % 97;
+    }
+  }
+  return remainder === 1;
+}
+
+function digitsIban(value) {
+  return (value || "").replace(/\s+/g, "").toUpperCase();
+}
+
 function formatIban(value) {
   if (!value) return "No registrado";
-  const clean = value.replace(/\s+/g, "").toUpperCase();
-  return clean.replace(/(.{4})/g, "$1 ").trim();
+  return digitsIban(value).replace(/(.{4})/g, "$1 ").trim();
+}
+
+function maskIbanField(el) {
+  const clean = digitsIban(el.value).replace(/[^A-Z0-9]/g, "").slice(0, 24);
+  el.value = clean.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function digitsOnly(value, max) {
+  return (value || "").replace(/\D/g, "").slice(0, max);
+}
+
+function formatPhone(value) {
+  const d = digitsOnly(value, 9);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+}
+
+function isValidPhone(value) {
+  return /^[6789]\d{8}$/.test(digitsOnly(value, 9));
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((value || "").trim());
+}
+
+function isValidPostalCode(value) {
+  return /^\d{5}$/.test(value) && postalIndex.has(value);
+}
+
+function isValidCadastralRef(value) {
+  if (!value) return true;
+  return /^[A-Z0-9]{20}$/.test(value.replace(/\s+/g, "").toUpperCase());
+}
+
+function isValidDecimal(value, min, max) {
+  if (!value) return true;
+  const normalized = String(value).trim().replace(",", ".");
+  if (!/^\d+(?:\.\d{1,4})?$/.test(normalized)) return false;
+  const n = Number(normalized);
+  return Number.isFinite(n) && n >= min && n <= max;
+}
+
+function fieldLabel(el) {
+  const host = el.closest("label");
+  if (!host) return el.name || "Campo";
+  return host.childNodes[0].textContent.replace("*", "").trim();
+}
+
+const ContactVerificationApi = {
+  async post(path, body) {
+    let response;
+    try {
+      response = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`No se pudo conectar con el servicio de verificación: ${detail}`);
+    }
+
+    let result = {};
+    try {
+      result = await response.json();
+    } catch (error) {
+      if (response.ok) {
+        throw new Error("El servicio de verificación devolvió una respuesta no válida.");
+      }
+    }
+    if (!response.ok) {
+      throw new Error(result?.message || `Error del servicio de verificación (${response.status}).`);
+    }
+    return result;
+  },
+  sendPhoneCode(phone) {
+    return this.post("/api/owners/contact/phone/send", { phone });
+  },
+  confirmPhone(challengeId, code) {
+    return this.post("/api/owners/contact/phone/confirm", { challengeId, code });
+  },
+  sendEmailCode(email) {
+    return this.post("/api/owners/contact/email/send", { email });
+  },
+  confirmEmail(challengeId, code) {
+    return this.post("/api/owners/contact/email/confirm", { challengeId, code });
+  }
+};
+
+function getCurrencies() {
+  if (currenciesCache) return currenciesCache;
+  currenciesCache = CURRENCY_CATALOG.slice();
+  return currenciesCache;
+}
+
+function populateCurrencySelect(selected) {
+  const select = ownerForm.elements.currency;
+  if (!select) return;
+  select.replaceChildren();
+  getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
+  select.value = selected || "EUR";
+}
+
+function inferPropertyType(plot) {
+  const t = (plot || "").toLocaleLowerCase("es");
+  if (t.includes("local")) return "local";
+  if (t.includes("garaje") || t.includes("plaza")) return "garaje";
+  if (t.includes("trastero")) return "trastero";
+  if (t.includes("parcela")) return "parcela";
+  return "vivienda";
+}
+
+function propertyLabel(p) {
+  const type = PROPERTY_TYPE_LABELS[p.propertyType] || "Inmueble";
+  return `${p.plot} · ${type} · ${p.communityName || ""}`.trim();
+}
+
+function loadProperties() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PROPERTIES_STORAGE_KEY));
+    if (Array.isArray(saved) && saved.length > 0) return saved;
+  } catch { /* seeds */ }
+  return propertySeeds.map(p => ({ ...p }));
+}
+
+function saveProperties() {
+  localStorage.setItem(PROPERTIES_STORAGE_KEY, JSON.stringify(properties));
+}
+
+function upsertPropertyFromOwner(data) {
+  let prop = properties.find(p => p.id === data.propertyId);
+  if (!prop && data.propertyId && data.propertyId !== "__new__") {
+    prop = null;
+  }
+  if (!prop) {
+    prop = { id: crypto.randomUUID() };
+    properties.push(prop);
+  }
+  Object.assign(prop, {
+    communityId: data.communityId,
+    communityName: data.communityName,
+    propertyType: data.propertyType,
+    plot: data.plot,
+    cadastralRef: data.cadastralRef || "",
+    registryNumber: data.registryNumber || "",
+    floor: data.floor || "",
+    door: data.door || "",
+    areaM2: data.areaM2 || "",
+    participationCoef: data.participationCoef || "",
+    propertyUse: data.propertyUse || "",
+    address: data.address || ""
+  });
+  saveProperties();
+  return prop.id;
 }
 
 // ==========================================
@@ -674,6 +967,18 @@ function formatIban(value) {
  * Devuelve el estado global de la documentación de un propietario:
  * 'none' | 'incomplete' | 'pending_admin' | 'approved' | 'rejected'
  */
+function getOwnerOverallDocStatus(owner) {
+  const status = getOwnerDocStatus(owner);
+  const labelMap = {
+    approved: "Aprobada (3/3)",
+    pending_admin: "Pendiente Admin (3/3)",
+    incomplete: "Incompleta",
+    rejected: "Rechazada",
+    none: "Sin documentos"
+  };
+  return { status, label: labelMap[status] || status, class: getDocBadgeClass(status) };
+}
+
 function getOwnerDocStatus(owner) {
   if (!owner || !owner.documents) return "none";
   const docs = owner.documents;
@@ -1360,15 +1665,12 @@ function populateLocations(data) {
     });
   });
 
-  // Rellenar selectores del formulario de Comunidades
   const comCitySelect = communityForm.elements.city;
   const comProvinceSelect = communityForm.elements.province;
   populateSelectOptions(comCitySelect, comProvinceSelect);
 
-  // Rellenar selectores del formulario de Propietarios
-  const ownCitySelect = ownerForm.elements.city;
-  const ownProvinceSelect = ownerForm.elements.province;
-  populateSelectOptions(ownCitySelect, ownProvinceSelect);
+  initOwnerTerritorySelects();
+  populateCurrencySelect("EUR");
 }
 
 function populateSelectOptions(citySelect, provinceSelect) {
@@ -1418,6 +1720,50 @@ function selectLocationInForm(formEl, city, province) {
   const match = locations.find(loc => loc.name === city && loc.province === province) ||
                 locations.find(loc => loc.name === city);
   if (match) citySelect.value = match.id;
+}
+
+function initOwnerTerritorySelects() {
+  const provinceSelect = ownerForm.elements.province;
+  addPlaceholder(provinceSelect, "Selecciona una provincia");
+  Object.values(PROVINCES).sort((a, b) => a.localeCompare(b, "es")).forEach(province => {
+    provinceSelect.add(new Option(province, province));
+  });
+  provinceSelect.disabled = false;
+  fillOwnerMunicipalities("");
+  fillOwnerPostalCodes(null);
+}
+
+function fillOwnerMunicipalities(provinceName, selectedCityId = "") {
+  const citySelect = ownerForm.elements.city;
+  addPlaceholder(citySelect, provinceName ? "Selecciona un municipio" : "Selecciona primero una provincia");
+  if (provinceName) {
+    locations
+      .filter(loc => loc.province === provinceName)
+      .forEach(loc => citySelect.add(new Option(loc.name, loc.id)));
+  }
+  citySelect.disabled = !provinceName;
+  if (selectedCityId) citySelect.value = selectedCityId;
+}
+
+function fillOwnerPostalCodes(cityId, selectedCp = "") {
+  const cpSelect = ownerForm.elements.postalCode;
+  addPlaceholder(cpSelect, cityId ? "Selecciona un código postal" : "Selecciona primero un municipio");
+  const location = locationsById.get(cityId);
+  if (location) {
+    location.postalCodes.forEach(cp => cpSelect.add(new Option(cp, cp)));
+  }
+  cpSelect.disabled = !location;
+  if (selectedCp) cpSelect.value = selectedCp;
+}
+
+function selectOwnerTerritory(city, province, postalCode) {
+  const provinceSelect = ownerForm.elements.province;
+  const match = locations.find(loc => loc.name === city && loc.province === province) ||
+                locations.find(loc => loc.name === city);
+  const provinceName = province || match?.province || "";
+  provinceSelect.value = provinceName;
+  fillOwnerMunicipalities(provinceName, match ? match.id : "");
+  fillOwnerPostalCodes(match ? match.id : "", postalCode || "");
 }
 
 // ==========================================
@@ -1477,45 +1823,326 @@ function applyRoleUI() {
   if (bannerOwn) bannerOwn.style.display = isOwner ? "flex" : "none";
 }
 
+function renderHomeDashboard() {
+  const isOwner = activeRole === "owner";
+  const now = new Date();
+  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  if (homeTodayDay) homeTodayDay.textContent = now.getDate();
+  if (homeTodayMonth) homeTodayMonth.textContent = months[now.getMonth()] + " " + now.getFullYear();
+
+  if (isOwner) {
+    const currentOwner = owners.find(o => o.id === CURRENT_OWNER_ID) || owners[0];
+    const comName = currentOwner ? currentOwner.communityName : "Residencial Peñarrubia";
+    
+    if (homeHeroRoleBadge) homeHeroRoleBadge.textContent = "Área de Asociado";
+    if (homeGreetingTitle) homeGreetingTitle.textContent = "Hola, " + (currentOwner ? currentOwner.name : "Carlos");
+    if (homeGreetingDesc) homeGreetingDesc.textContent = "Bienvenido a tu panel personal de Peñarrubia. Desde aquí puedes consultar el estado de tu comunidad (" + comName + "), tus parcelas y gestionar tu documentación oficial.";
+    
+    if (homeHeroActions) {
+      homeHeroActions.innerHTML = `
+        <button class="primary-button" id="home-owner-btn-docs" type="button">📄 Ver mi expediente</button>
+        <button class="secondary-button" id="home-owner-btn-comm" type="button">🏠 Mi Comunidad</button>
+      `;
+      const btnDocs = document.querySelector("#home-owner-btn-docs");
+      if (btnDocs) btnDocs.addEventListener("click", () => {
+        navigateToSection("#propietarios");
+        if (currentOwner) setTimeout(() => openOwnerDetail(currentOwner), 50);
+      });
+      const btnComm = document.querySelector("#home-owner-btn-comm");
+      if (btnComm) btnComm.addEventListener("click", () => navigateToSection("#comunidades"));
+    }
+
+    if (homeKpiComms) homeKpiComms.textContent = "1";
+    if (homeKpiCommsLabel) homeKpiCommsLabel.textContent = comName;
+    if (homeKpiOwners) homeKpiOwners.textContent = currentOwner ? currentOwner.plot : "Parcela 14";
+    if (homeKpiOwnersLabel) homeKpiOwnersLabel.textContent = "Inmueble / Parcela";
+    if (homeKpiMembers) homeKpiMembers.textContent = currentOwner && currentOwner.isMember ? "Activo" : "No";
+    if (homeKpiMembersLabel) homeKpiMembersLabel.textContent = "Condición de asociado";
+    if (homeKpiMembersSub) homeKpiMembersSub.textContent = "Derecho a voto y servicios";
+
+    const docStatus = currentOwner ? getOwnerOverallDocStatus(currentOwner) : { label: "Al día", class: "approved" };
+    if (homeKpiPendingDocs) homeKpiPendingDocs.textContent = docStatus.label.split(" ")[0];
+    if (homeKpiPendingLabel) homeKpiPendingLabel.textContent = "Estado documentación";
+    if (homeKpiPendingSub) homeKpiPendingSub.textContent = docStatus.label;
+
+    if (homeActivityTitle) homeActivityTitle.textContent = "Tus Documentos de Propietario";
+    if (homeActivitySubtitle) homeActivitySubtitle.textContent = "Comprobación y validez de tus títulos acreditativos";
+
+    if (homeDocSummaryList && currentOwner) {
+      const docs = currentOwner.docs || {};
+      const items = [
+        { key: "dni", title: "Copia de DNI (ambas caras)", data: docs.dni },
+        { key: "bankReceipt", title: "Recibo bancario / Certificado", data: docs.bankReceipt },
+        { key: "propertyDeed", title: "Copia de escritura notarial", data: docs.propertyDeed }
+      ];
+
+      homeDocSummaryList.innerHTML = items.map(item => {
+        const d = item.data;
+        let badgeText = "No aportado";
+        let dotClass = "dot-none";
+        let subtext = "Pendiente de adjuntar por el asociado";
+
+        if (d && d.fileName) {
+          if (d.adminApproval && d.adminApproval.status === "approved") {
+            badgeText = "Aprobado";
+            dotClass = "dot-approved";
+            subtext = "Convalidado oficialmente por administración";
+          } else if (d.adminApproval && d.adminApproval.status === "rejected") {
+            badgeText = "Rechazado";
+            dotClass = "dot-rejected";
+            subtext = "Requiere subsanación";
+          } else {
+            badgeText = "En revisión";
+            dotClass = "dot-pending";
+            subtext = "Pre-validado por sistema (legibilidad óptima)";
+          }
+        }
+
+        return `
+          <div class="home-summary-row">
+            <div class="home-summary-row-info">
+              <span class="home-summary-dot ${dotClass}"></span>
+              <div>
+                <p class="home-summary-text-title">${item.title}</p>
+                <p class="home-summary-text-desc">${subtext}</p>
+              </div>
+            </div>
+            <span class="home-summary-badge-count">${badgeText}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    if (homeQuickActionsContainer) {
+      homeQuickActionsContainer.innerHTML = `
+        <button class="home-quick-btn" id="hq-btn-notifs" type="button">
+          <span class="home-quick-icon">🔔</span>
+          <div>
+            <div>Ver mis avisos y convocatorias</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Buzón con notificaciones de la comunidad</div>
+          </div>
+        </button>
+        <button class="home-quick-btn" id="hq-btn-profile" type="button">
+          <span class="home-quick-icon">📋</span>
+          <div>
+            <div>Consultar mi expediente completo</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Datos personales, bancarios y documentación</div>
+          </div>
+        </button>
+        <button class="home-quick-btn" id="hq-btn-comm-view" type="button">
+          <span class="home-quick-icon">🏢</span>
+          <div>
+            <div>Datos de mi comunidad de vecinos</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Ficha informativa y contacto del administrador</div>
+          </div>
+        </button>
+      `;
+      const qNotif = document.querySelector("#hq-btn-notifs");
+      if (qNotif) qNotif.addEventListener("click", openOwnerInbox);
+      const qProf = document.querySelector("#hq-btn-profile");
+      if (qProf) qProf.addEventListener("click", () => {
+        navigateToSection("#propietarios");
+        if (currentOwner) setTimeout(() => openOwnerDetail(currentOwner), 50);
+      });
+      const qComm = document.querySelector("#hq-btn-comm-view");
+      if (qComm) qComm.addEventListener("click", () => navigateToSection("#comunidades"));
+    }
+
+  } else {
+    // Vista Administrador
+    if (homeHeroRoleBadge) homeHeroRoleBadge.textContent = "Panel Principal · Administrador";
+    if (homeGreetingTitle) homeGreetingTitle.textContent = "Bienvenido a la gestión de Peñarrubia";
+    if (homeGreetingDesc) homeGreetingDesc.textContent = "Plataforma integral para el censo territorial, gestión de comunidades y convalidación documental de propietarios asociados.";
+    
+    if (homeHeroActions) {
+      homeHeroActions.innerHTML = `
+        <button class="primary-button" id="home-btn-new-comm" type="button">➕ Nueva comunidad</button>
+        <button class="secondary-button" id="home-btn-new-owner" type="button">👤 Nuevo propietario</button>
+      `;
+      const btnC = document.querySelector("#home-btn-new-comm");
+      if (btnC) btnC.addEventListener("click", () => openCommunityDialog());
+      const btnO = document.querySelector("#home-btn-new-owner");
+      if (btnO) btnO.addEventListener("click", () => openOwnerDialog());
+    }
+
+    const totalComms = communities.length;
+    const totalOwners = owners.length;
+    const activeMembers = owners.filter(o => o.isMember).length;
+    
+    let countPending = 0;
+    let countApproved = 0;
+    let countIncomplete = 0;
+    let countNone = 0;
+    let countRejected = 0;
+
+    owners.forEach(o => {
+      const st = getOwnerOverallDocStatus(o).status;
+      if (st === "pending_admin") countPending++;
+      else if (st === "approved") countApproved++;
+      else if (st === "incomplete") countIncomplete++;
+      else if (st === "rejected") countRejected++;
+      else countNone++;
+    });
+
+    if (homeKpiComms) homeKpiComms.textContent = totalComms;
+    if (homeKpiCommsLabel) homeKpiCommsLabel.textContent = "Comunidades censadas";
+    if (homeKpiOwners) homeKpiOwners.textContent = totalOwners;
+    if (homeKpiOwnersLabel) homeKpiOwnersLabel.textContent = "Propietarios censados";
+    if (homeKpiMembers) homeKpiMembers.textContent = activeMembers + " (" + (totalOwners ? Math.round((activeMembers/totalOwners)*100) : 0) + "%)";
+    if (homeKpiMembersLabel) homeKpiMembersLabel.textContent = "Socios activos";
+    if (homeKpiMembersSub) homeKpiMembersSub.textContent = "Cuotas y derechos al día";
+    if (homeKpiPendingDocs) homeKpiPendingDocs.textContent = countPending;
+    if (homeKpiPendingLabel) homeKpiPendingLabel.textContent = "Expedientes ptes. revisión";
+    if (homeKpiPendingSub) homeKpiPendingSub.textContent = countPending > 0 ? "Requieren tu aprobación" : "Sin pendientes";
+
+    if (homeActivityTitle) homeActivityTitle.textContent = "Estado Global de Documentación";
+    if (homeActivitySubtitle) homeActivitySubtitle.textContent = "Resumen del censo de expedientes documentales";
+
+    if (homeDocSummaryList) {
+      homeDocSummaryList.innerHTML = `
+        <div class="home-summary-row">
+          <div class="home-summary-row-info">
+            <span class="home-summary-dot dot-pending"></span>
+            <div>
+              <p class="home-summary-text-title">Pendientes de Aprobación Admin</p>
+              <p class="home-summary-text-desc">Documentos verificados por sistema esperando visto bueno</p>
+            </div>
+          </div>
+          <span class="home-summary-badge-count">${countPending}</span>
+        </div>
+        <div class="home-summary-row">
+          <div class="home-summary-row-info">
+            <span class="home-summary-dot dot-approved"></span>
+            <div>
+              <p class="home-summary-text-title">Expedientes Aprobados</p>
+              <p class="home-summary-text-desc">Convalidación administrativa completada</p>
+            </div>
+          </div>
+          <span class="home-summary-badge-count">${countApproved}</span>
+        </div>
+        <div class="home-summary-row">
+          <div class="home-summary-row-info">
+            <span class="home-summary-dot dot-incomplete"></span>
+            <div>
+              <p class="home-summary-text-title">Incompletos / Parciales</p>
+              <p class="home-summary-text-desc">Falta aportar DNI, recibo bancario o escritura</p>
+            </div>
+          </div>
+          <span class="home-summary-badge-count">${countIncomplete}</span>
+        </div>
+        <div class="home-summary-row">
+          <div class="home-summary-row-info">
+            <span class="home-summary-dot dot-none"></span>
+            <div>
+              <p class="home-summary-text-title">Sin Documentación Aportada</p>
+              <p class="home-summary-text-desc">Expedientes iniciales sin adjuntos</p>
+            </div>
+          </div>
+          <span class="home-summary-badge-count">${countNone}</span>
+        </div>
+      `;
+    }
+
+    if (homeQuickActionsContainer) {
+      homeQuickActionsContainer.innerHTML = `
+        <button class="home-quick-btn" id="hq-admin-inbox" type="button">
+          <span class="home-quick-icon">📬</span>
+          <div>
+            <div>Buzón de avisos de verificación</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Revisar solicitudes de propietarios y convalidaciones</div>
+          </div>
+        </button>
+        <button class="home-quick-btn" id="hq-admin-new-comm" type="button">
+          <span class="home-quick-icon">🏢</span>
+          <div>
+            <div>Dar de alta nueva comunidad</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Formulario con validación INE y NIF</div>
+          </div>
+        </button>
+        <button class="home-quick-btn" id="hq-admin-new-owner" type="button">
+          <span class="home-quick-icon">👤</span>
+          <div>
+            <div>Censar nuevo propietario o asociado</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Alta con verificación oficial de DNI/NIE e IBAN</div>
+          </div>
+        </button>
+        <button class="home-quick-btn" id="hq-admin-filter-pending" type="button">
+          <span class="home-quick-icon">⏳</span>
+          <div>
+            <div>Ver propietarios con revisión pendiente</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Filtra directamente la tabla por expedientes pendientes</div>
+          </div>
+        </button>
+      `;
+
+      const qInbox = document.querySelector("#hq-admin-inbox");
+      if (qInbox) qInbox.addEventListener("click", openAdminInbox);
+      const qNewC = document.querySelector("#hq-admin-new-comm");
+      if (qNewC) qNewC.addEventListener("click", () => openCommunityDialog());
+      const qNewO = document.querySelector("#hq-admin-new-owner");
+      if (qNewO) qNewO.addEventListener("click", () => openOwnerDialog());
+      const qFilt = document.querySelector("#hq-admin-filter-pending");
+      if (qFilt) qFilt.addEventListener("click", () => {
+        navigateToSection("#propietarios");
+        if (filterDocStatusSelect) {
+          filterDocStatusSelect.value = "pending_admin";
+          ownerFilterDocStatus = "pending_admin";
+          ownerCurrentPage = 1;
+          renderOwners();
+        }
+      });
+    }
+  }
+}
+
 function handleRouting() {
-  const hash = (window.location.hash || "#comunidades").toLowerCase();
-  const isOwners = hash === "#propietarios";
+  const hash = (window.location.hash || "#home").toLowerCase();
   const isOwner = activeRole === "owner";
 
-  if (isOwners) {
-    if (secComunidades) {
-      secComunidades.hidden = true;
-      secComunidades.style.display = "none";
-    }
+  if (secHome) {
+    secHome.hidden = true;
+    secHome.style.display = "none";
+  }
+  if (secComunidades) {
+    secComunidades.hidden = true;
+    secComunidades.style.display = "none";
+  }
+  if (secPropietarios) {
+    secPropietarios.hidden = true;
+    secPropietarios.style.display = "none";
+  }
+
+  [navHome, mobileNavHome, navComunidades, mobileNavComunidades, navPropietarios, mobileNavPropietarios].forEach(el => {
+    if (el) el.classList.remove("active");
+  });
+
+  if (hash === "#propietarios") {
     if (secPropietarios) {
       secPropietarios.hidden = false;
       secPropietarios.style.display = "block";
     }
-
-    if (navComunidades) navComunidades.classList.remove("active");
     if (navPropietarios) navPropietarios.classList.add("active");
-    if (mobileNavComunidades) mobileNavComunidades.classList.remove("active");
     if (mobileNavPropietarios) mobileNavPropietarios.classList.add("active");
-
     document.title = isOwner ? "Peñarrubia · Mi Perfil" : "Peñarrubia · Propietarios";
     renderOwners();
-  } else {
-    if (secPropietarios) {
-      secPropietarios.hidden = true;
-      secPropietarios.style.display = "none";
-    }
+  } else if (hash === "#comunidades") {
     if (secComunidades) {
       secComunidades.hidden = false;
       secComunidades.style.display = "block";
     }
-
-    if (navPropietarios) navPropietarios.classList.remove("active");
     if (navComunidades) navComunidades.classList.add("active");
-    if (mobileNavPropietarios) mobileNavPropietarios.classList.remove("active");
     if (mobileNavComunidades) mobileNavComunidades.classList.add("active");
-
     document.title = isOwner ? "Peñarrubia · Mi Comunidad" : "Peñarrubia · Comunidades";
     renderCommunities();
+  } else {
+    if (secHome) {
+      secHome.hidden = false;
+      secHome.style.display = "block";
+    }
+    if (navHome) navHome.classList.add("active");
+    if (mobileNavHome) mobileNavHome.classList.add("active");
+    document.title = "Peñarrubia · Inicio";
+    renderHomeDashboard();
   }
 }
 
@@ -1525,6 +2152,15 @@ function navigateToSection(targetHash) {
   }
   handleRouting();
 }
+
+[navHome, mobileNavHome].forEach(el => {
+  if (el) {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateToSection("#home");
+    });
+  }
+});
 
 [navComunidades, mobileNavComunidades].forEach(el => {
   if (el) {
@@ -1569,6 +2205,7 @@ function loadCommunities() {
 
 function saveCommunities() {
   localStorage.setItem(COMMUNITIES_STORAGE_KEY, JSON.stringify(communities));
+  if (secHome && !secHome.hidden) renderHomeDashboard();
   updateCommunitySelectors();
 }
 
@@ -1883,37 +2520,58 @@ communityForm.addEventListener("submit", event => {
 // 8. MÓDULO PROPIETARIOS
 // ==========================================
 
+function enrichOwnerRecord(o) {
+  let docs = o.documents;
+  if (!docs || Object.keys(docs).length === 0) {
+    if (o.dni === "47895231P") docs = createSeedDocsForCarlosRuiz();
+    else if (o.dni === "53891244J") docs = createSeedDocsForMariaLuisa();
+    else docs = {};
+  }
+  const propertyId = o.propertyId || PLOT_TO_PROPERTY_ID[o.plot] || "";
+  const prop = properties.find(p => p.id === propertyId);
+  return {
+    ...o,
+    documents: docs,
+    documentType: o.documentType || detectDocumentType(o.dni),
+    propertyId,
+    propertyType: o.propertyType || prop?.propertyType || inferPropertyType(o.plot),
+    cadastralRef: o.cadastralRef || prop?.cadastralRef || "",
+    registryNumber: o.registryNumber || prop?.registryNumber || "",
+    floor: o.floor || prop?.floor || "",
+    door: o.door || prop?.door || "",
+    areaM2: o.areaM2 || prop?.areaM2 || "",
+    participationCoef: o.participationCoef || prop?.participationCoef || "",
+    propertyUse: o.propertyUse || prop?.propertyUse || "",
+    currency: o.currency || "EUR",
+    phoneVerified: o.phoneVerified === true && !!o.phoneVerifiedAt,
+    phoneVerifiedAt: o.phoneVerifiedAt || "",
+    emailVerified: o.emailVerified === true && !!o.emailVerifiedAt,
+    emailVerifiedAt: o.emailVerifiedAt || ""
+  };
+}
+
 function loadOwners() {
   try {
     const saved = JSON.parse(localStorage.getItem(OWNERS_STORAGE_KEY));
     if (Array.isArray(saved) && saved.length > 0) {
-      // Garantizar que todos los registros tengan el mapa de documentos
-      return saved.map(o => {
-        let docs = o.documents;
-        if (!docs || Object.keys(docs).length === 0) {
-          if (o.dni === "47895231P") docs = createSeedDocsForCarlosRuiz();
-          else if (o.dni === "53891244J") docs = createSeedDocsForMariaLuisa();
-          else docs = {};
-        }
-        return { ...o, documents: docs };
-      });
+      return saved.map(enrichOwnerRecord);
     }
-    // Sincronizar IDs de comunidad de las semillas con las comunidades reales
     const linkedSeeds = ownerSeeds.map(owner => {
       const match = communities.find(c => c.name === owner.communityName);
-      return {
+      return enrichOwnerRecord({
         ...owner,
         communityId: match ? match.id : owner.communityId
-      };
+      });
     });
     return linkedSeeds;
   } catch {
-    return ownerSeeds;
+    return ownerSeeds.map(enrichOwnerRecord);
   }
 }
 
 function saveOwners() {
   localStorage.setItem(OWNERS_STORAGE_KEY, JSON.stringify(owners));
+  if (secHome && !secHome.hidden) renderHomeDashboard();
 }
 
 function updateCommunitySelectors() {
@@ -2025,8 +2683,8 @@ function renderOwners() {
   pagedItems.forEach(o => {
     const row = document.createElement("tr");
 
-    // 1. Propietario (Nombre completo y notas)
     const tdName = document.createElement("td");
+    tdName.className = "col-p1";
     const nameSpan = document.createElement("span");
     nameSpan.className = "community-name";
     nameSpan.textContent = `${o.name} ${o.surname}`;
@@ -2039,32 +2697,39 @@ function renderOwners() {
     }
     row.append(tdName);
 
-    // 2. DNI / NIE (con badge de documento)
     const tdDni = document.createElement("td");
+    tdDni.className = "col-p1";
     const dniBadge = document.createElement("span");
     dniBadge.className = "dni-badge";
     dniBadge.textContent = o.dni;
     tdDni.append(dniBadge);
     row.append(tdDni);
 
-    // 3. Parcela / Inmueble
     const tdPlot = document.createElement("td");
-    tdPlot.textContent = o.plot || "—";
+    tdPlot.className = "col-p2 cell-clip";
+    const plotType = PROPERTY_TYPE_LABELS[o.propertyType] || "";
+    tdPlot.textContent = plotType ? `${o.plot || "—"} (${plotType})` : (o.plot || "—");
+    tdPlot.title = tdPlot.textContent;
     row.append(tdPlot);
 
-    // 4. Comunidad
     const tdCommunity = document.createElement("td");
+    tdCommunity.className = "col-p2";
     const communityBadge = document.createElement("span");
     communityBadge.className = "status-badge community-tag";
     communityBadge.textContent = o.communityName || "Sin comunidad";
     tdCommunity.append(communityBadge);
     row.append(tdCommunity);
 
-    // 5. Contacto (Teléfono y email)
+    const tdAddress = document.createElement("td");
+    tdAddress.className = "col-p3 cell-clip";
+    tdAddress.textContent = o.address || "—";
+    tdAddress.title = o.address || "";
+    row.append(tdAddress);
+
     const tdContact = document.createElement("td");
-    tdContact.className = "col-contact";
+    tdContact.className = "col-p4 col-contact";
     const phoneSpan = document.createElement("span");
-    phoneSpan.textContent = o.phone || "—";
+    phoneSpan.textContent = o.phone ? formatPhone(o.phone) : "—";
     tdContact.append(phoneSpan);
     if (o.email) {
       const emailSpan = document.createElement("span");
@@ -2074,16 +2739,16 @@ function renderOwners() {
     }
     row.append(tdContact);
 
-    // 6. Condición (Asociado / No asociado)
     const tdMember = document.createElement("td");
+    tdMember.className = "col-p3";
     const memberBadge = document.createElement("span");
     memberBadge.className = `status-badge ${o.isMember ? "member" : "non-member"}`;
     memberBadge.textContent = o.isMember ? "Asociado" : "No asociado";
     tdMember.append(memberBadge);
     row.append(tdMember);
 
-    // 7. Documentación requerida (Badge de estado)
     const tdDocs = document.createElement("td");
+    tdDocs.className = "col-p3";
     const docStatus = getOwnerDocStatus(o);
     const docBadge = document.createElement("span");
     docBadge.className = `status-badge ${getDocBadgeClass(docStatus)}`;
@@ -2091,9 +2756,8 @@ function renderOwners() {
     tdDocs.append(docBadge);
     row.append(tdDocs);
 
-    // 8. Acciones (Más info, Documentos, Editar, Eliminar)
     const actions = document.createElement("td");
-    actions.className = "row-actions col-actions";
+    actions.className = "row-actions col-actions col-p1";
 
     const btnInfo = document.createElement("button");
     btnInfo.type = "button";
@@ -2378,6 +3042,142 @@ function handleDocSampleLoad(docType) {
   }, 350);
 }
 
+function clearOwnerFieldErrors() {
+  ownerForm.querySelectorAll("label.field-error").forEach(label => {
+    label.classList.remove("field-error");
+    label.querySelectorAll("[aria-invalid='true']").forEach(field => field.removeAttribute("aria-invalid"));
+  });
+  ownerError.textContent = "";
+}
+
+function markOwnerFieldError(name) {
+  const el = name === "propertyId" ? propertyComboInput : ownerForm.elements[name];
+  const label = el ? el.closest("label") : null;
+  if (label) {
+    label.classList.add("field-error");
+    el.setAttribute("aria-invalid", "true");
+  }
+}
+
+function setVerifyStatus(kind, state, message) {
+  const statusEl = kind === "phone" ? phoneVerifyStatus : emailVerifyStatus;
+  statusEl.classList.remove("is-verified", "is-error");
+  if (state === "verified") statusEl.classList.add("is-verified");
+  if (state === "error") statusEl.classList.add("is-error");
+  statusEl.textContent = message;
+}
+
+function resetContactVerification(o) {
+  const phone = o ? digitsOnly(o.phone, 9) : "";
+  const email = o ? (o.email || "").trim().toLowerCase() : "";
+  contactVerify.phone = {
+    value: phone,
+    verified: !!(o && o.phoneVerified && o.phoneVerifiedAt),
+    pending: false,
+    challengeId: "",
+    verifiedAt: o?.phoneVerifiedAt || ""
+  };
+  contactVerify.email = {
+    value: email,
+    verified: !!(o && o.emailVerified && o.emailVerifiedAt),
+    pending: false,
+    challengeId: "",
+    verifiedAt: o?.emailVerifiedAt || ""
+  };
+  phoneVerifyPanel.hidden = true;
+  emailVerifyPanel.hidden = true;
+  phoneVerifyCodeInput.value = "";
+  emailVerifyCodeInput.value = "";
+  setVerifyStatus("phone", contactVerify.phone.verified ? "verified" : "pending",
+    contactVerify.phone.verified ? "Teléfono verificado" : "Pendiente de verificación");
+  setVerifyStatus("email", contactVerify.email.verified ? "verified" : "pending",
+    contactVerify.email.verified ? "Correo verificado" : "Pendiente de verificación");
+}
+
+function propertiesForCommunity(communityId) {
+  return properties.filter(p => !communityId || p.communityId === communityId);
+}
+
+function renderPropertyComboOptions(query = "") {
+  const communityId = ownerForm.elements.communityId.value;
+  const q = query.trim().toLocaleLowerCase("es");
+  const items = propertiesForCommunity(communityId).filter(p => {
+    if (!q) return true;
+    return propertyLabel(p).toLocaleLowerCase("es").includes(q) ||
+      (p.cadastralRef || "").toLocaleLowerCase("es").includes(q);
+  });
+  propertyComboList.replaceChildren();
+  if (!communityId) {
+    const li = document.createElement("li");
+    li.className = "combo-empty";
+    li.setAttribute("role", "presentation");
+    li.textContent = "Selecciona primero una comunidad.";
+    propertyComboList.append(li);
+    propertyComboList.hidden = false;
+    propertyComboInput.setAttribute("aria-expanded", "true");
+    return;
+  }
+  const newLi = document.createElement("li");
+  newLi.setAttribute("role", "option");
+  newLi.dataset.id = "__new__";
+  const newTitle = document.createElement("strong");
+  newTitle.textContent = "Registrar inmueble nuevo";
+  const newHint = document.createElement("small");
+  newHint.textContent = "Completa tipo, identificador y resto de campos";
+  newLi.append(newTitle, newHint);
+  propertyComboList.append(newLi);
+  if (items.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "combo-empty";
+    empty.setAttribute("role", "presentation");
+    empty.textContent = "No hay inmuebles que coincidan.";
+    propertyComboList.append(empty);
+  } else {
+    items.forEach(p => {
+      const taken = owners.find(o => o.propertyId === p.id && o.id !== editingOwnerId);
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.dataset.id = p.id;
+      const title = document.createElement("strong");
+      title.textContent = p.plot || "Inmueble sin identificador";
+      const detail = document.createElement("small");
+      detail.textContent = `${PROPERTY_TYPE_LABELS[p.propertyType] || "Inmueble"} · ${p.communityName || "Sin comunidad"}${taken ? ` · asociado a ${taken.name} ${taken.surname}` : " · disponible"}`;
+      li.append(title, detail);
+      propertyComboList.append(li);
+    });
+  }
+  propertyComboList.hidden = false;
+  propertyComboInput.setAttribute("aria-expanded", "true");
+}
+
+function applyPropertyToForm(propertyId) {
+  if (!propertyId || propertyId === "__new__") {
+    propertyIdInput.value = propertyId || "";
+    propertyComboInput.value = propertyId === "__new__" ? "Registrar inmueble nuevo" : "";
+    return;
+  }
+  const p = properties.find(item => item.id === propertyId);
+  if (!p) {
+    propertyIdInput.value = "";
+    return;
+  }
+  ownerForm.elements.communityId.value = p.communityId;
+  propertyComboInput.value = propertyLabel(p);
+  ownerForm.elements.propertyType.value = p.propertyType || "";
+  ownerForm.elements.plot.value = p.plot || "";
+  ownerForm.elements.cadastralRef.value = p.cadastralRef || "";
+  ownerForm.elements.registryNumber.value = p.registryNumber || "";
+  ownerForm.elements.floor.value = p.floor || "";
+  ownerForm.elements.door.value = p.door || "";
+  ownerForm.elements.areaM2.value = p.areaM2 || "";
+  ownerForm.elements.participationCoef.value = p.participationCoef || "";
+  ownerForm.elements.propertyUse.value = p.propertyUse || "";
+  if (p.address && !ownerForm.elements.address.value) {
+    ownerForm.elements.address.value = p.address;
+  }
+  propertyIdInput.value = propertyId;
+}
+
 function openOwnerEditor(id = null, defaultTab = "data") {
   const isOwner = activeRole === "owner";
   if (isOwner) {
@@ -2385,9 +3185,9 @@ function openOwnerEditor(id = null, defaultTab = "data") {
   }
   editingOwnerId = id;
   ownerForm.reset();
-  ownerError.textContent = "";
-
+  clearOwnerFieldErrors();
   updateCommunitySelectors();
+  populateCurrencySelect("EUR");
 
   const o = owners.find(item => item.id === id);
   if (isOwner) {
@@ -2402,7 +3202,7 @@ function openOwnerEditor(id = null, defaultTab = "data") {
 
   if (o) {
     Object.entries(o).forEach(([key, value]) => {
-      if (ownerForm.elements[key] && key !== "city") {
+      if (ownerForm.elements[key] && key !== "city" && key !== "postalCode" && key !== "province" && key !== "phone" && key !== "otherPhone" && key !== "iban") {
         if (key === "isMember") {
           ownerForm.elements[key].value = String(value);
         } else {
@@ -2410,15 +3210,25 @@ function openOwnerEditor(id = null, defaultTab = "data") {
         }
       }
     });
-    selectLocationInForm(ownerForm, o.city, o.province);
+    ownerForm.elements.phone.value = formatPhone(o.phone);
+    ownerForm.elements.otherPhone.value = formatPhone(o.otherPhone);
+    ownerForm.elements.iban.value = o.iban ? formatIban(o.iban) : "";
+    ownerForm.elements.documentType.value = o.documentType || detectDocumentType(o.dni);
+    populateCurrencySelect(o.currency || "EUR");
+    selectOwnerTerritory(o.city, o.province, o.postalCode);
+    applyPropertyToForm(o.propertyId || PLOT_TO_PROPERTY_ID[o.plot] || "");
     currentEditingDocs = o.documents ? JSON.parse(JSON.stringify(o.documents)) : {};
   } else {
     currentEditingDocs = {};
+    propertyComboInput.value = "";
+    propertyIdInput.value = "";
     if (filterCommunitySelect.value) {
       ownerForm.elements.communityId.value = filterCommunitySelect.value;
     }
+    selectOwnerTerritory("", "", "");
   }
 
+  resetContactVerification(o);
   switchOwnerDialogTab(defaultTab);
   ownerDialog.showModal();
   if (defaultTab === "data") {
@@ -2891,82 +3701,171 @@ function openOwnerDelete(id) {
   ownerDeleteDialog.showModal();
 }
 
-function validateOwnerFields() {
-  const dniInput = ownerForm.elements.dni;
-  const phoneInput = ownerForm.elements.phone;
-  const otherPhoneInput = ownerForm.elements.otherPhone;
-  const emailInput = ownerForm.elements.email;
-  const postalCodeInput = ownerForm.elements.postalCode;
-  const ibanInput = ownerForm.elements.iban;
+function collectOwnerErrors() {
+  const errors = [];
+  const marks = [];
+  const el = name => ownerForm.elements[name];
 
-  const dni = dniInput.value.trim().toUpperCase();
-  const phone = phoneInput.value.trim();
-  const otherPhone = otherPhoneInput.value.trim();
-  const email = emailInput.value.trim();
-  const postalCode = postalCodeInput.value.trim();
-  const iban = ibanInput.value.trim().toUpperCase().replace(/\s+/g, "");
+  // 1. Identificación
+  const nameVal = (el("name")?.value || "").trim();
+  if (!nameVal) { errors.push("El nombre es obligatorio."); marks.push("name"); }
 
-  dniInput.value = dni;
-  phoneInput.value = phone;
-  otherPhoneInput.value = otherPhone;
-  emailInput.value = email;
-  ibanInput.value = iban;
+  const surnameVal = (el("surname")?.value || "").trim();
+  if (!surnameVal) { errors.push("Los apellidos son obligatorios."); marks.push("surname"); }
 
-  dniInput.setCustomValidity(
-    isValidDniNie(dni)
-      ? ""
-      : "El DNI/NIE no es válido. Debe contener 8 dígitos y letra de control válida (o NIE con letra inicial X/Y/Z)."
-  );
-
-  phoneInput.setCustomValidity(/^\d{9}$/.test(phone) ? "" : "El teléfono principal debe contener 9 dígitos numéricos.");
-
-  if (otherPhone) {
-    otherPhoneInput.setCustomValidity(/^\d{9}$/.test(otherPhone) ? "" : "El otro teléfono debe contener 9 dígitos numéricos.");
-  } else {
-    otherPhoneInput.setCustomValidity("");
+  const docType = el("documentType")?.value || "DNI";
+  const dniVal = (el("dni")?.value || "").trim().toUpperCase();
+  if (!dniVal) {
+    errors.push("El " + docType + " es obligatorio.");
+    marks.push("dni");
+  } else if (!isValidIdentityDocument(dniVal, docType)) {
+    errors.push(`El ${docType} "${dniVal}" no es válido según algoritmo oficial.`);
+    marks.push("dni");
+  } else if (owners.some(o => (o.dni || "").trim().toUpperCase() === dniVal && o.id !== editingOwnerId)) {
+    errors.push("Ya existe otro propietario registrado con el documento " + dniVal + ".");
+    marks.push("dni");
   }
 
-  emailInput.setCustomValidity(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "" : "Introduce una dirección de email válida.");
-
-  postalCodeInput.setCustomValidity(
-    /^\d{5}$/.test(postalCode) && postalIndex.has(postalCode)
-      ? ""
-      : "El código postal debe contener 5 dígitos y corresponder a un código postal del catálogo de España."
-  );
-
-  if (iban) {
-    ibanInput.setCustomValidity(isValidIban(iban) ? "" : "El IBAN debe comenzar por ES seguido de 22 dígitos numéricos.");
-  } else {
-    ibanInput.setCustomValidity("");
+  // 2. Parcela e Inmueble
+  const commId = el("communityId")?.value;
+  if (!commId) {
+    errors.push("La comunidad vinculada es obligatoria.");
+    marks.push("communityId");
   }
+
+  const propId = propertyIdInput?.value;
+  if (!propId) {
+    errors.push("Debes asociar el propietario con un inmueble existente o seleccionar 'Registrar inmueble nuevo'.");
+    marks.push("propertyId");
+  } else if (propId !== "__new__") {
+    const selectedProperty = properties.find(property => property.id === propId);
+    if (!selectedProperty) {
+      errors.push("El inmueble seleccionado ya no está disponible. Selecciónalo de nuevo.");
+      marks.push("propertyId");
+    } else if (selectedProperty.communityId !== commId) {
+      errors.push("El inmueble seleccionado debe pertenecer a la comunidad vinculada.");
+      marks.push("propertyId", "communityId");
+    }
+  }
+
+  const propType = el("propertyType")?.value;
+  if (!propType) {
+    errors.push("El tipo de inmueble es obligatorio (Parcela, Vivienda, Local, etc.).");
+    marks.push("propertyType");
+  }
+
+  const plotVal = (el("plot")?.value || "").trim();
+  if (!plotVal) {
+    errors.push("El identificador / n.º de inmueble o parcela es obligatorio.");
+    marks.push("plot");
+  }
+
+  const cadastralRefVal = (el("cadastralRef")?.value || "").trim().toUpperCase();
+  if (cadastralRefVal && !isValidCadastralRef(cadastralRefVal)) {
+    errors.push("La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.");
+    marks.push("cadastralRef");
+  }
+
+  const areaM2Val = (el("areaM2")?.value || "").trim();
+  if (areaM2Val && !isValidDecimal(areaM2Val, 0.01, 999999)) {
+    errors.push("La superficie debe ser un valor decimal numérico positivo (m²).");
+    marks.push("areaM2");
+  }
+
+  const partCoefVal = (el("participationCoef")?.value || "").trim();
+  if (partCoefVal && !isValidDecimal(partCoefVal, 0.0001, 100)) {
+    errors.push("El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.");
+    marks.push("participationCoef");
+  }
+
+  // 3. Contacto y verificación
+  const phoneVal = digitsOnly(el("phone")?.value || "", 9);
+  if (!phoneVal || !isValidPhone(phoneVal)) {
+    errors.push("El teléfono principal es obligatorio y debe ser un número español válido de 9 dígitos.");
+    marks.push("phone");
+  } else if (!contactVerify.phone.verified || contactVerify.phone.value !== phoneVal) {
+    errors.push("Debes verificar el teléfono principal mediante el código enviado por SMS.");
+    marks.push("phone");
+  }
+
+  const otherPhoneVal = digitsOnly(el("otherPhone")?.value || "", 9);
+  if (el("otherPhone")?.value.trim() && !isValidPhone(otherPhoneVal)) {
+    errors.push("El otro teléfono debe ser un número español válido de 9 dígitos.");
+    marks.push("otherPhone");
+  }
+
+  const emailVal = (el("email")?.value || "").trim();
+  if (!emailVal) {
+    errors.push("El email de contacto es obligatorio.");
+    marks.push("email");
+  } else if (!isValidEmail(emailVal)) {
+    errors.push("El email de contacto no tiene un formato válido (ejemplo: usuario@dominio.es).");
+    marks.push("email");
+  } else if (!contactVerify.email.verified || contactVerify.email.value !== emailVal.toLowerCase()) {
+    errors.push("Debes verificar el correo electrónico mediante el código enviado.");
+    marks.push("email");
+  }
+
+  // 4. Dirección y territorio
+  const addressVal = (el("address")?.value || "").trim();
+  if (!addressVal) {
+    errors.push("La dirección es obligatoria.");
+    marks.push("address");
+  }
+
+  const provVal = el("province")?.value;
+  if (!provVal) {
+    errors.push("La provincia es obligatoria.");
+    marks.push("province");
+  }
+
+  const cityVal = el("city")?.value;
+  const selectedLocation = locationsById.get(cityVal);
+  if (!cityVal || !selectedLocation) {
+    errors.push("Debes seleccionar un municipio válido.");
+    marks.push("city");
+  } else if (selectedLocation.province !== provVal) {
+    errors.push("El municipio debe pertenecer a la provincia seleccionada.");
+    marks.push("province", "city");
+  }
+
+  const cpVal = el("postalCode")?.value;
+  if (!cpVal || !isValidPostalCode(cpVal) || !selectedLocation?.postalCodes.includes(cpVal)) {
+    errors.push("El código postal debe ser válido para el municipio seleccionado.");
+    marks.push("postalCode");
+  }
+
+  // 5. Domiciliación e IBAN
+  const ibanVal = digitsIban(el("iban")?.value || "");
+  if (ibanVal && !isValidIban(ibanVal)) {
+    errors.push("El IBAN debe tener formato español y superar la validación de control (ES + 22 dígitos).");
+    marks.push("iban");
+  }
+
+  return { errors, marks, selectedLocation };
 }
 
 ownerForm.addEventListener("submit", event => {
   event.preventDefault();
-  validateOwnerFields();
+  clearOwnerFieldErrors();
 
-  const citySelect = ownerForm.elements.city;
-  const provinceSelect = ownerForm.elements.province;
-  const selectedLocation = locationsById.get(citySelect.value);
+  const { errors, marks, selectedLocation } = collectOwnerErrors();
 
-  if (!ownerForm.checkValidity() || !selectedLocation) {
+  if (errors.length > 0) {
     switchOwnerDialogTab("data");
-    if (ownerForm.elements.dni.validationMessage) {
-      ownerError.textContent = "El DNI/NIE introducido no es válido; verifica los números y la letra.";
-    } else if (ownerForm.elements.phone.validationMessage) {
-      ownerError.textContent = "El teléfono principal debe tener 9 dígitos numéricos.";
-    } else if (ownerForm.elements.otherPhone.validationMessage) {
-      ownerError.textContent = "El otro teléfono debe tener 9 dígitos numéricos.";
-    } else if (ownerForm.elements.email.validationMessage) {
-      ownerError.textContent = "El formato del email no es válido.";
-    } else if (ownerForm.elements.postalCode.validationMessage) {
-      ownerError.textContent = "Código postal no válido o no localizado en el catálogo del INE.";
-    } else if (ownerForm.elements.iban.validationMessage) {
-      ownerError.textContent = "Formato de IBAN español incorrecto (ES + 22 dígitos).";
+    marks.forEach(markOwnerFieldError);
+
+    if (ownerValidationList && ownerValidationDialog) {
+      ownerValidationList.replaceChildren();
+      errors.forEach(errText => {
+        const li = document.createElement("li");
+        li.textContent = errText;
+        ownerValidationList.append(li);
+      });
+      ownerValidationDialog.showModal();
     } else {
-      ownerError.textContent = "Por favor, revisa los campos requeridos y sus formatos.";
+      alert("Corrige los siguientes errores:\n\n" + errors.join("\n"));
     }
-    ownerForm.reportValidity();
     return;
   }
 
@@ -2978,20 +3877,20 @@ ownerForm.addEventListener("submit", event => {
   });
 
   data.dni = data.dni.toUpperCase();
+  data.communityId = ownerForm.elements.communityId.value;
+  data.isMember = ownerForm.elements.isMember.value === "true";
+  data.phone = digitsOnly(data.phone, 9);
+  data.otherPhone = digitsOnly(data.otherPhone, 9);
+  data.email = data.email.toLowerCase();
+  data.iban = digitsIban(data.iban);
+  data.areaM2 = (data.areaM2 || "").replace(",", ".");
+  data.participationCoef = (data.participationCoef || "").replace(",", ".");
   data.city = selectedLocation.name;
   data.province = provinceSelect.value;
-  data.isMember = data.isMember === "true";
 
   // Buscar nombre de la comunidad seleccionada
   const linkedComm = communities.find(c => c.id === data.communityId);
   data.communityName = linkedComm ? linkedComm.name : "";
-
-  // Comprobar DNI duplicado
-  if (owners.some(o => o.dni === data.dni && o.id !== editingOwnerId)) {
-    switchOwnerDialogTab("data");
-    ownerError.textContent = "Ya existe un propietario registrado con ese DNI/NIE.";
-    return;
-  }
 
   // Asignar documentación validada y relacionada sólo y únicamente para este usuario
   data.documents = currentEditingDocs;
@@ -2999,6 +3898,14 @@ ownerForm.addEventListener("submit", event => {
   const docKeys = ["dni", "bankReceipt", "propertyDeed"];
   const uploadedCount = docKeys.filter(k => !!currentEditingDocs[k]).length;
   const isCompleteDocs = uploadedCount === 3;
+
+  // Asociar o actualizar el inmueble en el catálogo de propiedades
+  const savedPropId = upsertPropertyFromOwner(data);
+  data.propertyId = savedPropId;
+  data.phoneVerified = contactVerify.phone.verified;
+  data.phoneVerifiedAt = contactVerify.phone.verifiedAt;
+  data.emailVerified = contactVerify.email.verified;
+  data.emailVerifiedAt = contactVerify.email.verifiedAt;
 
   if (editingOwnerId) {
     data.id = editingOwnerId;
@@ -3338,6 +4245,7 @@ if (activeRoleSelect) {
     applyRoleUI();
     renderCommunities();
     renderOwners();
+    renderHomeDashboard();
     if (activeRole === "owner") {
       toast("Modo Propietario activado. Visualizando la plataforma como asociado.");
     } else {
@@ -3353,9 +4261,322 @@ if (activeRoleSelect) {
 applyRoleUI();
 renderCommunities();
 renderOwners();
+renderHomeDashboard();
 loadLocations();
 updateCommunitySelectors();
 updateInboxBadge();
 updateOwnerInboxBadge();
 handleRouting();
 
+
+
+// ==========================================
+// LISTENERS DE VERIFICACIÓN, COMBOS Y MÁSCARAS
+// ==========================================
+
+// Cierre de modal de validación en bloque
+const closeOwnerValidationBtn = document.querySelector("#close-owner-validation-btn");
+const closeOwnerValidationDialogBtn = document.querySelector("#close-owner-validation-dialog");
+[closeOwnerValidationBtn, closeOwnerValidationDialogBtn].forEach(button => {
+  if (button && ownerValidationDialog) {
+    button.addEventListener("click", () => ownerValidationDialog.close());
+  }
+});
+
+// 1. Verificación de Teléfono
+const btnSendPhoneCode = document.querySelector("#btn-send-phone-code");
+const btnConfirmPhoneCode = document.querySelector("#btn-confirm-phone-code");
+
+if (btnSendPhoneCode) {
+  btnSendPhoneCode.addEventListener("click", async () => {
+    const raw = ownPhoneInput.value;
+    const phone = digitsOnly(raw, 9);
+    if (!isValidPhone(phone)) {
+      setVerifyStatus("phone", "error", "Introduce un número de 9 dígitos antes de solicitar el código.");
+      ownPhoneInput.focus();
+      return;
+    }
+    contactVerify.phone.verified = false;
+    contactVerify.phone.verifiedAt = "";
+    contactVerify.phone.pending = false;
+    btnSendPhoneCode.disabled = true;
+    btnSendPhoneCode.textContent = "Enviando SMS...";
+    try {
+      const res = await ContactVerificationApi.sendPhoneCode(phone);
+      if (!res.challengeId) {
+        throw new Error("El servicio de verificación no devolvió el identificador del reto.");
+      }
+      Object.assign(contactVerify.phone, {
+        pending: true,
+        value: phone,
+        challengeId: res.challengeId
+      });
+      phoneVerifyPanel.hidden = false;
+      phoneVerifyCodeInput.value = "";
+      setVerifyStatus("phone", "pending", `Código enviado por SMS${res.maskedDestination ? ` a ${res.maskedDestination}` : ""}.`);
+      phoneVerifyCodeInput.focus();
+    } catch (error) {
+      contactVerify.phone.challengeId = "";
+      phoneVerifyPanel.hidden = true;
+      phoneVerifyCodeInput.value = "";
+      const message = error instanceof Error ? error.message : String(error);
+      setVerifyStatus("phone", "error", message);
+    } finally {
+      btnSendPhoneCode.disabled = false;
+      btnSendPhoneCode.textContent = "Reenviar SMS";
+    }
+  });
+}
+
+if (btnConfirmPhoneCode) {
+  btnConfirmPhoneCode.addEventListener("click", async () => {
+    const code = phoneVerifyCodeInput.value.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setVerifyStatus("phone", "error", "Introduce el código de 6 dígitos recibido.");
+      return;
+    }
+    if (!contactVerify.phone.pending || !contactVerify.phone.challengeId ||
+        contactVerify.phone.value !== digitsOnly(ownPhoneInput.value, 9)) {
+      setVerifyStatus("phone", "error", "Solicita un código nuevo para el teléfono actual.");
+      return;
+    }
+    btnConfirmPhoneCode.disabled = true;
+    try {
+      const res = await ContactVerificationApi.confirmPhone(contactVerify.phone.challengeId, code);
+      if (res.verified !== true || !res.verifiedAt) {
+        throw new Error("El código de verificación del teléfono no es válido.");
+      }
+      contactVerify.phone.verified = true;
+      contactVerify.phone.pending = false;
+      contactVerify.phone.verifiedAt = res.verifiedAt;
+      phoneVerifyPanel.hidden = true;
+      setVerifyStatus("phone", "verified", "✓ Teléfono verificado por SMS");
+      toast("Teléfono verificado correctamente.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setVerifyStatus("phone", "error", message);
+    } finally {
+      btnConfirmPhoneCode.disabled = false;
+    }
+  });
+}
+
+// 2. Verificación de Email
+const btnSendEmailCode = document.querySelector("#btn-send-email-code");
+const btnConfirmEmailCode = document.querySelector("#btn-confirm-email-code");
+
+if (btnSendEmailCode) {
+  btnSendEmailCode.addEventListener("click", async () => {
+    const email = (ownerForm.elements.email?.value || "").trim();
+    if (!isValidEmail(email)) {
+      setVerifyStatus("email", "error", "Introduce un correo válido antes de solicitar el código.");
+      ownerForm.elements.email.focus();
+      return;
+    }
+    contactVerify.email.verified = false;
+    contactVerify.email.verifiedAt = "";
+    contactVerify.email.pending = false;
+    btnSendEmailCode.disabled = true;
+    btnSendEmailCode.textContent = "Enviando correo...";
+    try {
+      const res = await ContactVerificationApi.sendEmailCode(email);
+      if (!res.challengeId) {
+        throw new Error("El servicio de verificación no devolvió el identificador del reto.");
+      }
+      Object.assign(contactVerify.email, {
+        pending: true,
+        value: email.toLowerCase(),
+        challengeId: res.challengeId
+      });
+      emailVerifyPanel.hidden = false;
+      emailVerifyCodeInput.value = "";
+      setVerifyStatus("email", "pending", `Código enviado por email${res.maskedDestination ? ` a ${res.maskedDestination}` : ""}.`);
+      emailVerifyCodeInput.focus();
+    } catch (error) {
+      contactVerify.email.challengeId = "";
+      emailVerifyPanel.hidden = true;
+      emailVerifyCodeInput.value = "";
+      const message = error instanceof Error ? error.message : String(error);
+      setVerifyStatus("email", "error", message);
+    } finally {
+      btnSendEmailCode.disabled = false;
+      btnSendEmailCode.textContent = "Reenviar código";
+    }
+  });
+}
+
+if (btnConfirmEmailCode) {
+  btnConfirmEmailCode.addEventListener("click", async () => {
+    const code = emailVerifyCodeInput.value.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setVerifyStatus("email", "error", "Introduce el código de 6 dígitos recibido por email.");
+      return;
+    }
+    if (!contactVerify.email.pending || !contactVerify.email.challengeId ||
+        contactVerify.email.value !== (ownerForm.elements.email.value || "").trim().toLowerCase()) {
+      setVerifyStatus("email", "error", "Solicita un código nuevo para el correo actual.");
+      return;
+    }
+    btnConfirmEmailCode.disabled = true;
+    try {
+      const res = await ContactVerificationApi.confirmEmail(contactVerify.email.challengeId, code);
+      if (res.verified !== true || !res.verifiedAt) {
+        throw new Error("El código de verificación del correo no es válido.");
+      }
+      contactVerify.email.verified = true;
+      contactVerify.email.pending = false;
+      contactVerify.email.verifiedAt = res.verifiedAt;
+      emailVerifyPanel.hidden = true;
+      setVerifyStatus("email", "verified", "✓ Correo electrónico verificado");
+      toast("Correo electrónico verificado con éxito.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setVerifyStatus("email", "error", message);
+    } finally {
+      btnConfirmEmailCode.disabled = false;
+    }
+  });
+}
+
+// Reset de estado verificado si el usuario cambia el teléfono o el email
+if (ownPhoneInput) {
+  ownPhoneInput.addEventListener("input", () => {
+    const clean = digitsOnly(ownPhoneInput.value, 9);
+    ownPhoneInput.value = formatPhone(ownPhoneInput.value);
+    if (clean !== contactVerify.phone.value) {
+      contactVerify.phone.verified = false;
+      contactVerify.phone.verifiedAt = "";
+      contactVerify.phone.pending = false;
+      contactVerify.phone.challengeId = "";
+      phoneVerifyPanel.hidden = true;
+      phoneVerifyCodeInput.value = "";
+      setVerifyStatus("phone", "pending", "Pendiente de verificación");
+    }
+  });
+}
+
+if (ownOtherPhoneInput) {
+  ownOtherPhoneInput.addEventListener("input", () => {
+    ownOtherPhoneInput.value = formatPhone(ownOtherPhoneInput.value);
+  });
+}
+
+if (ownerForm.elements.email) {
+  ownerForm.elements.email.addEventListener("input", () => {
+    const current = (ownerForm.elements.email.value || "").trim().toLowerCase();
+    if (current !== contactVerify.email.value) {
+      contactVerify.email.verified = false;
+      contactVerify.email.verifiedAt = "";
+      contactVerify.email.pending = false;
+      contactVerify.email.challengeId = "";
+      emailVerifyPanel.hidden = true;
+      emailVerifyCodeInput.value = "";
+      setVerifyStatus("email", "pending", "Pendiente de verificación");
+    }
+  });
+}
+
+// 3. Máscara de IBAN
+if (ownIbanInput) {
+  ownIbanInput.addEventListener("input", () => {
+    maskIbanField(ownIbanInput);
+  });
+}
+
+// 4. Máscara de Referencia Catastral (20 caracteres alfanuméricos)
+if (ownerForm.elements.cadastralRef) {
+  ownerForm.elements.cadastralRef.addEventListener("input", () => {
+    ownerForm.elements.cadastralRef.value = ownerForm.elements.cadastralRef.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+  });
+}
+
+// 5. Dependencia Provincia -> Municipio -> Código Postal
+if (ownerForm.elements.province) {
+  ownerForm.elements.province.addEventListener("change", () => {
+    const prov = ownerForm.elements.province.value;
+    fillOwnerMunicipalities(prov);
+    fillOwnerPostalCodes(null);
+  });
+}
+
+if (ownerForm.elements.city) {
+  ownerForm.elements.city.addEventListener("change", () => {
+    const cityId = ownerForm.elements.city.value;
+    fillOwnerPostalCodes(cityId);
+  });
+}
+
+// 6. Combo desplegable de Inmuebles con filtro y autocompletado
+if (propertyComboInput && propertyComboList) {
+  let activePropertyOption = -1;
+  const selectPropertyOption = option => {
+    if (!option) return;
+    applyPropertyToForm(option.dataset.id);
+    propertyComboList.hidden = true;
+    propertyComboInput.setAttribute("aria-expanded", "false");
+    propertyComboInput.removeAttribute("aria-activedescendant");
+    activePropertyOption = -1;
+  };
+
+  propertyComboInput.addEventListener("focus", () => {
+    renderPropertyComboOptions(propertyComboInput.value);
+  });
+
+  propertyComboInput.addEventListener("input", () => {
+    activePropertyOption = -1;
+    propertyIdInput.value = "";
+    renderPropertyComboOptions(propertyComboInput.value);
+  });
+
+  propertyComboInput.addEventListener("keydown", event => {
+    const options = [...propertyComboList.querySelectorAll("li[data-id]")];
+    if (event.key === "Escape") {
+      propertyComboList.hidden = true;
+      propertyComboInput.setAttribute("aria-expanded", "false");
+      propertyComboInput.removeAttribute("aria-activedescendant");
+      return;
+    }
+    if (!options.length || !["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) return;
+    if (event.key === "Enter") {
+      if (activePropertyOption >= 0) {
+        event.preventDefault();
+        selectPropertyOption(options[activePropertyOption]);
+      }
+      return;
+    }
+    event.preventDefault();
+    activePropertyOption = event.key === "ArrowDown"
+      ? (activePropertyOption + 1) % options.length
+      : (activePropertyOption <= 0 ? options.length - 1 : activePropertyOption - 1);
+    options.forEach((option, index) => {
+      option.id = `property-combo-option-${index}`;
+      option.setAttribute("aria-selected", String(index === activePropertyOption));
+    });
+    propertyComboInput.setAttribute("aria-activedescendant", options[activePropertyOption].id);
+    options[activePropertyOption].scrollIntoView({ block: "nearest" });
+  });
+
+  propertyComboList.addEventListener("mousedown", e => {
+    const li = e.target.closest("li[data-id]");
+    if (!li) return;
+    selectPropertyOption(li);
+  });
+
+  propertyComboInput.addEventListener("blur", () => {
+    setTimeout(() => {
+      propertyComboList.hidden = true;
+      propertyComboInput.setAttribute("aria-expanded", "false");
+      propertyComboInput.removeAttribute("aria-activedescendant");
+      activePropertyOption = -1;
+    }, 200);
+  });
+
+  if (ownerForm.elements.communityId) {
+    ownerForm.elements.communityId.addEventListener("change", () => {
+      propertyComboInput.value = "";
+      propertyIdInput.value = "";
+      activePropertyOption = -1;
+      renderPropertyComboOptions("");
+    });
+  }
+}

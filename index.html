@@ -9,7 +9,7 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#comunidades" aria-label="Inicio de Peñarrubia">peñarrubia<span>·</span></a>
+    <a class="brand" href="#home" aria-label="Inicio de Peñarrubia">peñarrubia<span>·</span></a>
     <div class="topbar-actions">
       <button class="topbar-btn-inbox" id="topbar-inbox-btn" type="button" aria-label="Buzón de avisos y correos del Administrador" title="Buzón de avisos del Administrador">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -38,19 +38,140 @@
     </div>
   </header>
   <nav class="mobile-nav" aria-label="Navegación móvil">
-    <a class="mobile-nav-item active" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
+    <a class="mobile-nav-item active" href="#home" id="mobile-nav-home">Inicio</a>
+    <a class="mobile-nav-item" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
     <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
   </nav>
   <main class="layout">
     <aside class="sidebar" aria-label="Navegación">
       <p class="sidebar-label" id="sidebar-label">GESTIÓN ADMINISTRADOR</p>
-      <a class="nav-item active" href="#comunidades" id="nav-comunidades">Comunidades</a>
+      <a class="nav-item active" href="#home" id="nav-home">Inicio</a>
+      <a class="nav-item" href="#comunidades" id="nav-comunidades">Comunidades</a>
       <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
       <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
     </aside>
 
+    <!-- SECCIÓN: HOME / DASHBOARD -->
+    <section class="content" id="home">
+      <!-- Banner de bienvenida dinámico -->
+      <div class="home-hero-card">
+        <div class="home-hero-content">
+          <div class="home-hero-badge">
+            <span class="pulse-dot"></span>
+            <span id="home-hero-role-badge">Panel Principal · Administrador</span>
+          </div>
+          <h1 id="home-greeting-title">Bienvenido a la gestión de Peñarrubia</h1>
+          <p id="home-greeting-desc">Plataforma integral para el censo territorial, gestión de propietarios y convalidación documental oficial.</p>
+          <div class="home-hero-actions" id="home-hero-actions">
+            <button class="primary-button" id="home-btn-new-comm" type="button">➕ Nueva comunidad</button>
+            <button class="secondary-button" id="home-btn-new-owner" type="button">👤 Nuevo propietario</button>
+          </div>
+        </div>
+        <div class="home-hero-aside">
+          <div class="home-date-card">
+            <span class="home-date-day" id="home-today-day">22</span>
+            <span class="home-date-month" id="home-today-month">Octubre 2026</span>
+            <span class="home-date-status">🟢 Sistema Operativo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Métricas y KPIs en vivo -->
+      <div class="home-kpi-grid">
+        <div class="kpi-card" id="kpi-card-comms">
+          <div class="kpi-icon kpi-icon-blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 21h18"></path>
+              <path d="M5 21V7l8-4v18"></path>
+              <path d="M19 21V11l-6-3"></path>
+              <path d="M9 9h1"></path>
+              <path d="M9 13h1"></path>
+              <path d="M9 17h1"></path>
+            </svg>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="home-kpi-comms">0</span>
+            <span class="kpi-label" id="home-kpi-comms-label">Comunidades de vecinos</span>
+          </div>
+          <a href="#comunidades" class="kpi-link">Ver comunidades &rarr;</a>
+        </div>
+
+        <div class="kpi-card" id="kpi-card-owners">
+          <div class="kpi-icon kpi-icon-emerald">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="home-kpi-owners">0</span>
+            <span class="kpi-label" id="home-kpi-owners-label">Propietarios censados</span>
+          </div>
+          <a href="#propietarios" class="kpi-link">Ver propietarios &rarr;</a>
+        </div>
+
+        <div class="kpi-card" id="kpi-card-members">
+          <div class="kpi-icon kpi-icon-teal">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            </svg>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="home-kpi-members">0</span>
+            <span class="kpi-label" id="home-kpi-members-label">Socios activos</span>
+          </div>
+          <span class="kpi-subtext" id="home-kpi-members-sub">Cuotas y derechos al día</span>
+        </div>
+
+        <div class="kpi-card" id="kpi-card-pending-docs">
+          <div class="kpi-icon kpi-icon-amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value" id="home-kpi-pending-docs">0</span>
+            <span class="kpi-label" id="home-kpi-pending-label">Expedientes ptes. revisión</span>
+          </div>
+          <span class="kpi-subtext" id="home-kpi-pending-sub">Convalidación oficial</span>
+        </div>
+      </div>
+
+      <!-- Paneles informativos y accesos directos -->
+      <div class="home-dual-grid">
+        <!-- Panel Izquierdo: Estado de expedientes y actividad -->
+        <div class="home-card">
+          <div class="home-card-header">
+            <div>
+              <h2 class="home-card-title" id="home-activity-title">Estado de la Documentación</h2>
+              <p class="home-card-subtitle" id="home-activity-subtitle">Resumen de expedientes y convalidaciones documentales</p>
+            </div>
+          </div>
+          <div class="home-doc-summary-list" id="home-doc-summary-list">
+            <!-- Rellenado dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Panel Derecho: Acciones rápidas y accesos al sistema -->
+        <div class="home-card">
+          <div class="home-card-header">
+            <div>
+              <h2 class="home-card-title">Acciones y Accesos Rápidos</h2>
+              <p class="home-card-subtitle">Operaciones frecuentes de la plataforma</p>
+            </div>
+          </div>
+          <div class="home-quick-actions" id="home-quick-actions-container">
+            <!-- Rellenado dinámicamente según el rol -->
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- SECCIÓN: COMUNIDADES -->
-    <section class="content" id="comunidades">
+    <section class="content" id="comunidades" hidden>
       <div class="owner-view-banner" id="owner-view-banner-com" style="display: none;">
         <span>🏠 <strong>Modo Propietario:</strong> Estás visualizando los datos de la comunidad a la que perteneces (acceso en sólo lectura).</span>
         <span class="status-badge member">Carlos Ruiz Mendoza</span>
@@ -154,18 +275,19 @@
         </div>
         <p id="owner-result-count" aria-live="polite"></p>
       </div>
-      <div class="table-wrap">
-        <table>
+      <div class="table-wrap owners-table-wrap">
+        <table class="owners-table" aria-label="Listado de propietarios">
           <thead>
             <tr>
-              <th>Propietario</th>
-              <th>DNI / NIE</th>
-              <th>Parcela / Inmueble</th>
-              <th>Comunidad</th>
-              <th class="col-contact">Contacto</th>
-              <th>Condición</th>
-              <th>Documentación</th>
-              <th class="col-actions"><span class="sr-only">Acciones</span></th>
+              <th class="col-p1">Propietario</th>
+              <th class="col-p1">DNI / NIE / CIF</th>
+              <th class="col-p2">Parcela / Inmueble</th>
+              <th class="col-p2">Comunidad</th>
+              <th class="col-p3">Dirección</th>
+              <th class="col-p4 col-contact">Contacto</th>
+              <th class="col-p3">Condición</th>
+              <th class="col-p3">Documentación</th>
+              <th class="col-p1 col-actions"><span class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="owner-list"></tbody>
@@ -353,24 +475,24 @@
 
       <!-- PESTAÑA 1: DATOS PERSONALES -->
       <div class="tab-pane active" id="tab-pane-owner-data">
-        <p class="form-intro">Los campos marcados con * son obligatorios.</p>
+        <p class="form-intro">Los campos marcados con * son obligatorios. Teléfono y correo deben verificarse antes de guardar.</p>
         <div class="form-grid">
+          <p class="form-section-title full">Identificación</p>
           <label>Nombre *
-            <input name="name" maxlength="60" required placeholder="Nombre" />
+            <input name="name" maxlength="60" required placeholder="Nombre" autocomplete="given-name" />
           </label>
           <label>Apellidos *
-            <input name="surname" maxlength="80" required placeholder="Primer y segundo apellido" />
+            <input name="surname" maxlength="80" required placeholder="Primer y segundo apellido" autocomplete="family-name" />
           </label>
-          <label>DNI / NIE *
-            <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI (8 dígitos + letra) o NIE (X/Y/Z + 7 dígitos + letra)." />
-          </label>
-          <label>Comunidad vinculada *
-            <select name="communityId" required>
-              <option value="">Selecciona una comunidad…</option>
+          <label>Tipo de documento *
+            <select name="documentType" required>
+              <option value="DNI">DNI</option>
+              <option value="NIE">NIE</option>
+              <option value="CIF">CIF</option>
             </select>
           </label>
-          <label>Parcela / Inmueble *
-            <input name="plot" maxlength="50" required placeholder="Ej: Parcela 14, Chalet B" />
+          <label>DNI / NIE / CIF *
+            <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI, NIE o CIF español." inputmode="text" autocomplete="off" />
           </label>
           <label>Condición de asociado *
             <select name="isMember" required>
@@ -378,32 +500,116 @@
               <option value="false">No (Propietario no asociado)</option>
             </select>
           </label>
-          <label>Teléfono principal *
-            <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+
+          <p class="form-section-title full">Inmueble y parcela</p>
+          <label>Comunidad vinculada *
+            <select name="communityId" required>
+              <option value="">Selecciona una comunidad…</option>
+            </select>
+          </label>
+          <label class="full">Asociar con inmueble *
+            <div class="searchable-select" id="property-combo">
+              <input type="search" id="property-combo-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="property-combo-list" autocomplete="off" placeholder="Buscar parcela, vivienda o referencia…" />
+              <input type="hidden" name="propertyId" id="property-id" required />
+              <ul class="combo-options" id="property-combo-list" role="listbox" hidden></ul>
+            </div>
+            <span class="field-hint">Selecciona un inmueble existente o elige «Registrar inmueble nuevo».</span>
+          </label>
+          <label>Tipo de inmueble *
+            <select name="propertyType" required>
+              <option value="">Selecciona tipo…</option>
+              <option value="parcela">Parcela</option>
+              <option value="vivienda">Vivienda</option>
+              <option value="local">Local</option>
+              <option value="garaje">Plaza de garaje</option>
+              <option value="trastero">Trastero</option>
+            </select>
+          </label>
+          <label>Identificador / n.º *
+            <input name="plot" maxlength="50" required placeholder="Ej: Parcela 14, 3º B" />
+          </label>
+          <label>Referencia catastral
+            <input name="cadastralRef" maxlength="20" placeholder="20 caracteres (opcional)" />
+          </label>
+          <label>Finca registral
+            <input name="registryNumber" maxlength="20" placeholder="N.º de finca (opcional)" />
+          </label>
+          <label>Planta
+            <input name="floor" maxlength="10" placeholder="Ej: 3 (opcional)" />
+          </label>
+          <label>Puerta
+            <input name="door" maxlength="10" placeholder="Ej: B (opcional)" />
+          </label>
+          <label>Superficie (m²)
+            <input name="areaM2" inputmode="decimal" maxlength="10" placeholder="Ej: 92,50 (opcional)" />
+          </label>
+          <label>Coeficiente de participación (%)
+            <input name="participationCoef" inputmode="decimal" maxlength="10" placeholder="Ej: 4,2500 (opcional)" />
+          </label>
+          <label>Uso
+            <select name="propertyUse">
+              <option value="">Sin especificar</option>
+              <option value="residencial">Residencial</option>
+              <option value="comercial">Comercial</option>
+              <option value="garaje">Garaje</option>
+              <option value="trastero">Trastero</option>
+              <option value="otros">Otros</option>
+            </select>
+          </label>
+          <p class="field-hint full">Obligatorios: comunidad, asociación con inmueble, tipo e identificador. Opcionales: referencia catastral, finca registral, planta, puerta, superficie, coeficiente y uso.</p>
+
+          <p class="form-section-title full">Contacto y domicilio</p>
+          <label id="label-phone">Teléfono principal *
+            <div class="verify-row">
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000" autocomplete="tel" />
+              <button class="secondary-button verify-btn" type="button" id="btn-send-phone-code">Enviar SMS</button>
+            </div>
+            <div class="verify-code-row" id="phone-verify-panel" hidden>
+              <input id="phone-verify-code" maxlength="6" inputmode="numeric" placeholder="Código de 6 dígitos" autocomplete="one-time-code" />
+              <button class="primary-button verify-btn" type="button" id="btn-confirm-phone-code">Confirmar</button>
+            </div>
+            <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
           </label>
           <label>Otro teléfono
-            <input name="otherPhone" maxlength="9" inputmode="numeric" placeholder="600000000 (opcional)" />
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600 000 000 (opcional)" />
           </label>
-          <label class="full">Email de contacto *
-            <input name="email" type="email" required maxlength="120" placeholder="propietario@email.es" />
+          <label class="full" id="label-email">Email de contacto *
+            <div class="verify-row">
+              <input name="email" type="email" required maxlength="120" placeholder="propietario@email.es" autocomplete="email" />
+              <button class="secondary-button verify-btn" type="button" id="btn-send-email-code">Enviar código</button>
+            </div>
+            <div class="verify-code-row" id="email-verify-panel" hidden>
+              <input id="email-verify-code" maxlength="6" inputmode="numeric" placeholder="Código de 6 dígitos" autocomplete="one-time-code" />
+              <button class="primary-button verify-btn" type="button" id="btn-confirm-email-code">Confirmar</button>
+            </div>
+            <span class="verify-status" id="email-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
           </label>
-          <label class="full">IBAN / Domiciliación bancaria (para cuotas)
-            <input name="iban" maxlength="34" placeholder="ES00 0000 0000 0000 0000 0000 (opcional)" />
+          <label class="full">Dirección *
+            <input name="address" maxlength="140" required placeholder="Calle, número, piso..." autocomplete="street-address" />
           </label>
-          <label class="full">Dirección habitual / postal *
-            <input name="address" maxlength="140" required placeholder="Calle, número, piso..." />
-          </label>
-          <label>Código postal *
-            <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}" placeholder="00000" />
+          <label>Provincia *
+            <select name="province" required disabled>
+              <option value="">Cargando provincias…</option>
+            </select>
           </label>
           <label>Municipio *
             <select name="city" required disabled>
-              <option value="">Cargando municipios…</option>
+              <option value="">Selecciona primero una provincia</option>
             </select>
           </label>
-          <label class="full">Provincia *
-            <select name="province" required disabled>
-              <option value="">Cargando provincias…</option>
+          <label>Código postal *
+            <select name="postalCode" required disabled>
+              <option value="">Selecciona primero un municipio</option>
+            </select>
+          </label>
+
+          <p class="form-section-title full">Domiciliación</p>
+          <label class="full">IBAN / Domiciliación bancaria (para cuotas)
+            <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text" autocomplete="off" />
+          </label>
+          <label>Moneda de cuotas
+            <select name="currency">
+              <option value="">Cargando monedas…</option>
             </select>
           </label>
           <label class="full">Observaciones
@@ -580,7 +786,7 @@
           <span class="detail-value highlight" id="owner-detail-name"></span>
         </div>
         <div class="detail-item">
-          <span class="detail-label">DNI / NIE</span>
+          <span class="detail-label">DNI / NIE / CIF</span>
           <span class="detail-value badge" id="owner-detail-dni"></span>
         </div>
         <div class="detail-item">
@@ -594,6 +800,30 @@
         <div class="detail-item">
           <span class="detail-label">Parcela / Inmueble</span>
           <span class="detail-value" id="owner-detail-plot"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Tipo de inmueble</span>
+          <span class="detail-value" id="owner-detail-property-type"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Referencia catastral</span>
+          <span class="detail-value" id="owner-detail-cadastral"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Finca registral</span>
+          <span class="detail-value" id="owner-detail-registry"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Planta / puerta</span>
+          <span class="detail-value" id="owner-detail-floor-door"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Superficie / coeficiente</span>
+          <span class="detail-value" id="owner-detail-area-coef"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Uso</span>
+          <span class="detail-value" id="owner-detail-property-use"></span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Teléfono principal</span>
@@ -612,8 +842,12 @@
           <span class="detail-value" id="owner-detail-iban"></span>
         </div>
         <div class="detail-item full">
-          <span class="detail-label">Dirección habitual</span>
+          <span class="detail-label">Dirección</span>
           <span class="detail-value" id="owner-detail-address"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Moneda de cuotas</span>
+          <span class="detail-value" id="owner-detail-currency"></span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Municipio</span>
@@ -914,6 +1148,24 @@
       <div class="dialog-actions">
         <button class="secondary-button" type="button" id="mark-all-owner-notifs-read-btn">Marcar todos como leídos</button>
         <button class="primary-button" type="button" id="close-owner-inbox-btn">Cerrar buzón</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal único de errores de validación del formulario de propietario -->
+  <dialog id="owner-validation-dialog" aria-labelledby="owner-validation-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">VALIDACIÓN</p>
+          <h2 id="owner-validation-title">Revisa los datos del propietario</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-owner-validation-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">No se ha podido guardar. Corrige todos los puntos siguientes:</p>
+      <ul class="validation-error-list" id="owner-validation-list" aria-live="assertive"></ul>
+      <div class="dialog-actions">
+        <button class="primary-button" type="button" id="close-owner-validation-btn">Entendido</button>
       </div>
     </div>
   </dialog>

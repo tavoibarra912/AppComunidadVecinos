@@ -1,0 +1,22 @@
+---
+description: Traer el contexto compartido de AppComunidadVecinos al empezar y publicar handoff al terminar.
+alwaysApply: true
+---
+
+# Contexto compartido (MCP)
+
+Este proyecto es **AppComunidadVecinos** (`appcomunidadvecinos`). El usuario pidió esto de forma permanente.
+
+## Al empezar (siempre, antes de trabajar)
+
+1. Llamá `shared_status`.
+2. Traé **todo** el contenido del proyecto con `shared_pull`: `project: "AppComunidadVecinos"`, `include_content: true`, `limit` alto.
+3. Si el MCP detecta otro proyecto (p. ej. `QsManu-Movil` por cwd), igual leé **AppComunidadVecinos**. Eso requiere `confirm_cross_project: true`. Después fijá el proyecto con `shared_use_project` (`project: "AppComunidadVecinos"`, `confirm: true`).
+4. No arranques la tarea sin haber leído el handoff y las entradas.
+
+## Al terminar (siempre, sin que lo vuelvan a pedir)
+
+1. Publicá un `handoff` con `shared_publish`: `type: "handoff"`, `confirm: true`, `project: "AppComunidadVecinos"`.
+2. El contenido debe ser útil para otra herramienta: estado actual, decisiones, archivos tocados, pendientes, próximo paso.
+3. Si queda pendiente de aprobación, avisá el id y que hay que correr `sharedctx approve <id>` (o `sharedctx approve all`).
+4. No publiques transcripciones ni contexto de otros proyectos.
