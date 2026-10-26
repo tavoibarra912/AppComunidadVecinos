@@ -35,6 +35,12 @@ const PROPERTY_USE_LABELS = {
   otros: "Otros"
 };
 
+const TENANT_AUTHORIZATION_LABELS = {
+  common_areas: "Acceso a zonas comunes",
+  community_communications: "Recibir comunicaciones de la comunidad",
+  incident_management: "Gestionar incidencias de la unidad"
+};
+
 const PROVINCES = {
   "01": "Álava", "02": "Albacete", "03": "Alicante", "04": "Almería", "05": "Ávila",
   "06": "Badajoz", "07": "Illes Balears", "08": "Barcelona", "09": "Burgos", "10": "Cáceres",
@@ -501,6 +507,9 @@ let communityCurrentPage = 1;
 let editingOwnerId = null;
 let deletingOwnerId = null;
 let viewingOwnerId = null;
+let editingTenantId = null;
+let viewingTenantId = null;
+let deletingTenantId = null;
 let editingPropertyId = null;
 let viewingPropertyId = null;
 let propertyDocuments = [];
@@ -559,6 +568,7 @@ const mobileNavInmuebles = document.querySelector("#mobile-nav-inmuebles");
 const secComunidades = document.querySelector("#comunidades");
 const secPropietarios = document.querySelector("#propietarios");
 const secInmuebles = document.querySelector("#inmuebles");
+const secTenants = document.querySelector("#inquilinos");
 const sidebarLabel = document.querySelector("#sidebar-label");
 
 // Elementos de Comunidades
@@ -642,6 +652,23 @@ const ownerDetailPropertyCommunity = document.querySelector("#owner-detail-prope
 const ownerDetailPropertySelect = document.querySelector("#owner-detail-property-select");
 const ownerDetailPropertyCount = document.querySelector("#owner-detail-property-count");
 const ownerDetailViewPropertyBtn = document.querySelector("#owner-detail-view-property");
+const ownerDetailNewTenantBtn = document.querySelector("#owner-detail-new-tenant");
+const ownerDetailTenantList = document.querySelector("#owner-detail-tenant-list");
+const ownerDetailTenantEmpty = document.querySelector("#owner-detail-tenant-empty");
+const tenantSearch = document.querySelector("#search-tenants");
+const tenantCommunityFilter = document.querySelector("#filter-tenant-community");
+const tenantContractFilter = document.querySelector("#filter-tenant-contract");
+const tenantList = document.querySelector("#tenant-list");
+const tenantEmpty = document.querySelector("#tenant-empty-state");
+const tenantResultCount = document.querySelector("#tenant-result-count");
+const newTenantBtn = document.querySelector("#new-tenant");
+const tenantDialog = document.querySelector("#tenant-dialog");
+const tenantForm = document.querySelector("#tenant-form");
+const tenantFormError = document.querySelector("#tenant-form-error");
+const tenantOwnerSelect = tenantForm.elements.ownerId;
+const tenantPropertySelect = tenantForm.elements.propertyId;
+const tenantDetailDialog = document.querySelector("#tenant-detail-dialog");
+const tenantDeleteDialog = document.querySelector("#tenant-delete-dialog");
 
 // Elementos de Inmuebles
 const newPropertyBtn = document.querySelector("#new-property");
@@ -1034,6 +1061,57 @@ function ownerProperties(owner) {
   return properties.filter(property =>
     property.ownerId === owner.id || linkedIds.has(property.id)
   );
+}
+
+function ownerTenants(owner) {
+  return Array.isArray(owner?.tenants) ? owner.tenants : [];
+}
+
+function getTenantContractStatus(tenant) {
+  const today = getLocalDateInputValue();
+  if (tenant.contractStart > today) return "Próximo";
+  if (tenant.contractEnd && tenant.contractEnd < today) return "Finalizado";
+  return "Vigente";
+}
+
+function getLocalDateInputValue(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function isValidDateInput(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && getLocalDateInputValue(date) === value;
+}
+
+function formatContractDate(value) {
+  return value ? value.split("-").reverse().join("/") : "Sin fecha de fin";
+}
+
+function tenantsForProperty(propertyId) {
+  return owners.flatMap(owner => ownerTenants(owner)
+    .filter(tenant => tenant.propertyId === propertyId && getTenantContractStatus(tenant) === "Vigente")
+    .map(tenant => ({ ...tenant, ownerId: owner.id })));
+}
+
+function syncTenantPropertyReference(tenant, previousTenant) {
+  let changed = false;
+  properties = properties.map(property => {
+    if (property.tenantRecordId !== tenant.id) return property;
+    if (property.id === tenant.propertyId && getTenantContractStatus(tenant) === "Vigente") return property;
+    changed = true;
+    return { ...property, tenantRecordId: "" };
+  });
+
+  const linkedProperty = properties.find(property => property.id === tenant.propertyId);
+  if (linkedProperty && getTenantContractStatus(tenant) === "Vigente" &&
+      (!linkedProperty.tenantRecordId || linkedProperty.tenantRecordId === previousTenant?.id)) {
+    linkedProperty.tenantRecordId = tenant.id;
+    changed = true;
+  }
+  if (changed) saveProperties();
 }
 
 function upsertPropertyFromOwner(data) {
@@ -1904,6 +1982,10 @@ function applyRoleUI() {
   if (mobileNavPropietarios) mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (navInmuebles) navInmuebles.hidden = isOwner;
   if (mobileNavInmuebles) mobileNavInmuebles.hidden = isOwner;
+  document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach(link => {
+    link.hidden = isOwner;
+  });
+  newTenantBtn.hidden = isOwner;
 
   // 4. Sección Comunidades
   if (comHeadingEyebrow) comHeadingEyebrow.textContent = isOwner ? "MI COMUNIDAD ASIGNADA" : "ASOCIACIÓN DE PROPIETARIOS";
@@ -2208,7 +2290,7 @@ function renderHomeDashboard() {
 function handleRouting() {
   const hash = (window.location.hash || "#home").toLowerCase();
   const isOwner = activeRole === "owner";
-  if (hash === "#inmuebles" && isOwner) {
+  if ((hash === "#inmuebles" || hash === "#inquilinos") && isOwner) {
     window.location.hash = "#home";
     return;
   }
@@ -2228,6 +2310,10 @@ function handleRouting() {
   if (secInmuebles) {
     secInmuebles.hidden = true;
     secInmuebles.style.display = "none";
+  }
+  if (secTenants) {
+    secTenants.hidden = true;
+    secTenants.style.display = "none";
   }
 
   [navHome, mobileNavHome, navComunidades, mobileNavComunidades, navPropietarios, mobileNavPropietarios, navInmuebles, mobileNavInmuebles].forEach(el => {
@@ -2252,6 +2338,15 @@ function handleRouting() {
     if (mobileNavInmuebles) mobileNavInmuebles.classList.add("active");
     document.title = "Peñarrubia · Inmuebles";
     renderProperties();
+  } else if (hash === "#inquilinos") {
+    if (secTenants) {
+      secTenants.hidden = false;
+      secTenants.style.display = "block";
+    }
+    if (navPropietarios) navPropietarios.classList.add("active");
+    if (mobileNavPropietarios) mobileNavPropietarios.classList.add("active");
+    document.title = "Peñarrubia · Inquilinos";
+    renderTenants();
   } else if (hash === "#comunidades") {
     if (secComunidades) {
       secComunidades.hidden = false;
@@ -2671,6 +2766,7 @@ function enrichOwnerRecord(o) {
     documentType: o.documentType || detectDocumentType(o.dni),
     propertyId,
     propertyIds: Array.isArray(o.propertyIds) ? o.propertyIds : (propertyId ? [propertyId] : []),
+    tenants: Array.isArray(o.tenants) ? o.tenants : [],
     propertyType: o.propertyType || prop?.propertyType || inferPropertyType(o.plot),
     cadastralRef: o.cadastralRef || prop?.cadastralRef || "",
     registryNumber: o.registryNumber || prop?.registryNumber || "",
@@ -2742,6 +2838,13 @@ function updateCommunitySelectors() {
     propertyCommunityFilter.add(new Option(c.name, c.id));
   });
   if (currentPropertyCommunity) propertyCommunityFilter.value = currentPropertyCommunity;
+
+  const currentTenantCommunity = tenantCommunityFilter.value;
+  tenantCommunityFilter.replaceChildren(new Option("Todas las comunidades", ""));
+  communities.forEach(c => {
+    tenantCommunityFilter.add(new Option(c.name, c.id));
+  });
+  if (currentTenantCommunity) tenantCommunityFilter.value = currentTenantCommunity;
 
   const editorCommunity = propertyForm.elements.communityId;
   const currentEditorCommunity = editorCommunity.value;
@@ -3456,6 +3559,7 @@ function openOwnerDetail(id) {
   renderDetailDocsGrid(o);
   renderDetailApprovalPanel(o, docStatus);
   renderOwnerPropertySelectors(o);
+  renderOwnerTenants(o);
 
   if (!ownerDetailDialog.open) ownerDetailDialog.showModal();
 }
@@ -3491,7 +3595,282 @@ function renderOwnerPropertySelectors(owner) {
   ownerDetailPropertyCount.textContent = `${linkedProperties.length} ${linkedProperties.length === 1 ? "inmueble" : "inmuebles"}`;
 }
 
-function updatePropertyPeopleSelectors(selectedOwnerId = "", selectedTenantId = "") {
+function renderOwnerTenants(owner) {
+  const tenants = ownerTenants(owner);
+  const linkedProperties = ownerProperties(owner);
+  ownerDetailTenantList.replaceChildren();
+  ownerDetailTenantEmpty.hidden = tenants.length > 0;
+  ownerDetailTenantEmpty.textContent = linkedProperties.length
+    ? "Este propietario todavía no tiene inquilinos registrados."
+    : "Asocia primero una unidad a este propietario para poder crear un inquilino.";
+  ownerDetailNewTenantBtn.hidden = activeRole === "owner";
+  ownerDetailNewTenantBtn.disabled = linkedProperties.length === 0;
+
+  tenants.forEach(tenant => {
+    const property = linkedProperties.find(item => item.id === tenant.propertyId);
+    const card = document.createElement("article");
+    card.className = "tenant-card";
+
+    const content = document.createElement("div");
+    const name = document.createElement("h4");
+    name.textContent = `${tenant.name} ${tenant.surname}`;
+    const details = document.createElement("p");
+    details.textContent = `${property ? property.plot : "Unidad no disponible"} · Contrato ${getTenantContractStatus(tenant).toLocaleLowerCase("es")}`;
+    content.append(name, details);
+
+    const actions = document.createElement("div");
+    actions.className = "tenant-card-actions";
+    const viewButton = document.createElement("button");
+    viewButton.type = "button";
+    viewButton.className = "secondary-button";
+    viewButton.dataset.tenantAction = "view";
+    viewButton.dataset.tenantId = tenant.id;
+    viewButton.textContent = "Ver información";
+    actions.append(viewButton);
+
+    if (activeRole !== "owner") {
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "secondary-button";
+      editButton.dataset.tenantAction = "edit";
+      editButton.dataset.tenantId = tenant.id;
+      editButton.textContent = "Editar";
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "danger-button";
+      deleteButton.dataset.tenantAction = "delete";
+      deleteButton.dataset.tenantId = tenant.id;
+      deleteButton.textContent = "Eliminar";
+      actions.append(editButton, deleteButton);
+    }
+
+    card.append(content, actions);
+    ownerDetailTenantList.append(card);
+  });
+}
+
+function renderTenants() {
+  if (!tenantList) return;
+  const query = tenantSearch.value.trim().toLocaleLowerCase("es");
+  const communityId = tenantCommunityFilter.value;
+  const contractStatus = tenantContractFilter.value;
+  const tenants = owners.flatMap(owner => ownerTenants(owner).map(tenant => ({
+    owner,
+    tenant,
+    property: properties.find(item => item.id === tenant.propertyId)
+  }))).filter(({ owner, tenant, property }) => {
+    if (communityId && property?.communityId !== communityId) return false;
+    if (contractStatus && getTenantContractStatus(tenant) !== contractStatus) return false;
+    if (!query) return true;
+    const communityName = property?.communityName ||
+      communities.find(item => item.id === property?.communityId)?.name || "";
+    return [
+      tenant.name,
+      tenant.surname,
+      tenant.documentId,
+      tenant.phone,
+      tenant.email,
+      owner.name,
+      owner.surname,
+      property?.plot,
+      property?.address,
+      communityName
+    ].some(value => (value || "").toLocaleLowerCase("es").includes(query));
+  });
+
+  tenantList.replaceChildren();
+  tenants.forEach(({ owner, tenant, property }) => {
+    const row = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    const name = document.createElement("strong");
+    name.textContent = `${tenant.name} ${tenant.surname}`;
+    nameCell.append(name);
+    if (tenant.documentId) {
+      const documentId = document.createElement("span");
+      documentId.className = "community-notes";
+      documentId.textContent = tenant.documentId;
+      nameCell.append(documentId);
+    }
+    row.append(nameCell);
+
+    const ownerCell = document.createElement("td");
+    const ownerButton = document.createElement("button");
+    ownerButton.type = "button";
+    ownerButton.className = "text-link-button";
+    ownerButton.textContent = `${owner.name} ${owner.surname}`;
+    ownerButton.addEventListener("click", () => openOwnerDetail(owner.id));
+    ownerCell.append(ownerButton);
+    row.append(ownerCell);
+
+    const propertyCell = document.createElement("td");
+    propertyCell.textContent = property
+      ? `${property.plot} · ${property.communityName || "Sin comunidad"}`
+      : "Unidad no disponible";
+    row.append(propertyCell);
+
+    const contactCell = document.createElement("td");
+    const phone = document.createElement("span");
+    phone.textContent = tenant.phone || "—";
+    const email = document.createElement("span");
+    email.className = "community-notes";
+    email.textContent = tenant.email || "—";
+    contactCell.append(phone, email);
+    row.append(contactCell);
+
+    const contractCell = document.createElement("td");
+    const contractDates = document.createElement("span");
+    contractDates.textContent = `${formatContractDate(tenant.contractStart)} – ${formatContractDate(tenant.contractEnd)}`;
+    const contractBadge = document.createElement("span");
+    const status = getTenantContractStatus(tenant);
+    const statusKey = status === "Próximo" ? "proximo" : status.toLocaleLowerCase("es");
+    contractBadge.className = `status-badge tenant-contract-${statusKey}`;
+    contractBadge.textContent = status;
+    contractCell.append(contractDates, contractBadge);
+    row.append(contractCell);
+
+    const authorizationCell = document.createElement("td");
+    const authorizationCount = Array.isArray(tenant.authorizations) ? tenant.authorizations.length : 0;
+    authorizationCell.textContent = `${authorizationCount} ${authorizationCount === 1 ? "autorización" : "autorizaciones"}`;
+    row.append(authorizationCell);
+
+    const actions = document.createElement("td");
+    actions.className = "row-actions";
+    const viewButton = document.createElement("button");
+    viewButton.type = "button";
+    viewButton.className = "secondary-button tenant-action-button";
+    viewButton.textContent = "Ver";
+    viewButton.setAttribute("aria-label", `Ver inquilino ${tenant.name} ${tenant.surname}`);
+    viewButton.addEventListener("click", () => openTenantDetail(owner.id, tenant.id));
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "secondary-button tenant-action-button";
+    editButton.textContent = "Editar";
+    editButton.setAttribute("aria-label", `Editar inquilino ${tenant.name} ${tenant.surname}`);
+    editButton.addEventListener("click", () => openTenantEditor(tenant.id, owner.id));
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "danger-button tenant-action-button";
+    deleteButton.textContent = "Eliminar";
+    deleteButton.setAttribute("aria-label", `Eliminar inquilino ${tenant.name} ${tenant.surname}`);
+    deleteButton.addEventListener("click", () => openTenantDelete(tenant.id, owner.id));
+    actions.append(viewButton, editButton, deleteButton);
+    row.append(actions);
+    tenantList.append(row);
+  });
+
+  tenantEmpty.hidden = tenants.length > 0;
+  tenantResultCount.textContent = `${tenants.length} ${tenants.length === 1 ? "inquilino" : "inquilinos"}`;
+}
+
+function updateTenantPropertyOptions(ownerId, selectedPropertyId = "") {
+  const owner = owners.find(item => item.id === ownerId);
+  tenantPropertySelect.replaceChildren(new Option("Selecciona una unidad…", ""));
+  tenantPropertySelect.disabled = !owner;
+  if (!owner) return;
+  ownerProperties(owner).forEach(property => {
+    const communityName = property.communityName ||
+      communities.find(item => item.id === property.communityId)?.name || "Sin comunidad";
+    tenantPropertySelect.add(new Option(`${property.plot} · ${communityName}`, property.id));
+  });
+  tenantPropertySelect.value = selectedPropertyId;
+}
+
+function openTenantEditor(id = null, ownerId = viewingOwnerId) {
+  if (activeRole === "owner") return;
+  const editingOwner = owners.find(item => item.id === ownerId);
+  const tenant = ownerTenants(editingOwner).find(item => item.id === id);
+  if (id && !tenant) return;
+  viewingOwnerId = editingOwner?.id || null;
+  editingTenantId = id;
+  tenantForm.reset();
+  tenantFormError.textContent = "";
+  tenantOwnerSelect.disabled = !!tenant;
+  tenantOwnerSelect.replaceChildren(new Option("Selecciona un propietario…", ""));
+  owners.forEach(owner => tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)));
+  tenantOwnerSelect.value = editingOwner?.id || "";
+  updateTenantPropertyOptions(tenantOwnerSelect.value, tenant?.propertyId || "");
+
+  if (tenant) {
+    ["name", "surname", "documentId", "phone", "email", "contractStart", "contractEnd", "authorizationNotes"]
+      .forEach(key => {
+        tenantForm.elements[key].value = tenant[key] || "";
+      });
+    const authorizations = new Set(Array.isArray(tenant.authorizations) ? tenant.authorizations : []);
+    Array.from(tenantForm.elements.authorizations).forEach(input => {
+      input.checked = authorizations.has(input.value);
+    });
+  } else {
+    tenantForm.elements.contractStart.value = getLocalDateInputValue();
+  }
+
+  document.querySelector("#tenant-dialog-title").textContent = tenant ? "Editar inquilino" : "Nuevo inquilino";
+  tenantDialog.showModal();
+}
+
+function closeTenantEditor() {
+  tenantDialog.close();
+  editingTenantId = null;
+}
+
+function openTenantDetail(ownerId, tenantId) {
+  const owner = owners.find(item => item.id === ownerId);
+  const tenant = ownerTenants(owner).find(item => item.id === tenantId);
+  if (!owner || !tenant) return;
+  viewingOwnerId = owner.id;
+  viewingTenantId = tenantId;
+
+  document.querySelector("#tenant-detail-title").textContent = `${tenant.name} ${tenant.surname}`;
+  document.querySelector("#tenant-detail-owner").textContent = `${owner.name} ${owner.surname}`;
+  document.querySelector("#tenant-detail-document").textContent = tenant.documentId || "No indicado";
+  document.querySelector("#tenant-detail-phone").textContent = tenant.phone || "—";
+  document.querySelector("#tenant-detail-email").textContent = tenant.email || "—";
+  const property = properties.find(item => item.id === tenant.propertyId);
+  document.querySelector("#tenant-detail-property").textContent = property
+    ? `${property.plot} · ${property.communityName || "Sin comunidad"} · ${property.address || "Sin dirección"}`
+    : "Unidad no disponible";
+  document.querySelector("#tenant-detail-contract-start").textContent = formatContractDate(tenant.contractStart);
+  document.querySelector("#tenant-detail-contract-end").textContent = formatContractDate(tenant.contractEnd);
+  document.querySelector("#tenant-detail-contract-status").textContent = getTenantContractStatus(tenant);
+
+  const authorizations = document.querySelector("#tenant-detail-authorizations");
+  authorizations.replaceChildren();
+  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : [])
+    .map(value => TENANT_AUTHORIZATION_LABELS[value] || value);
+  if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
+  labels.forEach(label => {
+    const item = document.createElement("li");
+    item.textContent = label;
+    authorizations.append(item);
+  });
+  document.querySelector("#tenant-detail-authorization-notes").textContent =
+    tenant.authorizationNotes || "Sin observaciones.";
+
+  const viewPropertyButton = document.querySelector("#tenant-detail-view-property");
+  viewPropertyButton.hidden = !property;
+  viewPropertyButton.onclick = () => {
+    if (property) openPropertyDetail(property.id);
+  };
+  document.querySelector("#tenant-detail-edit-btn").hidden = activeRole === "owner";
+  if (!tenantDetailDialog.open) tenantDetailDialog.showModal();
+}
+
+function closeTenantDetail() {
+  tenantDetailDialog.close();
+  viewingTenantId = null;
+}
+
+function openTenantDelete(tenantId, ownerId = viewingOwnerId) {
+  const owner = owners.find(item => item.id === ownerId);
+  const tenant = ownerTenants(owner).find(item => item.id === tenantId);
+  if (!owner || !tenant || activeRole === "owner") return;
+  viewingOwnerId = owner.id;
+  deletingTenantId = tenantId;
+  document.querySelector("#tenant-delete-message").textContent =
+    `Vas a eliminar a “${tenant.name} ${tenant.surname}”. Esta acción no se puede deshacer.`;
+  tenantDeleteDialog.showModal();
+}
+
+function updatePropertyPeopleSelectors(selectedOwnerId = "", selectedTenantId = "", selectedTenantRecordId = "") {
   const ownerSelect = propertyForm.elements.ownerId;
   const tenantSelect = propertyForm.elements.tenantId;
   ownerSelect.replaceChildren(new Option("Selecciona un propietario…", ""));
@@ -3499,11 +3878,23 @@ function updatePropertyPeopleSelectors(selectedOwnerId = "", selectedTenantId = 
     ownerSelect.add(new Option(`${owner.name} ${owner.surname} · ${owner.dni}`, owner.id));
   });
   tenantSelect.replaceChildren(new Option("Sin inquilino", ""));
-  owners.forEach(owner => {
-    tenantSelect.add(new Option(`${owner.name} ${owner.surname} · ${owner.dni}`, owner.id));
-  });
+  owners.forEach(owner => ownerTenants(owner).forEach(tenant => {
+    if (tenant.propertyId !== editingPropertyId) return;
+    tenantSelect.add(new Option(
+      `${tenant.name} ${tenant.surname} · ${owner.name} ${owner.surname}`,
+      `tenant:${tenant.id}`
+    ));
+  }));
+  const legacyTenant = owners.find(owner => owner.id === selectedTenantId);
+  if (legacyTenant) {
+    tenantSelect.add(new Option(
+      `${legacyTenant.name} ${legacyTenant.surname} · registro anterior`,
+      `owner:${legacyTenant.id}`
+    ));
+  }
   ownerSelect.value = selectedOwnerId;
-  tenantSelect.value = selectedTenantId;
+  tenantSelect.value = selectedTenantRecordId ? `tenant:${selectedTenantRecordId}` :
+    (selectedTenantId ? `owner:${selectedTenantId}` : "");
 }
 
 function renderPropertyDocumentList() {
@@ -3546,7 +3937,12 @@ function openPropertyEditor(id = null) {
   propertyFormError.textContent = "";
   updateCommunitySelectors();
   const property = properties.find(item => item.id === id);
-  updatePropertyPeopleSelectors(property?.ownerId || "", property?.tenantId || "");
+  const activeTenant = property ? tenantsForProperty(property.id)[0] : null;
+  updatePropertyPeopleSelectors(
+    property?.ownerId || "",
+    property?.tenantId || "",
+    property?.tenantRecordId || activeTenant?.id || ""
+  );
   propertyDocuments = property?.documents ? property.documents.map(item => ({ ...item })) : [];
   propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
   propertyForm.elements.propertyType.value = property?.propertyType || "";
@@ -3577,6 +3973,7 @@ function renderProperties() {
     if (!query) return true;
     const owner = owners.find(item => item.id === property.ownerId);
     const tenant = owners.find(item => item.id === property.tenantId);
+    const propertyTenants = tenantsForProperty(property.id);
     const community = communities.find(item => item.id === property.communityId);
     return [
       property.plot,
@@ -3584,6 +3981,7 @@ function renderProperties() {
       property.cadastralRef,
       owner ? `${owner.name} ${owner.surname}` : "",
       tenant ? `${tenant.name} ${tenant.surname}` : "",
+      ...propertyTenants.map(item => `${item.name} ${item.surname}`),
       community?.name || property.communityName
     ].some(value => (value || "").toLocaleLowerCase("es").includes(query));
   });
@@ -3619,7 +4017,19 @@ function renderProperties() {
 
     const tenantCell = document.createElement("td");
     const tenant = owners.find(item => item.id === property.tenantId);
-    if (tenant) {
+    const propertyTenants = tenantsForProperty(property.id);
+    if (propertyTenants.length > 0) {
+      propertyTenants.forEach(propertyTenant => {
+        const tenantButton = document.createElement("button");
+        tenantButton.type = "button";
+        tenantButton.className = "text-link-button";
+        tenantButton.textContent = `${propertyTenant.name} ${propertyTenant.surname}`;
+        tenantButton.addEventListener("click", () =>
+          openTenantDetail(propertyTenant.ownerId, propertyTenant.id)
+        );
+        tenantCell.append(tenantButton);
+      });
+    } else if (tenant) {
       const tenantButton = document.createElement("button");
       tenantButton.type = "button";
       tenantButton.className = "text-link-button";
@@ -3672,6 +4082,7 @@ function openPropertyDetail(id) {
   const community = communities.find(item => item.id === property.communityId);
   const owner = owners.find(item => item.id === property.ownerId);
   const tenant = owners.find(item => item.id === property.tenantId);
+  const propertyTenants = tenantsForProperty(property.id);
 
   document.querySelector("#property-detail-title").textContent = property.plot || "Ficha del inmueble";
   document.querySelector("#property-detail-label").textContent =
@@ -3679,7 +4090,9 @@ function openPropertyDetail(id) {
   document.querySelector("#property-detail-community").textContent = community?.name || property.communityName || "—";
   document.querySelector("#property-detail-address").textContent = property.address || "—";
   document.querySelector("#property-detail-owner").textContent = owner ? `${owner.name} ${owner.surname}` : "Sin propietario";
-  document.querySelector("#property-detail-tenant").textContent = tenant ? `${tenant.name} ${tenant.surname}` : "Sin inquilino";
+  document.querySelector("#property-detail-tenant").textContent = propertyTenants.length > 0
+    ? propertyTenants.map(item => `${item.name} ${item.surname}`).join(", ")
+    : tenant ? `${tenant.name} ${tenant.surname}` : "Sin inquilino";
   document.querySelector("#property-detail-receipts").textContent =
     property.receiptStatus === "pending" ? "Pagos pendientes" : "Al corriente";
   document.querySelector("#property-detail-registry").textContent =
@@ -3697,8 +4110,16 @@ function openPropertyDetail(id) {
     openOwnerDetail(owner.id);
   };
   const tenantButton = document.querySelector("#property-detail-tenant-button");
-  tenantButton.hidden = !tenant || (activeRole === "owner" && tenant.id !== CURRENT_OWNER_ID);
+  const firstPropertyTenant = propertyTenants[0];
+  tenantButton.hidden = propertyTenants.length > 0
+    ? activeRole === "owner" && firstPropertyTenant.ownerId !== CURRENT_OWNER_ID
+    : !tenant || (activeRole === "owner" && tenant.id !== CURRENT_OWNER_ID);
   tenantButton.onclick = () => {
+    if (firstPropertyTenant) {
+      propertyDetailDialog.close();
+      openTenantDetail(firstPropertyTenant.ownerId, firstPropertyTenant.id);
+      return;
+    }
     if (!tenant) return;
     propertyDetailDialog.close();
     openOwnerDetail(tenant.id);
@@ -4350,6 +4771,8 @@ ownerForm.addEventListener("submit", event => {
   const linkedComm = communities.find(c => c.id === data.communityId);
   data.communityName = linkedComm ? linkedComm.name : "";
   data.id = editingOwnerId || crypto.randomUUID();
+  const previousOwner = owners.find(owner => owner.id === data.id);
+  data.tenants = ownerTenants(previousOwner);
 
   // Asignar documentación validada y relacionada sólo y únicamente para este usuario
   data.documents = currentEditingDocs;
@@ -4359,7 +4782,6 @@ ownerForm.addEventListener("submit", event => {
   const isCompleteDocs = uploadedCount === 3;
 
   // Asociar o actualizar el inmueble en el catálogo de propiedades
-  const previousOwner = owners.find(owner => owner.id === data.id);
   const previousPropertyId = previousOwner?.propertyId || "";
   const savedPropId = upsertPropertyFromOwner(data);
   if (previousPropertyId && previousPropertyId !== savedPropId) {
@@ -4564,6 +4986,63 @@ ownerDetailManageDocsBtn.addEventListener("click", () => {
   closeOwnerDetail();
   if (targetId) openOwnerEditor(targetId, "docs");
 });
+ownerDetailNewTenantBtn.addEventListener("click", () => openTenantEditor());
+ownerDetailTenantList.addEventListener("click", event => {
+  const button = event.target.closest("[data-tenant-action]");
+  if (!button) return;
+  const tenantId = button.dataset.tenantId;
+  if (button.dataset.tenantAction === "view") {
+    openTenantDetail(viewingOwnerId, tenantId);
+  } else if (button.dataset.tenantAction === "edit") {
+    openTenantEditor(tenantId);
+  } else if (button.dataset.tenantAction === "delete") {
+    openTenantDelete(tenantId);
+  }
+});
+newTenantBtn.addEventListener("click", () => openTenantEditor(null, ""));
+tenantOwnerSelect.addEventListener("change", () => {
+  viewingOwnerId = tenantOwnerSelect.value || null;
+  updateTenantPropertyOptions(tenantOwnerSelect.value);
+});
+tenantSearch.addEventListener("input", renderTenants);
+tenantCommunityFilter.addEventListener("change", renderTenants);
+tenantContractFilter.addEventListener("change", renderTenants);
+document.querySelector("#close-tenant-dialog").addEventListener("click", closeTenantEditor);
+document.querySelector("#cancel-tenant-dialog").addEventListener("click", closeTenantEditor);
+document.querySelector("#close-tenant-detail-dialog").addEventListener("click", closeTenantDetail);
+document.querySelector("#close-tenant-detail-btn").addEventListener("click", closeTenantDetail);
+document.querySelector("#tenant-detail-edit-btn").addEventListener("click", () => {
+  const tenantId = viewingTenantId;
+  closeTenantDetail();
+  if (tenantId) openTenantEditor(tenantId);
+});
+document.querySelector("#confirm-tenant-delete").addEventListener("click", event => {
+  event.preventDefault();
+  const owner = owners.find(item => item.id === viewingOwnerId);
+  if (!owner || activeRole === "owner") return;
+  const tenants = ownerTenants(owner).filter(tenant => tenant.id !== deletingTenantId);
+  if (tenants.length === ownerTenants(owner).length) {
+    toast("No se encontró el inquilino que querías eliminar.");
+    tenantDeleteDialog.close();
+    deletingTenantId = null;
+    return;
+  }
+  const referencedProperties = properties.filter(property => property.tenantRecordId === deletingTenantId);
+  if (referencedProperties.length > 0) {
+    properties = properties.map(property =>
+      property.tenantRecordId === deletingTenantId ? { ...property, tenantRecordId: "" } : property
+    );
+    saveProperties();
+  }
+  owners = owners.map(item => item.id === owner.id ? { ...item, tenants } : item);
+  saveOwners();
+  renderProperties();
+  tenantDeleteDialog.close();
+  deletingTenantId = null;
+  if (window.location.hash.toLowerCase() === "#inquilinos") renderTenants();
+  else openOwnerDetail(owner.id);
+  toast("Inquilino eliminado.");
+});
 
 ownerDetailPropertyCommunity.addEventListener("change", () => {
   const owner = owners.find(item => item.id === viewingOwnerId);
@@ -4603,14 +5082,26 @@ propertyForm.addEventListener("submit", async event => {
   const values = Object.fromEntries(new FormData(propertyForm));
   const community = communities.find(item => item.id === values.communityId);
   const owner = owners.find(item => item.id === values.ownerId);
-  const tenant = owners.find(item => item.id === values.tenantId);
+  const tenantValue = values.tenantId || "";
+  const tenant = tenantValue.startsWith("owner:")
+    ? owners.find(item => item.id === tenantValue.slice("owner:".length))
+    : null;
+  const tenantRecord = tenantValue.startsWith("tenant:")
+    ? owners.flatMap(item => ownerTenants(item)).find(item => item.id === tenantValue.slice("tenant:".length))
+    : null;
   const messages = [];
   if (!community) messages.push("Selecciona una comunidad existente.");
   if (!owner) messages.push("Selecciona un propietario existente.");
   if (!values.address.trim()) messages.push("La dirección es obligatoria.");
   if (!values.propertyType) messages.push("Selecciona el tipo de inmueble.");
   if (!values.plot.trim()) messages.push("El identificador del inmueble es obligatorio.");
-  if (values.tenantId && !tenant) messages.push("El inquilino seleccionado ya no existe.");
+  if (tenantValue && !tenant && !tenantRecord) messages.push("El inquilino seleccionado ya no existe.");
+  if (tenantRecord && tenantRecord.propertyId !== editingPropertyId) {
+    messages.push("El inquilino seleccionado no está vinculado a esta unidad.");
+  }
+  if (tenantRecord && !ownerTenants(owner).some(item => item.id === tenantRecord.id)) {
+    messages.push("El inquilino seleccionado no pertenece al propietario de esta unidad.");
+  }
   if (tenant && owner && tenant.id === owner.id) messages.push("El propietario no puede figurar también como inquilino del mismo inmueble.");
   if (!["current", "pending"].includes(values.receiptStatus)) messages.push("Selecciona un estado de recibos válido.");
   if (values.cadastralRef && !isValidCadastralRef(values.cadastralRef)) {
@@ -4659,6 +5150,7 @@ propertyForm.addEventListener("submit", async event => {
     communityName: community.name,
     ownerId: owner.id,
     tenantId: tenant?.id || "",
+    tenantRecordId: tenantRecord?.id || "",
     address: values.address.trim(),
     propertyType: values.propertyType,
     plot: values.plot.trim(),
@@ -4695,6 +5187,74 @@ propertyForm.addEventListener("submit", async event => {
   toast(previousProperty ? "Inmueble actualizado." : "Inmueble creado.");
 });
 
+tenantForm.addEventListener("submit", event => {
+  event.preventDefault();
+  tenantFormError.textContent = "";
+  const owner = owners.find(item => item.id === tenantOwnerSelect.value);
+  if (!owner) {
+    tenantFormError.textContent = "No se encontró el propietario asociado a este inquilino.";
+    return;
+  }
+
+  const formData = new FormData(tenantForm);
+  const values = Object.fromEntries(formData);
+  const property = ownerProperties(owner).find(item => item.id === values.propertyId);
+  const phone = (values.phone || "").replace(/\D/g, "");
+  const email = (values.email || "").trim().toLowerCase();
+  const messages = [];
+
+  if (!(values.name || "").trim()) messages.push("El nombre es obligatorio.");
+  if (!(values.surname || "").trim()) messages.push("Los apellidos son obligatorios.");
+  if (!property) messages.push("Selecciona una unidad asociada a este propietario.");
+  if (!/^[6-9]\d{8}$/.test(phone)) messages.push("El teléfono debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.");
+  if (!isValidEmail(email)) messages.push("Introduce una dirección de email válida.");
+  if (!isValidDateInput(values.contractStart)) {
+    messages.push("Indica una fecha de inicio de contrato válida.");
+  }
+  if (values.contractEnd && !isValidDateInput(values.contractEnd)) {
+    messages.push("Indica una fecha de fin de contrato válida.");
+  } else if (values.contractStart && values.contractEnd && values.contractEnd < values.contractStart) {
+    messages.push("La fecha de fin no puede ser anterior al inicio del contrato.");
+  }
+  if (messages.length) {
+    tenantFormError.textContent = messages.join(" ");
+    return;
+  }
+
+  const tenant = {
+    id: editingTenantId || crypto.randomUUID(),
+    name: values.name.trim(),
+    surname: values.surname.trim(),
+    documentId: (values.documentId || "").trim().toUpperCase(),
+    phone,
+    email,
+    propertyId: property.id,
+    contractStart: values.contractStart,
+    contractEnd: values.contractEnd || "",
+    authorizations: formData.getAll("authorizations"),
+    authorizationNotes: (values.authorizationNotes || "").trim()
+  };
+  const isEditing = !!editingTenantId;
+  const currentTenants = ownerTenants(owner);
+  const previousTenant = currentTenants.find(item => item.id === editingTenantId);
+  if (editingTenantId && !previousTenant) {
+    tenantFormError.textContent = "El inquilino que intentas editar ya no existe.";
+    return;
+  }
+  const tenants = editingTenantId
+    ? currentTenants.map(item => item.id === editingTenantId ? tenant : item)
+    : [...currentTenants, tenant];
+  syncTenantPropertyReference(tenant, previousTenant);
+  owners = owners.map(item => item.id === owner.id ? { ...item, tenants } : item);
+  saveOwners();
+  renderOwners();
+  renderProperties();
+  closeTenantEditor();
+  if (ownerDetailDialog.open) openOwnerDetail(owner.id);
+  else renderTenants();
+  toast(isEditing ? "Inquilino actualizado." : "Inquilino creado.");
+});
+
 ownerPageSizeSelect.addEventListener("change", e => {
   ownerPageSize = Number(e.target.value);
   ownerCurrentPage = 1;
@@ -4719,6 +5279,13 @@ ownerNextBtn.addEventListener("click", () => {
 document.querySelector("#confirm-owner-delete").addEventListener("click", () => {
   if (properties.some(property => property.ownerId === deletingOwnerId)) {
     toast("Reasigna los inmuebles antes de eliminar a este propietario.");
+    deletingOwnerId = null;
+    ownerDeleteDialog.close();
+    return;
+  }
+  const ownerWithTenants = owners.find(owner => owner.id === deletingOwnerId);
+  if (ownerTenants(ownerWithTenants).length > 0) {
+    toast("Elimina los inquilinos asociados antes de eliminar a este propietario.");
     deletingOwnerId = null;
     ownerDeleteDialog.close();
     return;

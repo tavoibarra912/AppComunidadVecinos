@@ -69,10 +69,22 @@ Gestión completa de los propietarios y asociados vinculados a las comunidades d
 
 - La sección **Inmuebles** permite crear y editar inmuebles; cada registro debe pertenecer a una comunidad y tener un propietario registrado.
 - El inmueble guarda dirección, tipo e identificador, datos catastrales opcionales, estado de recibos (al corriente o pagos pendientes) y documentos adjuntos.
-- El inquilino es opcional y, si se asigna, se elige entre los propietarios existentes para permitir el acceso a su ficha desde el inmueble.
+- Los inquilinos nuevos se registran desde la ficha del propietario y quedan vinculados a una de sus unidades; la ficha y el listado del inmueble muestran los contratos vigentes. Se conserva la relación con propietarios usada por registros anteriores.
 - Los documentos adjuntos se guardan en el navegador junto con el resto de datos `localStorage`; esta persistencia es de demostración y debe migrarse a almacenamiento de backend para producción.
 - Los inmuebles existentes se vinculan a sus propietarios por la relación guardada o, durante la migración inicial, por el inmueble principal ya registrado en la ficha del propietario. Las unidades de catálogo todavía sin propietario no aparecen como entidades hasta que se asocian desde la ficha de un propietario.
 - Una comunidad no se puede eliminar si tiene inmuebles asociados, ni un propietario si es titular de un inmueble; primero hay que reasignar esos registros.
+
+---
+
+## 2.2. Inquilinos y residentes
+
+- La opción **Inquilinos**, dentro de la navegación de **Propietarios**, muestra un listado independiente con búsqueda y filtros por comunidad y estado del contrato.
+- Desde la ficha de un propietario se pueden crear, consultar, editar y eliminar sus inquilinos.
+- Cada inquilino queda asociado a una unidad de ese propietario, con contacto, documento identificativo opcional y fechas de contrato.
+- El inicio del contrato, un teléfono español y un email válido son obligatorios; la fecha de fin es opcional y no puede ser anterior al inicio.
+- El detalle indica si el contrato está próximo, vigente o finalizado, y permite abrir la ficha de la unidad.
+- Las autorizaciones se registran mediante permisos explícitos para zonas comunes, comunicaciones e incidencias, además de observaciones de texto libre.
+- Los inquilinos se guardan dentro de la ficha del propietario en `localStorage`; este modelo local de demostración debe migrarse a backend para producción.
 
 ---
 
