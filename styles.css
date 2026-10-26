@@ -2628,6 +2628,73 @@ select {
   font-weight: 650;
 }
 
+.tenant-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.tenant-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid #dce4ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.tenant-card h4,
+.tenant-card p {
+  margin: 0;
+}
+
+.tenant-card p {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.tenant-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tenant-authorizations {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dce4ea;
+  border-radius: 8px;
+}
+
+.tenant-authorizations legend {
+  padding: 0 6px;
+  color: #3f4f61;
+  font-weight: 650;
+}
+
+.tenant-authorizations label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tenant-authorizations input {
+  width: auto;
+}
+
+.tenant-detail-authorizations {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tenant-property-link {
+  margin-top: 8px;
+}
+
 .property-document-list,
 .property-detail-documents {
   display: grid;
@@ -2659,5 +2726,10 @@ select {
 @media (max-width: 700px) {
   .property-selector-row {
     grid-template-columns: 1fr;
+  }
+
+  .tenant-card {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

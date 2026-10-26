@@ -943,6 +943,19 @@
         </div>
       </section>
 
+      <section class="detail-docs-section" aria-labelledby="owner-detail-tenants-heading">
+        <div class="detail-section-heading">
+          <div>
+            <p class="eyebrow">RESIDENTES</p>
+            <h3 id="owner-detail-tenants-heading">Inquilinos</h3>
+          </div>
+          <button class="primary-button" id="owner-detail-new-tenant" type="button">Crear inquilino</button>
+        </div>
+        <p class="form-intro">Gestiona las personas inquilinas, sus contratos, contacto y autorizaciones para las unidades de este propietario.</p>
+        <div class="tenant-list" id="owner-detail-tenant-list"></div>
+        <p class="form-intro" id="owner-detail-tenant-empty">Este propietario todavía no tiene inquilinos registrados.</p>
+      </section>
+
       <!-- SECCIÓN DE DOCUMENTACIÓN OFICIAL Y APROBACIÓN ADMINISTRATIVA -->
       <div class="detail-docs-section">
         <div class="detail-section-heading">
@@ -969,6 +982,129 @@
         <button class="primary-button" type="button" id="owner-detail-edit-btn">Editar propietario</button>
       </div>
     </div>
+  </dialog>
+
+  <dialog id="tenant-dialog" aria-labelledby="tenant-dialog-title">
+    <form id="tenant-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INQUILINOS</p>
+          <h2 id="tenant-dialog-title">Nuevo inquilino</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-tenant-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">El inquilino queda vinculado al propietario y a una de sus unidades. Nombre, unidad, fechas de inicio y contacto son obligatorios.</p>
+      <div class="form-grid">
+        <label>Nombre *
+          <input name="name" maxlength="60" required autocomplete="given-name" />
+        </label>
+        <label>Apellidos *
+          <input name="surname" maxlength="80" required autocomplete="family-name" />
+        </label>
+        <label>Documento identificativo
+          <input name="documentId" maxlength="20" autocomplete="off" />
+        </label>
+        <label>Unidad *
+          <select name="propertyId" required></select>
+        </label>
+        <label>Teléfono *
+          <input name="phone" type="tel" inputmode="numeric" maxlength="9" required autocomplete="tel" />
+        </label>
+        <label>Email *
+          <input name="email" type="email" maxlength="120" required autocomplete="email" />
+        </label>
+        <label>Inicio del contrato *
+          <input name="contractStart" type="date" required />
+        </label>
+        <label>Fin del contrato
+          <input name="contractEnd" type="date" />
+        </label>
+        <fieldset class="full tenant-authorizations">
+          <legend>Autorizaciones concedidas</legend>
+          <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
+          <label><input type="checkbox" name="authorizations" value="community_communications" /> Recibir comunicaciones de la comunidad</label>
+          <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de la unidad</label>
+        </fieldset>
+        <label class="full">Otras autorizaciones / observaciones
+          <textarea name="authorizationNotes" rows="3" maxlength="500" placeholder="Describe otras autorizaciones concedidas y sus límites."></textarea>
+        </label>
+      </div>
+      <p class="form-error" id="tenant-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="cancel-tenant-dialog">Cancelar</button>
+        <button class="primary-button" type="submit">Guardar inquilino</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="tenant-detail-dialog" aria-labelledby="tenant-detail-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INQUILINOS</p>
+          <h2 id="tenant-detail-title">Ficha del inquilino</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-tenant-detail-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Propietario</span>
+          <span class="detail-value" id="tenant-detail-owner"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Documento</span>
+          <span class="detail-value" id="tenant-detail-document"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Teléfono</span>
+          <span class="detail-value" id="tenant-detail-phone"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Email</span>
+          <span class="detail-value" id="tenant-detail-email"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Unidad</span>
+          <span class="detail-value" id="tenant-detail-property"></span>
+          <button class="secondary-button tenant-property-link" id="tenant-detail-view-property" type="button">Ver unidad</button>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Inicio del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-start"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Fin del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-end"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Estado del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-status"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Autorizaciones</span>
+          <ul class="tenant-detail-authorizations" id="tenant-detail-authorizations"></ul>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Otras autorizaciones / observaciones</span>
+          <span class="detail-value" id="tenant-detail-authorization-notes"></span>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="close-tenant-detail-btn">Cerrar</button>
+        <button class="primary-button" type="button" id="tenant-detail-edit-btn">Editar inquilino</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="tenant-delete-dialog" aria-labelledby="tenant-delete-title">
+    <form method="dialog">
+      <h2 id="tenant-delete-title">¿Eliminar inquilino?</h2>
+      <p id="tenant-delete-message"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" value="cancel">Cancelar</button>
+        <button class="danger-button" id="confirm-tenant-delete" value="confirm">Eliminar</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="property-dialog" aria-labelledby="property-dialog-title">
@@ -1006,6 +1142,7 @@
         </label>
         <label>Inquilino
           <select name="tenantId"></select>
+          <span class="field-hint">Los nuevos inquilinos se crean desde la ficha del propietario y se vinculan allí a una unidad.</span>
         </label>
         <label>Estado de recibos *
           <select name="receiptStatus" required>
