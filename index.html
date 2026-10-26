@@ -293,6 +293,10 @@
         </div>
         <button class="primary-button" id="new-owner" type="button">Nuevo propietario</button>
       </div>
+      <nav class="entity-subnav" aria-label="Gestión de propietarios">
+        <a class="entity-subnav-link active" href="#propietarios">Propietarios</a>
+        <a class="entity-subnav-link" href="#inquilinos">Inquilinos</a>
+      </nav>
       <div class="toolbar" id="owners-toolbar">
         <div class="toolbar-filters">
           <label class="search-field" for="search-owners">
@@ -366,6 +370,62 @@
               Siguiente &rarr;
             </button>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: INQUILINOS (subsección de Propietarios) -->
+    <section class="content" id="inquilinos" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">PROPIETARIOS · RESIDENTES</p>
+          <h1>Inquilinos</h1>
+          <p class="subtitle">Consulta y gestiona los inquilinos, sus unidades, contratos, contactos y autorizaciones.</p>
+        </div>
+        <button class="primary-button" id="new-tenant" type="button">Crear inquilino</button>
+      </div>
+      <nav class="entity-subnav" aria-label="Gestión de propietarios">
+        <a class="entity-subnav-link" href="#propietarios">Propietarios</a>
+        <a class="entity-subnav-link active" href="#inquilinos" aria-current="page">Inquilinos</a>
+      </nav>
+      <div class="toolbar">
+        <div class="toolbar-filters tenant-toolbar-filters">
+          <label class="search-field" for="search-tenants">
+            <span class="sr-only">Buscar inquilinos</span>
+            <input id="search-tenants" type="search" placeholder="Buscar por inquilino, propietario o unidad" autocomplete="off" />
+          </label>
+          <label for="filter-tenant-community" class="sr-only">Filtrar inquilinos por comunidad</label>
+          <select id="filter-tenant-community" class="filter-select">
+            <option value="">Todas las comunidades</option>
+          </select>
+          <label for="filter-tenant-contract" class="sr-only">Filtrar inquilinos por contrato</label>
+          <select id="filter-tenant-contract" class="filter-select">
+            <option value="">Todos los contratos</option>
+            <option value="Próximo">Próximos</option>
+            <option value="Vigente">Vigentes</option>
+            <option value="Finalizado">Finalizados</option>
+          </select>
+        </div>
+        <p id="tenant-result-count" aria-live="polite"></p>
+      </div>
+      <div class="table-wrap tenant-table-wrap">
+        <table class="tenant-table" aria-label="Listado de inquilinos">
+          <thead>
+            <tr>
+              <th>Inquilino</th>
+              <th>Propietario</th>
+              <th>Unidad</th>
+              <th>Contacto</th>
+              <th>Contrato</th>
+              <th>Autorizaciones</th>
+              <th><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="tenant-list"></tbody>
+        </table>
+        <div class="empty-state" id="tenant-empty-state" hidden>
+          <h2>No hay inquilinos que mostrar</h2>
+          <p>Crea un inquilino o ajusta los criterios de búsqueda.</p>
         </div>
       </div>
     </section>
@@ -1003,6 +1063,9 @@
         </label>
         <label>Documento identificativo
           <input name="documentId" maxlength="20" autocomplete="off" />
+        </label>
+        <label>Propietario *
+          <select name="ownerId" required></select>
         </label>
         <label>Unidad *
           <select name="propertyId" required></select>

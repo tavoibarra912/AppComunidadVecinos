@@ -78,6 +78,7 @@ Gestión completa de los propietarios y asociados vinculados a las comunidades d
 
 ## 2.2. Inquilinos y residentes
 
+- La opción **Inquilinos**, dentro de la navegación de **Propietarios**, muestra un listado independiente con búsqueda y filtros por comunidad y estado del contrato.
 - Desde la ficha de un propietario se pueden crear, consultar, editar y eliminar sus inquilinos.
 - Cada inquilino queda asociado a una unidad de ese propietario, con contacto, documento identificativo opcional y fechas de contrato.
 - El inicio del contrato, un teléfono español y un email válido son obligatorios; la fecha de fin es opcional y no puede ser anterior al inicio.
