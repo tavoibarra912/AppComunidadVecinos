@@ -41,6 +41,7 @@
     <a class="mobile-nav-item active" href="#home" id="mobile-nav-home">Inicio</a>
     <a class="mobile-nav-item" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
     <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
+    <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
   </nav>
   <main class="layout">
     <aside class="sidebar" aria-label="Navegación">
@@ -48,6 +49,7 @@
       <a class="nav-item active" href="#home" id="nav-home">Inicio</a>
       <a class="nav-item" href="#comunidades" id="nav-comunidades">Comunidades</a>
       <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
+      <a class="nav-item" href="#inmuebles" id="nav-inmuebles">Inmuebles</a>
       <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
     </aside>
 
@@ -231,6 +233,52 @@
       </div>
     </section>
 
+    <!-- SECCIÓN: INMUEBLES -->
+    <section class="content" id="inmuebles" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ENTIDADES</p>
+          <h1>Inmuebles</h1>
+          <p class="subtitle">Gestiona inmuebles vinculados a una comunidad y a su propietario.</p>
+        </div>
+        <button class="primary-button" id="new-property" type="button">Nuevo inmueble</button>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-filters">
+          <label class="search-field" for="search-properties">
+            <span class="sr-only">Buscar inmuebles</span>
+            <input id="search-properties" type="search" placeholder="Buscar por inmueble, dirección o propietario" autocomplete="off" />
+          </label>
+          <label for="filter-property-community" class="sr-only">Filtrar inmuebles por comunidad</label>
+          <select id="filter-property-community" class="filter-select">
+            <option value="">Todas las comunidades</option>
+          </select>
+        </div>
+        <p id="property-result-count" aria-live="polite"></p>
+      </div>
+      <div class="table-wrap properties-table-wrap">
+        <table class="properties-table" aria-label="Listado de inmuebles">
+          <thead>
+            <tr>
+              <th>Inmueble</th>
+              <th>Comunidad</th>
+              <th>Dirección</th>
+              <th>Propietario</th>
+              <th>Inquilino</th>
+              <th>Estado recibos</th>
+              <th>Documentación</th>
+              <th><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="property-list"></tbody>
+        </table>
+        <div class="empty-state" id="property-empty-state" hidden>
+          <h2>No hay inmuebles que mostrar</h2>
+          <p>Crea un inmueble o cambia los criterios de búsqueda.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- SECCIÓN: PROPIETARIOS -->
     <section class="content" id="propietarios" hidden>
       <div class="owner-view-banner" id="owner-view-banner-own" style="display: none;">
@@ -245,6 +293,10 @@
         </div>
         <button class="primary-button" id="new-owner" type="button">Nuevo propietario</button>
       </div>
+      <nav class="entity-subnav" aria-label="Gestión de propietarios">
+        <a class="entity-subnav-link active" href="#propietarios">Propietarios</a>
+        <a class="entity-subnav-link" href="#inquilinos">Inquilinos</a>
+      </nav>
       <div class="toolbar" id="owners-toolbar">
         <div class="toolbar-filters">
           <label class="search-field" for="search-owners">
@@ -255,6 +307,10 @@
             <label for="filter-community" class="sr-only">Filtrar por comunidad</label>
             <select id="filter-community" class="filter-select">
               <option value="">Todas las comunidades</option>
+            </select>
+            <label for="filter-owner-property-community" class="sr-only">Filtrar inmuebles por comunidad</label>
+            <select id="filter-owner-property-community" class="filter-select">
+              <option value="">Inmuebles de todas las comunidades</option>
             </select>
             <label for="filter-member" class="sr-only">Filtrar por asociado</label>
             <select id="filter-member" class="filter-select">
@@ -281,7 +337,7 @@
             <tr>
               <th class="col-p1">Propietario</th>
               <th class="col-p1">DNI / NIE / CIF</th>
-              <th class="col-p2">Parcela / Inmueble</th>
+              <th class="col-p2">Inmuebles</th>
               <th class="col-p2">Comunidad</th>
               <th class="col-p3">Dirección</th>
               <th class="col-p4 col-contact">Contacto</th>
@@ -314,6 +370,62 @@
               Siguiente &rarr;
             </button>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: INQUILINOS (subsección de Propietarios) -->
+    <section class="content" id="inquilinos" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">PROPIETARIOS · RESIDENTES</p>
+          <h1>Inquilinos</h1>
+          <p class="subtitle">Consulta y gestiona los inquilinos, sus unidades, contratos, contactos y autorizaciones.</p>
+        </div>
+        <button class="primary-button" id="new-tenant" type="button">Crear inquilino</button>
+      </div>
+      <nav class="entity-subnav" aria-label="Gestión de propietarios">
+        <a class="entity-subnav-link" href="#propietarios">Propietarios</a>
+        <a class="entity-subnav-link active" href="#inquilinos" aria-current="page">Inquilinos</a>
+      </nav>
+      <div class="toolbar">
+        <div class="toolbar-filters tenant-toolbar-filters">
+          <label class="search-field" for="search-tenants">
+            <span class="sr-only">Buscar inquilinos</span>
+            <input id="search-tenants" type="search" placeholder="Buscar por inquilino, propietario o unidad" autocomplete="off" />
+          </label>
+          <label for="filter-tenant-community" class="sr-only">Filtrar inquilinos por comunidad</label>
+          <select id="filter-tenant-community" class="filter-select">
+            <option value="">Todas las comunidades</option>
+          </select>
+          <label for="filter-tenant-contract" class="sr-only">Filtrar inquilinos por contrato</label>
+          <select id="filter-tenant-contract" class="filter-select">
+            <option value="">Todos los contratos</option>
+            <option value="Próximo">Próximos</option>
+            <option value="Vigente">Vigentes</option>
+            <option value="Finalizado">Finalizados</option>
+          </select>
+        </div>
+        <p id="tenant-result-count" aria-live="polite"></p>
+      </div>
+      <div class="table-wrap tenant-table-wrap">
+        <table class="tenant-table" aria-label="Listado de inquilinos">
+          <thead>
+            <tr>
+              <th>Inquilino</th>
+              <th>Propietario</th>
+              <th>Unidad</th>
+              <th>Contacto</th>
+              <th>Contrato</th>
+              <th>Autorizaciones</th>
+              <th><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="tenant-list"></tbody>
+        </table>
+        <div class="empty-state" id="tenant-empty-state" hidden>
+          <h2>No hay inquilinos que mostrar</h2>
+          <p>Crea un inquilino o ajusta los criterios de búsqueda.</p>
         </div>
       </div>
     </section>
@@ -867,6 +979,43 @@
         </div>
       </div>
 
+      <section class="detail-docs-section" aria-labelledby="owner-detail-properties-heading">
+        <div class="detail-section-heading">
+          <div>
+            <p class="eyebrow">INMUEBLES</p>
+            <h3 id="owner-detail-properties-heading">Inmuebles del propietario</h3>
+          </div>
+          <span class="status-badge" id="owner-detail-property-count">0 inmuebles</span>
+        </div>
+        <p class="form-intro">Puedes filtrar por comunidad y seleccionar cualquiera de los inmuebles asociados a esta persona.</p>
+        <div class="property-selector-row">
+          <label>Comunidad
+            <select id="owner-detail-property-community">
+              <option value="">Todas las comunidades</option>
+            </select>
+          </label>
+          <label>Inmueble
+            <select id="owner-detail-property-select">
+              <option value="">No hay inmuebles asociados</option>
+            </select>
+          </label>
+          <button class="secondary-button" id="owner-detail-view-property" type="button">Ver inmueble</button>
+        </div>
+      </section>
+
+      <section class="detail-docs-section" aria-labelledby="owner-detail-tenants-heading">
+        <div class="detail-section-heading">
+          <div>
+            <p class="eyebrow">RESIDENTES</p>
+            <h3 id="owner-detail-tenants-heading">Inquilinos</h3>
+          </div>
+          <button class="primary-button" id="owner-detail-new-tenant" type="button">Crear inquilino</button>
+        </div>
+        <p class="form-intro">Gestiona las personas inquilinas, sus contratos, contacto y autorizaciones para las unidades de este propietario.</p>
+        <div class="tenant-list" id="owner-detail-tenant-list"></div>
+        <p class="form-intro" id="owner-detail-tenant-empty">Este propietario todavía no tiene inquilinos registrados.</p>
+      </section>
+
       <!-- SECCIÓN DE DOCUMENTACIÓN OFICIAL Y APROBACIÓN ADMINISTRATIVA -->
       <div class="detail-docs-section">
         <div class="detail-section-heading">
@@ -891,6 +1040,273 @@
         <button class="secondary-button" type="button" id="close-owner-detail-btn">Cerrar</button>
         <button class="secondary-button" type="button" id="owner-detail-manage-docs-btn">📁 Gestionar documentos</button>
         <button class="primary-button" type="button" id="owner-detail-edit-btn">Editar propietario</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="tenant-dialog" aria-labelledby="tenant-dialog-title">
+    <form id="tenant-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INQUILINOS</p>
+          <h2 id="tenant-dialog-title">Nuevo inquilino</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-tenant-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">El inquilino queda vinculado al propietario y a una de sus unidades. Nombre, unidad, fechas de inicio y contacto son obligatorios.</p>
+      <div class="form-grid">
+        <label>Nombre *
+          <input name="name" maxlength="60" required autocomplete="given-name" />
+        </label>
+        <label>Apellidos *
+          <input name="surname" maxlength="80" required autocomplete="family-name" />
+        </label>
+        <label>Documento identificativo
+          <input name="documentId" maxlength="20" autocomplete="off" />
+        </label>
+        <label>Propietario *
+          <select name="ownerId" required></select>
+        </label>
+        <label>Unidad *
+          <select name="propertyId" required></select>
+        </label>
+        <label>Teléfono *
+          <input name="phone" type="tel" inputmode="numeric" maxlength="9" required autocomplete="tel" />
+        </label>
+        <label>Email *
+          <input name="email" type="email" maxlength="120" required autocomplete="email" />
+        </label>
+        <label>Inicio del contrato *
+          <input name="contractStart" type="date" required />
+        </label>
+        <label>Fin del contrato
+          <input name="contractEnd" type="date" />
+        </label>
+        <fieldset class="full tenant-authorizations">
+          <legend>Autorizaciones concedidas</legend>
+          <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
+          <label><input type="checkbox" name="authorizations" value="community_communications" /> Recibir comunicaciones de la comunidad</label>
+          <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de la unidad</label>
+        </fieldset>
+        <label class="full">Otras autorizaciones / observaciones
+          <textarea name="authorizationNotes" rows="3" maxlength="500" placeholder="Describe otras autorizaciones concedidas y sus límites."></textarea>
+        </label>
+      </div>
+      <p class="form-error" id="tenant-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="cancel-tenant-dialog">Cancelar</button>
+        <button class="primary-button" type="submit">Guardar inquilino</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="tenant-detail-dialog" aria-labelledby="tenant-detail-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INQUILINOS</p>
+          <h2 id="tenant-detail-title">Ficha del inquilino</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-tenant-detail-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Propietario</span>
+          <span class="detail-value" id="tenant-detail-owner"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Documento</span>
+          <span class="detail-value" id="tenant-detail-document"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Teléfono</span>
+          <span class="detail-value" id="tenant-detail-phone"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Email</span>
+          <span class="detail-value" id="tenant-detail-email"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Unidad</span>
+          <span class="detail-value" id="tenant-detail-property"></span>
+          <button class="secondary-button tenant-property-link" id="tenant-detail-view-property" type="button">Ver unidad</button>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Inicio del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-start"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Fin del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-end"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Estado del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-status"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Autorizaciones</span>
+          <ul class="tenant-detail-authorizations" id="tenant-detail-authorizations"></ul>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Otras autorizaciones / observaciones</span>
+          <span class="detail-value" id="tenant-detail-authorization-notes"></span>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="close-tenant-detail-btn">Cerrar</button>
+        <button class="primary-button" type="button" id="tenant-detail-edit-btn">Editar inquilino</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="tenant-delete-dialog" aria-labelledby="tenant-delete-title">
+    <form method="dialog">
+      <h2 id="tenant-delete-title">¿Eliminar inquilino?</h2>
+      <p id="tenant-delete-message"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" value="cancel">Cancelar</button>
+        <button class="danger-button" id="confirm-tenant-delete" value="confirm">Eliminar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="property-dialog" aria-labelledby="property-dialog-title">
+    <form id="property-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INMUEBLES</p>
+          <h2 id="property-dialog-title">Nuevo inmueble</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-property-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">La comunidad, el propietario y la dirección son obligatorios. El inquilino y los documentos son opcionales.</p>
+      <div class="form-grid">
+        <label>Comunidad *
+          <select name="communityId" required></select>
+        </label>
+        <label>Propietario *
+          <select name="ownerId" required></select>
+        </label>
+        <label>Tipo de inmueble *
+          <select name="propertyType" required>
+            <option value="">Selecciona tipo…</option>
+            <option value="parcela">Parcela</option>
+            <option value="vivienda">Vivienda</option>
+            <option value="local">Local</option>
+            <option value="garaje">Plaza de garaje</option>
+            <option value="trastero">Trastero</option>
+          </select>
+        </label>
+        <label>Identificador / n.º *
+          <input name="plot" maxlength="50" required placeholder="Ej.: Parcela 14, 3.º B" />
+        </label>
+        <label class="full">Dirección *
+          <input name="address" maxlength="140" required autocomplete="street-address" />
+        </label>
+        <label>Inquilino
+          <select name="tenantId"></select>
+          <span class="field-hint">Los nuevos inquilinos se crean desde la ficha del propietario y se vinculan allí a una unidad.</span>
+        </label>
+        <label>Estado de recibos *
+          <select name="receiptStatus" required>
+            <option value="current">Al corriente</option>
+            <option value="pending">Pagos pendientes</option>
+          </select>
+        </label>
+        <label>Referencia catastral
+          <input name="cadastralRef" maxlength="20" />
+        </label>
+        <label>Finca registral
+          <input name="registryNumber" maxlength="20" />
+        </label>
+        <label>Planta
+          <input name="floor" maxlength="10" />
+        </label>
+        <label>Puerta
+          <input name="door" maxlength="10" />
+        </label>
+        <label>Superficie (m²)
+          <input name="areaM2" inputmode="decimal" maxlength="10" />
+        </label>
+        <label>Coeficiente de participación (%)
+          <input name="participationCoef" inputmode="decimal" maxlength="10" />
+        </label>
+        <label>Uso
+          <select name="propertyUse">
+            <option value="">Sin especificar</option>
+            <option value="residencial">Residencial</option>
+            <option value="comercial">Comercial</option>
+            <option value="garaje">Garaje</option>
+            <option value="trastero">Trastero</option>
+            <option value="otros">Otros</option>
+          </select>
+        </label>
+        <label class="full">Documentación del inmueble
+          <input id="property-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" />
+          <span class="field-hint">PDF, JPG, PNG o WEBP; máximo 15 MB por archivo.</span>
+        </label>
+        <div class="full property-document-list" id="property-document-list"></div>
+      </div>
+      <p class="form-error" id="property-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="cancel-property-dialog">Cancelar</button>
+        <button class="primary-button" type="submit">Guardar inmueble</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="property-detail-dialog" aria-labelledby="property-detail-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INMUEBLES</p>
+          <h2 id="property-detail-title">Ficha del inmueble</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-property-detail-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Tipo e identificador</span>
+          <span class="detail-value" id="property-detail-label"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Comunidad</span>
+          <span class="detail-value" id="property-detail-community"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Dirección</span>
+          <span class="detail-value" id="property-detail-address"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Propietario</span>
+          <span class="detail-value" id="property-detail-owner"></span>
+          <button class="secondary-button property-person-link" id="property-detail-owner-button" type="button">Ver datos del propietario</button>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Inquilino</span>
+          <span class="detail-value" id="property-detail-tenant"></span>
+          <button class="secondary-button property-person-link" id="property-detail-tenant-button" type="button">Ver datos del inquilino</button>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Estado de recibos</span>
+          <span class="detail-value" id="property-detail-receipts"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Referencia catastral / finca</span>
+          <span class="detail-value" id="property-detail-registry"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Planta, puerta, superficie</span>
+          <span class="detail-value" id="property-detail-characteristics"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Documentación</span>
+          <div class="property-detail-documents" id="property-detail-documents"></div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="close-property-detail-btn">Cerrar</button>
+        <button class="primary-button" type="button" id="property-detail-edit-btn">Editar inmueble</button>
       </div>
     </div>
   </dialog>
