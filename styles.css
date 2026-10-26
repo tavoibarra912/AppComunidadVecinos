@@ -2565,3 +2565,99 @@ select {
     display: none;
   }
 }
+
+.owner-property-select {
+  min-width: 190px;
+  max-width: 260px;
+  width: 100%;
+  padding: 7px;
+  font-size: 12px;
+}
+
+.properties-table-wrap {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.properties-table {
+  width: 100%;
+  min-width: 920px;
+}
+
+.properties-table th,
+.properties-table td {
+  white-space: nowrap;
+}
+
+.properties-table td:nth-child(3) {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.property-action-button {
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.text-link-button {
+  border: 0;
+  padding: 0;
+  color: var(--primary, #147d78);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.property-selector-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 2fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.property-selector-row label {
+  display: grid;
+  gap: 6px;
+  color: #3f4f61;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.property-document-list,
+.property-detail-documents {
+  display: grid;
+  gap: 8px;
+}
+
+.property-document-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.property-document-item a,
+.property-detail-documents a {
+  overflow-wrap: anywhere;
+}
+
+.property-person-link {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .property-selector-row {
+    grid-template-columns: 1fr;
+  }
+}

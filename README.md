@@ -37,6 +37,7 @@ Gestión completa de los propietarios y asociados vinculados a las comunidades d
   - **Inmueble (obligatorios):** Comunidad vinculada, asociación con un inmueble existente o registro de uno nuevo, tipo de inmueble e identificador/número.
   - **Datos opcionales del inmueble:** Referencia catastral (20 caracteres alfanuméricos cuando se informa), finca registral, planta, puerta, superficie (decimal positiva), coeficiente (0,0001–100 %) y uso.
   - **Asociación con inmueble:** Combo con búsqueda por identificador y referencia catastral, limitado a la comunidad elegida; al elegir un inmueble existente carga sus datos editables.
+  - **Inmuebles del propietario:** La ficha muestra un desplegable con todos sus inmuebles y un filtro por comunidad; un propietario puede estar relacionado con inmuebles de distintas comunidades.
   - **Condición de asociado:** Indicador de si el propietario es socio activo de la asociación (fundamental para el control de acceso inicial por DNI, cobro de cuotas y asambleas).
   - **Contacto:** Teléfono principal español (9 dígitos, empieza por 6–9) y email obligatorios; ambos requieren verificación por código. Otro teléfono es opcional.
   - **Dirección:** Dirección, provincia, municipio y código postal son obligatorios; provincia → municipio → código postal depende del catálogo territorial INE.
@@ -61,6 +62,17 @@ Gestión completa de los propietarios y asociados vinculados a las comunidades d
   - Paginación configurable (5 o 10 por página) sincronizada con los filtros aplicados.
   - Prioridad de grilla: propietario, documento, inmueble, comunidad y acciones permanecen visibles; dirección, contacto, condición y documentación se ocultan progresivamente en ventanas estrechas. Las columnas prioritarias mantienen scroll horizontal.
   - Navegación responsive entre secciones (sidebar en escritorio y barra superior en móviles).
+
+---
+
+## 2.1. Entidad Inmuebles
+
+- La sección **Inmuebles** permite crear y editar inmuebles; cada registro debe pertenecer a una comunidad y tener un propietario registrado.
+- El inmueble guarda dirección, tipo e identificador, datos catastrales opcionales, estado de recibos (al corriente o pagos pendientes) y documentos adjuntos.
+- El inquilino es opcional y, si se asigna, se elige entre los propietarios existentes para permitir el acceso a su ficha desde el inmueble.
+- Los documentos adjuntos se guardan en el navegador junto con el resto de datos `localStorage`; esta persistencia es de demostración y debe migrarse a almacenamiento de backend para producción.
+- Los inmuebles existentes se vinculan a sus propietarios por la relación guardada o, durante la migración inicial, por el inmueble principal ya registrado en la ficha del propietario. Las unidades de catálogo todavía sin propietario no aparecen como entidades hasta que se asocian desde la ficha de un propietario.
+- Una comunidad no se puede eliminar si tiene inmuebles asociados, ni un propietario si es titular de un inmueble; primero hay que reasignar esos registros.
 
 ---
 
