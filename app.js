@@ -524,6 +524,65 @@ let currentEditingDocs = {};
 let viewingDocDetails = null;
 let activeRole = "admin";
 
+// Demo-only interface policy; production authorization must run in a backend.
+const ROLE_PERMISSIONS = {
+  admin: new Set([
+    "community:read", "community:manage",
+    "owner:read", "owner:manage", "owner:documents:submit",
+    "property:read", "property:manage",
+    "tenant:read", "tenant:manage", "tenant_grant:manage",
+    "document:approve", "admin_notification:read"
+  ]),
+  owner: new Set([
+    "community:read", "owner:read", "owner:edit", "owner:documents:submit",
+    "property:read", "tenant:read", "tenant:manage", "tenant_grant:manage",
+    "owner_notification:read"
+  ])
+};
+
+function hasPermission(permission, resourceId = "") {
+  const permissions = ROLE_PERMISSIONS[activeRole];
+  if (!permissions || !permissions.has(permission)) return false;
+  if (activeRole === "admin") return true;
+
+  const currentOwner = owners.find(owner => owner.id === CURRENT_OWNER_ID);
+  if (!currentOwner) return false;
+  const legacyCommunityIds = currentOwner.communityId
+    ? []
+    : communities
+      .filter(community => community.name === currentOwner.communityName)
+      .map(community => community.id);
+
+  switch (permission) {
+    case "community:read":
+      return communities.some(community =>
+        community.id === resourceId &&
+        (community.id === currentOwner.communityId ||
+          legacyCommunityIds.length === 1 && legacyCommunityIds[0] === community.id ||
+          ownerProperties(currentOwner).some(property => property.communityId === community.id))
+      );
+    case "owner:read":
+    case "owner:edit":
+    case "owner:documents:submit":
+    case "tenant:read":
+    case "tenant:manage":
+    case "tenant_grant:manage":
+      return resourceId === CURRENT_OWNER_ID;
+    case "property:read":
+      return ownerProperties(currentOwner).some(property => property.id === resourceId);
+    case "owner_notification:read":
+      return resourceId === CURRENT_OWNER_ID;
+    default:
+      return false;
+  }
+}
+
+function requirePermission(permission, resourceId = "") {
+  if (hasPermission(permission, resourceId)) return true;
+  toast("No tienes permiso para realizar esta acción.");
+  return false;
+}
+
 let locations = [];
 let locationsById = new Map();
 let postalIndex = new Map();
@@ -1054,13 +1113,7 @@ function initializePropertyRelationships() {
 
 function ownerProperties(owner) {
   if (!owner) return [];
-  const linkedIds = new Set([
-    ...(Array.isArray(owner.propertyIds) ? owner.propertyIds : []),
-    owner.propertyId
-  ].filter(Boolean));
-  return properties.filter(property =>
-    property.ownerId === owner.id || linkedIds.has(property.id)
-  );
+  return properties.filter(property => property.ownerId === owner.id);
 }
 
 function ownerTenants(owner) {
@@ -1278,11 +1331,16 @@ function addOwnerNotification({ ownerId, title, type = "info", message }) {
 }
 
 function openOwnerInbox() {
+  if (!requirePermission("owner_notification:read", CURRENT_OWNER_ID)) return;
   renderOwnerInbox();
   ownerInboxDialog.showModal();
 }
 
 function renderOwnerInbox() {
+  if (!hasPermission("owner_notification:read", CURRENT_OWNER_ID)) {
+    ownerInboxList?.replaceChildren();
+    return;
+  }
   if (!ownerInboxList) return;
   ownerInboxList.replaceChildren();
   const myNotifs = ownerNotifications.filter(n => n.ownerId === CURRENT_OWNER_ID);
@@ -1295,6 +1353,7 @@ function renderOwnerInbox() {
     ownerInboxList.append(empty);
     return;
   }
+  if (previousTenant && !requirePermission("tenant:manage", owner.id)) return;
 
   myNotifs.forEach(n => {
     const card = document.createElement("div");
@@ -1373,6 +1432,7 @@ function sendAdminEmailNotification(owner, docsMap) {
 }
 
 function openAdminInbox() {
+  if (!requirePermission("admin_notification:read")) return;
   adminInboxList.replaceChildren();
 
   if (adminEmails.length === 0) {
@@ -1402,7 +1462,8 @@ function openAdminInbox() {
 }
 
 function openAdminEmail(emailId) {
-  const email = adminEmails.find(e => e.id === emailId) || adminEmails[0];
+  if (!requirePermission("admin_notification:read")) return;
+  const email = adminEmails.find(e => e.id === emailId);
   if (!email) return;
 
   // Marcar como leído
@@ -2023,11 +2084,11 @@ function renderHomeDashboard() {
   if (homeTodayMonth) homeTodayMonth.textContent = months[now.getMonth()] + " " + now.getFullYear();
 
   if (isOwner) {
-    const currentOwner = owners.find(o => o.id === CURRENT_OWNER_ID) || owners[0];
-    const comName = currentOwner ? currentOwner.communityName : "Residencial Peñarrubia";
+    const currentOwner = owners.find(o => o.id === CURRENT_OWNER_ID);
+    const comName = currentOwner?.communityName || "Sin comunidad asignada";
     
     if (homeHeroRoleBadge) homeHeroRoleBadge.textContent = "Área de Asociado";
-    if (homeGreetingTitle) homeGreetingTitle.textContent = "Hola, " + (currentOwner ? currentOwner.name : "Carlos");
+    if (homeGreetingTitle) homeGreetingTitle.textContent = currentOwner ? `Hola, ${currentOwner.name}` : "Perfil no disponible";
     if (homeGreetingDesc) homeGreetingDesc.textContent = "Bienvenido a tu panel personal de Peñarrubia. Desde aquí puedes consultar el estado de tu comunidad (" + comName + "), tus parcelas y gestionar tu documentación oficial.";
     
     if (homeHeroActions) {
@@ -2038,21 +2099,21 @@ function renderHomeDashboard() {
       const btnDocs = document.querySelector("#home-owner-btn-docs");
       if (btnDocs) btnDocs.addEventListener("click", () => {
         navigateToSection("#propietarios");
-        if (currentOwner) setTimeout(() => openOwnerDetail(currentOwner), 50);
+        if (currentOwner) setTimeout(() => openOwnerDetail(currentOwner.id), 50);
       });
       const btnComm = document.querySelector("#home-owner-btn-comm");
       if (btnComm) btnComm.addEventListener("click", () => navigateToSection("#comunidades"));
     }
 
-    if (homeKpiComms) homeKpiComms.textContent = "1";
+    if (homeKpiComms) homeKpiComms.textContent = currentOwner ? "1" : "0";
     if (homeKpiCommsLabel) homeKpiCommsLabel.textContent = comName;
-    if (homeKpiOwners) homeKpiOwners.textContent = currentOwner ? currentOwner.plot : "Parcela 14";
+    if (homeKpiOwners) homeKpiOwners.textContent = currentOwner?.plot || "—";
     if (homeKpiOwnersLabel) homeKpiOwnersLabel.textContent = "Inmueble / Parcela";
-    if (homeKpiMembers) homeKpiMembers.textContent = currentOwner && currentOwner.isMember ? "Activo" : "No";
+    if (homeKpiMembers) homeKpiMembers.textContent = currentOwner ? (currentOwner.isMember ? "Activo" : "No") : "—";
     if (homeKpiMembersLabel) homeKpiMembersLabel.textContent = "Condición de asociado";
     if (homeKpiMembersSub) homeKpiMembersSub.textContent = "Derecho a voto y servicios";
 
-    const docStatus = currentOwner ? getOwnerOverallDocStatus(currentOwner) : { label: "Al día", class: "approved" };
+    const docStatus = currentOwner ? getOwnerOverallDocStatus(currentOwner) : { label: "Sin perfil", class: "" };
     if (homeKpiPendingDocs) homeKpiPendingDocs.textContent = docStatus.label.split(" ")[0];
     if (homeKpiPendingLabel) homeKpiPendingLabel.textContent = "Estado documentación";
     if (homeKpiPendingSub) homeKpiPendingSub.textContent = docStatus.label;
@@ -2060,7 +2121,9 @@ function renderHomeDashboard() {
     if (homeActivityTitle) homeActivityTitle.textContent = "Tus Documentos de Propietario";
     if (homeActivitySubtitle) homeActivitySubtitle.textContent = "Comprobación y validez de tus títulos acreditativos";
 
-    if (homeDocSummaryList && currentOwner) {
+    if (homeDocSummaryList && !currentOwner) {
+      homeDocSummaryList.replaceChildren();
+    } else if (homeDocSummaryList) {
       const docs = currentOwner.docs || {};
       const items = [
         { key: "dni", title: "Copia de DNI (ambas caras)", data: docs.dni },
@@ -2134,7 +2197,7 @@ function renderHomeDashboard() {
       const qProf = document.querySelector("#hq-btn-profile");
       if (qProf) qProf.addEventListener("click", () => {
         navigateToSection("#propietarios");
-        if (currentOwner) setTimeout(() => openOwnerDetail(currentOwner), 50);
+        if (currentOwner) setTimeout(() => openOwnerDetail(currentOwner.id), 50);
       });
       const qComm = document.querySelector("#hq-btn-comm-view");
       if (qComm) qComm.addEventListener("click", () => navigateToSection("#comunidades"));
@@ -2472,12 +2535,12 @@ function renderCommunityPagination(totalItems) {
 
 function renderCommunities() {
   const isOwner = activeRole === "owner";
-  let items = filteredCommunities();
+  let items = filteredCommunities().filter(community =>
+    hasPermission("community:read", community.id)
+  );
 
   if (isOwner) {
-    const currentOwner = owners.find(o => o.id === CURRENT_OWNER_ID) || ownerSeeds[0];
-    items = communities.filter(c => c.id === currentOwner.communityId || c.name === currentOwner.communityName);
-    if (items.length === 0 && communities.length > 0) items = [communities[0]];
+    items = items.filter(community => hasPermission("community:read", community.id));
   }
 
   const totalPages = Math.max(1, Math.ceil(items.length / communityPageSize));
@@ -2598,7 +2661,7 @@ function renderCommunities() {
 
   communityEmpty.hidden = items.length !== 0;
   communityCount.textContent = isOwner
-    ? "1 comunidad asignada"
+    ? `${items.length} ${items.length === 1 ? "comunidad asignada" : "comunidades asignadas"}`
     : `${items.length} ${items.length === 1 ? "comunidad" : "comunidades"}`;
   
   if (!isOwner) {
@@ -2607,6 +2670,7 @@ function renderCommunities() {
 }
 
 function openCommunityEditor(id = null) {
+  if (!requirePermission("community:manage")) return;
   editingCommunityId = id;
   communityForm.reset();
   communityError.textContent = "";
@@ -2630,6 +2694,7 @@ function closeCommunityEditor() {
 }
 
 function openCommunityDetail(id) {
+  if (!requirePermission("community:read", id)) return;
   const c = communities.find(item => item.id === id);
   if (!c) return;
   viewingCommunityId = id;
@@ -2664,8 +2729,10 @@ function closeCommunityDetail() {
 }
 
 function openCommunityDelete(id) {
-  deletingCommunityId = id;
+  if (!requirePermission("community:manage")) return;
   const c = communities.find(item => item.id === id);
+  if (!c) return;
+  deletingCommunityId = id;
   document.querySelector("#delete-message").textContent = `Vas a eliminar “${c.name}”. Esta acción no se puede deshacer.`;
   communityDeleteDialog.showModal();
 }
@@ -2697,6 +2764,10 @@ function validateCommunityFields() {
 
 communityForm.addEventListener("submit", event => {
   event.preventDefault();
+  if (!requirePermission("community:manage")) {
+    closeCommunityEditor();
+    return;
+  }
   validateCommunityFields();
 
   const citySelect = communityForm.elements.city;
@@ -2931,11 +3002,10 @@ function renderOwnerPagination(totalItems) {
 
 function renderOwners() {
   const isOwner = activeRole === "owner";
-  let items = filteredOwners();
+  let items = filteredOwners().filter(owner => hasPermission("owner:read", owner.id));
 
   if (isOwner) {
-    items = owners.filter(o => o.id === CURRENT_OWNER_ID || o.dni === "47895231P");
-    if (items.length === 0 && owners.length > 0) items = [owners[0]];
+    items = items.filter(owner => hasPermission("owner:read", owner.id));
   }
 
   const totalPages = Math.max(1, Math.ceil(items.length / ownerPageSize));
@@ -3113,7 +3183,7 @@ function renderOwners() {
 
   ownerEmpty.hidden = items.length !== 0;
   ownerCount.textContent = isOwner
-    ? "1 perfil de propietario registrado"
+    ? `${items.length} perfil${items.length === 1 ? "" : "es"} de propietario registrado${items.length === 1 ? "" : "s"}`
     : `${items.length} ${items.length === 1 ? "propietario" : "propietarios"}`;
 
   if (!isOwner) {
@@ -3470,6 +3540,7 @@ function openOwnerEditor(id = null, defaultTab = "data") {
   if (isOwner) {
     id = CURRENT_OWNER_ID;
   }
+  if (!requirePermission(isOwner ? "owner:edit" : "owner:manage", id || "")) return;
   editingOwnerId = id;
   ownerForm.reset();
   clearOwnerFieldErrors();
@@ -3529,6 +3600,7 @@ function closeOwnerEditor() {
 }
 
 function openOwnerDetail(id) {
+  if (!requirePermission("owner:read", id)) return;
   const o = owners.find(item => item.id === id);
   if (!o) return;
   viewingOwnerId = id;
@@ -3598,12 +3670,13 @@ function renderOwnerPropertySelectors(owner) {
 function renderOwnerTenants(owner) {
   const tenants = ownerTenants(owner);
   const linkedProperties = ownerProperties(owner);
+  const canManageTenants = hasPermission("tenant:manage", owner.id);
   ownerDetailTenantList.replaceChildren();
   ownerDetailTenantEmpty.hidden = tenants.length > 0;
   ownerDetailTenantEmpty.textContent = linkedProperties.length
     ? "Este propietario todavía no tiene inquilinos registrados."
     : "Asocia primero una unidad a este propietario para poder crear un inquilino.";
-  ownerDetailNewTenantBtn.hidden = activeRole === "owner";
+  ownerDetailNewTenantBtn.hidden = !canManageTenants;
   ownerDetailNewTenantBtn.disabled = linkedProperties.length === 0;
 
   tenants.forEach(tenant => {
@@ -3628,7 +3701,7 @@ function renderOwnerTenants(owner) {
     viewButton.textContent = "Ver información";
     actions.append(viewButton);
 
-    if (activeRole !== "owner") {
+    if (canManageTenants) {
       const editButton = document.createElement("button");
       editButton.type = "button";
       editButton.className = "secondary-button";
@@ -3650,6 +3723,12 @@ function renderOwnerTenants(owner) {
 }
 
 function renderTenants() {
+  if (!hasPermission("tenant:read")) {
+    tenantList?.replaceChildren();
+    if (tenantEmpty) tenantEmpty.hidden = false;
+    if (tenantResultCount) tenantResultCount.textContent = "0 inquilinos";
+    return;
+  }
   if (!tenantList) return;
   const query = tenantSearch.value.trim().toLocaleLowerCase("es");
   const communityId = tenantCommunityFilter.value;
@@ -3776,17 +3855,20 @@ function updateTenantPropertyOptions(ownerId, selectedPropertyId = "") {
 }
 
 function openTenantEditor(id = null, ownerId = viewingOwnerId) {
-  if (activeRole === "owner") return;
+  if (!requirePermission("tenant:manage", ownerId || "")) return;
   const editingOwner = owners.find(item => item.id === ownerId);
   const tenant = ownerTenants(editingOwner).find(item => item.id === id);
   if (id && !tenant) return;
+  if (tenant && !requirePermission("tenant:manage", editingOwner.id)) return;
   viewingOwnerId = editingOwner?.id || null;
   editingTenantId = id;
   tenantForm.reset();
   tenantFormError.textContent = "";
   tenantOwnerSelect.disabled = !!tenant;
   tenantOwnerSelect.replaceChildren(new Option("Selecciona un propietario…", ""));
-  owners.forEach(owner => tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)));
+  owners
+    .filter(owner => hasPermission("tenant:manage", owner.id))
+    .forEach(owner => tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)));
   tenantOwnerSelect.value = editingOwner?.id || "";
   updateTenantPropertyOptions(tenantOwnerSelect.value, tenant?.propertyId || "");
 
@@ -3813,6 +3895,7 @@ function closeTenantEditor() {
 }
 
 function openTenantDetail(ownerId, tenantId) {
+  if (!requirePermission("tenant:read", ownerId)) return;
   const owner = owners.find(item => item.id === ownerId);
   const tenant = ownerTenants(owner).find(item => item.id === tenantId);
   if (!owner || !tenant) return;
@@ -3850,7 +3933,7 @@ function openTenantDetail(ownerId, tenantId) {
   viewPropertyButton.onclick = () => {
     if (property) openPropertyDetail(property.id);
   };
-  document.querySelector("#tenant-detail-edit-btn").hidden = activeRole === "owner";
+  document.querySelector("#tenant-detail-edit-btn").hidden = !hasPermission("tenant:manage", owner.id);
   if (!tenantDetailDialog.open) tenantDetailDialog.showModal();
 }
 
@@ -3860,9 +3943,10 @@ function closeTenantDetail() {
 }
 
 function openTenantDelete(tenantId, ownerId = viewingOwnerId) {
+  if (!requirePermission("tenant:manage", ownerId || "")) return;
   const owner = owners.find(item => item.id === ownerId);
   const tenant = ownerTenants(owner).find(item => item.id === tenantId);
-  if (!owner || !tenant || activeRole === "owner") return;
+  if (!owner || !tenant) return;
   viewingOwnerId = owner.id;
   deletingTenantId = tenantId;
   document.querySelector("#tenant-delete-message").textContent =
@@ -3931,7 +4015,7 @@ function renderPropertyDocumentList() {
 }
 
 function openPropertyEditor(id = null) {
-  if (activeRole === "owner") return;
+  if (!requirePermission("property:manage")) return;
   editingPropertyId = id;
   propertyForm.reset();
   propertyFormError.textContent = "";
@@ -3968,6 +4052,7 @@ function renderProperties() {
   const query = propertySearch.value.trim().toLocaleLowerCase("es");
   const communityId = propertyCommunityFilter.value;
   const items = properties.filter(property => {
+    if (!hasPermission("property:read", property.id)) return false;
     if (!owners.some(owner => owner.id === property.ownerId)) return false;
     if (communityId && property.communityId !== communityId) return false;
     if (!query) return true;
@@ -4076,6 +4161,7 @@ function renderProperties() {
 }
 
 function openPropertyDetail(id) {
+  if (!requirePermission("property:read", id)) return;
   const property = properties.find(item => item.id === id);
   if (!property) return;
   viewingPropertyId = id;
@@ -4142,7 +4228,7 @@ function openPropertyDetail(id) {
     });
   }
 
-  document.querySelector("#property-detail-edit-btn").hidden = activeRole === "owner";
+  document.querySelector("#property-detail-edit-btn").hidden = !hasPermission("property:manage");
   if (!propertyDetailDialog.open) propertyDetailDialog.showModal();
 }
 
@@ -4371,6 +4457,7 @@ function renderDetailApprovalPanel(o, docStatus) {
 }
 
 function approveAllOwnerDocs(ownerId) {
+  if (!requirePermission("document:approve")) return;
   const dateStr = new Date().toLocaleString("es-ES", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit"
@@ -4411,6 +4498,7 @@ function approveAllOwnerDocs(ownerId) {
 }
 
 function reopenOwnerDocs(ownerId) {
+  if (!requirePermission("document:approve")) return;
   owners = owners.map(o => {
     if (o.id !== ownerId) return o;
     const newDocs = { ...o.documents };
@@ -4437,11 +4525,16 @@ function reopenOwnerDocs(ownerId) {
 }
 
 function openDocRejectDialog(ownerId) {
+  if (!requirePermission("document:approve")) return;
   docRejectReason.value = "";
   docRejectDialog.showModal();
 
   docRejectForm.onsubmit = e => {
     e.preventDefault();
+    if (!requirePermission("document:approve")) {
+      docRejectDialog.close();
+      return;
+    }
     const reason = docRejectReason.value.trim();
     if (!reason) return;
 
@@ -4487,6 +4580,7 @@ function openDocRejectDialog(ownerId) {
 }
 
 function openDocViewer(owner, docKey, docObj = null) {
+  if (!requirePermission("owner:read", owner?.id || "")) return;
   const doc = docObj || (owner.documents && owner.documents[docKey]);
   if (!doc) return;
 
@@ -4546,8 +4640,9 @@ function openDocViewer(owner, docKey, docObj = null) {
 
   // Botón rápido de aprobación individual (sólo disponible para Administrador)
   if (docViewerQuickApproveBtn) {
-    docViewerQuickApproveBtn.style.display = activeRole === "owner" ? "none" : "";
+    docViewerQuickApproveBtn.hidden = !hasPermission("document:approve");
     docViewerQuickApproveBtn.onclick = () => {
+      if (!requirePermission("document:approve")) return;
       doc.adminApproval = {
         status: "approved",
         reviewedAt: new Date().toLocaleString("es-ES"),
@@ -4571,8 +4666,10 @@ function closeOwnerDetail() {
 }
 
 function openOwnerDelete(id) {
-  deletingOwnerId = id;
+  if (!requirePermission("owner:manage", id)) return;
   const o = owners.find(item => item.id === id);
+  if (!o) return;
+  deletingOwnerId = id;
   document.querySelector("#owner-delete-message").textContent = `Vas a eliminar a “${o.name} ${o.surname}”. Esta acción no se puede deshacer.`;
   ownerDeleteDialog.showModal();
 }
@@ -4726,6 +4823,10 @@ function collectOwnerErrors() {
 
 ownerForm.addEventListener("submit", event => {
   event.preventDefault();
+  if (!requirePermission(activeRole === "owner" ? "owner:edit" : "owner:manage", editingOwnerId || "")) {
+    closeOwnerEditor();
+    return;
+  }
   clearOwnerFieldErrors();
 
   const { errors, marks, selectedLocation } = collectOwnerErrors();
@@ -4911,6 +5012,11 @@ communityNextBtn.addEventListener("click", () => {
 });
 
 document.querySelector("#confirm-delete").addEventListener("click", () => {
+  if (!requirePermission("community:manage")) {
+    communityDeleteDialog.close();
+    deletingCommunityId = null;
+    return;
+  }
   if (properties.some(property => property.communityId === deletingCommunityId)) {
     toast("No se puede eliminar esta comunidad mientras tenga inmuebles asociados.");
     deletingCommunityId = null;
@@ -5019,7 +5125,7 @@ document.querySelector("#tenant-detail-edit-btn").addEventListener("click", () =
 document.querySelector("#confirm-tenant-delete").addEventListener("click", event => {
   event.preventDefault();
   const owner = owners.find(item => item.id === viewingOwnerId);
-  if (!owner || activeRole === "owner") return;
+  if (!owner || !requirePermission("tenant:manage", owner.id)) return;
   const tenants = ownerTenants(owner).filter(tenant => tenant.id !== deletingTenantId);
   if (tenants.length === ownerTenants(owner).length) {
     toast("No se encontró el inquilino que querías eliminar.");
@@ -5077,6 +5183,10 @@ propertyDocumentList.addEventListener("click", event => {
 
 propertyForm.addEventListener("submit", async event => {
   event.preventDefault();
+  if (!requirePermission("property:manage")) {
+    closePropertyEditor();
+    return;
+  }
   propertyFormError.textContent = "";
 
   const values = Object.fromEntries(new FormData(propertyForm));
@@ -5191,7 +5301,7 @@ tenantForm.addEventListener("submit", event => {
   event.preventDefault();
   tenantFormError.textContent = "";
   const owner = owners.find(item => item.id === tenantOwnerSelect.value);
-  if (!owner) {
+  if (!owner || !requirePermission("tenant:manage", owner.id)) {
     tenantFormError.textContent = "No se encontró el propietario asociado a este inquilino.";
     return;
   }
@@ -5221,6 +5331,12 @@ tenantForm.addEventListener("submit", event => {
     return;
   }
 
+  const submittedAuthorizations = formData.getAll("authorizations");
+  if (submittedAuthorizations.some(value => !Object.hasOwn(TENANT_AUTHORIZATION_LABELS, value))) {
+    tenantFormError.textContent = "Selecciona únicamente autorizaciones disponibles.";
+    return;
+  }
+
   const tenant = {
     id: editingTenantId || crypto.randomUUID(),
     name: values.name.trim(),
@@ -5231,7 +5347,7 @@ tenantForm.addEventListener("submit", event => {
     propertyId: property.id,
     contractStart: values.contractStart,
     contractEnd: values.contractEnd || "",
-    authorizations: formData.getAll("authorizations"),
+    authorizations: submittedAuthorizations,
     authorizationNotes: (values.authorizationNotes || "").trim()
   };
   const isEditing = !!editingTenantId;
@@ -5277,6 +5393,11 @@ ownerNextBtn.addEventListener("click", () => {
 });
 
 document.querySelector("#confirm-owner-delete").addEventListener("click", () => {
+  if (!requirePermission("owner:manage", deletingOwnerId || "")) {
+    ownerDeleteDialog.close();
+    deletingOwnerId = null;
+    return;
+  }
   if (properties.some(property => property.ownerId === deletingOwnerId)) {
     toast("Reasigna los inmuebles antes de eliminar a este propietario.");
     deletingOwnerId = null;
@@ -5421,6 +5542,11 @@ if (cancelDocRejectBtn) cancelDocRejectBtn.addEventListener("click", () => docRe
 // Selector de Modo de Rol (Administrador / Propietario)
 if (activeRoleSelect) {
   activeRoleSelect.addEventListener("change", () => {
+    if (!Object.hasOwn(ROLE_PERMISSIONS, activeRoleSelect.value)) {
+      activeRoleSelect.value = activeRole;
+      toast("El modo seleccionado no está disponible.");
+      return;
+    }
     activeRole = activeRoleSelect.value;
     applyRoleUI();
     renderCommunities();
@@ -5429,9 +5555,9 @@ if (activeRoleSelect) {
     renderHomeDashboard();
     handleRouting();
     if (activeRole === "owner") {
-      toast("Modo Propietario activado. Visualizando la plataforma como asociado.");
+      toast("Vista Propietario de demostración activada; no sustituye autenticación ni autorización de servidor.");
     } else {
-      toast("Modo Administrador activado. Gestión completa y aprobación habilitada.");
+      toast("Vista Administrador de demostración activada; no sustituye autenticación ni autorización de servidor.");
     }
   });
 }
