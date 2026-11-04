@@ -19,11 +19,12 @@ La verificación de contacto requiere servir la aplicación desde un origen HTTP
   - Email de contacto obligatorio con validación de formato.
   - Catálogo territorial local (`municipios-ine.js`) con 8.132 municipios y 52 provincias del INE.
   - Código postal de 5 dígitos validado contra los códigos postales reales de España con autocompletado bidireccional de municipio y provincia.
-  - Observaciones opcionales.
+  - IBAN de la comunidad, presidencia, administración de fincas, año de constitución, fondo de reserva y observaciones.
 - **Tabla y visualización:**
   - Paginación configurable (5 o 10 por página) con controles de página anterior, siguiente e indicador de página actual.
   - Contador de propietarios censados en la ficha detallada de la comunidad.
   - Botones de acción con iconos estándar accesibles (Más info, Editar y Eliminar con confirmación modal).
+  - La ficha de cada comunidad permite crear inmuebles nuevos, asociar inmuebles existentes y consultar o desvincular los relacionados.
 
 ---
 
@@ -67,9 +68,10 @@ Gestión completa de los propietarios y asociados vinculados a las comunidades d
 
 ## 2.1. Entidad Inmuebles
 
-- La sección **Inmuebles** permite crear y editar inmuebles; cada registro debe pertenecer a una comunidad y tener un propietario registrado.
-- El inmueble guarda dirección, tipo e identificador, datos catastrales opcionales, estado de recibos (al corriente o pagos pendientes) y documentos adjuntos.
-- Los inquilinos nuevos se registran desde la ficha del propietario y quedan vinculados a una de sus unidades; la ficha y el listado del inmueble muestran los contratos vigentes. Se conserva la relación con propietarios usada por registros anteriores.
+- La sección **Inmuebles**, situada debajo de **Comunidades**, permite crear y editar inmuebles; cada registro pertenece a una única comunidad y debe tener uno o más propietarios.
+- El inmueble guarda tipo e identificador, dirección, bloque/escalera, planta y puerta, superficie, coeficiente de participación, uso, referencia catastral, finca registral, certificado energético, cuota comunitaria, estado de recibos y documentos adjuntos.
+- Un inmueble puede tener varios propietarios y varios inquilinos. Los inquilinos se vinculan además a su propietario y a una unidad; sólo se pueden asociar a un inmueble los inquilinos de alguno de los propietarios seleccionados.
+- Los botones de creación, edición, eliminación, guardado y cancelación de estas pantallas usan iconos accesibles con título y nombre accesible.
 - Los documentos adjuntos se guardan en el navegador junto con el resto de datos `localStorage`; esta persistencia es de demostración y debe migrarse a almacenamiento de backend para producción.
 - Los inmuebles existentes se vinculan a sus propietarios por la relación guardada o, durante la migración inicial, por el inmueble principal ya registrado en la ficha del propietario. Las unidades de catálogo todavía sin propietario no aparecen como entidades hasta que se asocian desde la ficha de un propietario.
 - Una comunidad no se puede eliminar si tiene inmuebles asociados, ni un propietario si es titular de un inmueble; primero hay que reasignar esos registros.
@@ -78,7 +80,7 @@ Gestión completa de los propietarios y asociados vinculados a las comunidades d
 
 ## 2.2. Inquilinos y residentes
 
-- La opción **Inquilinos**, dentro de la navegación de **Propietarios**, muestra un listado independiente con búsqueda y filtros por comunidad y estado del contrato.
+- La opción **Inquilinos**, debajo de **Propietarios** en la navegación, muestra un listado independiente con búsqueda y filtros por comunidad y estado del contrato.
 - Desde la ficha de un propietario se pueden crear, consultar, editar y eliminar sus inquilinos.
 - Cada inquilino queda asociado a una unidad de ese propietario, con contacto, documento identificativo opcional y fechas de contrato.
 - El inicio del contrato, un teléfono español y un email válido son obligatorios; la fecha de fin es opcional y no puede ser anterior al inicio.

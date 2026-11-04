@@ -2397,6 +2397,11 @@ select {
   flex-shrink: 0;
 }
 
+.home-quick-btn .icon-action-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 /* Formulario de propietarios: secciones, verificación, combo y errores */
 .form-section-title {
   margin: 8px 0 0;
@@ -2799,4 +2804,141 @@ select {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+
+/* Botones de acción con iconos estándar extendidos */
+.icon-action-btn.btn-lg {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.icon-action-btn.btn-add {
+  background: var(--brand);
+  color: white;
+  border-color: var(--brand);
+}
+
+.icon-action-btn.btn-add:hover {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+  color: white;
+}
+
+.icon-action-btn.btn-save {
+  background: #059669;
+  color: white;
+  border-color: #059669;
+}
+
+.icon-action-btn.btn-save:hover {
+  background: #047857;
+  border-color: #047857;
+  color: white;
+}
+
+.icon-action-btn.btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.icon-action-btn.btn-cancel:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+/* Multi-select para propietarios e inquilinos (1-n) */
+.multi-select-box {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.multi-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.1s ease;
+}
+
+.multi-select-item:hover {
+  background: #e2e8f0;
+}
+
+.multi-select-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+/* Lista de Inmuebles asociados a una Comunidad (1-n) */
+.community-properties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.community-property-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fcfcfd;
+  font-size: 13px;
+  transition: border-color 0.15s ease;
+}
+
+.community-property-card:hover {
+  border-color: var(--brand);
+}
+
+.community-property-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.community-property-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.community-property-sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.community-property-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.link-property-panel {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
