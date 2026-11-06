@@ -615,12 +615,13 @@
         <button class="icon-button" type="button" id="close-owner-dialog" aria-label="Cerrar">×</button>
       </div>
 
-      <!-- Pestañas del formulario: General · Inmueble · Contacto · Domiciliación · Documentación -->
+      <!-- Pestañas del formulario: General · Contacto y Domicilio · Comunidad y Notificaciones · Financiero · Inmueble · Documentación -->
       <nav class="community-editor-tabs" aria-label="Secciones del propietario">
         <button class="community-editor-tab active" type="button" data-owner-tab="general" aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="contact" aria-selected="false">Contacto y Domicilio</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="community" aria-selected="false">Comunidad y Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="banking" aria-selected="false">Financiero</button>
         <button class="community-editor-tab" type="button" data-owner-tab="property" aria-selected="false">Inmueble</button>
-        <button class="community-editor-tab" type="button" data-owner-tab="contact" aria-selected="false">Contacto y domicilio</button>
-        <button class="community-editor-tab" type="button" data-owner-tab="banking" aria-selected="false">Domiciliación</button>
         <button class="community-editor-tab" type="button" data-owner-tab="docs" aria-selected="false">Documentación <span class="tab-badge" id="tab-docs-badge">0/3</span></button>
       </nav>
 
@@ -645,15 +646,28 @@
           <label>DNI / NIE / CIF *
             <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI, NIE o CIF español." inputmode="text" autocomplete="off" />
           </label>
+          <label class="full">Observaciones
+            <textarea name="notes" rows="3" maxlength="500" placeholder="Observaciones del propietario (opcional)"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <!-- PESTAÑA: COMUNIDAD Y NOTIFICACIONES -->
+      <section class="community-editor-pane" id="owner-tab-community" data-owner-pane="community" hidden>
+        <div class="form-grid">
+          <p class="form-section-title full">Comunidad</p>
           <label>Condición de asociado *
             <select name="isMember" required>
               <option value="true" selected>Sí (Asociado / Socio de Peñarrubia)</option>
               <option value="false">No (Propietario no asociado)</option>
             </select>
           </label>
-          <label>Porcentaje de titularidad (%)
-            <input name="ownershipPercentage" inputmode="decimal" maxlength="6" placeholder="Ej: 100 o 50" />
+          <label>Comunidad
+            <select name="communityId">
+              <option value="">Selecciona una comunidad…</option>
+            </select>
           </label>
+          <p class="form-section-title full">Notificaciones (LPH)</p>
           <label>Derecho de voto en Junta (LPH)
             <select name="votingRights">
               <option value="active" selected>Con derecho a voto (al corriente)</option>
@@ -663,13 +677,14 @@
           <label>Representante legal / Apoderado
             <input name="legalRepresentative" maxlength="100" placeholder="Nombre y DNI del apoderado (opcional)" />
           </label>
-          <label>Canal preferente de notificaciones (LPH art. 9)
+          <label class="full">Canal preferente de notificaciones (LPH art. 9)
             <select name="notificationPreference">
               <option value="email" selected>Correo electrónico</option>
               <option value="postal">Domicilio postal</option>
               <option value="phone">Teléfono / Mensajería</option>
             </select>
           </label>
+          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente están verificados en la pestaña Contacto y Domicilio.</p>
         </div>
       </section>
 
@@ -720,12 +735,12 @@
             </div>
             <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
           </label>
-          <label>Otro teléfono
+          <label>Teléfono Secundario
             <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600 000 000 (opcional)" />
           </label>
-          <label class="full" id="label-email">Email de contacto *
+          <label class="full" id="label-email">Email
             <div class="verify-row">
-              <input name="email" type="email" required maxlength="120" placeholder="propietario@email.es" autocomplete="email" />
+              <input name="email" type="email" maxlength="120" placeholder="propietario@email.es" autocomplete="email" />
               <button class="secondary-button verify-btn" type="button" id="btn-verify-email">Verificar</button>
             </div>
             <span class="verify-status" id="email-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
@@ -754,16 +769,13 @@
       <!-- PESTAÑA: DOMICILIACIÓN -->
       <section class="community-editor-pane" id="owner-tab-banking" data-owner-pane="banking" hidden>
         <div class="form-grid">
-          <label class="full">IBAN / Domiciliación bancaria (para cuotas)
+          <label class="full">IBAN
             <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text" autocomplete="off" />
           </label>
-          <label>Moneda de cuotas
+          <label>Moneda
             <select name="currency">
               <option value="">Cargando monedas…</option>
             </select>
-          </label>
-          <label class="full">Observaciones
-            <textarea name="notes" rows="3" maxlength="500" placeholder="Observaciones relativas al propietario, avisos o preferencias..."></textarea>
           </label>
         </div>
       </section>
@@ -938,7 +950,16 @@
         </div>
         <button class="icon-button" type="button" id="close-owner-detail-dialog" aria-label="Cerrar">×</button>
       </div>
-      <p class="form-intro">Consulta detallada de todos los datos registrados del asociado/propietario.</p>
+      <p class="form-intro">Ficha del propietario (sólo lectura; para modificar usá «Editar propietario»).</p>
+      <nav class="community-editor-tabs" aria-label="Secciones del propietario">
+        <button class="community-editor-tab active" type="button" data-od-tab="general" aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-od-tab="contact" aria-selected="false">Contacto y Domicilio</button>
+        <button class="community-editor-tab" type="button" data-od-tab="community" aria-selected="false">Comunidad y Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-od-tab="banking" aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-od-tab="property" aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-od-tab="docs" aria-selected="false">Documentación</button>
+      </nav>
+      <section class="community-editor-pane" data-od-pane="general">
       <div class="detail-grid">
         <div class="detail-item full">
           <span class="detail-label">Nombre completo</span>
@@ -952,61 +973,33 @@
           <span class="detail-label">Condición en la asociación</span>
           <span class="detail-value" id="owner-detail-member"></span>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Comunidad vinculada</span>
-          <span class="detail-value" id="owner-detail-community"></span>
+        <div class="detail-item full">
+          <span class="detail-label">Observaciones</span>
+          <span class="detail-value" id="owner-detail-notes"></span>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Parcela / Inmueble</span>
-          <span class="detail-value" id="owner-detail-plot"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Tipo de inmueble</span>
-          <span class="detail-value" id="owner-detail-property-type"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Referencia catastral</span>
-          <span class="detail-value" id="owner-detail-cadastral"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Finca registral</span>
-          <span class="detail-value" id="owner-detail-registry"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Planta / puerta</span>
-          <span class="detail-value" id="owner-detail-floor-door"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Superficie / coeficiente</span>
-          <span class="detail-value" id="owner-detail-area-coef"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Uso</span>
-          <span class="detail-value" id="owner-detail-property-use"></span>
-        </div>
+      </div>
+      </section>
+      <section class="community-editor-pane" data-od-pane="contact" hidden>
+      <div class="detail-grid">
         <div class="detail-item">
           <span class="detail-label">Teléfono principal</span>
           <span class="detail-value" id="owner-detail-phone"></span>
         </div>
         <div class="detail-item">
-          <span class="detail-label">Otro teléfono</span>
+          <span class="detail-label">Teléfono Secundario</span>
           <span class="detail-value" id="owner-detail-otherPhone"></span>
         </div>
         <div class="detail-item full">
-          <span class="detail-label">Email de contacto</span>
+          <span class="detail-label">Email</span>
           <span class="detail-value" id="owner-detail-email"></span>
-        </div>
-        <div class="detail-item full">
-          <span class="detail-label">IBAN / Domiciliación</span>
-          <span class="detail-value" id="owner-detail-iban"></span>
         </div>
         <div class="detail-item full">
           <span class="detail-label">Dirección</span>
           <span class="detail-value" id="owner-detail-address"></span>
         </div>
         <div class="detail-item">
-          <span class="detail-label">Moneda de cuotas</span>
-          <span class="detail-value" id="owner-detail-currency"></span>
+          <span class="detail-label">Código postal</span>
+          <span class="detail-value" id="owner-detail-postalCode"></span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Municipio</span>
@@ -1016,13 +1009,13 @@
           <span class="detail-label">Provincia</span>
           <span class="detail-value" id="owner-detail-province"></span>
         </div>
+      </div>
+      </section>
+      <section class="community-editor-pane" data-od-pane="community" hidden>
+      <div class="detail-grid">
         <div class="detail-item">
-          <span class="detail-label">Código postal</span>
-          <span class="detail-value" id="owner-detail-postalCode"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Porcentaje de titularidad</span>
-          <span class="detail-value" id="owner-detail-ownershipPercentage">—</span>
+          <span class="detail-label">Comunidad vinculada</span>
+          <span class="detail-value" id="owner-detail-community"></span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Derecho de voto en Junta</span>
@@ -1036,50 +1029,87 @@
           <span class="detail-label">Canal de notificaciones</span>
           <span class="detail-value" id="owner-detail-notificationPreference">—</span>
         </div>
+      </div>
+      </section>
+      <section class="community-editor-pane" data-od-pane="banking" hidden>
+      <div class="detail-grid">
         <div class="detail-item full">
-          <span class="detail-label">Observaciones</span>
-          <span class="detail-value" id="owner-detail-notes"></span>
+          <span class="detail-label">IBAN</span>
+          <span class="detail-value" id="owner-detail-iban"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Moneda</span>
+          <span class="detail-value" id="owner-detail-currency"></span>
         </div>
       </div>
-
-      <section class="detail-docs-section" aria-labelledby="owner-detail-properties-heading">
-        <div class="detail-section-heading">
-          <div>
-            <p class="eyebrow">INMUEBLES</p>
-            <h3 id="owner-detail-properties-heading">Inmuebles del propietario</h3>
-          </div>
-          <span class="status-badge" id="owner-detail-property-count">0 inmuebles</span>
-        </div>
-        <p class="form-intro">Puedes filtrar por comunidad y seleccionar cualquiera de los inmuebles asociados a esta persona.</p>
-        <div class="property-selector-row">
-          <label>Comunidad
-            <select id="owner-detail-property-community">
-              <option value="">Todas las comunidades</option>
-            </select>
-          </label>
-          <label>Inmueble
-            <select id="owner-detail-property-select">
-              <option value="">No hay inmuebles asociados</option>
-            </select>
-          </label>
-          <button class="secondary-button" id="owner-detail-view-property" type="button">Ver inmueble</button>
-        </div>
       </section>
-
-      <section class="detail-docs-section" aria-labelledby="owner-detail-tenants-heading">
-        <div class="detail-section-heading">
-          <div>
-            <p class="eyebrow">RESIDENTES</p>
-            <h3 id="owner-detail-tenants-heading">Inquilinos</h3>
+      <section class="community-editor-pane" data-od-pane="property" hidden>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Parcela / Inmueble</span>
+            <span class="detail-value" id="owner-detail-plot"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Tipo de inmueble</span>
+            <span class="detail-value" id="owner-detail-property-type"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Referencia catastral</span>
+            <span class="detail-value" id="owner-detail-cadastral"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Finca registral</span>
+            <span class="detail-value" id="owner-detail-registry"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Planta / puerta</span>
+            <span class="detail-value" id="owner-detail-floor-door"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Superficie / coeficiente</span>
+            <span class="detail-value" id="owner-detail-area-coef"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Uso</span>
+            <span class="detail-value" id="owner-detail-property-use"></span>
           </div>
         </div>
-        <p class="form-intro">Gestiona las personas inquilinas, sus contratos, contacto y autorizaciones para las unidades de este propietario.</p>
-        <div class="tenant-list" id="owner-detail-tenant-list"></div>
-        <p class="form-intro" id="owner-detail-tenant-empty">Este propietario todavía no tiene inquilinos registrados.</p>
+        <section class="detail-docs-section" aria-labelledby="owner-detail-properties-heading">
+          <div class="detail-section-heading">
+            <div>
+              <p class="eyebrow">INMUEBLES</p>
+              <h3 id="owner-detail-properties-heading">Inmuebles del propietario</h3>
+            </div>
+            <span class="status-badge" id="owner-detail-property-count">0 inmuebles</span>
+          </div>
+          <p class="form-intro">Puedes filtrar por comunidad y seleccionar cualquiera de los inmuebles asociados a esta persona.</p>
+          <div class="property-selector-row">
+            <label>Comunidad
+              <select id="owner-detail-property-community">
+                <option value="">Todas las comunidades</option>
+              </select>
+            </label>
+            <label>Inmueble
+              <select id="owner-detail-property-select">
+                <option value="">No hay inmuebles asociados</option>
+              </select>
+            </label>
+            <button class="secondary-button" id="owner-detail-view-property" type="button">Ver inmueble</button>
+          </div>
+        </section>
+        <section class="detail-docs-section" aria-labelledby="owner-detail-tenants-heading">
+          <div class="detail-section-heading">
+            <div>
+              <p class="eyebrow">RESIDENTES</p>
+              <h3 id="owner-detail-tenants-heading">Inquilinos</h3>
+            </div>
+          </div>
+          <p class="form-intro">Inquilinos de las unidades de este propietario.</p>
+          <div class="tenant-list" id="owner-detail-tenant-list"></div>
+          <p class="form-intro" id="owner-detail-tenant-empty">Este propietario todavía no tiene inquilinos registrados.</p>
+        </section>
       </section>
-
-      <!-- SECCIÓN DE DOCUMENTACIÓN OFICIAL Y APROBACIÓN ADMINISTRATIVA -->
-      <div class="detail-docs-section">
+      <section class="community-editor-pane" data-od-pane="docs" hidden>
         <div class="detail-section-heading">
           <div>
             <p class="eyebrow">EXPEDIENTE DOCUMENTAL</p>
@@ -1096,7 +1126,7 @@
         <div class="admin-approval-panel" id="owner-detail-approval-panel">
           <!-- Renderizado dinámicamente con botones de aprobación/rechazo -->
         </div>
-      </div>
+      </section>
 
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-detail-btn" title="Cerrar" aria-label="Cerrar">
@@ -1425,7 +1455,7 @@
             </select>
           </label>
           <label>Superficie (m²)
-            <input name="areaM2" inputmode="decimal" maxlength="10" />
+            <input name="areaM2" inputmode="numeric" maxlength="10" placeholder="Ej: 95" />
           </label>
           <label>Planta
             <input name="floor" maxlength="10" />
@@ -1453,8 +1483,13 @@
       </section>
       <section class="property-editor-pane" data-property-pane="finance" hidden>
         <div class="form-grid">
-          <label>Cuota de Comunidad (€/mes)
+          <label>Cuota de Comunidad
             <input name="communityFee" inputmode="decimal" maxlength="10" placeholder="Ej: 65.50" />
+          </label>
+          <label>Moneda
+            <select name="currency">
+              <option value="">Cargando monedas…</option>
+            </select>
           </label>
           <label>Coeficiente de participación (%)
             <input name="participationCoef" inputmode="decimal" maxlength="10" />

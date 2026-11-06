@@ -42,16 +42,40 @@ function validatePropertyPayload(data) {
       return "Uno de los propietarios seleccionados ya no existe.";
     }
   }
+  return validateOwnerPercentages(data);
+}
+
+function validateOwnerPercentages(data) {
+  const ownerIds = Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [];
+  const percentages = data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
+  let total = 0;
+  for (const ownerId of ownerIds) {
+    const pct = Number(percentages[ownerId]);
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
+      return "El porcentaje de titularidad de cada propietario debe estar entre 0 y 100.";
+    }
+    total += pct;
+  }
+  if (total > 100.0001) {
+    return "La suma de los porcentajes de titularidad no puede superar el 100%.";
+  }
   return null;
 }
 
 function storeProperty(id, data, community) {
   const ownerIds = JSON.stringify(Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : []);
   const tenantIds = JSON.stringify(Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : []);
+  const percentagesInput = data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
+  const ownerPercentages = JSON.stringify(
+    Object.fromEntries((Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : []).map(ownerId => [
+      ownerId,
+      Number.isFinite(Number(percentagesInput[ownerId])) ? Number(percentagesInput[ownerId]) : 100
+    ]))
+  );
   return db.prepare(
     `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, communityFee, cadastralRef,
-       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province, currency, ownerPercentages)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        communityId = excluded.communityId,
        communityName = excluded.communityName,
@@ -74,14 +98,17 @@ function storeProperty(id, data, community) {
        notes = excluded.notes,
        postalCode = excluded.postalCode,
        city = excluded.city,
-       province = excluded.province`
+       province = excluded.province,
+       currency = excluded.currency,
+       ownerPercentages = excluded.ownerPercentages`
   ).run(
     id, community ? community.id : "", community ? community.name : "", ownerIds, tenantIds, data.propertyType, data.plot, data.address || "",
     data.staircase || "", data.energyCertificate || "", data.communityFee || "",
     data.cadastralRef || "", data.registryNumber || "", data.floor || "", data.door || "",
     data.areaM2 || "", data.participationCoef || "", data.propertyUse || "",
     data.receiptStatus === "pending" ? "pending" : "current",
-    data.notes || "", data.postalCode || "", data.city || "", data.province || ""
+    data.notes || "", data.postalCode || "", data.city || "", data.province || "",
+    data.currency || "", ownerPercentages
   );
 }
 

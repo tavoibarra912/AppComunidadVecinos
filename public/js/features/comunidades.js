@@ -13,6 +13,7 @@ let pendingCommunityFiles = [];
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
 const ICON_UNLINK = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 const ICON_VIEW_SM = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 
@@ -85,12 +86,10 @@ export function renderCommunities() {
           defaultVisible: true,
           render: community => {
             const wrap = document.createElement("div");
-            const link = document.createElement("button");
-            link.type = "button";
-            link.className = "text-link-button community-name";
-            link.textContent = community.name;
-            link.addEventListener("click", () => openCommunityDetail(community.id));
-            wrap.append(link);
+            const name = document.createElement("span");
+            name.className = "community-name";
+            name.textContent = community.name;
+            wrap.append(name);
             if (community.notes) {
               const notes = document.createElement("span");
               notes.className = "community-notes";
@@ -140,11 +139,13 @@ export function renderCommunities() {
             btnInfo.addEventListener("click", () => openCommunityDetail(community.id));
             wrap.append(btnInfo);
             if (!isOwner) {
+              const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${community.name}`, ICON_DOCS);
+              btnDocs.addEventListener("click", () => openCommunityEditor(community.id, "docs"));
               const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${community.name}`, ICON_EDIT);
               btnEdit.addEventListener("click", () => openCommunityEditor(community.id));
               const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${community.name}`, ICON_DELETE);
               btnDelete.addEventListener("click", () => openCommunityDelete(community.id));
-              wrap.append(btnEdit, btnDelete);
+              wrap.append(btnDocs, btnEdit, btnDelete);
             }
             return wrap;
           }
@@ -156,7 +157,7 @@ export function renderCommunities() {
   }
 }
 
-export function openCommunityEditor(id = null) {
+export function openCommunityEditor(id = null, defaultTab = "details") {
   if (!requirePermission("community:manage")) return;
   editingCommunityId = id;
   communityForm.reset();
@@ -165,7 +166,7 @@ export function openCommunityEditor(id = null) {
   const c = state.communities.find(item => item.id === id);
   document.querySelector("#dialog-title").textContent = c ? "Editar comunidad" : "Nueva comunidad";
 
-  switchCommunityEditorTab("details");
+  switchCommunityEditorTab(defaultTab);
 
   if (c) {
     Object.entries(c).forEach(([key, value]) => {
@@ -807,6 +808,10 @@ comPostalCodeInput.addEventListener("input", () => {
 
 comCitySelect.addEventListener("change", () => {
   syncCity(comCitySelect, communityForm.elements.province, comPostalCodeInput);
+});
+
+communityForm.elements.iban.addEventListener("input", () => {
+  maskIbanField(communityForm.elements.iban);
 });
 
 document.querySelector("#new-community").addEventListener("click", () => openCommunityEditor());

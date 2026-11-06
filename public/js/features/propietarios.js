@@ -11,8 +11,9 @@ import { openCommunityDetail } from "./comunidades.js";
 
 let ownerTable = null;
 let viewingDocDetails = null;
-// Inmuebles asociados en el editor de propietario (modelo N:M, se sincroniza al guardar)
+// Inmuebles asociados en el editor de propietario (modelo N:M) + % de titularidad por inmueble
 let editingOwnerProperties = [];
+let editingOwnerPropertyPercentages = {};
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
@@ -178,18 +179,40 @@ export function renderOwners() {
           }
         },
         {
+          key: "properties",
+          label: "Inmueble",
+          value: owner => ownerProperties(owner).map(property => property.plot).join(", ") || "Sin inmuebles",
+          defaultVisible: true,
+          render: owner => {
+            const linkedProperties = ownerProperties(owner);
+            const cell = document.createElement("div");
+            if (linkedProperties.length === 0) {
+              cell.textContent = "Sin inmuebles";
+              return cell;
+            }
+            linkedProperties.forEach((property, idx) => {
+              if (idx > 0) cell.append(", ");
+              const link = document.createElement("button");
+              link.type = "button";
+              link.className = "text-link-button";
+              link.textContent = property.plot || "Inmueble";
+              link.addEventListener("click", () => openPropertyDetail(property.id));
+              cell.append(link);
+            });
+            return cell;
+          }
+        },
+        {
           key: "name",
           label: "Propietario",
           value: owner => `${owner.name} ${owner.surname}`,
           defaultVisible: true,
           render: owner => {
             const wrap = document.createElement("div");
-            const link = document.createElement("button");
-            link.type = "button";
-            link.className = "text-link-button community-name";
-            link.textContent = `${owner.name} ${owner.surname}`;
-            link.addEventListener("click", () => openOwnerDetail(owner.id));
-            wrap.append(link);
+            const name = document.createElement("span");
+            name.className = "community-name";
+            name.textContent = `${owner.name} ${owner.surname}`;
+            wrap.append(name);
             if (owner.notes) {
               const notes = document.createElement("span");
               notes.className = "community-notes";
@@ -356,6 +379,8 @@ function renderOwnerPropertiesTab() {
     if (!property) return;
     const communityName = property.communityName ||
       state.communities.find(community => community.id === property.communityId)?.name || "Sin comunidad";
+    const capacity = ownerPropertyCapacity(property);
+    const currentPct = editingOwnerPropertyPercentages[propertyId] ?? capacity;
 
     const card = document.createElement("div");
     card.className = "community-property-card";
@@ -370,6 +395,30 @@ function renderOwnerPropertiesTab() {
     sub.textContent = `${communityName} · ${property.address || "Sin dirección"}`;
     info.append(title, sub);
 
+    const pctWrap = document.createElement("label");
+    pctWrap.className = "owner-property-pct";
+    const pctInput = document.createElement("input");
+    pctInput.type = "number";
+    pctInput.min = "0";
+    pctInput.max = "100";
+    pctInput.step = "0.0001";
+    pctInput.inputMode = "decimal";
+    pctInput.value = String(currentPct);
+    pctInput.title = "Porcentaje de titularidad de este propietario sobre el inmueble";
+    pctInput.setAttribute("aria-label", `Porcentaje de titularidad en ${property.plot}`);
+    pctInput.addEventListener("change", () => {
+      let value = Number(pctInput.value.replace(",", "."));
+      if (!Number.isFinite(value) || value < 0) value = 0;
+      if (value > capacity) {
+        value = capacity;
+        toast(`El inmueble "${property.plot}" tiene ${capacity}% de titularidad disponible para este propietario.`);
+      }
+      pctInput.value = String(value);
+      editingOwnerPropertyPercentages[propertyId] = value;
+    });
+    pctWrap.append(pctInput, document.createTextNode("%"));
+    info.append(pctWrap);
+
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
@@ -379,6 +428,7 @@ function renderOwnerPropertiesTab() {
     const unlinkBtn = iconBtn("btn-delete", "Desvincular de este propietario", `Desvincular ${property.plot}`, ICON_UNLINK_SM);
     unlinkBtn.addEventListener("click", () => {
       editingOwnerProperties = editingOwnerProperties.filter(id => id !== propertyId);
+      delete editingOwnerPropertyPercentages[propertyId];
       renderOwnerPropertiesTab();
     });
 
@@ -388,14 +438,35 @@ function renderOwnerPropertiesTab() {
   });
 }
 
+/**
+ * Titularidad disponible de un inmueble para el propietario en edición:
+ * 100% menos lo que ya tienen los DEMÁS propietarios vinculados.
+ */
+function ownerPropertyCapacity(property) {
+  const usedByOthers = propertyOwnerIds(property)
+    .filter(ownerId => ownerId !== state.ui.editingOwnerId)
+    .reduce((sum, ownerId) => sum + (Number(property.ownerPercentages?.[ownerId]) || 0), 0);
+  return Math.max(0, Math.round((100 - usedByOthers) * 10000) / 10000);
+}
+
 function openOwnerPropertyLinkPanel() {
   if (!ownerPropertyLinkPanel || !ownerPropertyLinkSelect) return;
   ownerPropertyLinkPanel.hidden = !ownerPropertyLinkPanel.hidden;
   if (!ownerPropertyLinkPanel.hidden) {
     ownerPropertyLinkSelect.replaceChildren();
-    const available = state.properties.filter(property => !editingOwnerProperties.includes(property.id));
+    const available = state.properties
+      .filter(property => !editingOwnerProperties.includes(property.id))
+      .filter(property => ownerPropertyCapacity(property) > 0);
+    const blocked = state.properties
+      .filter(property => !editingOwnerProperties.includes(property.id))
+      .filter(property => ownerPropertyCapacity(property) <= 0).length;
     if (available.length === 0) {
-      ownerPropertyLinkSelect.add(new Option("No hay más inmuebles disponibles", ""));
+      ownerPropertyLinkSelect.add(new Option(
+        blocked > 0
+          ? "Los inmuebles disponibles ya alcanzaron el 100% de titularidad"
+          : "No hay más inmuebles disponibles",
+        ""
+      ));
     } else {
       ownerPropertyLinkSelect.add(new Option("Selecciona un inmueble…", ""));
       [...available].sort((a, b) => (a.plot || "").localeCompare(b.plot || "", "es")).forEach(property => {
@@ -507,11 +578,21 @@ export function openOwnerEditor(id = null, defaultTab = "general") {
     selectOwnerTerritory(o.city, o.province, o.postalCode);
     editingDocs.current = o.documents ? JSON.parse(JSON.stringify(o.documents)) : {};
     editingOwnerProperties = ownerProperties(o).map(property => property.id);
+    editingOwnerPropertyPercentages = {};
+    ownerProperties(o).forEach(property => {
+      editingOwnerPropertyPercentages[property.id] = property.ownerPercentages?.[o.id] ?? 100;
+    });
+    updateOwnerCommunitySelect(o.communityId || "");
   } else {
     editingDocs.current = {};
     editingOwnerProperties = [];
+    editingOwnerPropertyPercentages = {};
+    updateOwnerCommunitySelect("");
     selectOwnerTerritory("", "", "");
   }
+
+  updateCommunityTabGating();
+  updateCanalOptions();
 
   // Si el último inmueble guardado en el editor de inmueble quedó pendiente de vincular
   if (state.ui.ownerEditorPropertyContext && state.ui.ownerEditorPropertyContext !== id) {
@@ -532,12 +613,57 @@ export function closeOwnerEditor() {
   state.ui.ownerEditorPropertyContext = null;
 }
 
+/** Selector único de comunidad del tab Comunidad. */
+function updateOwnerCommunitySelect(selectedId = "") {
+  const select = ownerForm.elements.communityId;
+  if (!select) return;
+  const current = selectedId || select.value;
+  select.replaceChildren(new Option("Selecciona una comunidad…", ""));
+  state.communities.forEach(community => select.add(new Option(community.name, community.id)));
+  if (current) select.value = current;
+}
+
+/** Condición de asociado: habilita/deshabilita los controles LPH del tab Comunidad. */
+function updateCommunityTabGating() {
+  const isMember = ownerForm.elements.isMember?.value === "true";
+  ["votingRights", "legalRepresentative", "notificationPreference"].forEach(name => {
+    const field = ownerForm.elements[name];
+    if (!field) return;
+    field.disabled = !isMember;
+    field.closest("label")?.classList.toggle("field-locked", !isMember);
+  });
+}
+
+/** Opciones del canal habilitadas sólo con el contacto correspondiente verificado. */
+function updateCanalOptions() {
+  const select = ownerForm.elements.notificationPreference;
+  if (!select) return;
+  const emailOption = select.querySelector('option[value="email"]');
+  const phoneOption = select.querySelector('option[value="phone"]');
+  const postalOption = select.querySelector('option[value="postal"]');
+  if (emailOption) {
+    const verified = contactVerify.email.verified;
+    emailOption.disabled = !verified;
+    emailOption.textContent = verified ? "Correo electrónico" : "Correo electrónico (pendiente de verificación)";
+    emailOption.style.color = verified ? "" : "#9aa7b5";
+  }
+  if (phoneOption) {
+    const verified = contactVerify.phone.verified;
+    phoneOption.disabled = !verified;
+    phoneOption.textContent = verified ? "Teléfono / Mensajería" : "Teléfono / Mensajería (pendiente de verificación)";
+    phoneOption.style.color = verified ? "" : "#9aa7b5";
+  }
+  if (postalOption) postalOption.style.color = "";
+  if (select.selectedOptions[0]?.disabled) select.value = "postal";
+}
+
 
 export function openOwnerDetail(id) {
   if (!requirePermission("owner:read", id)) return;
   const o = state.owners.find(item => item.id === id);
   if (!o) return;
   state.ui.viewingOwnerId = id;
+  switchOwnerDetailTab("general");
 
   document.querySelector("#owner-detail-name").textContent = `${o.name} ${o.surname}`;
   document.querySelector("#owner-detail-dni").textContent = o.dni || "—";
@@ -1098,6 +1224,22 @@ export function closeOwnerDetail() {
   state.ui.viewingOwnerId = null;
 }
 
+/** Tabs de la ficha de lectura de propietario (misma estructura que la edición). */
+function switchOwnerDetailTab(tab) {
+  document.querySelectorAll("#owner-detail-dialog [data-od-tab]").forEach(btn => {
+    const active = btn.dataset.odTab === tab;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", String(active));
+  });
+  document.querySelectorAll("#owner-detail-dialog [data-od-pane]").forEach(pane => {
+    pane.hidden = pane.dataset.odPane !== tab;
+  });
+}
+
+document.querySelectorAll("#owner-detail-dialog [data-od-tab]").forEach(btn => {
+  btn.addEventListener("click", () => switchOwnerDetailTab(btn.dataset.odTab));
+});
+
 export function openOwnerDelete(id) {
   if (!requirePermission("owner:manage", id)) return;
   const o = state.owners.find(item => item.id === id);
@@ -1152,19 +1294,14 @@ export function collectOwnerErrors() {
 
   const otherPhoneVal = digitsOnly(el("otherPhone")?.value || "", 9);
   if (el("otherPhone")?.value.trim() && !isValidPhone(otherPhoneVal)) {
-    errors.push("El otro teléfono debe ser un número español válido de 9 dígitos.");
+    errors.push("El teléfono secundario debe ser un número español válido de 9 dígitos.");
     marks.push("otherPhone");
   }
 
+  // Email opcional: sólo se valida formato (y su verificación habilita el canal de correo)
   const emailVal = (el("email")?.value || "").trim();
-  if (!emailVal) {
-    errors.push("El email de contacto es obligatorio.");
-    marks.push("email");
-  } else if (!isValidEmail(emailVal)) {
-    errors.push("El email de contacto no tiene un formato válido (ejemplo: usuario@dominio.es).");
-    marks.push("email");
-  } else if (!contactVerify.email.verified || contactVerify.email.value !== emailVal.toLowerCase()) {
-    errors.push("Debes verificar el correo electrónico mediante el código enviado.");
+  if (emailVal && !isValidEmail(emailVal)) {
+    errors.push("El email no tiene un formato válido (ejemplo: usuario@dominio.es).");
     marks.push("email");
   }
 
@@ -1285,6 +1422,24 @@ ownerForm.addEventListener("submit", async event => {
   }
 
   await refreshState();
+
+  // Sincronizar el % de titularidad del propietario en cada inmueble asociado
+  for (const propertyId of editingOwnerProperties) {
+    const property = state.properties.find(item => item.id === propertyId);
+    if (!property) continue;
+    const ownerIds = [...new Set([...propertyOwnerIds(property), data.id])];
+    const ownerPercentages = {
+      ...(property.ownerPercentages || {}),
+      [data.id]: Number(editingOwnerPropertyPercentages[propertyId] ?? 100)
+    };
+    try {
+      await api.updateProperty(propertyId, { ...property, ownerIds, ownerPercentages });
+    } catch (error) {
+      toast(`No se pudo actualizar la titularidad en "${property.plot}": ${error.message}`);
+    }
+  }
+  await refreshState();
+
   closeOwnerEditor();
   toast(isEditing ? "Propietario actualizado." : "Propietario creado.");
 
@@ -1429,7 +1584,10 @@ document.querySelector("#confirm-owner-delete").addEventListener("click", async 
   ownerDeleteDialog.close();
 });
 
-// Pestañas del Formulario de Propietario (5 tabs)
+// Condición de asociado habilita/deshabilita los controles LPH
+ownerForm.elements.isMember?.addEventListener("change", updateCommunityTabGating);
+
+// Pestañas del Formulario de Propietario (6 tabs)
 ownerTabsRoot.forEach(btn => {
   btn.addEventListener("click", () => switchOwnerDialogTab(btn.dataset.ownerTab));
 });
@@ -1458,10 +1616,23 @@ if (btnOwnerConfirmProperty) {
       toast("Selecciona un inmueble para asociar.");
       return;
     }
-    if (!editingOwnerProperties.includes(propertyId)) {
-      editingOwnerProperties.push(propertyId);
+    if (editingOwnerProperties.includes(propertyId)) {
+      toast("Ese inmueble ya está asociado a este propietario.");
+      return;
     }
+    const property = state.properties.find(item => item.id === propertyId);
+    const capacity = property ? ownerPropertyCapacity(property) : 0;
+    if (capacity <= 0) {
+      toast(`No se puede asociar el inmueble "${property?.plot}": ya alcanzó el 100% de titularidad entre sus propietarios.`);
+      return;
+    }
+    editingOwnerProperties.push(propertyId);
+    // Por defecto, el propietario toma la titularidad disponible
+    editingOwnerPropertyPercentages[propertyId] = capacity;
     renderOwnerPropertiesTab();
+    if (capacity <= 0) {
+      toast(`La titularidad de "${property.plot}" llegó al 100%: no se pueden agregar más propietarios.`);
+    }
   });
 }
 const btnOwnerCancelProperty = document.querySelector("#btn-owner-cancel-property");
@@ -1628,6 +1799,7 @@ if (verificationConfirmBtn) {
       contactVerify[verificationKind].verified = true;
       contactVerify[verificationKind].pending = false;
       contactVerify[verificationKind].verifiedAt = res.verifiedAt;
+      updateCanalOptions();
       setVerifyStatus(verificationKind, "verified",
         verificationKind === "phone" ? "✓ Teléfono verificado por SMS" : "✓ Correo electrónico verificado");
       toast(verificationKind === "phone" ? "Teléfono verificado correctamente." : "Correo electrónico verificado con éxito.");

@@ -176,7 +176,9 @@ ensureColumns("properties", {
   notes: "TEXT NOT NULL DEFAULT ''",
   postalCode: "TEXT NOT NULL DEFAULT ''",
   city: "TEXT NOT NULL DEFAULT ''",
-  province: "TEXT NOT NULL DEFAULT ''"
+  province: "TEXT NOT NULL DEFAULT ''",
+  currency: "TEXT NOT NULL DEFAULT ''",
+  ownerPercentages: "TEXT NOT NULL DEFAULT '{}'"
 });
 
 // Backfill puntual: los inmuebles previos heredan la ubicación de su comunidad
@@ -284,6 +286,8 @@ export function propertyFromRow(row) {
     postalCode: row.postalCode || "",
     city: row.city || "",
     province: row.province || "",
+    currency: row.currency || "",
+    ownerPercentages: parseJson(row.ownerPercentages, {}),
     documents: []
   };
 }

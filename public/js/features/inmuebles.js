@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, propertyLabel, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, propertyLabel, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { toast, renderDocumentRecords, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel } from "../utils.js";
 import { selectLocationInForm, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
@@ -42,6 +42,7 @@ let propertyTable = null;
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
+const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
 
 function iconBtn(className, title, ariaLabel, svg) {
@@ -56,6 +57,24 @@ function iconBtn(className, title, ariaLabel, svg) {
 
 // Estado en edición del formulario de inmueble (tabs Propietarios/Inquilinos)
 const editingPropertyPeople = { ownerIds: [], tenantIds: [] };
+// % de titularidad por propietario del inmueble en edición
+let editingOwnerPercentages = {};
+
+function populatePropertyCurrencySelect(selected) {
+  const select = propertyForm.elements.currency;
+  if (!select) return;
+  select.replaceChildren();
+  getCurrencies().forEach(currency => select.add(new Option(currency.name, currency.code)));
+  select.value = selected || "EUR";
+}
+
+/** Titularidad disponible del inmueble en edición para un propietario NUEVO. */
+function propertyOwnerCapacity() {
+  const used = editingPropertyPeople.ownerIds.reduce(
+    (sum, ownerId) => sum + (Number(editingOwnerPercentages[ownerId]) || 0), 0
+  );
+  return Math.max(0, Math.round((100 - used) * 10000) / 10000);
+}
 
 function switchPropertyEditorTab(tab) {
   document.querySelectorAll(".community-editor-tab[data-property-tab]").forEach(btn => {
@@ -85,6 +104,21 @@ function renderPropertyOwnersTab() {
   const panel = document.querySelector("#property-owner-link-panel");
   if (panel) panel.hidden = true;
 
+  const capacity = propertyOwnerCapacity();
+  const atFullCapacity = capacity <= 0;
+  // Con la titularidad al 100% se anula la opción de agregar más propietarios
+  const btnAdd = document.querySelector("#btn-property-add-owner");
+  const btnLink = document.querySelector("#btn-property-link-owner");
+  [btnAdd, btnLink].forEach(btn => { if (btn) btn.disabled = atFullCapacity; });
+  const oldNote = listEl.parentElement.querySelector(".property-owners-capacity-note");
+  if (oldNote) oldNote.remove();
+  if (atFullCapacity) {
+    const note = document.createElement("p");
+    note.className = "form-intro property-owners-capacity-note";
+    note.textContent = "La titularidad de este inmueble alcanzó el 100%: no se pueden agregar más propietarios. Un inmueble con un propietario al 100% no admite otro.";
+    listEl.parentElement.insertBefore(note, listEl);
+  }
+
   if (ownerIds.length === 0) {
     const empty = document.createElement("p");
     empty.className = "form-intro";
@@ -111,6 +145,35 @@ function renderPropertyOwnersTab() {
     sub.textContent = `Comunidad: ${communityName}`;
     info.append(title, sub);
 
+    const pctWrap = document.createElement("label");
+    pctWrap.className = "owner-property-pct";
+    const pctInput = document.createElement("input");
+    pctInput.type = "number";
+    pctInput.min = "0";
+    pctInput.max = "100";
+    pctInput.step = "0.0001";
+    pctInput.inputMode = "decimal";
+    pctInput.value = String(editingOwnerPercentages[ownerId] ?? 100);
+    pctInput.title = "Porcentaje de titularidad de este propietario sobre el inmueble";
+    pctInput.setAttribute("aria-label", `Porcentaje de titularidad de ${owner.name} ${owner.surname}`);
+    pctInput.addEventListener("change", () => {
+      let value = Number(pctInput.value.replace(",", "."));
+      if (!Number.isFinite(value) || value < 0) value = 0;
+      const others = editingPropertyPeople.ownerIds
+        .filter(id => id !== ownerId)
+        .reduce((sum, id) => sum + (Number(editingOwnerPercentages[id]) || 0), 0);
+      const maxForThis = Math.max(0, Math.round((100 - others) * 10000) / 10000);
+      if (value > maxForThis) {
+        value = maxForThis;
+        toast(`La suma de titularidades no puede superar el 100%: máximo ${maxForThis}% para este propietario.`);
+      }
+      pctInput.value = String(value);
+      editingOwnerPercentages[ownerId] = value;
+      renderPropertyOwnersTab();
+    });
+    pctWrap.append(pctInput, document.createTextNode("%"));
+    info.append(pctWrap);
+
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
@@ -120,6 +183,7 @@ function renderPropertyOwnersTab() {
     const unlinkBtn = iconBtn("btn-delete", "Desvincular propietario", `Desvincular ${owner.name} ${owner.surname}`, ICON_UNLINK_SM);
     unlinkBtn.addEventListener("click", () => {
       editingPropertyPeople.ownerIds = editingPropertyPeople.ownerIds.filter(id => id !== ownerId);
+      delete editingOwnerPercentages[ownerId];
       const validTenantIds = state.owners
         .filter(o => editingPropertyPeople.ownerIds.includes(o.id))
         .flatMap(o => ownerTenants(o).map(t => t.id));
@@ -195,6 +259,10 @@ function openPropertyOwnerLinkPanel() {
   panel.hidden = !panel.hidden;
   if (!panel.hidden) {
     select.replaceChildren();
+    if (propertyOwnerCapacity() <= 0) {
+      select.add(new Option("La titularidad del inmueble ya alcanzó el 100%", ""));
+      return;
+    }
     const available = state.owners.filter(o => !editingPropertyPeople.ownerIds.includes(o.id));
     if (available.length === 0) {
       select.add(new Option("No hay más propietarios disponibles", ""));
@@ -251,10 +319,19 @@ if (btnConfirmOwner) {
       toast("Selecciona un propietario.");
       return;
     }
+    const capacity = propertyOwnerCapacity();
+    if (capacity <= 0) {
+      toast("La titularidad de este inmueble ya alcanzó el 100%: no se pueden agregar más propietarios.");
+      return;
+    }
     editingPropertyPeople.ownerIds.push(ownerId);
+    editingOwnerPercentages[ownerId] = capacity;
     const panel = document.querySelector("#property-owner-link-panel");
     if (panel) panel.hidden = true;
     renderPropertyOwnersTab();
+    if (propertyOwnerCapacity() <= 0) {
+      toast("La titularidad del inmueble llegó al 100%: no se pueden agregar más propietarios.");
+    }
   });
 }
 
@@ -322,9 +399,13 @@ function updatePropertyCommunitySelect(selectedId = "") {
   if (current) select.value = current;
 }
 
-export function updatePropertyPeopleSelectors(selectedOwnerIds = [], selectedTenantIds = []) {
+export function updatePropertyPeopleSelectors(selectedOwnerIds = [], selectedTenantIds = [], selectedOwnerPercentages = {}) {
   editingPropertyPeople.ownerIds = [...selectedOwnerIds];
   editingPropertyPeople.tenantIds = [...selectedTenantIds];
+  editingOwnerPercentages = {};
+  selectedOwnerIds.forEach(ownerId => {
+    editingOwnerPercentages[ownerId] = Number(selectedOwnerPercentages[ownerId] ?? 100);
+  });
   renderPropertyOwnersTab();
   renderPropertyTenantsTab();
   const ownerPanel = document.querySelector("#property-owner-link-panel");
@@ -400,17 +481,18 @@ export function renderPropertyDocumentList() {
   });
 }
 
-export function openPropertyEditor(id = null) {
+export function openPropertyEditor(id = null, defaultTab = "general") {
   if (!requirePermission("property:manage")) return;
   state.ui.editingPropertyId = id;
   propertyForm.reset();
   propertyFormError.textContent = "";
   updatePropertyCommunitySelect();
-  switchPropertyEditorTab("general");
+  populatePropertyCurrencySelect(property?.currency || "EUR");
+  switchPropertyEditorTab(defaultTab);
   const property = state.properties.find(item => item.id === id);
   const ownerIds = propertyOwnerIds(property);
   const tenantIds = property?.tenantIds || (property?.tenantId ? [property.tenantId] : []);
-  updatePropertyPeopleSelectors(ownerIds, tenantIds);
+  updatePropertyPeopleSelectors(ownerIds, tenantIds, property?.ownerPercentages || {});
   state.ui.propertyDocuments = property?.documents ? property.documents.map(item => ({ ...item })) : [];
   propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
   propertyForm.elements.propertyType.value = property?.propertyType || "";
@@ -578,11 +660,13 @@ export function renderProperties() {
             btnInfo.addEventListener("click", () => openPropertyDetail(property.id));
             wrap.append(btnInfo);
             if (hasPermission("property:manage")) {
+              const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${property.plot}`, ICON_DOCS);
+              btnDocs.addEventListener("click", () => openPropertyEditor(property.id, "docs"));
               const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${property.plot}`, ICON_EDIT);
               btnEdit.addEventListener("click", () => openPropertyEditor(property.id));
               const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${property.plot}`, ICON_DELETE);
               btnDelete.addEventListener("click", () => openPropertyDelete(property.id));
-              wrap.append(btnEdit, btnDelete);
+              wrap.append(btnDocs, btnEdit, btnDelete);
             }
             return wrap;
           }
@@ -772,6 +856,21 @@ makeSelectSearchable(document.querySelector("#property-owner-link-select"), "Bus
 makeSelectSearchable(document.querySelector("#property-tenant-link-select"), "Buscar inquilino…");
 
 // Territorio del inmueble: CP → municipio/provincia automáticos
+// Cuota de comunidad: sólo valores de dinero (dígitos, coma o punto)
+const propertyFeeInput = propertyForm.elements.communityFee;
+if (propertyFeeInput) {
+  propertyFeeInput.addEventListener("input", () => {
+    propertyFeeInput.value = propertyFeeInput.value.replace(/[^0-9.,]/g, "").slice(0, 10);
+  });
+}
+// Superficie: sólo enteros
+const propertyAreaInput = propertyForm.elements.areaM2;
+if (propertyAreaInput) {
+  propertyAreaInput.addEventListener("input", () => {
+    propertyAreaInput.value = propertyAreaInput.value.replace(/[^0-9]/g, "").slice(0, 10);
+  });
+}
+
 const propertyPostalInput = propertyForm.elements.postalCode;
 const propertyCitySelect = propertyForm.elements.city;
 if (propertyPostalInput) {
@@ -851,8 +950,8 @@ propertyForm.addEventListener("submit", async event => {
   if (values.cadastralRef && !isValidCadastralRef(values.cadastralRef)) {
     messages.push("La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.");
   }
-  if (values.areaM2 && !isValidDecimal(values.areaM2, 0.01, 999999)) {
-    messages.push("La superficie debe ser un valor decimal positivo.");
+  if (values.areaM2 && !/^\d+([.,]0+)?$/.test(String(values.areaM2).trim())) {
+    messages.push("La superficie debe ser un número entero (sin decimales).");
   }
   if (values.participationCoef && !isValidDecimal(values.participationCoef, 0.0001, 100)) {
     messages.push("El coeficiente debe ser un porcentaje decimal entre 0,0001 y 100.");
@@ -876,7 +975,12 @@ propertyForm.addEventListener("submit", async event => {
     id: propertyId,
     communityId: values.communityId,
     ownerIds: selectedOwnerIds,
+    ownerPercentages: Object.fromEntries(selectedOwnerIds.map(ownerId => [
+      ownerId,
+      Number(editingOwnerPercentages[ownerId] ?? 100)
+    ])),
     tenantIds: selectedTenantIds,
+    currency: values.currency || "",
     address: values.address.trim(),
     propertyType: values.propertyType,
     plot: values.plot.trim(),

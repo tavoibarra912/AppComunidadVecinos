@@ -262,11 +262,14 @@ export function seedIfEmpty() {
       insertOwnerNotification.run(n.id, n.ownerId, n.title, n.type, n.message, n.date, n.timestamp, n.read ? 1 : 0);
     });
 
-    // Relaciones propietario ↔ inmueble (N:M): por plot dentro de la comunidad
-    const updatePropertyOwners = db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?");
+    // Relaciones propietario ↔ inmueble (N:M): por plot dentro de la comunidad.
+    // Los propietarios sembrados son titulares únicos (100%).
+    const updatePropertyOwners = db.prepare("UPDATE properties SET ownerIds = ?, ownerPercentages = ? WHERE id = ?");
     propertySeeds.forEach(p => {
       const matched = ownerSeeds.filter(o => o.communityId === p.communityId && o.plot === p.plot).map(o => o.id);
-      if (matched.length > 0) updatePropertyOwners.run(JSON.stringify(matched), p.id);
+      if (matched.length > 0) {
+        updatePropertyOwners.run(JSON.stringify(matched), JSON.stringify(Object.fromEntries(matched.map(id => [id, 100]))), p.id);
+      }
     });
 
     // Inmueble principal de cada propietario a partir del catálogo

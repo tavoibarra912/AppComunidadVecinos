@@ -33,6 +33,14 @@ async function boot() {
   handleRouting();
 }
 
+// Escape cierra cualquier modal abierto (comportamiento uniforme)
+document.querySelectorAll("dialog").forEach(dialog => {
+  dialog.addEventListener("cancel", event => {
+    event.preventDefault();
+    dialog.close();
+  });
+});
+
 boot().catch(error => {
   console.error("[main] Error de inicialización:", error);
 });
