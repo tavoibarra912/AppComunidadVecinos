@@ -11,7 +11,7 @@ function findTenant(id) {
 }
 
 function tenantPayload(tenant) {
-  return { ...tenant, documents: listDocuments("tenant", tenant.id) };
+  return tenant;
 }
 
 router.get("/", (req, res) => {

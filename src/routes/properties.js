@@ -24,7 +24,7 @@ router.get("/:id", (req, res) => {
   res.json(propertyPayload(property));
 });
 
-function validatePropertyPayload(data) {
+function validatePropertyPayload(data, { requireOwners = true } = {}) {
   if (!data.plot || !data.propertyType) {
     return "Tipo e identificador del inmueble son obligatorios.";
   }
@@ -34,7 +34,9 @@ function validatePropertyPayload(data) {
     if (!community) return "La comunidad indicada no existe.";
   }
   const ownerIds = Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [];
-  if (ownerIds.length === 0) {
+  // Los inmuebles heredados pueden no tener propietario; al actualizarlos
+  // (por ejemplo, para asociarlos a una comunidad) no hay que bloquear el guardado.
+  if (requireOwners && ownerIds.length === 0) {
     return "Selecciona al menos un propietario para el inmueble.";
   }
   for (const ownerId of ownerIds) {
@@ -42,36 +44,58 @@ function validatePropertyPayload(data) {
       return "Uno de los propietarios seleccionados ya no existe.";
     }
   }
-  return validateOwnerPercentages(data);
+  return normalizeOwnerPercentages(data).error || null;
 }
 
-function validateOwnerPercentages(data) {
+/**
+ * Completa los porcentajes de titularidad que falten.
+ * Los inmuebles antiguos guardaron `ownerPercentages` vacío aunque tuvieran
+ * propietarios; en ese caso se reparte el 100% disponible entre ellos
+ * (100% si solo hay uno) en lugar de rechazar cualquier actualización.
+ */
+function normalizeOwnerPercentages(data) {
   const ownerIds = Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [];
-  const percentages = data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
+  const input = data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
+  const percentages = {};
+  const missing = [];
   let total = 0;
+
   for (const ownerId of ownerIds) {
-    const pct = Number(percentages[ownerId]);
-    if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
-      return "El porcentaje de titularidad de cada propietario debe estar entre 0 y 100.";
+    const raw = input[ownerId];
+    if (raw === undefined || raw === null || raw === "") {
+      missing.push(ownerId);
+      continue;
     }
+    const pct = Number(raw);
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
+      return { error: "El porcentaje de titularidad de cada propietario debe estar entre 0 y 100." };
+    }
+    percentages[ownerId] = pct;
     total += pct;
   }
+
   if (total > 100.0001) {
-    return "La suma de los porcentajes de titularidad no puede superar el 100%.";
+    return { error: "La suma de los porcentajes de titularidad no puede superar el 100%." };
   }
-  return null;
+
+  if (missing.length > 0) {
+    const remaining = 100 - total;
+    const share = Math.round((remaining / missing.length) * 10000) / 10000;
+    if (share <= 0) {
+      return { error: "No queda porcentaje de titularidad disponible para el resto de propietarios." };
+    }
+    missing.forEach(ownerId => {
+      percentages[ownerId] = share;
+    });
+  }
+
+  return { percentages };
 }
 
 function storeProperty(id, data, community) {
   const ownerIds = JSON.stringify(Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : []);
   const tenantIds = JSON.stringify(Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : []);
-  const percentagesInput = data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
-  const ownerPercentages = JSON.stringify(
-    Object.fromEntries((Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : []).map(ownerId => [
-      ownerId,
-      Number.isFinite(Number(percentagesInput[ownerId])) ? Number(percentagesInput[ownerId]) : 100
-    ]))
-  );
+  const ownerPercentages = JSON.stringify(normalizeOwnerPercentages(data).percentages || {});
   return db.prepare(
     `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, communityFee, cadastralRef,
        registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province, currency, ownerPercentages)
@@ -147,7 +171,7 @@ router.put("/:id", (req, res) => {
   const existing = findProperty(req.params.id);
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
   const data = req.body || {};
-  const error = validatePropertyPayload(data);
+  const error = validatePropertyPayload(data, { requireOwners: false });
   if (error) return res.status(400).json({ error });
   const community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
 
@@ -182,4 +206,5 @@ router.delete("/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+export { normalizeOwnerPercentages };
 export default router;

@@ -22,8 +22,8 @@ router.get("/:id", (req, res) => {
 
 router.post("/", (req, res) => {
   const data = req.body || {};
-  if (!data.name || !data.surname || !data.dni) {
-    return res.status(400).json({ error: "Nombre, apellidos y documento son obligatorios." });
+  if (!data.name || !data.surname || !data.dni || !data.email) {
+    return res.status(400).json({ error: "Nombre, apellidos, documento y email son obligatorios." });
   }
   if (db.prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?)").get(String(data.dni))) {
     return res.status(409).json({ error: "Ya existe otro propietario registrado con ese documento." });
@@ -62,8 +62,8 @@ router.put("/:id", (req, res) => {
   const existing = findOwner(req.params.id);
   if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
   const data = req.body || {};
-  if (!data.name || !data.surname || !data.dni) {
-    return res.status(400).json({ error: "Nombre, apellidos y documento son obligatorios." });
+  if (!data.name || !data.surname || !data.dni || !data.email) {
+    return res.status(400).json({ error: "Nombre, apellidos, documento y email son obligatorios." });
   }
   const dniOwner = db.prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?) AND id <> ?").get(String(data.dni), existing.id);
   if (dniOwner) {

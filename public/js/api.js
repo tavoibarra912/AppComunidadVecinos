@@ -62,6 +62,18 @@ export const api = {
   },
   deleteDocument: id => request(`/documents/${id}`, { method: "DELETE" }),
 
+  // --- Administración: usuarios, roles y configuración ---
+  listUsers: () => request("/admin/users"),
+  createUser: payload => request("/admin/users", { method: "POST", body: JSON.stringify(payload) }),
+  updateUser: (id, payload) => request(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteUser: id => request(`/admin/users/${id}`, { method: "DELETE" }),
+  listRoles: () => request("/admin/roles"),
+  createRole: payload => request("/admin/roles", { method: "POST", body: JSON.stringify(payload) }),
+  updateRole: (id, payload) => request(`/admin/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteRole: id => request(`/admin/roles/${id}`, { method: "DELETE" }),
+  getSettings: () => request("/admin/settings"),
+  updateSettings: payload => request("/admin/settings", { method: "PUT", body: JSON.stringify(payload) }),
+
   // --- Notificaciones y buzones ---
   createAdminEmail: payload => request("/notifications/admin-emails", { method: "POST", body: JSON.stringify(payload) }),
   markAdminEmailRead: (id, read = true) => request(`/notifications/admin-emails/${id}`, { method: "PATCH", body: JSON.stringify({ read }) }),

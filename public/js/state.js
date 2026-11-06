@@ -54,6 +54,9 @@ export const state = {
   tenants: [],
   adminEmails: [],
   ownerNotifications: [],
+  users: [],
+  roles: [],
+  settings: {},
   activeRole: "admin",
   // Estado de sesión compartido entre módulos (diálogos en edición/visualización)
   ui: {
@@ -110,6 +113,9 @@ export async function refreshState() {
       state.tenants = bootstrap.tenants;
       state.adminEmails = bootstrap.adminEmails;
       state.ownerNotifications = bootstrap.ownerNotifications;
+      state.users = bootstrap.users || [];
+      state.roles = bootstrap.roles || [];
+      state.settings = bootstrap.settings || {};
       notifyDataChanged();
       refreshing = null;
     })();

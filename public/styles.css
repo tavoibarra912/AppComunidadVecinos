@@ -807,8 +807,9 @@ select {
 
 .toast {
   position: fixed;
-  right: 22px;
-  bottom: 22px;
+  inset: auto 22px 22px auto;
+  margin: 0;
+  border: 0;
   background: #142b40;
   color: white;
   padding: 12px 16px;
@@ -3576,6 +3577,7 @@ th.th-drag-over {
 #community-dialog .form-grid,
 #property-dialog .property-editor-pane,
 #owner-dialog .community-editor-pane,
+#tenant-dialog .community-editor-pane,
 #tenant-dialog .form-grid {
   min-height: 0;
 }
@@ -3584,6 +3586,7 @@ th.th-drag-over {
 #property-dialog .property-editor-pane,
 #owner-dialog .community-editor-pane,
 #owner-dialog .tab-pane,
+#tenant-dialog .community-editor-pane,
 #tenant-dialog .form-grid {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -3606,6 +3609,37 @@ th.th-drag-over {
 #tenant-dialog .form-error,
 #tenant-dialog .dialog-actions {
   flex: 0 0 auto;
+}
+
+/* Ficha de propietario en modo lectura: reutiliza el diálogo de edición */
+#owner-dialog.is-readonly .verify-btn,
+#owner-dialog.is-readonly #btn-owner-add-property,
+#owner-dialog.is-readonly #btn-owner-link-property,
+#owner-dialog.is-readonly #owner-property-link-panel,
+#owner-dialog.is-readonly .doc-dropzone,
+#owner-dialog.is-readonly .doc-sample-bar,
+#owner-dialog.is-readonly .doc-file-actions [data-action="remove"],
+#owner-dialog.is-readonly .community-property-actions .btn-delete {
+  display: none !important;
+}
+
+#owner-dialog.is-readonly #docs-summary-subtext {
+  display: none;
+}
+
+#owner-dialog.is-readonly input,
+#owner-dialog.is-readonly textarea,
+#owner-dialog.is-readonly select {
+  background: #f8fafc;
+  cursor: default;
+}
+
+#owner-dialog.is-readonly .owner-property-pct input {
+  color: #475569;
+}
+
+#owner-dialog.is-readonly #owner-tab-property .detail-section-subtitle {
+  display: none;
 }
 
 /* Modal de validación con todos los errores juntos */
@@ -3654,6 +3688,29 @@ th.th-drag-over {
   font-size: 13px;
 }
 
+/* Aviso de titularidad completa en el editor de inmueble */
+.property-owners-capacity-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.property-owners-capacity-note::before {
+  content: "⚠";
+  font-size: 16px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
 /* % de titularidad en las cards de vinculación */
 .owner-property-pct {
   display: inline-flex;
@@ -3680,4 +3737,125 @@ th.th-drag-over {
   outline: 2px solid #9fd8cf;
   outline-offset: 1px;
   border-color: var(--brand);
+}
+
+/* ==========================================
+   RESPONSIVE GLOBAL (reajuste para pantallas chicas)
+   ========================================== */
+@media (max-width: 1024px) {
+  .layout {
+    grid-template-columns: 200px 1fr;
+  }
+  .home-dual-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* Formularios y fichas a una columna */
+  .form-grid,
+  .detail-grid,
+  .property-editor-pane .form-grid,
+  #community-dialog .form-grid,
+  #owner-dialog .form-grid,
+  #tenant-dialog .form-grid,
+  #property-form .form-grid,
+  #community-form .form-grid,
+  #owner-form .form-grid,
+  #tenant-form .form-grid,
+  #user-form .form-grid,
+  #role-form .form-grid,
+  #settings-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Pestañas de editores desplazables horizontalmente */
+  .community-editor-tabs,
+  .admin-tabs,
+  .dialog-tabs {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .community-editor-tab,
+  .dialog-tab {
+    flex: 0 0 auto;
+  }
+
+  /* Tablas: scroll horizontal controlado */
+  .table-engine .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Controles de la tabla apilados */
+  .table-engine-controls {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .table-columns-wrap {
+    margin-left: 0;
+  }
+
+  /* Modales a ancho completo con alto controlado */
+  dialog {
+    width: calc(100vw - 16px) !important;
+    max-height: calc(100vh - 24px);
+  }
+
+  #community-dialog form,
+  #property-dialog form,
+  #owner-dialog form,
+  #tenant-dialog form {
+    height: auto;
+    max-height: calc(100vh - 40px);
+  }
+
+  .community-editor-pane,
+  .property-editor-pane,
+  .tab-pane,
+  #owner-dialog .community-editor-pane {
+    overflow-y: auto;
+  }
+
+  /* Grids de documentación y KPIs a una columna */
+  .detail-docs-grid,
+  .docs-upload-container,
+  .home-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Selectores apilados */
+  .property-selector-row,
+  .verify-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Acciones de fila más compactas */
+  .row-actions {
+    flex-wrap: wrap;
+  }
+
+  .page-heading {
+    gap: 10px;
+  }
+}
+
+/* Toast siempre por encima de modales y backdrops */
+#toast {
+  z-index: 100000;
+}
+
+dialog[open] #toast,
+dialog .toast {
+  z-index: 100000;
 }

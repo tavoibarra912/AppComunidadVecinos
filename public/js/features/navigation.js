@@ -5,6 +5,7 @@ import { renderOwners } from "./propietarios.js";
 import { renderTenants } from "./inquilinos.js";
 import { renderProperties } from "./inmuebles.js";
 import { renderHomeDashboard } from "./home.js";
+import { renderAdministracion } from "./administracion.js";
 import { updateInboxBadge, updateOwnerInboxBadge } from "./notificaciones.js";
 
 const userAvatar = document.querySelector("#user-avatar");
@@ -21,11 +22,13 @@ const mobileNavPropietarios = document.querySelector("#mobile-nav-propietarios")
 const navInmuebles = document.querySelector("#nav-inmuebles");
 const mobileNavInmuebles = document.querySelector("#mobile-nav-inmuebles");
 const navInquilinos = document.querySelector("#nav-inquilinos");
+const navAdministracion = document.querySelector("#nav-administracion");
 const mobileNavInquilinos = document.querySelector("#mobile-nav-inquilinos");
 const secComunidades = document.querySelector("#comunidades");
 const secPropietarios = document.querySelector("#propietarios");
 const secInmuebles = document.querySelector("#inmuebles");
 const secTenants = document.querySelector("#inquilinos");
+const secAdministracion = document.querySelector("#administracion");
 const sidebarLabel = document.querySelector("#sidebar-label");
 const comHeadingEyebrow = document.querySelector("#comunidades-heading-eyebrow");
 const comHeadingTitle = document.querySelector("#comunidades-heading-title");
@@ -79,6 +82,7 @@ export function applyRoleUI() {
   if (mobileNavPropietarios) mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (navInmuebles) navInmuebles.hidden = isOwner;
   if (mobileNavInmuebles) mobileNavInmuebles.hidden = isOwner;
+  if (navAdministracion) navAdministracion.hidden = isOwner;
   document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach(link => {
     link.hidden = isOwner;
   });
@@ -138,12 +142,28 @@ export function handleRouting() {
     secTenants.hidden = true;
     secTenants.style.display = "none";
   }
+  if (secAdministracion) {
+    secAdministracion.hidden = true;
+    secAdministracion.style.display = "none";
+  }
 
   [navHome, mobileNavHome, navComunidades, mobileNavComunidades, navInmuebles, mobileNavInmuebles, navPropietarios, mobileNavPropietarios, navInquilinos, mobileNavInquilinos].forEach(el => {
     if (el) el.classList.remove("active");
   });
 
-  if (hash === "#inquilinos") {
+  if (hash === "#administracion") {
+    if (state.activeRole !== "admin") {
+      window.location.hash = "#home";
+      return;
+    }
+    if (secAdministracion) {
+      secAdministracion.hidden = false;
+      secAdministracion.style.display = "block";
+    }
+    if (navAdministracion) navAdministracion.classList.add("active");
+    document.title = "Peñarrubia · Administración";
+    renderAdministracion();
+  } else if (hash === "#inquilinos") {
     if (secTenants) {
       secTenants.hidden = false;
       secTenants.style.display = "block";

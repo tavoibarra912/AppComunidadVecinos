@@ -1,6 +1,6 @@
 import { api } from "../api.js";
 import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, propertyLabel, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
-import { toast, renderDocumentRecords, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel } from "../utils.js";
+import { toast, renderDocumentRecords, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { selectLocationInForm, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
@@ -324,9 +324,7 @@ if (btnConfirmOwner) {
     }
     const capacity = propertyOwnerCapacity();
     if (capacity <= 0) {
-      showValidationErrors([
-        "La suma de titularidades de este inmueble ya llega al 100%. Para agregar otro propietario, bajá primero el porcentaje de alguno de los propietarios actuales (pestaña Propietarios) y volvé a intentarlo."
-      ], "No hay titularidad disponible");
+      toast("La titularidad del inmueble ya está completa (100%). Bajá el porcentaje de algún propietario para agregar otro.");
       return;
     }
     editingPropertyPeople.ownerIds.push(ownerId);
@@ -335,9 +333,7 @@ if (btnConfirmOwner) {
     if (panel) panel.hidden = true;
     renderPropertyOwnersTab();
     if (propertyOwnerCapacity() <= 0) {
-      showValidationErrors([
-        "La titularidad de este inmueble llegó al 100%: no se pueden agregar más propietarios."
-      ], "Titularidad completa");
+      toast("Propietario agregado. La titularidad del inmueble quedó completa (100%).");
     }
   });
 }
@@ -488,7 +484,7 @@ export function renderPropertyDocumentList() {
   });
 }
 
-export function openPropertyEditor(id = null, defaultTab = "general") {
+export function openPropertyEditor(id = null, defaultTab = "general", readonly = false) {
   if (!requirePermission("property:manage")) return;
   state.ui.editingPropertyId = id;
   propertyForm.reset();
@@ -512,9 +508,13 @@ export function openPropertyEditor(id = null, defaultTab = "general") {
       });
     selectLocationInForm(propertyForm, property.city, property.province);
   }
-  document.querySelector("#property-dialog-title").textContent = property ? "Editar inmueble" : "Nuevo inmueble";
+  document.querySelector("#property-dialog-title").textContent = property ? (readonly ? `Ver inmueble: ${property.plot}` : "Editar inmueble") : "Nuevo inmueble";
+  setFormReadonly(propertyForm, readonly);
   renderPropertyDocumentList();
   propertyDialog.showModal();
+  if (!readonly) {
+    propertyForm.elements.plot.focus();
+  }
 }
 
 export function closePropertyEditor() {
@@ -663,8 +663,8 @@ export function renderProperties() {
           render: property => {
             const wrap = document.createElement("div");
             wrap.className = "row-actions";
-            const btnInfo = iconBtn("btn-info", "Más info", `Más información de ${property.plot}`, ICON_INFO);
-            btnInfo.addEventListener("click", () => openPropertyDetail(property.id));
+            const btnInfo = iconBtn("btn-info", "Ver inmueble", `Ver ${property.plot}`, ICON_INFO);
+            btnInfo.addEventListener("click", () => openPropertyEditor(property.id, "general", true));
             wrap.append(btnInfo);
             if (hasPermission("property:manage")) {
               const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${property.plot}`, ICON_DOCS);
@@ -834,8 +834,8 @@ export function closePropertyDetail() {
 
 
 newPropertyBtn.addEventListener("click", () => openPropertyEditor());
-document.querySelector("#close-property-dialog").addEventListener("click", closePropertyEditor);
-document.querySelector("#cancel-property-dialog").addEventListener("click", closePropertyEditor);
+document.querySelector("#close-property-dialog").addEventListener("click", () => intentarCerrar(propertyForm, propertyDialog));
+document.querySelector("#cancel-property-dialog").addEventListener("click", () => intentarCerrar(propertyForm, propertyDialog));
 document.querySelector("#close-property-detail-dialog").addEventListener("click", closePropertyDetail);
 document.querySelector("#close-property-detail-btn").addEventListener("click", closePropertyDetail);
 document.querySelector("#property-detail-edit-btn").addEventListener("click", () => {
@@ -1023,6 +1023,8 @@ propertyForm.addEventListener("submit", async event => {
     propertyFormError.textContent = error.message;
     return;
   }
+
+  limpiarGuardia(propertyForm);
 
   await refreshState();
   // Si se creó desde la pestaña Inmueble del editor de propietario, actualizar sus badges

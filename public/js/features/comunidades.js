@@ -1,6 +1,6 @@
 import { api } from "../api.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
-import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, maskIbanField } from "../utils.js";
+import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor, updatePropertyPeopleSelectors } from "./inmuebles.js";
@@ -143,8 +143,8 @@ export function renderCommunities() {
             const isOwner = state.activeRole === "owner";
             const wrap = document.createElement("div");
             wrap.className = "row-actions";
-            const btnInfo = iconBtn("btn-info", isOwner ? "Ver datos de mi comunidad" : "Más info", `Más información de ${community.name}`, ICON_INFO);
-            btnInfo.addEventListener("click", () => openCommunityDetail(community.id));
+            const btnInfo = iconBtn("btn-info", isOwner ? "Ver datos de mi comunidad" : "Ver comunidad", `Ver ${community.name}`, ICON_INFO);
+            btnInfo.addEventListener("click", () => openCommunityEditor(community.id, "details", true));
             wrap.append(btnInfo);
             if (!isOwner) {
               const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${community.name}`, ICON_DOCS);
@@ -165,16 +165,17 @@ export function renderCommunities() {
   }
 }
 
-export function openCommunityEditor(id = null, defaultTab = "details") {
+export function openCommunityEditor(id = null, defaultTab = "details", readonly = false) {
   if (!requirePermission("community:manage")) return;
   editingCommunityId = id;
   communityForm.reset();
   communityError.textContent = "";
   pendingCommunityFiles = [];
   const c = state.communities.find(item => item.id === id);
-  document.querySelector("#dialog-title").textContent = c ? "Editar comunidad" : "Nueva comunidad";
+  document.querySelector("#dialog-title").textContent = c ? (readonly ? "Ver comunidad" : "Editar comunidad") : "Nueva comunidad";
 
   switchCommunityEditorTab(defaultTab);
+  setFormReadonly(communityForm, readonly);
 
   if (c) {
     Object.entries(c).forEach(([key, value]) => {
@@ -196,8 +197,9 @@ export function openCommunityEditor(id = null, defaultTab = "details") {
   }
   renderCommunityDocumentList(c);
   populateCommunityCurrencySelect(c?.currency || "EUR");
+  armarGuardia(communityForm, communityDialog);
   communityDialog.showModal();
-  communityForm.elements.name.focus();
+  if (!readonly) communityForm.elements.name.focus();
 }
 
 function switchCommunityEditorTab(tab) {
@@ -700,6 +702,7 @@ communityForm.addEventListener("submit", async event => {
   const wasEditing = !!editingCommunityId;
   const savedId = await persistCommunityDraft();
   if (!savedId) return;
+  limpiarGuardia(communityForm);
   closeCommunityEditor();
   toast(wasEditing ? "Comunidad actualizada." : "Comunidad creada.");
 });
@@ -824,8 +827,8 @@ communityForm.elements.iban.addEventListener("input", () => {
 });
 
 document.querySelector("#new-community").addEventListener("click", () => openCommunityEditor());
-document.querySelector("#close-dialog").addEventListener("click", closeCommunityEditor);
-document.querySelector("#cancel-dialog").addEventListener("click", closeCommunityEditor);
+document.querySelector("#close-dialog").addEventListener("click", () => intentarCerrar(communityForm, communityDialog));
+document.querySelector("#cancel-dialog").addEventListener("click", () => intentarCerrar(communityForm, communityDialog));
 
 closeDetailDialog.addEventListener("click", closeCommunityDetail);
 closeDetailBtn.addEventListener("click", closeCommunityDetail);

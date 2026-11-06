@@ -1,6 +1,6 @@
 import { api } from "../api.js";
 import { state, refreshState, CURRENT_OWNER_ID, ownerProperties, ownerTenants, getTenantContractStatus, tenantsForProperty, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
-import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors } from "../utils.js";
+import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { editingDocs, renderOwnerDialogDocs, getFormOwnerContext, DocumentValidator } from "../docs-engine.js";
@@ -66,7 +66,6 @@ const ownerDetailDialog = document.querySelector("#owner-detail-dialog");
 const closeOwnerDetailDialog = document.querySelector("#close-owner-detail-dialog");
 const closeOwnerDetailBtn = document.querySelector("#close-owner-detail-btn");
 const ownerDetailEditBtn = document.querySelector("#owner-detail-edit-btn");
-const ownerDetailManageDocsBtn = document.querySelector("#owner-detail-manage-docs-btn");
 const ownerDetailDocBadge = document.querySelector("#owner-detail-doc-badge");
 const ownerDetailDocsGrid = document.querySelector("#owner-detail-docs-grid");
 const ownerDetailApprovalPanel = document.querySelector("#owner-detail-approval-panel");
@@ -76,6 +75,9 @@ const ownerDetailPropertyCount = document.querySelector("#owner-detail-property-
 const ownerDetailViewPropertyBtn = document.querySelector("#owner-detail-view-property");
 const ownerDetailTenantList = document.querySelector("#owner-detail-tenant-list");
 const ownerDetailTenantEmpty = document.querySelector("#owner-detail-tenant-empty");
+
+// El diálogo de edición se reutiliza en modo lectura para «Ver» propietario.
+let ownerDialogReadOnly = false;
 
 // Pestañas del Formulario de Propietario (5 tabs)
 const ownerTabsRoot = document.querySelectorAll(".community-editor-tab[data-owner-tab]");
@@ -369,7 +371,9 @@ function renderOwnerPropertiesTab() {
   if (editingOwnerProperties.length === 0) {
     const empty = document.createElement("p");
     empty.className = "form-intro";
-    empty.textContent = "Este propietario aún no tiene inmuebles asociados. Asocia uno existente o crea uno nuevo.";
+    empty.textContent = ownerDialogReadOnly
+      ? "Este propietario aún no tiene inmuebles asociados."
+      : "Este propietario aún no tiene inmuebles asociados. Asocia uno existente o crea uno nuevo.";
     ownerPropertiesList.append(empty);
     return;
   }
@@ -406,7 +410,9 @@ function renderOwnerPropertiesTab() {
     pctInput.value = String(currentPct);
     pctInput.title = "Porcentaje de titularidad de este propietario sobre el inmueble";
     pctInput.setAttribute("aria-label", `Porcentaje de titularidad en ${property.plot}`);
+    pctInput.readOnly = ownerDialogReadOnly;
     pctInput.addEventListener("change", () => {
+      if (ownerDialogReadOnly) return;
       let value = Number(pctInput.value.replace(",", "."));
       const previous = editingOwnerPropertyPercentages[propertyId] ?? capacity;
       if (!Number.isFinite(value) || value <= 0) {
@@ -430,14 +436,16 @@ function renderOwnerPropertiesTab() {
     const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${property.plot}`, ICON_VIEW_SM);
     viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
 
-    const unlinkBtn = iconBtn("btn-delete", "Desvincular de este propietario", `Desvincular ${property.plot}`, ICON_UNLINK_SM);
-    unlinkBtn.addEventListener("click", () => {
-      editingOwnerProperties = editingOwnerProperties.filter(id => id !== propertyId);
-      delete editingOwnerPropertyPercentages[propertyId];
-      renderOwnerPropertiesTab();
-    });
-
-    actions.append(viewBtn, unlinkBtn);
+    actions.append(viewBtn);
+    if (!ownerDialogReadOnly) {
+      const unlinkBtn = iconBtn("btn-delete", "Desvincular de este propietario", `Desvincular ${property.plot}`, ICON_UNLINK_SM);
+      unlinkBtn.addEventListener("click", () => {
+        editingOwnerProperties = editingOwnerProperties.filter(id => id !== propertyId);
+        delete editingOwnerPropertyPercentages[propertyId];
+        renderOwnerPropertiesTab();
+      });
+      actions.append(unlinkBtn);
+    }
     card.append(info, actions);
     ownerPropertiesList.append(card);
   });
@@ -545,19 +553,24 @@ export function propertiesForCommunity(communityId) {
   return state.properties.filter(p => !communityId || p.communityId === communityId);
 }
 
-export function openOwnerEditor(id = null, defaultTab = "general") {
+export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = false } = {}) {
   const isOwner = state.activeRole === "owner";
   if (isOwner) {
     id = CURRENT_OWNER_ID;
   }
-  if (!requirePermission(isOwner ? "owner:edit" : "owner:manage", id || "")) return;
+  const permission = readOnly ? "owner:read" : (isOwner ? "owner:edit" : "owner:manage");
+  if (!requirePermission(permission, id || "")) return;
+  ownerDialogReadOnly = readOnly;
   state.ui.editingOwnerId = id;
   ownerForm.reset();
   clearOwnerFieldErrors();
   populateCurrencySelect("EUR");
 
   const o = state.owners.find(item => item.id === id);
-  if (isOwner) {
+  if (readOnly) {
+    document.querySelector("#owner-dialog-title").textContent = "Ficha del propietario";
+    ownerForm.elements.isMember.disabled = true;
+  } else if (isOwner) {
     document.querySelector("#owner-dialog-title").textContent = "Editar mi perfil de propietario";
     ownerForm.elements.isMember.disabled = true;
   } else {
@@ -605,17 +618,69 @@ export function openOwnerEditor(id = null, defaultTab = "general") {
   }
 
   resetContactVerification(o);
+  applyOwnerDialogReadOnly(readOnly);
   switchOwnerDialogTab(defaultTab);
-  ownerDialog.showModal();
-  if (defaultTab === "general") {
+  if (!ownerDialog.open) ownerDialog.showModal();
+  if (defaultTab === "general" && !readOnly) {
     ownerForm.elements.name.focus();
   }
 }
 
 export function closeOwnerEditor() {
+  applyOwnerDialogReadOnly(false);
   ownerDialog.close();
+  if (ownerDialogReadOnly) {
+    state.ui.viewingOwnerId = null;
+  }
+  ownerDialogReadOnly = false;
   state.ui.editingOwnerId = null;
   state.ui.ownerEditorPropertyContext = null;
+}
+
+/**
+ * Aplica o quita el modo lectura al diálogo de propietario.
+ * Reutiliza el mismo formulario y las mismas pestañas que la edición.
+ */
+function applyOwnerDialogReadOnly(readOnly) {
+  ownerDialog.classList.toggle("is-readonly", readOnly);
+  ownerForm.querySelectorAll("input, select, textarea").forEach(control => {
+    if (readOnly) {
+      if (control.dataset.readonlyWasDisabled === undefined) {
+        control.dataset.readonlyWasDisabled = control.disabled ? "1" : "0";
+      }
+      if (control.dataset.readonlyWasReadOnly === undefined) {
+        control.dataset.readonlyWasReadOnly = control.readOnly ? "1" : "0";
+      }
+      const isChoice = control.tagName === "SELECT" || ["file", "checkbox", "radio"].includes(control.type) || control.classList.contains("combo-box-input");
+      if (isChoice) {
+        control.disabled = true;
+      } else {
+        control.readOnly = true;
+      }
+      return;
+    }
+    if (control.dataset.readonlyWasDisabled !== undefined) {
+      control.disabled = control.dataset.readonlyWasDisabled === "1";
+      delete control.dataset.readonlyWasDisabled;
+    }
+    if (control.dataset.readonlyWasReadOnly !== undefined) {
+      control.readOnly = control.dataset.readonlyWasReadOnly === "1";
+      delete control.dataset.readonlyWasReadOnly;
+    }
+  });
+
+  const saveBtn = document.querySelector("#btn-save-owner");
+  const editBtn = document.querySelector("#owner-readonly-edit-btn");
+  const note = document.querySelector("#owner-readonly-note");
+  const cancelBtn = document.querySelector("#cancel-owner-dialog");
+  if (saveBtn) saveBtn.hidden = readOnly;
+  if (editBtn) editBtn.hidden = !readOnly;
+  if (note) note.hidden = !readOnly;
+  if (cancelBtn) {
+    cancelBtn.title = readOnly ? "Cerrar" : "Cancelar";
+    cancelBtn.setAttribute("aria-label", readOnly ? "Cerrar" : "Cancelar");
+  }
+  if (readOnly && ownerPropertyLinkPanel) ownerPropertyLinkPanel.hidden = true;
 }
 
 /** Selector único de comunidad del tab Comunidad. */
@@ -668,54 +733,8 @@ export function openOwnerDetail(id) {
   const o = state.owners.find(item => item.id === id);
   if (!o) return;
   state.ui.viewingOwnerId = id;
-  switchOwnerDetailTab("general");
-
-  document.querySelector("#owner-detail-name").textContent = `${o.name} ${o.surname}`;
-  document.querySelector("#owner-detail-dni").textContent = o.dni || "—";
-  
-  const memberEl = document.querySelector("#owner-detail-member");
-  memberEl.innerHTML = `<span class="status-badge ${o.isMember ? "member" : "non-member"}">${o.isMember ? "Asociado (Socio de Peñarrubia)" : "Propietario no asociado"}</span>`;
-
-  document.querySelector("#owner-detail-community").textContent = o.communityName || "—";
-  document.querySelector("#owner-detail-plot").textContent = o.plot || "—";
-  document.querySelector("#owner-detail-phone").textContent = o.phone || "—";
-  document.querySelector("#owner-detail-otherPhone").textContent = o.otherPhone || "—";
-  document.querySelector("#owner-detail-email").textContent = o.email || "—";
-  document.querySelector("#owner-detail-iban").textContent = formatIban(o.iban);
-  document.querySelector("#owner-detail-address").textContent = o.address || "—";
-  document.querySelector("#owner-detail-city").textContent = o.city || "—";
-  document.querySelector("#owner-detail-province").textContent = o.province || "—";
-  document.querySelector("#owner-detail-postalCode").textContent = o.postalCode || "—";
-  document.querySelector("#owner-detail-notes").textContent = o.notes ? o.notes : "Sin observaciones registradas.";
-
-  // Nuevos campos de propietario (Requisito 3)
-  const votingRightsEl = document.querySelector("#owner-detail-votingRights");
-  if (votingRightsEl) {
-    const isSuspended = o.votingRights === "suspended";
-    votingRightsEl.textContent = isSuspended ? "Voto suspendido por morosidad (LPH art. 15.2)" : "Con derecho a voto";
-    votingRightsEl.className = isSuspended ? "status-badge doc-rejected" : "status-badge doc-approved";
-  }
-
-  const legalRepEl = document.querySelector("#owner-detail-legalRepresentative");
-  if (legalRepEl) legalRepEl.textContent = o.legalRepresentative || "Sin representante (titular directo)";
-
-  const notifPrefEl = document.querySelector("#owner-detail-notificationPreference");
-  if (notifPrefEl) {
-    const map = { email: "Correo electrónico", postal: "Domicilio postal", phone: "Teléfono / Mensajería" };
-    notifPrefEl.textContent = map[o.notificationPreference] || "Correo electrónico";
-  }
-
-  // Renderizar sección de documentación en la ficha de detalle
-  const docStatus = getOwnerDocStatus(o);
-  ownerDetailDocBadge.className = `status-badge ${getDocBadgeClass(docStatus)}`;
-  ownerDetailDocBadge.textContent = getDocBadgeText(docStatus, o);
-
-  renderDetailDocsGrid(o);
-  renderDetailApprovalPanel(o, docStatus);
-  renderOwnerPropertySelectors(o);
-  renderOwnerTenants(o);
-
-  if (!ownerDetailDialog.open) ownerDetailDialog.showModal();
+  // «Ver» abre el mismo diálogo de edición, pero en modo lectura.
+  openOwnerEditor(id, "general", { readOnly: true });
 }
 
 export function renderOwnerPropertySelectors(owner) {
@@ -930,7 +949,7 @@ export function renderDetailApprovalPanel(o, docStatus) {
         <div class="approval-flex-row">
           <div class="approval-info-col">
             <h4 style="color: #b91c1c;">⚠️ Requerimiento de Subsanación</h4>
-            <p>El Administrador solicita correcciones en tu documentación: <em>“${reason}”</em>. Por favor, pulsa en 'Gestionar documentos' para volver a adjuntar los archivos requeridos.</p>
+            <p>El Administrador solicita correcciones en tu documentación: <em>“${reason}”</em>. Por favor, pulsa en 'Editar propietario' para volver a adjuntar los archivos requeridos.</p>
           </div>
         </div>
       `;
@@ -945,12 +964,14 @@ export function renderDetailApprovalPanel(o, docStatus) {
         </div>
       `;
     }
-    ownerDetailEditBtn.textContent = "Editar mis datos";
+    ownerDetailEditBtn.title = "Editar mis datos";
+    ownerDetailEditBtn.setAttribute("aria-label", "Editar mis datos");
     return;
   }
 
   // En modo Administrador: controles completos de verificación, convalidación y rechazo
-  ownerDetailEditBtn.textContent = "Editar propietario";
+  ownerDetailEditBtn.title = "Editar propietario";
+  ownerDetailEditBtn.setAttribute("aria-label", "Editar propietario");
 
   if (docStatus === "pending_admin") {
     ownerDetailApprovalPanel.className = "admin-approval-panel pending-box";
@@ -1213,6 +1234,7 @@ export function openDocViewer(owner, docKey, docObj = null) {
       };
       renderOwners();
       if (ownerDetailDialog.open && state.ui.viewingOwnerId) openOwnerDetail(state.ui.viewingOwnerId);
+      if (ownerDialog.open) renderOwnerDialogDocs();
       docViewerDialog.close();
       toast(`Documento "${doc.title}" aprobado.`);
     };
@@ -1222,6 +1244,9 @@ export function openDocViewer(owner, docKey, docObj = null) {
 }
 
 export function closeOwnerDetail() {
+  if (ownerDialogReadOnly && ownerDialog.open) {
+    closeOwnerEditor();
+  }
   ownerDetailDialog.close();
   state.ui.viewingOwnerId = null;
 }
@@ -1302,7 +1327,10 @@ export function collectOwnerErrors() {
 
   // Email opcional: sólo se valida formato (y su verificación habilita el canal de correo)
   const emailVal = (el("email")?.value || "").trim();
-  if (emailVal && !isValidEmail(emailVal)) {
+  if (!emailVal) {
+    errors.push("El email es obligatorio.");
+    marks.push("email");
+  } else if (!isValidEmail(emailVal)) {
     errors.push("El email no tiene un formato válido (ejemplo: usuario@dominio.es).");
     marks.push("email");
   }
@@ -1348,6 +1376,7 @@ export function collectOwnerErrors() {
 
 ownerForm.addEventListener("submit", async event => {
   event.preventDefault();
+  if (ownerDialogReadOnly) return;
   if (!requirePermission(state.activeRole === "owner" ? "owner:edit" : "owner:manage", state.ui.editingOwnerId || "")) {
     closeOwnerEditor();
     return;
@@ -1517,8 +1546,17 @@ ownerForm.elements.email.addEventListener("input", () => {
 
 
 document.querySelector("#new-owner").addEventListener("click", () => openOwnerEditor(null, "general"));
-document.querySelector("#close-owner-dialog").addEventListener("click", closeOwnerEditor);
-document.querySelector("#cancel-owner-dialog").addEventListener("click", closeOwnerEditor);
+document.querySelector("#close-owner-dialog").addEventListener("click", () => intentarCerrar(ownerForm, ownerDialog));
+document.querySelector("#cancel-owner-dialog").addEventListener("click", () => intentarCerrar(ownerForm, ownerDialog));
+
+// Cierre nativo del diálogo (Esc): restaura el modo lectura y el estado.
+ownerDialog.addEventListener("close", () => {
+  applyOwnerDialogReadOnly(false);
+  if (ownerDialogReadOnly) state.ui.viewingOwnerId = null;
+  ownerDialogReadOnly = false;
+  state.ui.editingOwnerId = null;
+  state.ui.ownerEditorPropertyContext = null;
+});
 
 closeOwnerDetailDialog.addEventListener("click", closeOwnerDetail);
 closeOwnerDetailBtn.addEventListener("click", closeOwnerDetail);
@@ -1527,11 +1565,16 @@ ownerDetailEditBtn.addEventListener("click", () => {
   closeOwnerDetail();
   if (targetId) openOwnerEditor(targetId, "general");
 });
-ownerDetailManageDocsBtn.addEventListener("click", () => {
-  const targetId = state.ui.viewingOwnerId;
-  closeOwnerDetail();
-  if (targetId) openOwnerEditor(targetId, "docs");
-});
+const ownerReadonlyEditBtn = document.querySelector("#owner-readonly-edit-btn");
+if (ownerReadonlyEditBtn) {
+  ownerReadonlyEditBtn.addEventListener("click", () => {
+    const targetId = state.ui.editingOwnerId;
+    if (!targetId) return;
+    const activeTab = document.querySelector("#owner-dialog .community-editor-tab.active")?.dataset.ownerTab || "general";
+    closeOwnerEditor();
+    openOwnerEditor(targetId, activeTab);
+  });
+}
 ownerDetailTenantList.addEventListener("click", event => {
   const button = event.target.closest("[data-tenant-action]");
   if (!button) return;

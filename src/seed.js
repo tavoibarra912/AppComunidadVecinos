@@ -262,6 +262,28 @@ export function seedIfEmpty() {
       insertOwnerNotification.run(n.id, n.ownerId, n.title, n.type, n.message, n.date, n.timestamp, n.read ? 1 : 0);
     });
 
+    // Usuarios, roles y configuración general (pantalla Administración)
+    const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
+    const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)");
+    db.prepare("INSERT INTO settings (id, data) VALUES ('general', ?)").run(JSON.stringify({
+      nombreAsociacion: "Asociación Peñarrubia",
+      emailContacto: "admin@penarrubia.es",
+      telefonoContacto: "600000000",
+      otpExpiraMinutos: 10,
+      otpReenvioSegundos: 60,
+      notificacionesEmail: true
+    }));
+
+    const roles = [
+      { id: "rol-admin", nombre: "administrador", descripcion: "Acceso total: gestión de comunidades, inmuebles, propietarios, inquilinos y administración.", permisos: ["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin:users", "admin:roles", "admin:settings", "admin_notification:read"], sistema: 1 },
+      { id: "rol-propietario", nombre: "propietario", descripcion: "Acceso a sus datos, inmuebles, inquilinos y carga de documentación.", permisos: ["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "tenant:manage", "owner_notification:read"], sistema: 1 },
+      { id: "rol-consulta", nombre: "consulta", descripcion: "Sólo consulta de comunidades, inmuebles y propietarios.", permisos: ["community:read", "owner:read", "property:read", "tenant:read"], sistema: 0 }
+    ];
+    roles.forEach(r => insertRole.run(r.id, r.nombre, r.descripcion, JSON.stringify(r.permisos), r.sistema));
+
+    insertUser.run("user-admin", "Administrador", "de la Asociación", "admin", "admin@penarrubia.es", "rol-admin");
+    insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "rol-consulta");
+
     // Relaciones propietario ↔ inmueble (N:M): por plot dentro de la comunidad.
     // Los propietarios sembrados son titulares únicos (100%).
     const updatePropertyOwners = db.prepare("UPDATE properties SET ownerIds = ?, ownerPercentages = ? WHERE id = ?");

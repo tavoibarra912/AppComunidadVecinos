@@ -3,12 +3,22 @@
 // ==========================================
 
 const toastEl = document.querySelector("#toast");
+let toastTimer = 0;
 
 export function toast(message) {
   if (!toastEl) return;
   toastEl.textContent = message;
+  window.clearTimeout(toastTimer);
+  const supportsPopover = typeof toastEl.showPopover === "function";
+  if (supportsPopover) {
+    if (toastEl.matches(":popover-open")) toastEl.hidePopover();
+    toastEl.showPopover();
+  }
   toastEl.classList.add("visible");
-  window.setTimeout(() => toastEl.classList.remove("visible"), 2800);
+  toastTimer = window.setTimeout(() => {
+    toastEl.classList.remove("visible");
+    if (supportsPopover && toastEl.matches(":popover-open")) toastEl.hidePopover();
+  }, 2800);
 }
 
 export function digitsOnly(value, max) {
@@ -340,6 +350,86 @@ export function showValidationErrors(messages, title = "Revisá los siguientes d
     list.append(li);
   });
   if (!dialog.open) dialog.showModal();
+}
+
+// ==========================================
+// GUARD DE CAMBIOS SIN GUARDAR + MODO LECTURA
+// ==========================================
+
+const guardias = new WeakMap();
+
+// Puente para que el handler global de Esc (main.js) use el guard
+window.intentarCerrar = intentarCerrar;
+
+function formDataSnapshot(form) {
+  if (!form) return "";
+  const entries = [...new FormData(form).entries()].sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(entries.map(([name, value]) => [name, String(value)]));
+}
+
+/** Toma una foto del estado del formulario al abrirlo (base del guard). */
+export function armarGuardia(form, dialog) {
+  if (form && dialog) guardias.set(form, formDataSnapshot(form));
+}
+
+/** Marca el estado actual como "guardado" (llamar tras guardar con éxito). */
+export function limpiarGuardia(form) {
+  if (form) guardias.set(form, formDataSnapshot(form));
+}
+
+export function hayCambiosSinGuardar(form) {
+  if (!form) return false;
+  const base = guardias.get(form);
+  return base !== undefined && base !== formDataSnapshot(form);
+}
+
+/**
+ * Intenta cerrar el diálogo: si hay cambios sin guardar pide confirmación.
+ */
+export function intentarCerrar(form, dialog) {
+  if (!dialog) return;
+  if (!hayCambiosSinGuardar(form)) {
+    dialog.close();
+    return;
+  }
+  const confirmDialog = document.querySelector("#confirm-close-dialog");
+  if (!confirmDialog) {
+    dialog.close();
+    return;
+  }
+  confirmDialog.dataset.targetDialog = dialog.id || "";
+  if (!confirmDialog.open) confirmDialog.showModal();
+}
+
+// Botones del diálogo de confirmación de cierre
+(() => {
+  const confirmDialog = document.querySelector("#confirm-close-dialog");
+  if (!confirmDialog) return;
+  const cerrarObjetivo = () => {
+    const target = document.getElementById(confirmDialog.dataset.targetDialog || "");
+    if (target && target.close) target.close();
+    confirmDialog.close();
+  };
+  document.querySelector("#confirm-close-leave")?.addEventListener("click", cerrarObjetivo);
+  document.querySelector("#confirm-close-stay")?.addEventListener("click", () => confirmDialog.close());
+  document.querySelector("#close-confirm-close-dialog")?.addEventListener("click", () => confirmDialog.close());
+})();
+
+/**
+ * Pone todos los controles del formulario en modo sólo lectura y oculta
+ * los botones de guardado/cancelación (modo "ver").
+ */
+export function setFormReadonly(form, readonly) {
+  if (!form) return;
+  // Sólo controles de valor: los botones (tabs, cierres) deben seguir
+  // siendo operables en modo lectura
+  form.querySelectorAll("input, select, textarea").forEach(element => {
+    if (element.type === "submit" || element.closest(".dialog-actions")) return;
+    element.disabled = readonly;
+  });
+  form.querySelectorAll(".dialog-actions").forEach(actions => {
+    actions.hidden = readonly;
+  });
 }
 
 export function renderDocumentRecords(container, records, removeAttr, emptyText) {

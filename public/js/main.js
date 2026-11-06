@@ -1,8 +1,9 @@
 // ==========================================
 // PUNTO DE ENTRADA DE LA APLICACIÓN
 // ==========================================
-import { refreshState, onDataChanged } from "./state.js";
+import { refreshState, onDataChanged, state as appState } from "./state.js";
 import { loadLocations } from "./territory.js";
+import { intentarCerrar } from "./utils.js";
 import { applyRoleUI, handleRouting } from "./features/navigation.js";
 import { renderHomeDashboard } from "./features/home.js";
 import { renderCommunities } from "./features/comunidades.js";
@@ -33,10 +34,23 @@ async function boot() {
   handleRouting();
 }
 
-// Escape cierra cualquier modal abierto (comportamiento uniforme)
+// Escape cierra modales; en los editores con guard, el Esc pregunta antes
+const FORMS_BY_DIALOG = {
+  "community-dialog": "#community-form",
+  "property-dialog": "#property-form",
+  "owner-dialog": "#owner-form",
+  "tenant-dialog": "#tenant-form",
+  "user-dialog": "#user-form",
+  "role-dialog": "#role-form"
+};
 document.querySelectorAll("dialog").forEach(dialog => {
   dialog.addEventListener("cancel", event => {
     event.preventDefault();
+    const formSelector = FORMS_BY_DIALOG[dialog.id];
+    if (formSelector && typeof window.intentarCerrar === "function") {
+      intentarCerrar(document.querySelector(formSelector), dialog);
+      return;
+    }
     dialog.close();
   });
 });

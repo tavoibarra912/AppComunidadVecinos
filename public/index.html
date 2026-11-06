@@ -52,6 +52,7 @@
       <a class="nav-item" href="#inmuebles" id="nav-inmuebles">Inmuebles</a>
       <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
       <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
+      <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
       <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
     </aside>
 
@@ -293,6 +294,94 @@
       </div>
       <div id="inquilinos-table"></div>
     </section>
+
+    <!-- SECCIÓN: ADMINISTRACIÓN -->
+    <section class="content" id="administracion" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">GESTIÓN DEL SISTEMA</p>
+          <h1>Administración</h1>
+          <p class="subtitle">Usuarios, roles y configuración general de la plataforma.</p>
+        </div>
+      </div>
+      <nav class="community-editor-tabs admin-tabs" aria-label="Secciones de administración">
+        <button class="community-editor-tab active" type="button" data-admin-tab="usuarios" aria-selected="true">Usuarios</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="roles" aria-selected="false">Roles</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="settings" aria-selected="false">Configuración General</button>
+      </nav>
+
+      <section class="admin-pane" data-admin-pane="usuarios">
+        <div class="detail-section-heading">
+          <div>
+            <h3>Usuarios de la plataforma</h3>
+            <p class="detail-section-subtitle">Alta, edición y asignación de roles.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="new-user" type="button" title="Nuevo usuario" aria-label="Nuevo usuario">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="usuarios-table"></div>
+      </section>
+
+      <section class="admin-pane" data-admin-pane="roles" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Roles y permisos</h3>
+            <p class="detail-section-subtitle">Definí qué puede hacer cada rol. Los roles del sistema no se pueden eliminar.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="new-role" type="button" title="Nuevo rol" aria-label="Nuevo rol">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="roles-list" id="roles-list"></div>
+      </section>
+
+      <section class="admin-pane" data-admin-pane="settings" hidden>
+        <form id="settings-form" novalidate>
+          <div class="form-grid">
+            <label class="full">Nombre de la asociación *
+              <input name="nombreAsociacion" maxlength="120" required />
+            </label>
+            <label>Email de contacto *
+              <input name="emailContacto" type="email" maxlength="120" required />
+            </label>
+            <label>Teléfono de contacto
+              <input name="telefonoContacto" maxlength="20" inputmode="tel" />
+            </label>
+            <p class="form-section-title full">Verificación de contacto (OTP)</p>
+            <label>Expiración del código (minutos)
+              <input name="otpExpiraMinutos" type="number" min="1" max="60" inputmode="numeric" />
+            </label>
+            <label>Reenvío permitido cada (segundos)
+              <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
+            </label>
+            <label class="full checkbox-line">
+              <input type="checkbox" name="notificacionesEmail" />
+              Enviar notificaciones por correo electrónico
+            </label>
+          </div>
+          <div class="dialog-actions">
+            <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar configuración" aria-label="Guardar configuración">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+            </button>
+          </div>
+        </form>
+      </section>
+    </section>
   </main>
 
   <!-- DIÁLOGOS DE COMUNIDAD -->
@@ -342,7 +431,7 @@
           <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
         </label>
         <label>Teléfono Secundario
-          <input name="otherPhone" maxlength="9" inputmode="numeric" placeholder="600000000 (opcional)" />
+          <input name="otherPhone" maxlength="9" inputmode="numeric" placeholder="600000000 (opcional)" style="max-width: 120px;" />
         </label>
         <label>Email *
           <input name="email" type="email" required maxlength="120" placeholder="contacto@Comunidad.es" />
@@ -619,6 +708,7 @@
         </div>
         <button class="icon-button" type="button" id="close-owner-dialog" aria-label="Cerrar">×</button>
       </div>
+      <p class="form-intro owner-readonly-note" id="owner-readonly-note" hidden>Ficha en modo lectura. Pulsá el lápiz para editar los datos.</p>
 
       <!-- Pestañas del formulario: General · Contacto y Domicilio · Comunidad y Notificaciones · Financiero · Inmueble · Documentación -->
       <nav class="community-editor-tabs" aria-label="Secciones del propietario">
@@ -741,11 +831,11 @@
             <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
           </label>
           <label>Teléfono Secundario
-            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600 000 000 (opcional)" />
+            <input name="otherPhone" maxlength="9" inputmode="numeric" placeholder="600 000 000 (opcional)" style="max-width: 140px;" />
           </label>
-          <label class="full" id="label-email">Email
+          <label class="full" id="label-email">Email *
             <div class="verify-row">
-              <input name="email" type="email" maxlength="120" placeholder="propietario@email.es" autocomplete="email" />
+              <input name="email" type="email" maxlength="120" required placeholder="propietario@email.es" autocomplete="email" />
               <button class="secondary-button verify-btn" type="button" id="btn-verify-email">Verificar</button>
             </div>
             <span class="verify-status" id="email-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
@@ -932,6 +1022,12 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-readonly-edit-btn" title="Editar propietario" aria-label="Editar propietario" hidden>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
           </svg>
         </button>
         <button class="icon-action-btn btn-save btn-lg" type="submit" id="btn-save-owner" title="Guardar propietario" aria-label="Guardar propietario">
@@ -1140,7 +1236,6 @@
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="secondary-button" type="button" id="owner-detail-manage-docs-btn">📁 Gestionar documentos</button>
         <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-detail-edit-btn" title="Editar propietario" aria-label="Editar propietario">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
@@ -1151,7 +1246,7 @@
     </div>
   </dialog>
 
-  <dialog id="tenant-dialog" aria-labelledby="tenant-dialog-title">
+    <dialog id="tenant-dialog" aria-labelledby="tenant-dialog-title">
     <form id="tenant-form" novalidate>
       <div class="dialog-header">
         <div>
@@ -1160,69 +1255,210 @@
         </div>
         <button class="icon-button" type="button" id="close-tenant-dialog" aria-label="Cerrar">×</button>
       </div>
-      <p class="form-intro">El inquilino queda vinculado al propietario y a una de sus unidades. Nombre, unidad, fechas de inicio y contacto son obligatorios.</p>
-      <div class="form-grid">
-        <label>Nombre *
-          <input name="name" maxlength="60" required autocomplete="given-name" />
-        </label>
-        <label>Apellidos *
-          <input name="surname" maxlength="80" required autocomplete="family-name" />
-        </label>
-        <label>Tipo de documento
-          <select name="documentType">
-            <option value="DNI" selected>DNI</option>
-            <option value="NIE">NIE</option>
-            <option value="Pasaporte">Pasaporte</option>
-          </select>
-        </label>
-        <label>Documento identificativo
-          <input name="documentId" maxlength="20" autocomplete="off" />
-        </label>
-        <label>Tipo de contrato (LAU)
-          <select name="contractType">
-            <option value="vivienda_habitual" selected>Arrendamiento vivienda habitual</option>
-            <option value="temporada">Arrendamiento de temporada</option>
-            <option value="comercial">Uso distinto de vivienda (local)</option>
-            <option value="cesion">Cesión o comodato</option>
-          </select>
-        </label>
-        <label>Renta mensual (€)
-          <input name="monthlyRent" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
-        </label>
-        <label>Fianza legal (€)
-          <input name="deposit" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
-        </label>
-        <label>Teléfono de urgencias
-          <input name="emergencyPhone" type="tel" inputmode="numeric" maxlength="11" placeholder="Ej: 600000000 (opcional)" />
-        </label>
-        <label>Propietario *
-          <select name="ownerId" required></select>
-        </label>
-        <label>Unidad *
-          <select name="propertyId" required></select>
-        </label>
-        <label>Teléfono *
-          <input name="phone" type="tel" inputmode="numeric" maxlength="9" required autocomplete="tel" />
-        </label>
-        <label>Email *
-          <input name="email" type="email" maxlength="120" required autocomplete="email" />
-        </label>
-        <label>Inicio del contrato *
-          <input name="contractStart" type="date" required />
-        </label>
-        <label>Fin del contrato
-          <input name="contractEnd" type="date" />
-        </label>
-        <fieldset class="full tenant-authorizations">
-          <legend>Autorizaciones concedidas</legend>
-          <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
-          <label><input type="checkbox" name="authorizations" value="community_communications" /> Recibir comunicaciones de la comunidad</label>
-          <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de la unidad</label>
-        </fieldset>
-        <label class="full">Otras autorizaciones / observaciones
-          <textarea name="authorizationNotes" rows="3" maxlength="500" placeholder="Describe otras autorizaciones concedidas y sus límites."></textarea>
-        </label>
-      </div>
+      <nav class="community-editor-tabs" aria-label="Secciones del inquilino">
+        <button class="community-editor-tab active" type="button" data-tenant-tab="general" aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="contact" aria-selected="false">Contacto y Domicilio</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="community" aria-selected="false">Comunidad y Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="contract" aria-selected="false">Contrato</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="property" aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="docs" aria-selected="false">Documentación <span class="tab-badge" id="tenant-tab-docs-badge">0/2</span></button>
+      </nav>
+
+      <section class="community-editor-pane" id="tenant-tab-general" data-tenant-pane="general">
+        <p class="form-intro">Los campos marcados con * son obligatorios.</p>
+        <div class="form-grid">
+          <label>Nombre *
+            <input name="name" maxlength="60" required autocomplete="given-name" />
+          </label>
+          <label>Apellidos *
+            <input name="surname" maxlength="80" required autocomplete="family-name" />
+          </label>
+          <label>Tipo de documento *
+            <select name="documentType" required>
+              <option value="DNI" selected>DNI</option>
+              <option value="NIE">NIE</option>
+              <option value="CIF">CIF</option>
+            </select>
+          </label>
+          <label>DNI / NIE / CIF *
+            <input name="documentId" maxlength="20" required autocomplete="off" />
+          </label>
+          <label class="full">Observaciones
+            <textarea name="authorizationNotes" rows="3" maxlength="500" placeholder="Observaciones del inquilino (opcional)"></textarea>
+          </label>
+          <select name="ownerId" hidden></select>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-contact" data-tenant-pane="contact" hidden>
+        <div class="form-grid">
+          <p class="form-section-title full">Contacto</p>
+          <label id="tenant-label-phone">Teléfono Principal *
+            <div class="verify-row">
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000" autocomplete="tel" />
+              <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-phone">Verificar</button>
+            </div>
+            <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
+          </label>
+          <label>Teléfono Secundario
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600 000 000 (opcional)" />
+          </label>
+          <label class="full" id="tenant-label-email">Email *
+            <div class="verify-row">
+              <input name="email" type="email" maxlength="120" required placeholder="inquilino@email.es" autocomplete="email" />
+              <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-email">Verificar</button>
+            </div>
+            <span class="verify-status" id="tenant-email-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-community" data-tenant-pane="community" hidden>
+        <div class="form-grid">
+          <p class="form-section-title full">Autorizaciones concedidas</p>
+          <fieldset class="full tenant-authorizations">
+            <legend>Autorizaciones concedidas</legend>
+            <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
+            <label><input type="checkbox" name="authorizations" value="community_communications" id="tenant-auth-comm" /> Recibir comunicaciones de la comunidad</label>
+            <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de la unidad</label>
+          </fieldset>
+          <label class="full">Canal preferente de notificaciones (LPH art. 9)
+            <select name="notificationPreference">
+              <option value="email" selected>Correo electrónico</option>
+              <option value="postal">Domicilio postal</option>
+              <option value="phone">Teléfono / Mensajería</option>
+            </select>
+          </label>
+          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente están verificados en la pestaña Contacto y Domicilio.</p>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-contract" data-tenant-pane="contract" hidden>
+        <div class="form-grid">
+          <label>Tipo de contrato (LAU)
+            <select name="contractType">
+              <option value="vivienda_habitual" selected>Arrendamiento vivienda habitual</option>
+              <option value="temporada">Arrendamiento de temporada</option>
+              <option value="comercial">Uso distinto de vivienda (local)</option>
+              <option value="cesion">Cesión o comodato</option>
+            </select>
+          </label>
+          <label>Moneda
+            <select name="currency">
+              <option value="EUR" selected>Euro (EUR)</option>
+              <option value="USD">Dólar estadounidense (USD)</option>
+              <option value="GBP">Libra esterlina (GBP)</option>
+              <option value="CHF">Franco suizo (CHF)</option>
+            </select>
+          </label>
+          <label>Renta mensual (€)
+            <input name="monthlyRent" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
+          </label>
+          <label>Fianza legal (€)
+            <input name="deposit" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
+          </label>
+          <p class="field-hint full">Si el monto de la fianza es cero o nulo, se entenderá que no se entregó fianza.</p>
+          <label>Inicio del contrato *
+            <input name="contractStart" type="date" required />
+          </label>
+          <label>Fin del contrato *
+            <input name="contractEnd" type="date" required />
+          </label>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-property" data-tenant-pane="property" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Inmueble vinculado</h3>
+            <p class="detail-section-subtitle">Un inquilino solo puede estar vinculado a un inmueble.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-info" id="btn-tenant-link-property" type="button" title="Asociar inmueble existente" aria-label="Asociar inmueble existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="community-edit-link-panel" id="tenant-property-link-panel" hidden>
+          <label>Inmueble
+            <select id="tenant-property-link-select"></select>
+          </label>
+          <button class="icon-action-btn btn-save" id="btn-tenant-confirm-property" type="button" title="Asociar inmueble" aria-label="Asociar inmueble">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+          <button class="icon-action-btn btn-cancel" id="btn-tenant-cancel-property" type="button" title="Cancelar" aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="community-properties-list" id="tenant-properties-list"></div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-docs" data-tenant-pane="docs" hidden>
+        <div class="docs-callout">
+          <div class="docs-callout-icon">ℹ️</div>
+          <div>
+            <strong>Documentación del inquilino:</strong>
+            <p>El sistema valida de forma automática la legibilidad y correspondencia de cada archivo. Tras superarla, el Administrador recibirá un aviso para su aprobación.</p>
+          </div>
+        </div>
+        <div class="docs-upload-container">
+          <div class="doc-upload-card" id="tenant-card-doc-dni">
+            <div class="doc-card-header">
+              <div class="doc-card-title-wrap">
+                <span class="doc-card-num">1</span>
+                <div>
+                  <h3 class="doc-card-title">Copia de DNI / NIE / CIF *</h3>
+                  <p class="doc-card-desc">Documento de identidad del inquilino (PDF o JPG/PNG).</p>
+                </div>
+              </div>
+              <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-dni">Pendiente</span>
+            </div>
+            <div class="doc-dropzone" id="tenant-dropzone-dni">
+              <input type="file" id="tenant-input-doc-dni" accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+              <div class="dropzone-content">
+                <p class="dropzone-text"><strong>Arrastra tu documento aquí</strong> o <span class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+              </div>
+            </div>
+            <div class="doc-sample-bar">
+              <button class="sample-doc-btn" type="button" id="tenant-btn-sample-dni">✨ Cargar documento de prueba</button>
+            </div>
+            <div class="doc-validation-result" id="tenant-result-doc-dni" hidden></div>
+          </div>
+        </div>
+          <div class="doc-upload-card" id="tenant-card-doc-contract">
+            <div class="doc-card-header">
+              <div class="doc-card-title-wrap">
+                <span class="doc-card-num">2</span>
+                <div>
+                  <h3 class="doc-card-title">Contrato de arrendamiento *</h3>
+                  <p class="doc-card-desc">Contrato firmado (PDF o JPG/PNG).</p>
+                </div>
+              </div>
+              <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-contract">Pendiente</span>
+            </div>
+            <div class="doc-dropzone" id="tenant-dropzone-contract">
+              <input type="file" id="tenant-input-doc-contract" accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+              <div class="dropzone-content">
+                <p class="dropzone-text"><strong>Arrastra el contrato aquí</strong> o <span class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+              </div>
+            </div>
+            <div class="doc-sample-bar">
+              <button class="sample-doc-btn" type="button" id="tenant-btn-sample-contract">✨ Cargar contrato de prueba</button>
+            </div>
+            <div class="doc-validation-result" id="tenant-result-doc-contract" hidden></div>
+          </div>
+        <div class="docs-summary-bar" id="tenant-docs-summary-bar">
+          <div class="docs-summary-text">
+            <span id="tenant-docs-summary-status">0 de 2 documentos subidos</span>
+          </div>
+        </div>
+      </section>
+
       <p class="form-error" id="tenant-form-error" role="alert"></p>
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-dialog" title="Cancelar" aria-label="Cancelar">
@@ -1242,7 +1478,40 @@
     </form>
   </dialog>
 
-  <dialog id="tenant-detail-dialog" aria-labelledby="tenant-detail-title">
+    <!-- Diálogo de verificación de contacto para inquilinos -->
+  <dialog id="tenant-verification-dialog" class="dialog-sm" aria-labelledby="tenant-verification-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">VERIFICACIÓN DE CONTACTO</p>
+          <h2 id="tenant-verification-title">Verificar teléfono</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-tenant-verification-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro" id="tenant-verification-desc"></p>
+      <div class="verification-target" id="tenant-verification-target"></div>
+      <div class="verification-demo" id="tenant-verification-demo" hidden>
+        <span>Modo demostración — código:</span>
+        <strong id="tenant-verification-demo-code"></strong>
+      </div>
+      <label class="verification-code-label">Código de verificación
+        <input id="tenant-verification-code-input" maxlength="6" inputmode="numeric" placeholder="000000" autocomplete="one-time-code" />
+      </label>
+      <p class="form-error" id="tenant-verification-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-verification-btn" title="Cancelar" aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="secondary-button" type="button" id="tenant-verification-resend-btn">Reenviar código</button>
+        <button class="primary-button" type="button" id="tenant-verification-confirm-btn">Confirmar código</button>
+      </div>
+    </div>
+  </dialog>
+
+  "<dialog id="tenant-detail-dialog" aria-labelledby="tenant-detail-title">
     <div class="dialog-content">
       <div class="dialog-header">
         <div>
@@ -1735,6 +2004,115 @@
     </div>
   </dialog>
 
+  <!-- Diálogo de usuario (Administración) -->
+  <dialog id="user-dialog" aria-labelledby="user-dialog-title">
+    <form id="user-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">ADMINISTRACIÓN</p>
+          <h2 id="user-dialog-title">Nuevo usuario</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-user-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <div class="form-grid">
+        <label>Nombre
+          <input name="nombre" maxlength="60" autocomplete="given-name" />
+        </label>
+        <label>Apellidos
+          <input name="apellido" maxlength="80" autocomplete="family-name" />
+        </label>
+        <label>Usuario *
+          <input name="usuario" maxlength="40" required autocomplete="username" />
+        </label>
+        <label>Email
+          <input name="email" type="email" maxlength="120" autocomplete="email" />
+        </label>
+        <label>Rol *
+          <select name="rol" required></select>
+        </label>
+        <label class="checkbox-line">
+          <input type="checkbox" name="activo" checked />
+          Usuario activo
+        </label>
+      </div>
+      <p class="form-error" id="user-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-user-dialog" title="Cancelar" aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar usuario" aria-label="Guardar usuario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de rol (Administración) -->
+  <dialog id="role-dialog" aria-labelledby="role-dialog-title">
+    <form id="role-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">ADMINISTRACIÓN</p>
+          <h2 id="role-dialog-title">Nuevo rol</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-role-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Nombre del rol *
+          <input name="nombre" maxlength="40" required placeholder="Ej: contador" />
+        </label>
+        <label class="full">Descripción
+          <input name="descripcion" maxlength="200" />
+        </label>
+        <fieldset class="full role-permissions">
+          <legend>Permisos</legend>
+          <div id="role-permissions-list"></div>
+        </fieldset>
+      </div>
+      <p class="form-error" id="role-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-role-dialog" title="Cancelar" aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar rol" aria-label="Guardar rol">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de confirmación de cierre con cambios pendientes -->
+  <dialog id="confirm-close-dialog" class="dialog-sm">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">CAMBIOS SIN GUARDAR</p>
+          <h2>¿Cerrar sin guardar?</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-confirm-close-dialog" aria-label="Cerrar">×</button>
+      </div>
+      <p class="form-intro">Hay cambios pendientes de guardar en este formulario. Si cerrás ahora se van a perder.</p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="confirm-close-stay">Seguir editando</button>
+        <button class="btn-reject-danger" type="button" id="confirm-close-leave">Cerrar sin guardar</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Diálogo de confirmación para eliminar Inmueble -->
   <dialog id="property-delete-dialog" aria-labelledby="property-delete-title">
     <form method="dialog">
@@ -2067,7 +2445,7 @@
     </div>
   </dialog>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
   <script src="js/municipios-ine.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>

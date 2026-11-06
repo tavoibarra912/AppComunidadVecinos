@@ -6,9 +6,11 @@ import tenantsRouter from "./tenants.js";
 import documentsRouter from "./documents.js";
 import notificationsRouter from "./notifications.js";
 import verificationRouter from "./verification.js";
+import adminRouter from "./admin.js";
 import {
   listCommunities, listOwners, listProperties, listTenants,
-  listAdminEmails, listOwnerNotifications, listDocuments
+  listAdminEmails, listOwnerNotifications, listDocuments,
+  listUsers, listRoles, getSettings
 } from "../db.js";
 
 const router = Router();
@@ -28,12 +30,12 @@ router.get("/bootstrap", (req, res) => {
       ...property,
       documents: listDocuments("property", property.id)
     })),
-    tenants: listTenants().map(tenant => ({
-      ...tenant,
-      documents: listDocuments("tenant", tenant.id)
-    })),
+    tenants: listTenants(),
     adminEmails: listAdminEmails(),
-    ownerNotifications: listOwnerNotifications()
+    ownerNotifications: listOwnerNotifications(),
+    users: listUsers(),
+    roles: listRoles(),
+    settings: getSettings()
   });
 });
 
@@ -44,5 +46,6 @@ router.use("/tenants", tenantsRouter);
 router.use("/documents", documentsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/owners/contact", verificationRouter);
+router.use("/admin", adminRouter);
 
 export default router;

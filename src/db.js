@@ -114,6 +114,13 @@ db.exec(`
     contractEnd TEXT NOT NULL DEFAULT '',
     authorizations TEXT NOT NULL DEFAULT '[]',
     authorizationNotes TEXT NOT NULL DEFAULT '',
+    phoneVerified INTEGER NOT NULL DEFAULT 0,
+    phoneVerifiedAt TEXT NOT NULL DEFAULT '',
+    emailVerified INTEGER NOT NULL DEFAULT 0,
+    emailVerifiedAt TEXT NOT NULL DEFAULT '',
+    notificationPreference TEXT NOT NULL DEFAULT 'email',
+    currency TEXT NOT NULL DEFAULT 'EUR',
+    documents TEXT NOT NULL DEFAULT '{}',
     createdAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -153,6 +160,30 @@ db.exec(`
     read INTEGER NOT NULL DEFAULT 0
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    nombre TEXT NOT NULL DEFAULT '',
+    apellido TEXT NOT NULL DEFAULT '',
+    usuario TEXT NOT NULL,
+    email TEXT NOT NULL DEFAULT '',
+    rol TEXT NOT NULL DEFAULT 'consulta',
+    activo INTEGER NOT NULL DEFAULT 1,
+    creadoEn TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS roles (
+    id TEXT PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    descripcion TEXT NOT NULL DEFAULT '',
+    permisos TEXT NOT NULL DEFAULT '[]',
+    sistema INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL DEFAULT '{}'
+  );
+
   CREATE INDEX IF NOT EXISTS idx_properties_community ON properties(communityId);
   CREATE INDEX IF NOT EXISTS idx_tenants_property ON tenants(propertyId);
   CREATE INDEX IF NOT EXISTS idx_tenants_owner ON tenants(ownerId);
@@ -176,6 +207,20 @@ ensureColumns("communities", {
   currency: "TEXT NOT NULL DEFAULT ''"
 });
 
+// Semilla idempotente de administración (para bases creadas antes de la
+// pantalla Administración: roles del sistema + usuarios iniciales).
+if (db.prepare("SELECT COUNT(*) AS total FROM roles").get().total === 0) {
+  const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
+  insertRole.run("rol-admin", "administrador", "Acceso total: gestión de comunidades, inmuebles, propietarios, inquilinos y administración.", JSON.stringify(["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin:users", "admin:roles", "admin:settings", "admin_notification:read"]), 1);
+  insertRole.run("rol-propietario", "propietario", "Acceso a sus datos, inmuebles, inquilinos y carga de documentación.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "tenant:manage", "owner_notification:read"]), 1);
+  insertRole.run("rol-consulta", "consulta", "Sólo consulta de comunidades, inmuebles y propietarios.", JSON.stringify(["community:read", "owner:read", "property:read", "tenant:read"]), 0);
+}
+if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
+  const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)");
+  insertUser.run("user-admin", "Administrador", "de la Asociación", "admin", "admin@penarrubia.es", "rol-admin");
+  insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "rol-consulta");
+}
+
 ensureColumns("properties", {
   notes: "TEXT NOT NULL DEFAULT ''",
   postalCode: "TEXT NOT NULL DEFAULT ''",
@@ -183,6 +228,16 @@ ensureColumns("properties", {
   province: "TEXT NOT NULL DEFAULT ''",
   currency: "TEXT NOT NULL DEFAULT ''",
   ownerPercentages: "TEXT NOT NULL DEFAULT '{}'"
+});
+
+ensureColumns("tenants", {
+  phoneVerified: "INTEGER NOT NULL DEFAULT 0",
+  phoneVerifiedAt: "TEXT NOT NULL DEFAULT ''",
+  emailVerified: "INTEGER NOT NULL DEFAULT 0",
+  emailVerifiedAt: "TEXT NOT NULL DEFAULT ''",
+  notificationPreference: "TEXT NOT NULL DEFAULT 'email'",
+  currency: "TEXT NOT NULL DEFAULT 'EUR'",
+  documents: "TEXT NOT NULL DEFAULT '{}'"
 });
 
 // Backfill puntual: los inmuebles previos heredan la ubicación de su comunidad
@@ -316,7 +371,13 @@ export function tenantFromRow(row) {
     contractEnd: row.contractEnd,
     authorizations: parseJson(row.authorizations, []),
     authorizationNotes: row.authorizationNotes,
-    documents: []
+    phoneVerified: !!row.phoneVerified,
+    phoneVerifiedAt: row.phoneVerifiedAt || "",
+    emailVerified: !!row.emailVerified,
+    emailVerifiedAt: row.emailVerifiedAt || "",
+    notificationPreference: row.notificationPreference || "email",
+    currency: row.currency || "EUR",
+    documents: parseJson(row.documents, {})
   };
 }
 
@@ -384,6 +445,41 @@ export function listAdminEmails() {
 
 export function listOwnerNotifications() {
   return db.prepare("SELECT * FROM owner_notifications ORDER BY timestamp DESC").all().map(ownerNotificationFromRow);
+}
+
+export function listUsers() {
+  return db.prepare("SELECT * FROM users ORDER BY usuario").all().map(row => ({
+    id: row.id,
+    nombre: row.nombre,
+    apellido: row.apellido,
+    usuario: row.usuario,
+    email: row.email,
+    rol: row.rol,
+    activo: !!row.activo,
+    creadoEn: row.creadoEn
+  }));
+}
+
+export function listRoles() {
+  return db.prepare("SELECT * FROM roles ORDER BY nombre").all().map(row => ({
+    id: row.id,
+    nombre: row.nombre,
+    descripcion: row.descripcion,
+    permisos: parseJson(row.permisos, []),
+    sistema: !!row.sistema
+  }));
+}
+
+export function getSettings() {
+  const row = db.prepare("SELECT data FROM settings WHERE id = 'general'").get();
+  return parseJson(row?.data, null) || {
+    nombreAsociacion: "Asociación Peñarrubia",
+    emailContacto: "admin@penarrubia.es",
+    telefonoContacto: "600000000",
+    otpExpiraMinutos: 10,
+    otpReenvioSegundos: 60,
+    notificacionesEmail: true
+  };
 }
 
 export function listDocuments(entityType, entityId) {

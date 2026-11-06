@@ -177,12 +177,11 @@ export function syncPropertyTenantReferences(tenantId) {
 export function upsertTenant(payload, tenantId) {
   const property = db.prepare("SELECT * FROM properties WHERE id = ?").get(payload.propertyId);
   if (!property) throw new Error("El inmueble seleccionado no existe.");
-  if (!payload.ownerId || !db.prepare("SELECT id FROM owners WHERE id = ?").get(payload.ownerId)) {
-    throw new Error("El inquilino debe vincularse a un propietario registrado.");
+  if (payload.ownerId && !db.prepare("SELECT id FROM owners WHERE id = ?").get(payload.ownerId)) {
+    throw new Error("El propietario seleccionado no existe.");
   }
 
   const existing = tenantId ? db.prepare("SELECT id FROM tenants WHERE id = ?").get(tenantId) : null;
-  if (tenantId && !existing) throw new Error("El inquilino que intentas editar ya no existe.");
 
   if (existing) {
     db.prepare(
@@ -190,7 +189,9 @@ export function upsertTenant(payload, tenantId) {
          ownerId = ?, propertyId = ?, name = ?, surname = ?, documentType = ?, documentId = ?,
          contractType = ?, monthlyRent = ?, deposit = ?, emergencyPhone = ?,
          phone = ?, email = ?, contractStart = ?, contractEnd = ?,
-         authorizations = ?, authorizationNotes = ?
+         authorizations = ?, authorizationNotes = ?,
+         phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ?,
+         notificationPreference = ?, currency = ?, documents = ?
        WHERE id = ?`
     ).run(
       payload.ownerId, payload.propertyId, payload.name, payload.surname, payload.documentType || "DNI", payload.documentId || "",
@@ -198,20 +199,32 @@ export function upsertTenant(payload, tenantId) {
       payload.phone, payload.email, payload.contractStart, payload.contractEnd || "",
       JSON.stringify(Array.isArray(payload.authorizations) ? payload.authorizations : []),
       payload.authorizationNotes || "",
+      payload.phoneVerified ? 1 : 0, payload.phoneVerifiedAt || "",
+      payload.emailVerified ? 1 : 0, payload.emailVerifiedAt || "",
+      payload.notificationPreference || "email",
+      payload.currency || "EUR",
+      JSON.stringify(payload.documents || {}),
       tenantId
     );
   } else {
     db.prepare(
       `INSERT INTO tenants (id, ownerId, propertyId, name, surname, documentType, documentId,
         contractType, monthlyRent, deposit, emergencyPhone, phone, email,
-        contractStart, contractEnd, authorizations, authorizationNotes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        contractStart, contractEnd, authorizations, authorizationNotes,
+        phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt,
+        notificationPreference, currency, documents)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       tenantId, payload.ownerId, payload.propertyId, payload.name, payload.surname, payload.documentType || "DNI", payload.documentId || "",
       payload.contractType || "vivienda_habitual", payload.monthlyRent || "", payload.deposit || "", payload.emergencyPhone || "",
       payload.phone, payload.email, payload.contractStart, payload.contractEnd || "",
       JSON.stringify(Array.isArray(payload.authorizations) ? payload.authorizations : []),
-      payload.authorizationNotes || ""
+      payload.authorizationNotes || "",
+      payload.phoneVerified ? 1 : 0, payload.phoneVerifiedAt || "",
+      payload.emailVerified ? 1 : 0, payload.emailVerifiedAt || "",
+      payload.notificationPreference || "email",
+      payload.currency || "EUR",
+      JSON.stringify(payload.documents || {})
     );
   }
 
