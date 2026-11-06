@@ -147,7 +147,7 @@ export function handleRouting() {
     secAdministracion.style.display = "none";
   }
 
-  [navHome, mobileNavHome, navComunidades, mobileNavComunidades, navInmuebles, mobileNavInmuebles, navPropietarios, mobileNavPropietarios, navInquilinos, mobileNavInquilinos].forEach(el => {
+  [navHome, mobileNavHome, navComunidades, mobileNavComunidades, navInmuebles, mobileNavInmuebles, navPropietarios, mobileNavPropietarios, navInquilinos, mobileNavInquilinos, navAdministracion].forEach(el => {
     if (el) el.classList.remove("active");
   });
 
