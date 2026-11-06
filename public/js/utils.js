@@ -326,6 +326,12 @@ export function showValidationErrors(messages, title = "Revisá los siguientes d
     toast(messages.join(" "));
     return;
   }
+  // Botones de cierre (se conectan una sola vez)
+  if (!dialog.dataset.closeWired) {
+    dialog.dataset.closeWired = "true";
+    document.querySelector("#close-validation-dialog")?.addEventListener("click", () => dialog.close());
+    document.querySelector("#close-validation-btn")?.addEventListener("click", () => dialog.close());
+  }
   document.querySelector("#validation-title").textContent = title;
   list.replaceChildren();
   messages.forEach(message => {

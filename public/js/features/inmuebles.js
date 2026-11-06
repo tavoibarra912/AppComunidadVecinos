@@ -106,16 +106,14 @@ function renderPropertyOwnersTab() {
 
   const capacity = propertyOwnerCapacity();
   const atFullCapacity = capacity <= 0;
-  // Con la titularidad al 100% se anula la opción de agregar más propietarios
-  const btnAdd = document.querySelector("#btn-property-add-owner");
-  const btnLink = document.querySelector("#btn-property-link-owner");
-  [btnAdd, btnLink].forEach(btn => { if (btn) btn.disabled = atFullCapacity; });
+  // Los botones siguen habilitados: al intentar vincular se explica cómo
+  // hacer lugar (bajando el % de los propietarios actuales)
   const oldNote = listEl.parentElement.querySelector(".property-owners-capacity-note");
   if (oldNote) oldNote.remove();
   if (atFullCapacity) {
     const note = document.createElement("p");
     note.className = "form-intro property-owners-capacity-note";
-    note.textContent = "La titularidad de este inmueble alcanzó el 100%: no se pueden agregar más propietarios. Un inmueble con un propietario al 100% no admite otro.";
+    note.textContent = "La titularidad de este inmueble ya suma 100%. Para agregar otro propietario, bajá primero el porcentaje de alguno de los actuales.";
     listEl.parentElement.insertBefore(note, listEl);
   }
 
@@ -327,8 +325,8 @@ if (btnConfirmOwner) {
     const capacity = propertyOwnerCapacity();
     if (capacity <= 0) {
       showValidationErrors([
-        "La titularidad de este inmueble ya alcanzó el 100% entre sus propietarios, por lo que no se puede agregar otro. Un inmueble con un propietario al 100% no admite otro propietario."
-      ], "No se puede vincular el propietario");
+        "La suma de titularidades de este inmueble ya llega al 100%. Para agregar otro propietario, bajá primero el porcentaje de alguno de los propietarios actuales (pestaña Propietarios) y volvé a intentarlo."
+      ], "No hay titularidad disponible");
       return;
     }
     editingPropertyPeople.ownerIds.push(ownerId);
