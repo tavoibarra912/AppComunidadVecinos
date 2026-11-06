@@ -1,0 +1,371 @@
+// ==========================================
+// UTILIDADES DE INTERFAZ Y FORMATEO
+// ==========================================
+
+const toastEl = document.querySelector("#toast");
+
+export function toast(message) {
+  if (!toastEl) return;
+  toastEl.textContent = message;
+  toastEl.classList.add("visible");
+  window.setTimeout(() => toastEl.classList.remove("visible"), 2800);
+}
+
+export function digitsOnly(value, max) {
+  return (value || "").replace(/\D/g, "").slice(0, max);
+}
+
+export function formatPhone(value) {
+  const d = digitsOnly(value, 9);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
+  return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+}
+
+export function digitsIban(value) {
+  return (value || "").replace(/\s+/g, "").toUpperCase();
+}
+
+export function formatIban(value) {
+  if (!value) return "No registrado";
+  return digitsIban(value).replace(/(.{4})/g, "$1 ").trim();
+}
+
+export function maskIbanField(el) {
+  const clean = digitsIban(el.value).replace(/[^A-Z0-9]/g, "").slice(0, 24);
+  el.value = clean.replace(/(.{4})/g, "$1 ").trim();
+}
+
+export function fieldLabel(el) {
+  const host = el.closest("label");
+  if (!host) return el.name || "Campo";
+  return host.childNodes[0].textContent.replace("*", "").trim();
+}
+
+export function getLocalDateInputValue(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function isValidDateInput(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && getLocalDateInputValue(date) === value;
+}
+
+export function formatContractDate(value) {
+  return value ? value.split("-").reverse().join("/") : "Sin fecha de fin";
+}
+
+// ==========================================
+// VALIDADORES DE DOMINIO
+// ==========================================
+
+/**
+ * Valida un DNI o NIE español mediante cálculo de dígito de control módulo 23
+ */
+export function isValidDniNie(value) {
+  if (!value) return false;
+  const str = value.trim().toUpperCase();
+  const letters = "TRWAGMYFPDXBNJZSQVHLCKE";
+
+  const dniMatch = str.match(/^(\d{8})([A-Z])$/);
+  if (dniMatch) {
+    const num = parseInt(dniMatch[1], 10);
+    const letter = dniMatch[2];
+    return letters[num % 23] === letter;
+  }
+
+  const nieMatch = str.match(/^([XYZ])(\d{7})([A-Z])$/);
+  if (nieMatch) {
+    const prefix = nieMatch[1] === "X" ? "0" : (nieMatch[1] === "Y" ? "1" : "2");
+    const num = parseInt(prefix + nieMatch[2], 10);
+    const letter = nieMatch[3];
+    return letters[num % 23] === letter;
+  }
+
+  return false;
+}
+
+export function isValidCif(value) {
+  if (!value) return false;
+  const str = value.trim().toUpperCase();
+  if (!/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(str)) return false;
+  const digits = str.slice(1, 8);
+  let sumA = 0;
+  let sumB = 0;
+  for (let i = 0; i < digits.length; i++) {
+    const n = Number(digits[i]);
+    if ((i + 1) % 2 === 0) {
+      sumA += n;
+    } else {
+      const doubled = (n * 2).toString();
+      sumB += Number(doubled[0]) + (Number(doubled[1]) || 0);
+    }
+  }
+  const control = (10 - ((sumA + sumB) % 10)) % 10;
+  const last = str[8];
+  const letterControl = "JABCDEFGHI";
+  if ("PQRSNW".includes(str[0])) return last === letterControl[control];
+  if ("ABEH".includes(str[0])) return last === String(control);
+  return last === String(control) || last === letterControl[control];
+}
+
+export function detectDocumentType(value) {
+  const str = (value || "").trim().toUpperCase();
+  if (/^[XYZ]/.test(str)) return "NIE";
+  if (/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(str) && !/^\d{8}[A-Z]$/.test(str)) return "CIF";
+  return "DNI";
+}
+
+export function isValidIdentityDocument(value, documentType) {
+  const str = (value || "").trim().toUpperCase();
+  if (documentType === "CIF") return isValidCif(str);
+  if (documentType === "NIE") return /^[XYZ]\d{7}[A-Z]$/.test(str) && isValidDniNie(str);
+  return /^\d{8}[A-Z]$/.test(str) && isValidDniNie(str);
+}
+
+export function isValidIban(value) {
+  if (!value) return true;
+  const clean = digitsIban(value);
+  if (!/^ES\d{22}$/.test(clean)) return false;
+
+  let remainder = 0;
+  for (const char of clean.slice(4) + clean.slice(0, 4)) {
+    const digits = /[A-Z]/.test(char) ? String(char.charCodeAt(0) - 55) : char;
+    for (const digit of digits) {
+      remainder = (remainder * 10 + Number(digit)) % 97;
+    }
+  }
+  return remainder === 1;
+}
+
+export function isValidPhone(value) {
+  return /^[6789]\d{8}$/.test(digitsOnly(value, 9));
+}
+
+export function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((value || "").trim());
+}
+
+export function isValidCadastralRef(value) {
+  if (!value) return true;
+  return /^[A-Z0-9]{20}$/.test(value.replace(/\s+/g, "").toUpperCase());
+}
+
+export function isValidDecimal(value, min, max) {
+  if (!value) return true;
+  const normalized = String(value).trim().replace(",", ".");
+  if (!/^\d+(?:\.\d{1,4})?$/.test(normalized)) return false;
+  const n = Number(normalized);
+  return Number.isFinite(n) && n >= min && n <= max;
+}
+
+// ==========================================
+// DOCUMENTACIÓN GENÉRICA (inquilinos, comunidades e inmuebles)
+// ==========================================
+
+export function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Error de lectura del archivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function validateDocumentFiles(files) {
+  const messages = [];
+  [...files].forEach(file => {
+    const extension = file.name.split(".").pop().toLowerCase();
+    const allowed = ["pdf", "jpg", "jpeg", "png", "webp"].includes(extension);
+    if (!allowed) messages.push(`El archivo "${file.name}" debe ser PDF, JPG, PNG o WEBP.`);
+    if (file.size > 15 * 1024 * 1024) messages.push(`El archivo "${file.name}" supera el límite de 15 MB.`);
+  });
+  return messages;
+}
+
+export function setupGenericFileDropzone(dropzoneEl, inputEl) {
+  if (!dropzoneEl || !inputEl) return;
+  ["dragenter", "dragover"].forEach(eventName => {
+    dropzoneEl.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzoneEl.classList.add("dragover");
+    });
+  });
+  ["dragleave", "drop"].forEach(eventName => {
+    dropzoneEl.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzoneEl.classList.remove("dragover");
+    });
+  });
+  dropzoneEl.addEventListener("drop", e => {
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    const transfer = new DataTransfer();
+    [...inputEl.files, ...files].forEach(file => transfer.items.add(file));
+    inputEl.files = transfer.files;
+  });
+}
+
+/**
+ * Convierte un <select> en un combo con buscador integrado: un campo de
+ * texto con desplegable filtrable. El select original queda oculto dentro
+ * del componente y sigue siendo el que guarda el valor (serialización de
+ * formularios intacta; los cambios externos de valor se sincronizan).
+ */
+export function makeSelectSearchable(select, placeholder = "Escribe para buscar…") {
+  if (!select || select.dataset.combo === "true") return select;
+  select.dataset.combo = "true";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "combo-box";
+  select.parentNode.insertBefore(wrapper, select);
+
+  const input = document.createElement("input");
+  input.type = "search";
+  input.className = "combo-box-input";
+  input.placeholder = placeholder;
+  input.autocomplete = "off";
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-expanded", "false");
+
+  const list = document.createElement("ul");
+  list.className = "combo-box-options";
+  list.hidden = true;
+  list.setAttribute("role", "listbox");
+
+  wrapper.append(input, list);
+  select.classList.add("combo-box-select");
+  wrapper.append(select);
+
+  function selectedText() {
+    const option = select.selectedOptions[0];
+    return option && option.value ? option.textContent : "";
+  }
+
+  function openList() {
+    // Auto-sanado: si el texto no corresponde con la selección, sincronizar
+    // (el select puede haber cambiado por fuera del componente)
+    const selected = selectedText();
+    const matchesSelection = [...select.options].some(o => o.value && o.textContent === input.value);
+    if (!matchesSelection) input.value = selected;
+
+    list.replaceChildren();
+    const q = input.value.trim().toLocaleLowerCase("es");
+    const options = [...select.options].filter(o => o.value);
+    const matches = options.filter(o => !q || o.textContent.toLocaleLowerCase("es").includes(q));
+    if (matches.length === 0) {
+      const li = document.createElement("li");
+      li.className = "combo-box-empty";
+      li.textContent = "Sin resultados";
+      list.append(li);
+    }
+    matches.slice(0, 80).forEach(option => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.dataset.value = option.value;
+      li.textContent = option.textContent;
+      if (option.value === select.value) li.classList.add("selected");
+      li.addEventListener("mousedown", event => {
+        event.preventDefault();
+        select.value = option.value;
+        input.value = option.textContent;
+        closeList();
+        select.dispatchEvent(new Event("change"));
+      });
+      list.append(li);
+    });
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  }
+
+  function closeList() {
+    list.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+  }
+
+  select.addEventListener("change", () => {
+    input.value = selectedText();
+  });
+
+  input.addEventListener("focus", openList);
+  input.addEventListener("input", openList);
+  input.addEventListener("blur", () => setTimeout(closeList, 150));
+  input.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      closeList();
+      return;
+    }
+    if (event.key === "Enter" && !list.hidden) {
+      const first = list.querySelector("li[data-value]");
+      if (first) {
+        event.preventDefault();
+        select.value = first.dataset.value;
+        input.value = first.textContent;
+        closeList();
+        select.dispatchEvent(new Event("change"));
+      }
+    }
+  });
+
+  input.value = selectedText();
+  return select;
+}
+
+/**
+ * Muestra un modal con TODOS los errores de validación juntos.
+ */
+export function showValidationErrors(messages, title = "Revisá los siguientes datos") {
+  const dialog = document.querySelector("#validation-dialog");
+  const list = document.querySelector("#validation-list");
+  if (!dialog || !list) {
+    toast(messages.join(" "));
+    return;
+  }
+  document.querySelector("#validation-title").textContent = title;
+  list.replaceChildren();
+  messages.forEach(message => {
+    const li = document.createElement("li");
+    li.textContent = message;
+    list.append(li);
+  });
+  if (!dialog.open) dialog.showModal();
+}
+
+export function renderDocumentRecords(container, records, removeAttr, emptyText) {
+  container.replaceChildren();
+  if (!records || records.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "form-intro";
+    empty.textContent = emptyText;
+    container.append(empty);
+    return;
+  }
+
+  records.forEach(documentRecord => {
+    const item = document.createElement("div");
+    item.className = "property-document-item";
+    const link = document.createElement("a");
+    link.textContent = `${documentRecord.fileName} · ${Math.ceil((documentRecord.fileSize || 0) / 1024)} KB`;
+    const href = documentRecord.url || documentRecord.dataUrl;
+    if (href) {
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.download = documentRecord.fileName;
+    }
+    item.append(link);
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "secondary-button";
+    removeButton.dataset[removeAttr] = documentRecord.id;
+    removeButton.textContent = "Quitar";
+    item.append(removeButton);
+    container.append(item);
+  });
+}

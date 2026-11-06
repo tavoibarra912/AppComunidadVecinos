@@ -1,0 +1,220 @@
+import { db } from "./db.js";
+
+export function getLocalDateInputValue(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function getTenantContractStatus(tenant) {
+  const today = getLocalDateInputValue();
+  if (tenant.contractStart > today) return "Próximo";
+  if (tenant.contractEnd && tenant.contractEnd < today) return "Finalizado";
+  return "Vigente";
+}
+
+function propertyOwnerIds(property) {
+  return Array.isArray(property.ownerIds) ? property.ownerIds : [];
+}
+
+function propertyTenantIds(property) {
+  return Array.isArray(property.tenantIds) ? property.tenantIds : [];
+}
+
+/**
+ * Vincula el inmueble al propietario (modelo multi-propietario: aditivo).
+ * El propietario pasa a figurar entre los ownerIds del inmueble y se
+ * rearmalas relaciones propertyIds de todos los propietarios.
+ */
+export function applyOwnerPropertyLink(ownerId, linkedPropertyId) {
+  const linked = db.prepare("SELECT * FROM properties WHERE id = ?").get(linkedPropertyId);
+  if (!linked) throw new Error("El inmueble seleccionado no existe.");
+
+  const ownerIds = propertyOwnerIds(linked);
+  if (!ownerIds.includes(ownerId)) {
+    ownerIds.push(ownerId);
+    db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?").run(JSON.stringify(ownerIds), linkedPropertyId);
+  }
+
+  const community = db.prepare("SELECT name FROM communities WHERE id = ?").get(linked.communityId);
+  db.prepare(
+    `UPDATE owners SET
+       communityId = ?, communityName = ?, plot = ?, propertyType = ?,
+       cadastralRef = ?, registryNumber = ?, floor = ?, door = ?,
+       areaM2 = ?, participationCoef = ?, propertyUse = ?
+     WHERE id = ?`
+  ).run(
+    linked.communityId,
+    linked.communityName || community?.name || "",
+    linked.plot || "",
+    linked.propertyType || "",
+    linked.cadastralRef || "",
+    linked.registryNumber || "",
+    linked.floor || "",
+    linked.door || "",
+    linked.areaM2 || "",
+    linked.participationCoef || "",
+    linked.propertyUse || "",
+    ownerId
+  );
+
+  rebuildOwnersPropertyIds();
+}
+
+/**
+ * Sincroniza la lista completa de inmuebles de un propietario (modelo N:M):
+ * añade los vínculos nuevos, elimina los que ya no corresponden y
+ * renormaliza los campos desnormalizados de la comunidad/inmueble principal.
+ */
+export function syncOwnerProperties(ownerId, propertyIds = []) {
+  const desired = [...new Set(propertyIds)].filter(id =>
+    db.prepare("SELECT id FROM properties WHERE id = ?").get(id)
+  );
+  const current = db.prepare("SELECT id FROM properties WHERE ownerIds LIKE ?")
+    .all(`%"${ownerId}"%`)
+    .map(row => row.id);
+
+  for (const propId of current) {
+    if (desired.includes(propId)) continue;
+    const row = db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propId);
+    const ids = JSON.parse(row.ownerIds || "[]").filter(x => x !== ownerId);
+    db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?").run(JSON.stringify(ids), propId);
+  }
+
+  for (const propId of desired) {
+    if (current.includes(propId)) continue;
+    const row = db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propId);
+    const ids = JSON.parse(row.ownerIds || "[]");
+    if (!ids.includes(ownerId)) ids.push(ownerId);
+    db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?").run(JSON.stringify(ids), propId);
+  }
+
+  const primaryId = desired[0] || "";
+  if (primaryId) {
+    const linked = db.prepare("SELECT * FROM properties WHERE id = ?").get(primaryId);
+    const community = db.prepare("SELECT name FROM communities WHERE id = ?").get(linked.communityId);
+    db.prepare(
+      `UPDATE owners SET
+         communityId = ?, communityName = ?, plot = ?, propertyType = ?,
+         cadastralRef = ?, registryNumber = ?, floor = ?, door = ?,
+         areaM2 = ?, participationCoef = ?, propertyUse = ?
+       WHERE id = ?`
+    ).run(
+      linked.communityId,
+      linked.communityName || community?.name || "",
+      linked.plot || "",
+      linked.propertyType || "",
+      linked.cadastralRef || "",
+      linked.registryNumber || "",
+      linked.floor || "",
+      linked.door || "",
+      linked.areaM2 || "",
+      linked.participationCoef || "",
+      linked.propertyUse || "",
+      ownerId
+    );
+  } else {
+    db.prepare(
+      `UPDATE owners SET
+         communityId = '', communityName = '', plot = '', propertyType = '',
+         cadastralRef = '', registryNumber = '', floor = '', door = '',
+         areaM2 = '', participationCoef = '', propertyUse = ''
+       WHERE id = ?`
+    ).run(ownerId);
+  }
+
+  rebuildOwnersPropertyIds();
+}
+
+/**
+ * Rearma propertyIds de todos los propietarios a partir de los ownerIds
+ * de cada inmueble (relación N:M).
+ */
+export function rebuildOwnersPropertyIds() {
+  const owners = db.prepare("SELECT id, propertyId FROM owners").all();
+  const update = db.prepare("UPDATE owners SET propertyIds = ?, propertyId = ? WHERE id = ?");
+  for (const owner of owners) {
+    const linkedIds = db.prepare("SELECT id FROM properties WHERE ownerIds LIKE ?")
+      .all(`%"${owner.id}"%`)
+      .map(row => row.id);
+    const mainId = linkedIds.includes(owner.propertyId) ? owner.propertyId : (linkedIds[0] || "");
+    update.run(JSON.stringify(linkedIds), mainId, owner.id);
+  }
+
+  // Limpieza: propietarios sin inmuebles pierden la referencia primaria
+  db.prepare("UPDATE owners SET propertyId = '' WHERE propertyId <> '' AND NOT EXISTS (SELECT 1 FROM properties WHERE id = owners.propertyId)").run();
+}
+
+/**
+ * Sincroniza la referencia del inquilino vigente en los tenantIds de los
+ * inmuebles (equivalente a syncPropertyTenantReferences del frontend).
+ */
+export function syncPropertyTenantReferences(tenantId) {
+  const tenant = db.prepare("SELECT * FROM tenants WHERE id = ?").get(tenantId);
+  if (!tenant) return;
+  const status = getTenantContractStatus(tenant);
+
+  const properties = db.prepare("SELECT id, tenantIds FROM properties").all();
+  for (const property of properties) {
+    const tenantIds = propertyTenantIds(property);
+    const isLinked = property.id === tenant.propertyId && status === "Vigente";
+    const hasReference = tenantIds.includes(tenantId);
+    if (hasReference && !isLinked) {
+      db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?")
+        .run(JSON.stringify(tenantIds.filter(id => id !== tenantId)), property.id);
+    } else if (isLinked && !hasReference) {
+      tenantIds.push(tenantId);
+      db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?")
+        .run(JSON.stringify(tenantIds), property.id);
+    }
+  }
+}
+
+/**
+ * Guarda o actualiza un inquilino. El propietario se conserva explícitamente
+ * (modelo multi-inquilino por inmueble) y se sincronizan las referencias.
+ */
+export function upsertTenant(payload, tenantId) {
+  const property = db.prepare("SELECT * FROM properties WHERE id = ?").get(payload.propertyId);
+  if (!property) throw new Error("El inmueble seleccionado no existe.");
+  if (!payload.ownerId || !db.prepare("SELECT id FROM owners WHERE id = ?").get(payload.ownerId)) {
+    throw new Error("El inquilino debe vincularse a un propietario registrado.");
+  }
+
+  const existing = tenantId ? db.prepare("SELECT id FROM tenants WHERE id = ?").get(tenantId) : null;
+  if (tenantId && !existing) throw new Error("El inquilino que intentas editar ya no existe.");
+
+  if (existing) {
+    db.prepare(
+      `UPDATE tenants SET
+         ownerId = ?, propertyId = ?, name = ?, surname = ?, documentType = ?, documentId = ?,
+         contractType = ?, monthlyRent = ?, deposit = ?, emergencyPhone = ?,
+         phone = ?, email = ?, contractStart = ?, contractEnd = ?,
+         authorizations = ?, authorizationNotes = ?
+       WHERE id = ?`
+    ).run(
+      payload.ownerId, payload.propertyId, payload.name, payload.surname, payload.documentType || "DNI", payload.documentId || "",
+      payload.contractType || "vivienda_habitual", payload.monthlyRent || "", payload.deposit || "", payload.emergencyPhone || "",
+      payload.phone, payload.email, payload.contractStart, payload.contractEnd || "",
+      JSON.stringify(Array.isArray(payload.authorizations) ? payload.authorizations : []),
+      payload.authorizationNotes || "",
+      tenantId
+    );
+  } else {
+    db.prepare(
+      `INSERT INTO tenants (id, ownerId, propertyId, name, surname, documentType, documentId,
+        contractType, monthlyRent, deposit, emergencyPhone, phone, email,
+        contractStart, contractEnd, authorizations, authorizationNotes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      tenantId, payload.ownerId, payload.propertyId, payload.name, payload.surname, payload.documentType || "DNI", payload.documentId || "",
+      payload.contractType || "vivienda_habitual", payload.monthlyRent || "", payload.deposit || "", payload.emergencyPhone || "",
+      payload.phone, payload.email, payload.contractStart, payload.contractEnd || "",
+      JSON.stringify(Array.isArray(payload.authorizations) ? payload.authorizations : []),
+      payload.authorizationNotes || ""
+    );
+  }
+
+  syncPropertyTenantReferences(tenantId);
+  return payload.ownerId;
+}
