@@ -326,7 +326,9 @@ if (btnConfirmOwner) {
     }
     const capacity = propertyOwnerCapacity();
     if (capacity <= 0) {
-      toast("La titularidad de este inmueble ya alcanzó el 100%: no se pueden agregar más propietarios.");
+      showValidationErrors([
+        "La titularidad de este inmueble ya alcanzó el 100% entre sus propietarios, por lo que no se puede agregar otro. Un inmueble con un propietario al 100% no admite otro propietario."
+      ], "No se puede vincular el propietario");
       return;
     }
     editingPropertyPeople.ownerIds.push(ownerId);
@@ -335,7 +337,9 @@ if (btnConfirmOwner) {
     if (panel) panel.hidden = true;
     renderPropertyOwnersTab();
     if (propertyOwnerCapacity() <= 0) {
-      toast("La titularidad del inmueble llegó al 100%: no se pueden agregar más propietarios.");
+      showValidationErrors([
+        "La titularidad de este inmueble llegó al 100%: no se pueden agregar más propietarios."
+      ], "Titularidad completa");
     }
   });
 }

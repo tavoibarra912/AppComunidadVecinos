@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { state, refreshState, CURRENT_OWNER_ID, ownerProperties, ownerTenants, getTenantContractStatus, tenantsForProperty, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
-import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable } from "../utils.js";
-import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode } from "../territory.js";
+import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors } from "../utils.js";
+import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { editingDocs, renderOwnerDialogDocs, getFormOwnerContext, DocumentValidator } from "../docs-engine.js";
 import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, getOwnerOverallDocStatus, addOwnerNotification, sendAdminEmailNotification, openAdminEmail, updateInboxBadge, updateOwnerInboxBadge, renderOwnerInbox, openOwnerInbox, openAdminInbox } from "./notificaciones.js";
@@ -1324,7 +1324,7 @@ export function collectOwnerErrors() {
   }
 
   const cityVal = el("city")?.value;
-  const selectedLocation = locationsById.get(cityVal);
+  const selectedLocation = getLocationById(cityVal);
   if (!cityVal || !selectedLocation) {
     errors.push("Debes seleccionar un municipio válido.");
     marks.push("city");
@@ -1629,6 +1629,9 @@ if (btnOwnerConfirmProperty) {
     const capacity = property ? ownerPropertyCapacity(property) : 0;
     if (capacity <= 0) {
       toast(`No se puede asociar el inmueble "${property?.plot}": ya alcanzó el 100% de titularidad entre sus propietarios.`);
+      showValidationErrors([
+        `El inmueble "${property?.plot}" ya alcanzó el 100% de titularidad entre sus propietarios, por lo que no se puede vincular a este propietario.`
+      ], "No se puede vincular el inmueble");
       return;
     }
     editingOwnerProperties.push(propertyId);
