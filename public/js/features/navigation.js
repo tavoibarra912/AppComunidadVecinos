@@ -1,4 +1,4 @@
-import { state, CURRENT_OWNER_ID, ROLE_PERMISSIONS, hasPermission, requirePermission } from "../state.js";
+import { state, onDataChanged, ROLE_LABELS, setActiveUser, getCurrentUser, getCurrentUserRole, hasPermission, requirePermission } from "../state.js";
 import { toast } from "../utils.js";
 import { renderCommunities } from "./comunidades.js";
 import { renderOwners } from "./propietarios.js";
@@ -58,10 +58,13 @@ const contactVerify = {
 
 export function applyRoleUI() {
   const isOwner = state.activeRole === "owner";
+  const user = getCurrentUser();
+  const roleLabel = ROLE_LABELS[user?.rol] || user?.rol || "";
 
-  // 1. Selector y perfil en topbar
-  if (userAvatar) userAvatar.textContent = isOwner ? "C" : "A";
-  if (userRoleLabel) userRoleLabel.textContent = isOwner ? "Propietario (Carlos Ruiz)" : "Administrador";
+  // 1. Selector y perfil en topbar (login simulado)
+  const displayName = `${user?.nombre || ""} ${user?.apellido || ""}`.trim() || user?.usuario || "?";
+  if (userAvatar) userAvatar.textContent = displayName.charAt(0).toUpperCase();
+  if (userRoleLabel) userRoleLabel.textContent = `${displayName} · ${roleLabel}`;
 
   // 2. Buzones en topbar
   if (topbarInboxBtn) {
@@ -266,27 +269,32 @@ export function navigateToSection(targetHash) {
 window.addEventListener("hashchange", handleRouting);
 
 
-// Selector de Modo de Rol (Administrador / Propietario)
+// Login simulado: selector de usuario en el topbar
 const activeRoleSelect = document.querySelector("#active-role-select");
+
+function renderUserSelector() {
+  if (!activeRoleSelect) return;
+  const previous = state.currentUserId;
+  activeRoleSelect.replaceChildren();
+  state.users.filter(user => user.activo).forEach(user => {
+    const roleLabel = ROLE_LABELS[user.rol] || user.rol;
+    activeRoleSelect.add(new Option(`${user.nombre || user.usuario} · ${roleLabel}`, user.id));
+  });
+  if (previous) activeRoleSelect.value = previous;
+}
+
 if (activeRoleSelect) {
   activeRoleSelect.addEventListener("change", () => {
-    if (!Object.hasOwn(ROLE_PERMISSIONS, activeRoleSelect.value)) {
-      activeRoleSelect.value = state.activeRole;
-      toast("El modo seleccionado no está disponible.");
-      return;
-    }
-    state.activeRole = activeRoleSelect.value;
+    setActiveUser(activeRoleSelect.value);
     applyRoleUI();
     renderCommunities();
     renderOwners();
     renderProperties();
+    renderTenants();
     renderHomeDashboard();
     handleRouting();
-    if (state.activeRole === "owner") {
-      toast("Vista Propietario de demostración activada; no sustituye autenticación ni autorización de servidor.");
-    } else {
-      toast("Vista Administrador de demostración activada; no sustituye autenticación ni autorización de servidor.");
-    }
+    toast(`Sesión simulada como ${getCurrentUser()?.usuario || "?"} (${ROLE_LABELS[getCurrentUserRole()] || getCurrentUserRole()}).`);
   });
+  onDataChanged(() => renderUserSelector());
 }
 

@@ -1,7 +1,7 @@
 // ==========================================
 // PUNTO DE ENTRADA DE LA APLICACIÓN
 // ==========================================
-import { refreshState, onDataChanged, state as appState } from "./state.js";
+import { refreshState, onDataChanged, state as appState, restoreActiveUser, getCurrentUser, getCurrentUserRole, getUserProfiles } from "./state.js";
 import { loadLocations } from "./territory.js";
 import { intentarCerrar } from "./utils.js";
 import { applyRoleUI, handleRouting } from "./features/navigation.js";
@@ -29,6 +29,9 @@ async function boot() {
 
   // Carga inicial del estado desde el backend (única fuente de verdad)
   await refreshState();
+
+  // Login simulado: restaura el usuario activo (o el primer super_admin)
+  restoreActiveUser();
 
   applyRoleUI();
   handleRouting();

@@ -275,14 +275,15 @@ export function seedIfEmpty() {
     }));
 
     const roles = [
-      { id: "rol-admin", nombre: "administrador", descripcion: "Acceso total: gestión de comunidades, inmuebles, propietarios, inquilinos y administración.", permisos: ["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin:users", "admin:roles", "admin:settings", "admin_notification:read"], sistema: 1 },
-      { id: "rol-propietario", nombre: "propietario", descripcion: "Acceso a sus datos, inmuebles, inquilinos y carga de documentación.", permisos: ["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "tenant:manage", "owner_notification:read"], sistema: 1 },
-      { id: "rol-consulta", nombre: "consulta", descripcion: "Sólo consulta de comunidades, inmuebles y propietarios.", permisos: ["community:read", "owner:read", "property:read", "tenant:read"], sistema: 0 }
+      { id: "rol-super-admin", nombre: "super_admin", descripcion: "Acceso total: administra y crea comunidades y administra todo el sistema (usuarios, roles, configuración).", permisos: ["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin:users", "admin:roles", "admin:settings", "admin_notification:read", "owner_notification:read"], sistema: 1 },
+      { id: "rol-admin-general", nombre: "administrator", descripcion: "Crea y administra comunidades y todo lo relativo a ellas (propietarios, inmuebles, inquilinos, documentación).", permisos: ["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin_notification:read"], sistema: 1 },
+      { id: "rol-admin-comunidad", nombre: "community_admin", descripcion: "Administra una comunidad asignada y todo lo relativo a ella; no puede crear comunidades.", permisos: ["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve"], sistema: 1 },
+      { id: "rol-usuario", nombre: "user", descripcion: "Administra únicamente su propio perfil y sus datos.", permisos: ["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "owner_notification:read"], sistema: 1 }
     ];
     roles.forEach(r => insertRole.run(r.id, r.nombre, r.descripcion, JSON.stringify(r.permisos), r.sistema));
 
-    insertUser.run("user-admin", "Administrador", "de la Asociación", "admin", "admin@penarrubia.es", "rol-admin");
-    insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "rol-consulta");
+    insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin");
+    insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user");
 
     // Relaciones propietario ↔ inmueble (N:M): por plot dentro de la comunidad.
     // Los propietarios sembrados son titulares únicos (100%).
@@ -318,3 +319,4 @@ export function seedIfEmpty() {
     throw error;
   }
 }
+

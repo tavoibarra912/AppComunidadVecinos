@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { state, refreshState, CURRENT_OWNER_ID, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, getCurrentOwnerProfileId, hasPermission, requirePermission } from "../state.js";
 import { toast } from "../utils.js";
 import { openOwnerDetail } from "./propietarios.js";
 
@@ -123,7 +123,7 @@ export function saveOwnerNotifications() {
 }
 
 export function updateOwnerInboxBadge() {
-  const unreadCount = state.ownerNotifications.filter(n => !n.read && n.ownerId === CURRENT_OWNER_ID).length;
+  const unreadCount = state.ownerNotifications.filter(n => !n.read && n.ownerId === getCurrentOwnerProfileId()).length;
   if (ownerInboxBadgeCount) {
     ownerInboxBadgeCount.textContent = unreadCount;
     ownerInboxBadgeCount.style.display = unreadCount > 0 ? "inline-block" : "none";
@@ -137,7 +137,7 @@ export function addOwnerNotification({ ownerId, title, type = "info", message })
   });
   const notif = {
     id: "notif-" + Date.now(),
-    ownerId: ownerId || CURRENT_OWNER_ID,
+    ownerId: ownerId || getCurrentOwnerProfileId(),
     title,
     type,
     date: dateStr,
@@ -150,19 +150,19 @@ export function addOwnerNotification({ ownerId, title, type = "info", message })
 }
 
 export function openOwnerInbox() {
-  if (!requirePermission("owner_notification:read", CURRENT_OWNER_ID)) return;
+  if (!requirePermission("owner_notification:read", getCurrentOwnerProfileId())) return;
   renderOwnerInbox();
   ownerInboxDialog.showModal();
 }
 
 export function renderOwnerInbox() {
-  if (!hasPermission("owner_notification:read", CURRENT_OWNER_ID)) {
+  if (!hasPermission("owner_notification:read", getCurrentOwnerProfileId())) {
     ownerInboxList?.replaceChildren();
     return;
   }
   if (!ownerInboxList) return;
   ownerInboxList.replaceChildren();
-  const myNotifs = state.ownerNotifications.filter(n => n.ownerId === CURRENT_OWNER_ID);
+  const myNotifs = state.ownerNotifications.filter(n => n.ownerId === getCurrentOwnerProfileId());
 
   if (myNotifs.length === 0) {
     const empty = document.createElement("div");
@@ -342,7 +342,7 @@ if (closeOwnerInboxBtn) closeOwnerInboxBtn.addEventListener("click", () => owner
 if (markAllOwnerNotifsReadBtn) {
   markAllOwnerNotifsReadBtn.addEventListener("click", async () => {
     try {
-      await api.markAllOwnerNotificationsRead(CURRENT_OWNER_ID);
+      await api.markAllOwnerNotificationsRead(getCurrentOwnerProfileId());
       await refreshState();
       renderOwnerInbox();
       toast("Todos los avisos marcados como leídos.");

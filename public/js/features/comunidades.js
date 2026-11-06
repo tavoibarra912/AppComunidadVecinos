@@ -75,6 +75,8 @@ export function visibleCommunities() {
 }
 
 export function renderCommunities() {
+  // Crear comunidades: sólo Super Admin y Admin General
+  if (newCommunityBtn) newCommunityBtn.hidden = !hasPermission("community:create");
   if (!communityTable) {
     communityTable = createDataTable({
       mount: document.querySelector("#comunidades-table"),

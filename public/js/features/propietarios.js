@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { state, refreshState, CURRENT_OWNER_ID, ownerProperties, ownerTenants, getTenantContractStatus, tenantsForProperty, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, tenantsForProperty, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
@@ -556,7 +556,7 @@ export function propertiesForCommunity(communityId) {
 export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = false } = {}) {
   const isOwner = state.activeRole === "owner";
   if (isOwner) {
-    id = CURRENT_OWNER_ID;
+    id = getCurrentOwnerProfileId();
   }
   const permission = readOnly ? "owner:read" : (isOwner ? "owner:edit" : "owner:manage");
   if (!requirePermission(permission, id || "")) return;

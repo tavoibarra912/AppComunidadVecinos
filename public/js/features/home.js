@@ -1,4 +1,4 @@
-import { state, CURRENT_OWNER_ID, ownerTenants, getTenantContractStatus, getCurrencies, hasPermission, requirePermission } from "../state.js";
+import { state, getCurrentOwnerProfile, ownerTenants, getTenantContractStatus, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { navigateToSection } from "./navigation.js";
 import { openOwnerEditor, renderOwners, openOwnerDetail } from "./propietarios.js";
 import { openCommunityEditor } from "./comunidades.js";
@@ -46,7 +46,7 @@ export function renderHomeDashboard() {
   if (homeTodayMonth) homeTodayMonth.textContent = months[now.getMonth()] + " " + now.getFullYear();
 
   if (isOwner) {
-    const currentOwner = state.owners.find(o => o.id === CURRENT_OWNER_ID);
+    const currentOwner = getCurrentOwnerProfile();
     const comName = currentOwner?.communityName || "Sin comunidad asignada";
     
     if (homeHeroRoleBadge) homeHeroRoleBadge.textContent = "Área de Asociado";

@@ -204,21 +204,61 @@ function ensureColumns(table, definitions) {
 }
 
 ensureColumns("communities", {
-  currency: "TEXT NOT NULL DEFAULT ''"
+  currency: "TEXT NOT NULL DEFAULT ''",
+  adminUserId: "TEXT NOT NULL DEFAULT ''"
 });
 
-// Semilla idempotente de administración (para bases creadas antes de la
-// pantalla Administración: roles del sistema + usuarios iniciales).
-if (db.prepare("SELECT COUNT(*) AS total FROM roles").get().total === 0) {
+ensureColumns("owners", {
+  userId: "TEXT NOT NULL DEFAULT ''"
+});
+
+ensureColumns("tenants", {
+  userId: "TEXT NOT NULL DEFAULT ''"
+});
+
+// Roles del modelo de acceso: Super Admin / Admin General / Admin de
+// Comunidad / Usuario. Migración idempotente: si aún no existe
+// "super_admin" se reemplaza el set viejo y se miguran los usuarios.
+if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
+  db.exec("DELETE FROM roles");
   const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
-  insertRole.run("rol-admin", "administrador", "Acceso total: gestión de comunidades, inmuebles, propietarios, inquilinos y administración.", JSON.stringify(["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin:users", "admin:roles", "admin:settings", "admin_notification:read"]), 1);
-  insertRole.run("rol-propietario", "propietario", "Acceso a sus datos, inmuebles, inquilinos y carga de documentación.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "tenant:manage", "owner_notification:read"]), 1);
-  insertRole.run("rol-consulta", "consulta", "Sólo consulta de comunidades, inmuebles y propietarios.", JSON.stringify(["community:read", "owner:read", "property:read", "tenant:read"]), 0);
+  insertRole.run("rol-super-admin", "super_admin", "Acceso total: administra y crea comunidades y administra todo el sistema (usuarios, roles, configuración).", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin:users", "admin:roles", "admin:settings", "admin_notification:read", "owner_notification:read"]), 1);
+  insertRole.run("rol-admin-general", "administrator", "Crea y administra comunidades y todo lo relativo a ellas (propietarios, inmuebles, inquilinos, documentación).", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin_notification:read"]), 1);
+  insertRole.run("rol-admin-comunidad", "community_admin", "Administra una comunidad asignada y todo lo relativo a ella; no puede crear comunidades.", JSON.stringify(["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve"]), 1);
+  insertRole.run("rol-usuario", "user", "Administra únicamente su propio perfil y sus datos.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "owner_notification:read"]), 1);
+  // Migrar usuarios del set viejo
+  db.prepare("UPDATE users SET rol = 'super_admin' WHERE rol IN ('administrador', 'rol-admin')").run();
+  db.prepare("UPDATE users SET rol = 'user' WHERE rol NOT IN ('super_admin', 'administrator', 'community_admin', 'user')").run();
 }
 if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)");
-  insertUser.run("user-admin", "Administrador", "de la Asociación", "admin", "admin@penarrubia.es", "rol-admin");
-  insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "rol-consulta");
+  insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin");
+  insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user");
+}
+
+// Perfil Propietario simulado: cuenta para el propietario sembrado
+// (Carlos Ruiz) si aún no tiene usuario vinculado.
+const carlosOwner = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1' AND (userId IS NULL OR userId = '')").get();
+if (carlosOwner && !db.prepare("SELECT id FROM users WHERE id = 'user-carlos'").get()) {
+  db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
+    .run("user-carlos", "Carlos", "Ruiz Mendoza", "carlos", "carlos@penarrubia.es", "user");
+  db.prepare("UPDATE owners SET userId = 'user-carlos' WHERE id = 'own-seed-1'").run();
+}
+// Perfil Inquilino simulado: cuenta para el inquilino sembrado
+// (Laura Martínez) si aún no tiene usuario vinculado.
+const lauraTenant = db.prepare("SELECT id FROM tenants WHERE id = 'tenant-seed-1' AND (userId IS NULL OR userId = '')").get();
+if (lauraTenant && !db.prepare("SELECT id FROM users WHERE id = 'user-laura'").get()) {
+  db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
+    .run("user-laura", "Laura", "Martínez Reyes", "laura", "laura@penarrubia.es", "user");
+  db.prepare("UPDATE tenants SET userId = 'user-laura' WHERE id = 'tenant-seed-1'").run();
+}
+// Perfil Administrador de Comunidad simulado: admin asignado a la
+// comunidad sembrada principal.
+const comPrincipal = db.prepare("SELECT id FROM communities WHERE id = 'com-seed-1' AND (adminUserId IS NULL OR adminUserId = '')").get();
+if (comPrincipal && db.prepare("SELECT id FROM users WHERE id = 'user-admin-comunidad'").get() === undefined) {
+  db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
+    .run("user-admin-comunidad", "Gestor", "de Residencial Peñarrubia", "gestor.olivos", "gestor@penarrubia.es", "community_admin");
+  db.prepare("UPDATE communities SET adminUserId = 'user-admin-comunidad' WHERE id = 'com-seed-1'").run();
 }
 
 ensureColumns("properties", {
@@ -276,6 +316,7 @@ export function communityFromRow(row) {
     constitutionYear: row.constitutionYear || "",
     reserveFund: row.reserveFund || "",
     currency: row.currency || "",
+    adminUserId: row.adminUserId || "",
     notes: row.notes,
     documents: parseJson(row.documents, [])
   };

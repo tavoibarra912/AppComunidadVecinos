@@ -4,7 +4,7 @@ import { api } from "./api.js";
 // CONSTANTES DE DOMINIO
 // ==========================================
 
-export const CURRENT_OWNER_ID = "own-seed-1"; // Carlos Ruiz Mendoza (modo Propietario)
+export const CURRENT_OWNER_ID = "own-seed-1"; // DEPRECATED: usar getCurrentOwnerProfileId() (perfil Propietario del usuario simulado)
 
 export const PROPERTY_TYPE_LABELS = {
   parcela: "Parcela",
@@ -57,6 +57,7 @@ export const state = {
   users: [],
   roles: [],
   settings: {},
+  currentUserId: null,
   activeRole: "admin",
   // Estado de sesión compartido entre módulos (diálogos en edición/visualización)
   ui: {
@@ -193,56 +194,174 @@ export function propertyOwnerIds(property) {
 // CONTROL DE ACCESO (RBAC)
 // ==========================================
 
-export const ROLE_PERMISSIONS = {
-  admin: new Set([
-    "community:read", "community:manage",
-    "owner:read", "owner:manage", "owner:documents:submit",
-    "property:read", "property:manage",
-    "tenant:read", "tenant:manage", "tenant_grant:manage",
-    "document:approve", "admin_notification:read"
-  ]),
-  owner: new Set([
-    "community:read", "owner:read", "owner:edit", "owner:documents:submit",
-    "property:read", "tenant:read", "tenant:manage", "tenant_grant:manage",
-    "owner_notification:read"
-  ])
+// Etiquetas legibles de los roles del sistema
+export const ROLE_LABELS = {
+  super_admin: "Super Administrador",
+  administrator: "Administrador",
+  community_admin: "Administrador de Comunidad",
+  user: "Usuario"
 };
 
-export function hasPermission(permission, resourceId = "") {
-  const permissions = ROLE_PERMISSIONS[state.activeRole];
-  if (!permissions || !permissions.has(permission)) return false;
-  if (state.activeRole === "admin") return true;
+// LOGIN SIMULADO Y PERFILES
 
-  const currentOwner = owners.find(owner => owner.id === CURRENT_OWNER_ID);
-  if (!currentOwner) return false;
-  const legacyCommunityIds = currentOwner.communityId
-    ? []
-    : state.communities
-      .filter(community => community.name === currentOwner.communityName)
-      .map(community => community.id);
+export function getCurrentUser() {
+  return state.users.find(user => user.id === state.currentUserId) || null;
+}
 
+export function getCurrentUserRole() {
+  return getCurrentUser()?.rol || "super_admin";
+}
+
+/** Perfiles del usuario: vínculos con registros del dominio. */
+export function getUserProfiles(user = getCurrentUser()) {
+  if (!user) return { ownerIds: [], tenantIds: [], adminCommunityIds: [] };
+  return {
+    ownerIds: state.owners.filter(owner => owner.userId === user.id).map(owner => owner.id),
+    tenantIds: state.tenants.filter(tenant => tenant.userId === user.id).map(tenant => tenant.id),
+    adminCommunityIds: state.communities.filter(community => community.adminUserId === user.id).map(community => community.id)
+  };
+}
+
+/** Registro de propietario vinculado al usuario actual (perfil Propietario). */
+export function getCurrentOwnerProfile() {
+  const user = getCurrentUser();
+  if (!user) return null;
+  return state.owners.find(owner => owner.userId === user.id) || null;
+}
+
+export function getCurrentOwnerProfileId() {
+  return getCurrentOwnerProfile()?.id || "";
+}
+
+/** Comunidades visibles para el usuario según sus perfiles. */
+export function userCommunityIds(user = getCurrentUser()) {
+  const profiles = getUserProfiles(user);
+  const ids = new Set(profiles.adminCommunityIds);
+  profiles.ownerIds.forEach(ownerId => {
+    const owner = state.owners.find(o => o.id === ownerId);
+    if (owner) ownerProperties(owner).forEach(property => ids.add(property.communityId));
+  });
+  profiles.tenantIds.forEach(tenantId => {
+    const tenant = state.tenants.find(x => x.id === tenantId);
+    const property = state.properties.find(x => x.id === tenant?.propertyId);
+    if (property?.communityId) ids.add(property.communityId);
+  });
+  return [...ids];
+}
+
+function communityIdOfResource(permission, resourceId) {
+  if (!resourceId) return "";
   switch (permission) {
     case "community:read":
-      return state.communities.some(community =>
-        community.id === resourceId &&
-        (community.id === currentOwner.communityId ||
-          legacyCommunityIds.length === 1 && legacyCommunityIds[0] === community.id ||
-          ownerProperties(currentOwner).some(property => property.communityId === community.id))
-      );
+    case "community:manage":
+      return resourceId;
     case "owner:read":
+    case "owner:manage":
     case "owner:edit":
-    case "owner:documents:submit":
-    case "tenant:read":
-    case "tenant:manage":
-    case "tenant_grant:manage":
-      return resourceId === CURRENT_OWNER_ID;
+    case "owner:documents:submit": {
+      const owner = state.owners.find(o => o.id === resourceId);
+      if (!owner) return "";
+      if (owner.communityId) return owner.communityId;
+      return ownerProperties(owner)[0]?.communityId || "";
+    }
     case "property:read":
-      return ownerProperties(currentOwner).some(property => property.id === resourceId);
-    case "owner_notification:read":
-      return resourceId === CURRENT_OWNER_ID;
+    case "property:manage":
+      return state.properties.find(p => p.id === resourceId)?.communityId || "";
+    case "tenant:read":
+    case "tenant:manage": {
+      const tenant = state.tenants.find(x => x.id === resourceId);
+      return tenant?.communityId || state.properties.find(p => p.id === tenant?.propertyId)?.communityId || "";
+    }
     default:
-      return false;
+      return "";
   }
+}
+
+export function hasPermission(permission, resourceId = "") {
+  const user = getCurrentUser();
+  if (!user || !user.activo) return false;
+  const role = user.rol;
+  const profiles = getUserProfiles(user);
+  const isOwnerProfile = profiles.ownerIds.length > 0;
+
+  // Sistema
+  if (permission === "admin:users" || permission === "admin:roles" || permission === "admin:settings") {
+    return role === "super_admin";
+  }
+
+  // Crear comunidades: Super Admin y Admin General
+  if (permission === "community:create") {
+    return role === "super_admin" || role === "administrator";
+  }
+
+  // Gestión de dominio con alcance por comunidad para community_admin
+  if (["community:manage", "owner:manage", "property:manage", "tenant:manage", "document:approve"].includes(permission)) {
+    if (role === "super_admin" || role === "administrator") return true;
+    if (role === "community_admin") {
+      if (!resourceId) return profiles.adminCommunityIds.length > 0;
+      const communityId = communityIdOfResource(permission, resourceId);
+      return communityId ? profiles.adminCommunityIds.includes(communityId) : profiles.adminCommunityIds.length > 0;
+    }
+    // Propietario: gestiona inquilinos de SUS inmuebles
+    if (permission === "tenant:manage" && isOwnerProfile) {
+      if (!resourceId) return true;
+      return profiles.ownerIds.includes(resourceId);
+    }
+    return false;
+  }
+
+  // Lectura de dominio
+  if (["community:read", "owner:read", "property:read", "tenant:read"].includes(permission)) {
+    if (role === "super_admin" || role === "administrator") return true;
+    if (role === "community_admin") {
+      if (!resourceId) return profiles.adminCommunityIds.length > 0;
+      const communityId = communityIdOfResource(permission, resourceId);
+      return !communityId || profiles.adminCommunityIds.includes(communityId);
+    }
+    if (permission === "owner:read") {
+      return !resourceId ? isOwnerProfile : profiles.ownerIds.includes(resourceId);
+    }
+    if (permission === "property:read") {
+      if (!resourceId) return isOwnerProfile;
+      const property = state.properties.find(p => p.id === resourceId);
+      if (!property) return false;
+      return propertyOwnerIds(property).some(ownerId => profiles.ownerIds.includes(ownerId));
+    }
+    if (permission === "community:read") {
+      if (!resourceId) return true;
+      return userCommunityIds(user).includes(resourceId);
+    }
+    if (permission === "tenant:read") {
+      if (!resourceId) return profiles.tenantIds.length > 0 || isOwnerProfile;
+      return profiles.tenantIds.includes(resourceId);
+    }
+    return false;
+  }
+
+  // Perfil propio (editar datos y documentación del propietario vinculado)
+  if (permission === "owner:edit" || permission === "owner:documents:submit" || permission === "owner_notification:read") {
+    return !resourceId ? isOwnerProfile : profiles.ownerIds.includes(resourceId);
+  }
+
+  return false;
+}
+
+/** Login simulado: activa un usuario y deriva el modo de vista. */
+export function setActiveUser(userId) {
+  state.currentUserId = userId;
+  const role = getCurrentUserRole();
+  state.activeRole = ["super_admin", "administrator", "community_admin"].includes(role) ? "admin" : "owner";
+  try { localStorage.setItem("currentUserId", String(userId || "")); } catch {}
+}
+
+/** Restaura el usuario simulado guardado o el primer super_admin. */
+export function restoreActiveUser() {
+  let saved = "";
+  try { saved = localStorage.getItem("currentUserId") || ""; } catch {}
+  const target = state.users.find(u => u.id === saved && u.activo) ||
+    state.users.find(u => u.rol === "super_admin" && u.activo) ||
+    state.users.find(u => u.activo);
+  if (target) setActiveUser(target.id);
 }
 
 export function requirePermission(permission, resourceId = "") {
