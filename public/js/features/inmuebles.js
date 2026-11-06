@@ -767,6 +767,9 @@ if (propertyForm.elements.communityId) {
     renderPropertyTenantsTab();
   });
 }
+// Selects de vinculación de propietarios e inquilinos: mismo combo buscador que comunidad
+makeSelectSearchable(document.querySelector("#property-owner-link-select"), "Buscar propietario…");
+makeSelectSearchable(document.querySelector("#property-tenant-link-select"), "Buscar inquilino…");
 
 // Territorio del inmueble: CP → municipio/provincia automáticos
 const propertyPostalInput = propertyForm.elements.postalCode;
