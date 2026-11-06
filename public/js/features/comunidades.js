@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS } from "../state.js";
+import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel } from "../utils.js";
 import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
@@ -16,6 +16,14 @@ const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none"
 const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
 const ICON_UNLINK = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 const ICON_VIEW_SM = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+
+function populateCommunityCurrencySelect(selected) {
+  const select = communityForm.elements.currency;
+  if (!select) return;
+  select.replaceChildren();
+  getCurrencies().forEach(currency => select.add(new Option(currency.name, currency.code)));
+  select.value = selected || "EUR";
+}
 
 function iconBtn(className, title, ariaLabel, svg) {
   const btn = document.createElement("button");
@@ -187,6 +195,7 @@ export function openCommunityEditor(id = null, defaultTab = "details") {
     if (panel) panel.hidden = true;
   }
   renderCommunityDocumentList(c);
+  populateCommunityCurrencySelect(c?.currency || "EUR");
   communityDialog.showModal();
   communityForm.elements.name.focus();
 }
@@ -727,7 +736,7 @@ async function persistCommunityDraft() {
   }
 
   const data = Object.fromEntries(new FormData(communityForm));
-  ["name", "nif", "address", "phone", "otherPhone", "postalCode", "email", "iban", "president", "administrator", "constitutionYear", "reserveFund"].forEach(key => {
+  ["name", "nif", "address", "phone", "otherPhone", "postalCode", "email", "iban", "president", "administrator", "constitutionYear", "reserveFund", "currency"].forEach(key => {
     data[key] = (data[key] || "").trim();
   });
   data.city = selectedLocation.name;

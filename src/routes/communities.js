@@ -29,14 +29,15 @@ router.post("/", (req, res) => {
   }
   const id = data.id || crypto.randomUUID();
   db.prepare(
-    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id, data.name, data.nif, data.phone || "", data.otherPhone || "", data.address || "",
     data.city || "", data.province || "", data.postalCode || "", data.email || "",
     data.iban || "", data.president || "", data.administrator || "",
     data.constitutionYear || "", data.reserveFund || "", data.notes || "",
-    JSON.stringify(Array.isArray(data.documents) ? data.documents : [])
+    JSON.stringify(Array.isArray(data.documents) ? data.documents : []),
+    data.currency || ""
   );
   res.status(201).json(findCommunity(id));
 });
@@ -55,13 +56,14 @@ router.put("/:id", (req, res) => {
   db.prepare(
     `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
        province = ?, postalCode = ?, email = ?, iban = ?, president = ?, administrator = ?,
-       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ? WHERE id = ?`
+       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ? WHERE id = ?`
   ).run(
     data.name, data.nif, data.phone || "", data.otherPhone || "", data.address || "",
     data.city || "", data.province || "", data.postalCode || "", data.email || "",
     data.iban || "", data.president || "", data.administrator || "",
     data.constitutionYear || "", data.reserveFund || "", data.notes || "",
     JSON.stringify(Array.isArray(data.documents) ? data.documents : existing.documents),
+    data.currency || "",
     existing.id
   );
   res.json(findCommunity(existing.id));

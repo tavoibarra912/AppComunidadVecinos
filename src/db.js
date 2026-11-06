@@ -172,6 +172,10 @@ function ensureColumns(table, definitions) {
   }
 }
 
+ensureColumns("communities", {
+  currency: "TEXT NOT NULL DEFAULT ''"
+});
+
 ensureColumns("properties", {
   notes: "TEXT NOT NULL DEFAULT ''",
   postalCode: "TEXT NOT NULL DEFAULT ''",
@@ -216,6 +220,7 @@ export function communityFromRow(row) {
     administrator: row.administrator || "",
     constitutionYear: row.constitutionYear || "",
     reserveFund: row.reserveFund || "",
+    currency: row.currency || "",
     notes: row.notes,
     documents: parseJson(row.documents, [])
   };

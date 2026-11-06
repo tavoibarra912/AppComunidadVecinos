@@ -158,7 +158,12 @@ function renderPropertyOwnersTab() {
     pctInput.setAttribute("aria-label", `Porcentaje de titularidad de ${owner.name} ${owner.surname}`);
     pctInput.addEventListener("change", () => {
       let value = Number(pctInput.value.replace(",", "."));
-      if (!Number.isFinite(value) || value < 0) value = 0;
+      const previous = editingOwnerPercentages[ownerId] ?? 100;
+      if (!Number.isFinite(value) || value <= 0) {
+        pctInput.value = String(previous);
+        toast("Un propietario vinculado debe tener un porcentaje de titularidad mayor a 0. Si no es titular, desvinculalo.");
+        return;
+      }
       const others = editingPropertyPeople.ownerIds
         .filter(id => id !== ownerId)
         .reduce((sum, id) => sum + (Number(editingOwnerPercentages[id]) || 0), 0);
@@ -487,9 +492,9 @@ export function openPropertyEditor(id = null, defaultTab = "general") {
   propertyForm.reset();
   propertyFormError.textContent = "";
   updatePropertyCommunitySelect();
-  populatePropertyCurrencySelect(property?.currency || "EUR");
   switchPropertyEditorTab(defaultTab);
   const property = state.properties.find(item => item.id === id);
+  populatePropertyCurrencySelect(property?.currency || "EUR");
   const ownerIds = propertyOwnerIds(property);
   const tenantIds = property?.tenantIds || (property?.tenantId ? [property.tenantId] : []);
   updatePropertyPeopleSelectors(ownerIds, tenantIds, property?.ownerPercentages || {});

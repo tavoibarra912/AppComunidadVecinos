@@ -408,7 +408,12 @@ function renderOwnerPropertiesTab() {
     pctInput.setAttribute("aria-label", `Porcentaje de titularidad en ${property.plot}`);
     pctInput.addEventListener("change", () => {
       let value = Number(pctInput.value.replace(",", "."));
-      if (!Number.isFinite(value) || value < 0) value = 0;
+      const previous = editingOwnerPropertyPercentages[propertyId] ?? capacity;
+      if (!Number.isFinite(value) || value <= 0) {
+        pctInput.value = String(previous);
+        toast("Un propietario vinculado debe tener un porcentaje de titularidad mayor a 0. Si no es titular, desvinculalo.");
+        return;
+      }
       if (value > capacity) {
         value = capacity;
         toast(`El inmueble "${property.plot}" tiene ${capacity}% de titularidad disponible para este propietario.`);
