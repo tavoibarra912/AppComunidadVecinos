@@ -1,0 +1,23 @@
+---
+description: Cuenta de Git/GitHub obligatoria para este repositorio
+alwaysApply: true
+---
+
+# Cuenta de GitHub para este repositorio
+
+**SIEMPRE usar la cuenta `QSMANU` (manuforma@hotmail.com) para toda operación
+de git/gh en este repo: push, pull, PRs, releases, comentarios.**
+
+- ❌ NUNCA usar `manuel-dinucci` — no tiene acceso de escritura a
+  `tavoibarra912/AppComunidadVecinos` y no debe usarse jamás aquí.
+- Si la cuenta activa de `gh` es otra, cambiar antes de operar:
+
+```powershell
+gh auth switch --user QSMANU
+```
+
+- Este repo tiene en `.git/config` un credential helper local que fija
+  `QSMANU` para `github.com`, por lo que `git push` funciona aunque la
+  cuenta activa global sea otra. No quitar ese config.
+- Verificar siempre con `gh auth status` antes de operaciones externas
+  (push, PR, merge, delete de ramas).
