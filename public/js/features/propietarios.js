@@ -5,7 +5,7 @@ import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, ge
 import { createDataTable } from "../table.js";
 import { editingDocs, renderOwnerDialogDocs, getFormOwnerContext, DocumentValidator } from "../docs-engine.js";
 import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, getOwnerOverallDocStatus, addOwnerNotification, sendAdminEmailNotification, openAdminEmail, updateInboxBadge, updateOwnerInboxBadge, renderOwnerInbox, openOwnerInbox, openAdminInbox } from "./notificaciones.js";
-import { openTenantEditor, openTenantDetail, closeTenantEditor, closeTenantDetail } from "./inquilinos.js";
+import { openTenantEditor, openTenantDetail, closeTenantEditor, closeTenantDetail, openTenantDelete } from "./inquilinos.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
 import { openCommunityDetail } from "./comunidades.js";
 
@@ -689,9 +689,6 @@ export function openOwnerDetail(id) {
   document.querySelector("#owner-detail-notes").textContent = o.notes ? o.notes : "Sin observaciones registradas.";
 
   // Nuevos campos de propietario (Requisito 3)
-  const ownershipPercentageEl = document.querySelector("#owner-detail-ownershipPercentage");
-  if (ownershipPercentageEl) ownershipPercentageEl.textContent = o.ownershipPercentage ? `${o.ownershipPercentage}%` : "100% (Titular pleno)";
-
   const votingRightsEl = document.querySelector("#owner-detail-votingRights");
   if (votingRightsEl) {
     const isSuspended = o.votingRights === "suspended";

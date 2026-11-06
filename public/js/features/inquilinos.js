@@ -27,14 +27,6 @@ const contactVerify = {
   email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
 };
 
-function populateCurrencySelect(selected) {
-  const select = document.querySelector("#owner-form")?.elements.currency;
-  if (!select) return;
-  select.replaceChildren();
-  getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || "EUR";
-}
-
 const tenantSearch = document.querySelector("#search-tenants");
 const tenantResultCount = document.querySelector("#tenant-result-count");
 const newTenantBtn = document.querySelector("#new-tenant");

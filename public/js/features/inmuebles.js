@@ -3,7 +3,7 @@ import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContrac
 import { toast, renderDocumentRecords, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel } from "../utils.js";
 import { selectLocationInForm, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
-import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
+import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
 import { openCommunityDetail, refreshCommunityEditorAfterPropertySave } from "./comunidades.js";
 

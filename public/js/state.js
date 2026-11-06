@@ -110,7 +110,6 @@ export async function refreshState() {
       state.tenants = bootstrap.tenants;
       state.adminEmails = bootstrap.adminEmails;
       state.ownerNotifications = bootstrap.ownerNotifications;
-      updateCommunitySelectors();
       notifyDataChanged();
       refreshing = null;
     })();
@@ -249,45 +248,4 @@ export function requirePermission(permission, resourceId = "") {
     window.setTimeout(() => toastEl.classList.remove("visible"), 2800);
   }
   return false;
-}
-
-/**
- * Sincroniza los desplegables de comunidad (filtros y formularios).
- */
-export function updateCommunitySelectors() {
-  // 1. Filtro del listado de propietarios
-  const filterCommunitySelect = document.querySelector("#filter-community");
-  if (filterCommunitySelect) {
-    const currentFilterVal = filterCommunitySelect.value;
-    filterCommunitySelect.replaceChildren(new Option("Todas las comunidades", ""));
-    state.communities.forEach(c => filterCommunitySelect.add(new Option(c.name, c.id)));
-    if (currentFilterVal) filterCommunitySelect.value = currentFilterVal;
-  }
-
-  // 2. Filtro de inmuebles de la ficha de propietario
-  const filterOwnerPropertyCommunitySelect = document.querySelector("#filter-owner-property-community");
-  if (filterOwnerPropertyCommunitySelect) {
-    const currentPropertyFilter = filterOwnerPropertyCommunitySelect.value;
-    filterOwnerPropertyCommunitySelect.replaceChildren(new Option("Inmuebles de todas las comunidades", ""));
-    state.communities.forEach(c => filterOwnerPropertyCommunitySelect.add(new Option(c.name, c.id)));
-    if (currentPropertyFilter) filterOwnerPropertyCommunitySelect.value = currentPropertyFilter;
-  }
-
-  // 3. Filtro del listado de inmuebles
-  const propertyCommunityFilter = document.querySelector("#filter-property-community");
-  if (propertyCommunityFilter) {
-    const currentPropertyCommunity = propertyCommunityFilter.value;
-    propertyCommunityFilter.replaceChildren(new Option("Todas las comunidades", ""));
-    state.communities.forEach(c => propertyCommunityFilter.add(new Option(c.name, c.id)));
-    if (currentPropertyCommunity) propertyCommunityFilter.value = currentPropertyCommunity;
-  }
-
-  // 4. Filtro del listado de inquilinos
-  const tenantCommunityFilter = document.querySelector("#filter-tenant-community");
-  if (tenantCommunityFilter) {
-    const currentTenantCommunity = tenantCommunityFilter.value;
-    tenantCommunityFilter.replaceChildren(new Option("Todas las comunidades", ""));
-    state.communities.forEach(c => tenantCommunityFilter.add(new Option(c.name, c.id)));
-    if (currentTenantCommunity) tenantCommunityFilter.value = currentTenantCommunity;
-  }
 }

@@ -25,14 +25,6 @@ const contactVerify = {
   email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
 };
 
-function populateCurrencySelect(selected) {
-  const select = document.querySelector("#owner-form")?.elements.currency;
-  if (!select) return;
-  select.replaceChildren();
-  getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || "EUR";
-}
-
 export function getOwnerOverallDocStatus(owner) {
   const status = getOwnerDocStatus(owner);
   const labelMap = {

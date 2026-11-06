@@ -1,6 +1,7 @@
 import { state, CURRENT_OWNER_ID, ownerTenants, getTenantContractStatus, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { navigateToSection } from "./navigation.js";
 import { openOwnerEditor, renderOwners, openOwnerDetail } from "./propietarios.js";
+import { openCommunityEditor } from "./comunidades.js";
 import { updateInboxBadge, openAdminInbox, getOwnerOverallDocStatus, openOwnerInbox } from "./notificaciones.js";
 
 const homeGreetingTitle = document.querySelector("#home-greeting-title");
