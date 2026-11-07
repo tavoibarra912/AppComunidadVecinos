@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "restart": "node scripts/restart.mjs"
+    "restart": "node scripts/restart.mjs",
+    "test": "node --test scripts/tests/unit.backend.test.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

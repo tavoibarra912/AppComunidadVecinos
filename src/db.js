@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const DATA_DIR = path.join(__dirname, "..", "data");
+export const DATA_DIR = process.env.APP_DATA_DIR || path.join(__dirname, "..", "data");
 export const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
