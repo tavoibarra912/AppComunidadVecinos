@@ -237,10 +237,26 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
   const _chanSel = tenantForm.elements.notificationPreference;
   if (_chanSel) _chanSel.disabled = !(_commCb && _commCb.checked);
   switchTenantDialogTab("general");
+  updateTenantUserSelect(tenant?.userId || "");
   document.querySelector("#tenant-dialog-title").textContent = tenant ? (readonly ? `Ver inquilino: ${tenant.name} ${tenant.surname}` : "Editar inquilino") : "Nuevo inquilino";
   setFormReadonly(tenantForm, readonly);
   armarGuardia(tenantForm, tenantDialog);
   if (!tenantDialog.open) tenantDialog.showModal();
+}
+
+/** Selector de cuenta de sistema vinculada al inquilino. */
+function updateTenantUserSelect(selectedUserId = "") {
+  const select = document.querySelector("#tenant-user-select");
+  if (!select) return;
+  const current = selectedUserId || tenantForm.elements.userId?.value || "";
+  select.replaceChildren(new Option("Sin cuenta de usuario", ""));
+  state.users.filter(user => user.activo).forEach(user => {
+    const isFree = !state.tenants.some(t => t.userId === user.id && t.id !== state.ui.editingTenantId);
+    const option = new Option(`${user.nombre || user.usuario} (${user.usuario})${isFree ? "" : " · ya vinculado"}`, user.id);
+    if (!isFree && user.id !== current) option.disabled = true;
+    select.add(option);
+  });
+  if (current) select.value = current;
 }
 
 export function closeTenantEditor() {
@@ -688,7 +704,7 @@ tenantForm.addEventListener("submit", async event => {
     documents: tenantEditingDocs
   };
   const isEditing = !!state.ui.editingTenantId;
-  const payload = { id: tenantId, ownerId: derivedOwnerId, ...tenant };
+  const payload = { id: tenantId, ownerId: derivedOwnerId, userId: tenantForm.elements.userId?.value || "", ...tenant };
   try {
     if (isEditing) await api.updateTenant(tenantId, payload);
     else await api.createTenant(payload);

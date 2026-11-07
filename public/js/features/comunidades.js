@@ -25,6 +25,30 @@ function populateCommunityCurrencySelect(selected) {
   select.value = selected || "EUR";
 }
 
+/** Selector de Administrador de Comunidad (usuario del sistema). */
+function updateCommunityAdminSelect(selectedUserId = "") {
+  const select = communityForm.elements.adminUserId;
+  if (!select) return;
+  const current = selectedUserId || select.value;
+  select.replaceChildren();
+  state.users.filter(user => user.activo).forEach(user => {
+    const label = `${user.nombre || user.usuario} ${user.apellido || ""} (${user.usuario})`.trim();
+    select.add(new Option(label, user.id));
+  });
+  if (current) select.value = current;
+  // Al asignar un usuario, precarga el campo Administrador de fincas
+  select.removeEventListener("change", onAdminUserChange);
+  select.addEventListener("change", onAdminUserChange);
+}
+
+function onAdminUserChange() {
+  const user = state.users.find(u => u.id === communityForm.elements.adminUserId.value);
+  if (user && !communityForm.elements.administrator.value) {
+    communityForm.elements.administrator.value = `${user.nombre || ""} ${user.apellido || ""}`.trim();
+  }
+  if (!communityForm.elements.adminUserId.value) return;
+}
+
 function iconBtn(className, title, ariaLabel, svg) {
   const btn = document.createElement("button");
   btn.type = "button";
@@ -199,6 +223,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   }
   renderCommunityDocumentList(c);
   populateCommunityCurrencySelect(c?.currency || "EUR");
+  updateCommunityAdminSelect(c?.adminUserId || "");
   armarGuardia(communityForm, communityDialog);
   communityDialog.showModal();
   if (!readonly) communityForm.elements.name.focus();
@@ -741,7 +766,7 @@ async function persistCommunityDraft() {
   }
 
   const data = Object.fromEntries(new FormData(communityForm));
-  ["name", "nif", "address", "phone", "otherPhone", "postalCode", "email", "iban", "president", "administrator", "constitutionYear", "reserveFund", "currency"].forEach(key => {
+  ["name", "nif", "address", "phone", "otherPhone", "postalCode", "email", "iban", "president", "administrator", "constitutionYear", "reserveFund", "currency", "adminUserId"].forEach(key => {
     data[key] = (data[key] || "").trim();
   });
   data.city = selectedLocation.name;

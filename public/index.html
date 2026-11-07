@@ -423,6 +423,12 @@
         <label class="full">Observaciones
           <textarea name="notes" rows="3" maxlength="500"></textarea>
         </label>
+        <label class="full">Administrador de Comunidad (usuario del sistema)
+          <select name="adminUserId" id="community-admin-select">
+            <option value="">Sin asignar (se completa manualmente en Presidente/Administrador)</option>
+          </select>
+          <span class="field-hint">Asigná la cuenta de usuario que administra esta comunidad. Se completa también el campo Administrador de fincas.</span>
+        </label>
       </div>
       </section>
       <section class="community-editor-pane" id="community-tab-contact" data-community-pane="contact" hidden>
@@ -743,6 +749,12 @@
           </label>
           <label class="full">Observaciones
             <textarea name="notes" rows="3" maxlength="500" placeholder="Observaciones del propietario (opcional)"></textarea>
+          </label>
+          <label class="full">Usuario del sistema
+            <select name="userId" id="owner-user-select">
+              <option value="">Sin cuenta de usuario</option>
+            </select>
+            <span class="field-hint">Vinculá la cuenta con la que esta persona accede al sistema (opcional).</span>
           </label>
         </div>
       </section>
@@ -1285,6 +1297,12 @@
           </label>
           <label class="full">Observaciones
             <textarea name="authorizationNotes" rows="3" maxlength="500" placeholder="Observaciones del inquilino (opcional)"></textarea>
+          </label>
+          <label class="full">Usuario del sistema
+            <select name="userId" id="tenant-user-select">
+              <option value="">Sin cuenta de usuario</option>
+            </select>
+            <span class="field-hint">Vinculá la cuenta con la que esta persona accede al sistema (opcional).</span>
           </label>
           <select name="ownerId" hidden></select>
         </div>
@@ -2033,6 +2051,15 @@
         <label class="checkbox-line">
           <input type="checkbox" name="activo" checked />
           Usuario activo
+        </label>
+        <p class="form-section-title full">Perfiles vinculados</p>
+        <label>Perfil Propietario
+          <select name="linkedOwnerId" id="user-linked-owner"></select>
+          <span class="field-hint">Vinculá el registro de propietario existente (por DNI, nombre o inmueble).</span>
+        </label>
+        <label>Perfil Inquilino
+          <select name="linkedTenantId" id="user-linked-tenant"></select>
+          <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
         </label>
       </div>
       <p class="form-error" id="user-form-error" role="alert"></p>

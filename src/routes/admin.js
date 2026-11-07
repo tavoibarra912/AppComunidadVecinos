@@ -73,6 +73,43 @@ router.delete("/users/:id", (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Vinculación de perfiles (usuario ↔ propietario / inquilino) ----------
+// Vincula un registro de propietario a la cuenta (o lo desvincula con ownerId vacío).
+router.put("/users/:id/link-owner", (req, res) => {
+  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
+  const ownerId = (req.body?.ownerId || "").trim();
+  if (!ownerId) {
+    db.prepare("UPDATE owners SET userId = '' WHERE userId = ?").run(user.id);
+    return res.json({ ok: true, ownerId: "" });
+  }
+  const owner = db.prepare("SELECT id, userId FROM owners WHERE id = ?").get(ownerId);
+  if (!owner) return res.status(404).json({ error: "Registro de propietario no encontrado." });
+  if (owner.userId && owner.userId !== user.id) {
+    return res.status(409).json({ error: "Ese registro de propietario ya está vinculado a otro usuario." });
+  }
+  db.prepare("UPDATE owners SET userId = ? WHERE id = ?").run(user.id, ownerId);
+  res.json({ ok: true, ownerId });
+});
+
+// Vincula un registro de inquilino a la cuenta (o lo desvincula con tenantId vacío).
+router.put("/users/:id/link-tenant", (req, res) => {
+  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
+  const tenantId = (req.body?.tenantId || "").trim();
+  if (!tenantId) {
+    db.prepare("UPDATE tenants SET userId = '' WHERE userId = ?").run(user.id);
+    return res.json({ ok: true, tenantId: "" });
+  }
+  const tenant = db.prepare("SELECT id, userId FROM tenants WHERE id = ?").get(tenantId);
+  if (!tenant) return res.status(404).json({ error: "Registro de inquilino no encontrado." });
+  if (tenant.userId && tenant.userId !== user.id) {
+    return res.status(409).json({ error: "Ese registro de inquilino ya está vinculado a otro usuario." });
+  }
+  db.prepare("UPDATE tenants SET userId = ? WHERE id = ?").run(user.id, tenantId);
+  res.json({ ok: true, tenantId });
+});
+
 // ---------- Roles ----------
 router.get("/roles", (_req, res) => {
   res.json(listRoles());

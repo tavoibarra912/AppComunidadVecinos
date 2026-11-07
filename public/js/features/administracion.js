@@ -113,6 +113,18 @@ function renderUsers() {
           }
         },
         {
+          key: "perfiles",
+          label: "Perfiles",
+          value: u => {
+            const parts = [];
+            if (state.owners.some(o => o.userId === u.id)) parts.push("Propietario");
+            if (state.tenants.some(t => t.userId === u.id)) parts.push("Inquilino");
+            if (state.communities.some(c => c.adminUserId === u.id)) parts.push("Admin de Comunidad");
+            return parts.join(", ") || "—";
+          },
+          defaultVisible: true
+        },
+        {
           key: "actions",
           label: "Acciones",
           srOnlyLabel: true,
@@ -155,6 +167,8 @@ const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none"
 const userDialog = document.querySelector("#user-dialog");
 const userForm = document.querySelector("#user-form");
 const userError = document.querySelector("#user-form-error");
+const userLinkedOwnerSelect = document.querySelector("#user-linked-owner");
+const userLinkedTenantSelect = document.querySelector("#user-linked-tenant");
 
 function openUserEditor(id = null) {
   if (!requirePermission("admin:users")) return;
@@ -178,9 +192,43 @@ function openUserEditor(id = null) {
     userForm.elements.activo.checked = true;
     if (roles.length) rolSelect.value = roles[0].nombre;
   }
+  renderUserLinkSelects(u);
   armarGuardia(userForm, userDialog);
   userDialog.showModal();
   userForm.elements.usuario.focus();
+}
+
+/** Puebla los selects de vinculación con los registros sin cuenta asignada. */
+function renderUserLinkSelects(user) {
+  const linkedOwnerId = user?.linkedOwnerId || "";
+  const linkedTenantIds = user?.linkedTenantIds || [];
+
+  if (userLinkedOwnerSelect) {
+    userLinkedOwnerSelect.replaceChildren(new Option("Sin perfil Propietario", ""));
+    state.owners.forEach(owner => {
+      if (owner.userId && owner.userId !== user?.id) return; // ya vinculado a otra cuenta
+      const communityName = owner.communityName ||
+        state.communities.find(c => c.id === owner.communityId)?.name || "";
+      userLinkedOwnerSelect.add(new Option(
+        `${owner.name} ${owner.surname} (${owner.dni})${communityName ? " · " + communityName : ""}`,
+        owner.id
+      ));
+    });
+    userLinkedOwnerSelect.value = linkedOwnerId;
+  }
+
+  if (userLinkedTenantSelect) {
+    userLinkedTenantSelect.replaceChildren(new Option("Sin perfil Inquilino", ""));
+    state.tenants.forEach(tenant => {
+      if (tenant.userId && tenant.userId !== user?.id) return;
+      const owner = state.owners.find(o => o.id === tenant.ownerId);
+      userLinkedTenantSelect.add(new Option(
+        `${tenant.name} ${tenant.surname} (${tenant.documentId || "sin documento"})`,
+        tenant.id
+      ));
+    });
+    if (linkedTenantIds.length > 0) userLinkedTenantSelect.value = linkedTenantIds[0];
+  }
 }
 
 const ICON_USER_SAVE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg>`;
@@ -201,16 +249,29 @@ userForm?.addEventListener("submit", async event => {
     return;
   }
   try {
+    let savedUser;
     if (editingUserId) {
-      await api.updateUser(editingUserId, data);
+      savedUser = await api.updateUser(editingUserId, data);
     } else {
-      await api.createUser(data);
+      savedUser = await api.createUser(data);
+    }
+
+    // Sincronizar vinculaciones de perfiles (Propietario / Inquilino)
+    const currentLinkedOwnerId = state.owners.find(o => o.userId === savedUser.id)?.id || "";
+    const newOwnerId = userLinkedOwnerSelect?.value || "";
+    if (newOwnerId !== currentLinkedOwnerId) {
+      await api.linkOwner(savedUser.id, newOwnerId);
+    }
+    const currentLinkedTenantId = state.tenants.find(t => t.userId === savedUser.id)?.id || "";
+    const newTenantId = userLinkedTenantSelect?.value || "";
+    if (newTenantId !== currentLinkedTenantId) {
+      await api.linkTenant(savedUser.id, newTenantId);
     }
   } catch (error) {
     userError.textContent = error.message;
     return;
   }
-  limpiarGuardia(userForm, userDialog);
+  limpiarGuardia(userForm);
   userDialog.close();
   await refreshState();
   renderUsers();

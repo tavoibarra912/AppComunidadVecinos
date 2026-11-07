@@ -29,15 +29,16 @@ router.post("/", (req, res) => {
   }
   const id = data.id || crypto.randomUUID();
   db.prepare(
-    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id, data.name, data.nif, data.phone || "", data.otherPhone || "", data.address || "",
     data.city || "", data.province || "", data.postalCode || "", data.email || "",
     data.iban || "", data.president || "", data.administrator || "",
     data.constitutionYear || "", data.reserveFund || "", data.notes || "",
     JSON.stringify(Array.isArray(data.documents) ? data.documents : []),
-    data.currency || ""
+    data.currency || "",
+    data.adminUserId || ""
   );
   res.status(201).json(findCommunity(id));
 });
@@ -56,7 +57,7 @@ router.put("/:id", (req, res) => {
   db.prepare(
     `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
        province = ?, postalCode = ?, email = ?, iban = ?, president = ?, administrator = ?,
-       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ? WHERE id = ?`
+       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ? WHERE id = ?`
   ).run(
     data.name, data.nif, data.phone || "", data.otherPhone || "", data.address || "",
     data.city || "", data.province || "", data.postalCode || "", data.email || "",
@@ -64,6 +65,7 @@ router.put("/:id", (req, res) => {
     data.constitutionYear || "", data.reserveFund || "", data.notes || "",
     JSON.stringify(Array.isArray(data.documents) ? data.documents : existing.documents),
     data.currency || "",
+    data.adminUserId !== undefined ? data.adminUserId : (existing.adminUserId || ""),
     existing.id
   );
   res.json(findCommunity(existing.id));

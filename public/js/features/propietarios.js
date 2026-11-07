@@ -609,6 +609,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     selectOwnerTerritory("", "", "");
   }
 
+  updateOwnerUserSelect(o ? o.userId || "" : "");
   updateCommunityTabGating();
   updateCanalOptions();
 
@@ -624,6 +625,22 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   if (defaultTab === "general" && !readOnly) {
     ownerForm.elements.name.focus();
   }
+}
+
+/** Selector de cuenta de sistema vinculada al propietario. */
+function updateOwnerUserSelect(selectedUserId = "") {
+  const select = document.querySelector("#owner-user-select");
+  if (!select) return;
+  const current = selectedUserId || ownerForm.elements.userId?.value || "";
+  select.replaceChildren(new Option("Sin cuenta de usuario", ""));
+  state.users.filter(user => user.activo).forEach(user => {
+    const isFree = !state.owners.some(o => o.userId === user.id && o.id !== state.ui.editingOwnerId);
+    const label = `${user.nombre || user.usuario} (${user.usuario})${isFree ? "" : " · ya vinculado"}`;
+    const option = new Option(label, user.id);
+    if (!isFree && user.id !== current) option.disabled = true;
+    select.add(option);
+  });
+  if (current) select.value = current;
 }
 
 export function closeOwnerEditor() {
@@ -1436,6 +1453,7 @@ ownerForm.addEventListener("submit", async event => {
 
   // El backend resuelve la vinculación N:M de los inmuebles (pestaña Inmueble)
   data.propertyIds = editingOwnerProperties.slice();
+  data.userId = ownerForm.elements.userId?.value || "";
   data.phoneVerified = contactVerify.phone.verified;
   data.phoneVerifiedAt = contactVerify.phone.verifiedAt;
   data.emailVerified = contactVerify.email.verified;

@@ -182,6 +182,7 @@ export function upsertTenant(payload, tenantId) {
   }
 
   const existing = tenantId ? db.prepare("SELECT id FROM tenants WHERE id = ?").get(tenantId) : null;
+  const userId = payload.userId !== undefined ? payload.userId : (existing?.userId || "");
 
   if (existing) {
     db.prepare(
@@ -191,7 +192,7 @@ export function upsertTenant(payload, tenantId) {
          phone = ?, email = ?, contractStart = ?, contractEnd = ?,
          authorizations = ?, authorizationNotes = ?,
          phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ?,
-         notificationPreference = ?, currency = ?, documents = ?
+         notificationPreference = ?, currency = ?, documents = ?, userId = ?
        WHERE id = ?`
     ).run(
       payload.ownerId, payload.propertyId, payload.name, payload.surname, payload.documentType || "DNI", payload.documentId || "",
@@ -204,6 +205,7 @@ export function upsertTenant(payload, tenantId) {
       payload.notificationPreference || "email",
       payload.currency || "EUR",
       JSON.stringify(payload.documents || {}),
+      userId,
       tenantId
     );
   } else {
@@ -212,8 +214,8 @@ export function upsertTenant(payload, tenantId) {
         contractType, monthlyRent, deposit, emergencyPhone, phone, email,
         contractStart, contractEnd, authorizations, authorizationNotes,
         phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt,
-        notificationPreference, currency, documents)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        notificationPreference, currency, documents, userId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       tenantId, payload.ownerId, payload.propertyId, payload.name, payload.surname, payload.documentType || "DNI", payload.documentId || "",
       payload.contractType || "vivienda_habitual", payload.monthlyRent || "", payload.deposit || "", payload.emergencyPhone || "",
@@ -224,7 +226,8 @@ export function upsertTenant(payload, tenantId) {
       payload.emailVerified ? 1 : 0, payload.emailVerifiedAt || "",
       payload.notificationPreference || "email",
       payload.currency || "EUR",
-      JSON.stringify(payload.documents || {})
+      JSON.stringify(payload.documents || {}),
+      userId
     );
   }
 

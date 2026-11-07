@@ -348,6 +348,7 @@ export function ownerFromRow(row) {
     postalCode: row.postalCode,
     iban: row.iban,
     currency: row.currency,
+    userId: row.userId || "",
     notes: row.notes,
     propertyType: row.propertyType,
     cadastralRef: row.cadastralRef,
@@ -418,6 +419,7 @@ export function tenantFromRow(row) {
     emailVerifiedAt: row.emailVerifiedAt || "",
     notificationPreference: row.notificationPreference || "email",
     currency: row.currency || "EUR",
+    userId: row.userId || "",
     documents: parseJson(row.documents, {})
   };
 }

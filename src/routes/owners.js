@@ -35,15 +35,16 @@ router.post("/", (req, res) => {
     db.prepare(
       `INSERT INTO owners (id, name, surname, documentType, dni, isMember, phone, otherPhone, email,
          phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt, address, province, city, postalCode,
-         iban, currency, notes, documents)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         iban, currency, notes, documents, userId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id, data.name, data.surname, data.documentType || "DNI", String(data.dni).toUpperCase(),
       data.isMember ? 1 : 0, data.phone || "", data.otherPhone || "", data.email || "",
       data.phoneVerified ? 1 : 0, data.phoneVerifiedAt || "", data.emailVerified ? 1 : 0, data.emailVerifiedAt || "",
       data.address || "", data.province || "", data.city || "", data.postalCode || "",
       data.iban || "", data.currency || "EUR", data.notes || "",
-      JSON.stringify(data.documents || {})
+      JSON.stringify(data.documents || {}),
+      data.userId || ""
     );
     const propertyIds = Array.isArray(data.propertyIds)
       ? data.propertyIds
@@ -75,7 +76,7 @@ router.put("/:id", (req, res) => {
     db.prepare(
       `UPDATE owners SET name = ?, surname = ?, documentType = ?, dni = ?, isMember = ?, phone = ?, otherPhone = ?,
          email = ?, phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ?, address = ?,
-         province = ?, city = ?, postalCode = ?, iban = ?, currency = ?, notes = ?, documents = ?
+         province = ?, city = ?, postalCode = ?, iban = ?, currency = ?, notes = ?, documents = ?, userId = ?
        WHERE id = ?`
     ).run(
       data.name, data.surname, data.documentType || "DNI", String(data.dni).toUpperCase(),
@@ -84,6 +85,7 @@ router.put("/:id", (req, res) => {
       data.address || "", data.province || "", data.city || "", data.postalCode || "",
       data.iban || "", data.currency || "EUR", data.notes || "",
       JSON.stringify(data.documents || existing.documents),
+      data.userId !== undefined ? data.userId : (existing.userId || ""),
       existing.id
     );
     const propertyIds = Array.isArray(data.propertyIds)
