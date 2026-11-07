@@ -1,0 +1,797 @@
+import { api } from "../api.js";
+import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, propertyLabel, propertyOwnerIds, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { toast, isValidEmail, isValidDateInput, formatContractDate, getLocalDateInputValue, makeSelectSearchable, readFileAsDataUrl, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { createDataTable } from "../table.js";
+import { openPropertyDetail } from "./inmuebles.js";
+import { openOwnerDetail, openOwnerEditor, closeOwnerDetail } from "./propietarios.js";
+import { openCommunityDetail } from "./comunidades.js";
+import { DocumentValidator, checkDocumentCorrespondence } from "../docs-engine.js";
+
+const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
+const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+
+function iconBtn(className, title, ariaLabel, svg) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `icon-action-btn ${className}`;
+  btn.title = title;
+  btn.setAttribute("aria-label", ariaLabel);
+  btn.innerHTML = svg;
+  return btn;
+}
+
+const ownerDetailDialog = document.querySelector("#owner-detail-dialog");
+
+const tenantContactVerify = {
+  phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
+  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
+};
+
+const tenantSearch = document.querySelector("#search-tenants");
+const tenantResultCount = document.querySelector("#tenant-result-count");
+const newTenantBtn = document.querySelector("#new-tenant");
+const tenantDialog = document.querySelector("#tenant-dialog");
+const tenantForm = document.querySelector("#tenant-form");
+const tenantFormError = document.querySelector("#tenant-form-error");
+const tenantOwnerSelect = tenantForm.elements.ownerId;
+const tenantPropertySelect = document.querySelector("#tenant-property-link-select");
+makeSelectSearchable(tenantPropertySelect, "Buscar inmueble…");
+const tenantDetailDialog = document.querySelector("#tenant-detail-dialog");
+const tenantDeleteDialog = document.querySelector("#tenant-delete-dialog");
+
+let tenantTable = null;
+let tenantEditingDocs = {};
+let editingTenantPropertyId = null;
+
+const tenantPhoneVerifyStatus = document.querySelector("#tenant-phone-verify-status");
+const tenantEmailVerifyStatus = document.querySelector("#tenant-email-verify-status");
+const tenantVerificationDialog = document.querySelector("#tenant-verification-dialog");
+const tenantVerificationTitle = document.querySelector("#tenant-verification-title");
+const tenantVerificationDesc = document.querySelector("#tenant-verification-desc");
+const tenantVerificationTarget = document.querySelector("#tenant-verification-target");
+const tenantVerificationDemo = document.querySelector("#tenant-verification-demo");
+const tenantVerificationDemoCode = document.querySelector("#tenant-verification-demo-code");
+const tenantVerificationCodeInput = document.querySelector("#tenant-verification-code-input");
+const tenantVerificationError = document.querySelector("#tenant-verification-error");
+const tenantVerificationResendBtn = document.querySelector("#tenant-verification-resend-btn");
+const tenantVerificationConfirmBtn = document.querySelector("#tenant-verification-confirm-btn");
+const closeTenantVerificationDialogBtn = document.querySelector("#close-tenant-verification-dialog");
+const cancelTenantVerificationBtn = document.querySelector("#cancel-tenant-verification-btn");
+
+let tenantVerificationKind = "phone";
+
+function tenantSetVerifyStatus(kind, st, message) {
+  const el = kind === "phone" ? tenantPhoneVerifyStatus : tenantEmailVerifyStatus;
+  if (!el) return;
+  el.classList.remove("is-verified", "is-error");
+  if (st === "verified") el.classList.add("is-verified");
+  if (st === "error") el.classList.add("is-error");
+  el.textContent = message;
+}
+
+function tenantResetContactVerification(t) {
+  const phone = t ? (t.phone || "").replace(/\D/g, "").slice(0, 9) : "";
+  const email = t ? (t.email || "").trim().toLowerCase() : "";
+  tenantContactVerify.phone = {
+    value: phone,
+    verified: !!(t && t.phoneVerified && t.phoneVerifiedAt),
+    pending: false,
+    challengeId: "",
+    verifiedAt: t?.phoneVerifiedAt || ""
+  };
+  tenantContactVerify.email = {
+    value: email,
+    verified: !!(t && t.emailVerified && t.emailVerifiedAt),
+    pending: false,
+    challengeId: "",
+    verifiedAt: t?.emailVerifiedAt || ""
+  };
+  tenantSetVerifyStatus("phone", tenantContactVerify.phone.verified ? "verified" : "pending",
+    tenantContactVerify.phone.verified ? "Teléfono verificado" : "Pendiente de verificación");
+  tenantSetVerifyStatus("email", tenantContactVerify.email.verified ? "verified" : "pending",
+    tenantContactVerify.email.verified ? "Correo verificado" : "Pendiente de verificación");
+}
+
+function tenantUpdateCanalOptions() {
+  const select = tenantForm.elements.notificationPreference;
+  if (!select) return;
+  const emailOption = select.querySelector('option[value="email"]');
+  const phoneOption = select.querySelector('option[value="phone"]');
+  const postalOption = select.querySelector('option[value="postal"]');
+  if (emailOption) {
+    const verified = tenantContactVerify.email.verified;
+    emailOption.disabled = !verified;
+    emailOption.textContent = verified ? "Correo electrónico" : "Correo electrónico (pendiente de verificación)";
+    emailOption.style.color = verified ? "" : "#9aa7b5";
+  }
+  if (phoneOption) {
+    const verified = tenantContactVerify.phone.verified;
+    phoneOption.disabled = !verified;
+    phoneOption.textContent = verified ? "Teléfono / Mensajería" : "Teléfono / Mensajería (pendiente de verificación)";
+    phoneOption.style.color = verified ? "" : "#9aa7b5";
+  }
+  if (postalOption) postalOption.style.color = "";
+  if (select.selectedOptions[0]?.disabled) select.value = "postal";
+}
+
+function tenantRecords() {
+  return state.owners.flatMap(owner => ownerTenants(owner).map(tenant => ({
+    owner,
+    tenant,
+    property: state.properties.find(item => item.id === tenant.propertyId)
+  })));
+}
+
+export function renderTenants() {
+  if (!hasPermission("tenant:read")) {
+    if (tenantResultCount) tenantResultCount.textContent = "0 inquilinos";
+    return;
+  }
+  if (!tenantTable) {
+    tenantTable = createDataTable({
+      mount: document.querySelector("#inquilinos-table"),
+      storageKey: "inquilinos",
+      searchInput: tenantSearch,
+      countEl: tenantResultCount,
+      entitySingular: "inquilino",
+      entityPlural: "inquilinos",
+      emptyTitle: "No hay inquilinos que mostrar",
+      emptyText: "Crea un inquilino o ajusta los criterios de búsqueda.",
+      getRows: () => tenantRecords(),
+      columns: [
+        { key: "name", label: "Inquilino", value: ({ tenant }) => `${tenant.name} ${tenant.surname} ${tenant.documentId || ""}`, defaultVisible: true,
+          render: ({ tenant }) => { const cell=document.createElement("div"); const name=document.createElement("span"); name.className="community-name"; name.textContent=`${tenant.name} ${tenant.surname}`; cell.append(name); return cell; } },
+        { key: "owner", label: "Propietario", value: ({ owner }) => `${owner.name} ${owner.surname}`, defaultVisible: true,
+          render: ({ owner }) => { const link=document.createElement("button"); link.type="button"; link.className="text-link-button"; link.textContent=`${owner.name} ${owner.surname}`; link.addEventListener("click",()=>openOwnerDetail(owner.id)); return link; } },
+        { key: "property", label: "Unidad", value: ({ property }) => property ? property.plot : "", defaultVisible: true,
+          render: ({ property }) => { const span=document.createElement("span"); span.textContent = property ? `${property.plot} · ${property.communityName || ""}` : "—"; return span; } },
+        { key: "contract", label: "Contrato", value: ({ tenant }) => `${tenant.contractStart} ${tenant.contractEnd}`, defaultVisible: true,
+          render: ({ tenant }) => { const cell=document.createElement("div"); const dates=document.createElement("span"); dates.textContent=`${formatContractDate(tenant.contractStart)} – ${formatContractDate(tenant.contractEnd)}`; const badge=document.createElement("span"); const status=getTenantContractStatus(tenant); const key=status==="Próximo"?"proximo":status.toLocaleLowerCase("es"); badge.className=`status-badge tenant-contract-${key}`; badge.textContent=status; cell.append(dates,badge); return cell; } },
+        { key: "actions", label: "Acciones", srOnlyLabel:true, defaultVisible:true, hideable:false, groupable:false, sortable:false, value:()=>"",
+          render: ({ owner, tenant }) => {
+            const wrap=document.createElement("div"); wrap.className="row-actions";
+            const btnInfo=iconBtn("btn-info","Más info",`Ver información de ${tenant.name} ${tenant.surname}`,ICON_INFO);
+            btnInfo.addEventListener("click",()=>openTenantEditor(tenant.id, owner.id, true));
+            wrap.append(btnInfo);
+            if (hasPermission("tenant:manage", owner.id)) {
+              const btnEdit=iconBtn("btn-edit","Editar",`Editar inquilino ${tenant.name} ${tenant.surname}`,ICON_EDIT);
+              btnEdit.addEventListener("click",()=>openTenantEditor(tenant.id, owner.id));
+              const btnDelete=iconBtn("btn-delete","Eliminar",`Eliminar inquilino ${tenant.name} ${tenant.surname}`,ICON_DELETE);
+              btnDelete.addEventListener("click",()=>openTenantDelete(tenant.id, owner.id));
+              wrap.append(btnEdit,btnDelete);
+            }
+            return wrap;
+          } }
+      ]
+    });
+  } else {
+    tenantTable.refresh();
+  }
+}
+
+export function updateTenantPropertyOptions(ownerId, selectedPropertyId = "") {
+  if (!tenantPropertySelect) return;
+  tenantPropertySelect.replaceChildren(new Option("Selecciona un inmueble…", ""));
+  const owner = state.owners.find(item => item.id === ownerId);
+  if (!owner) { tenantPropertySelect.disabled = true; return; }
+  tenantPropertySelect.disabled = false;
+  ownerProperties(owner).forEach(property => {
+    const communityName = property.communityName || state.communities.find(item => item.id === property.communityId)?.name || "Sin comunidad";
+    tenantPropertySelect.add(new Option(`${property.plot} · ${communityName}`, property.id));
+  });
+  tenantPropertySelect.value = selectedPropertyId || "";
+}
+
+function switchTenantDialogTab(tab) {
+  document.querySelectorAll("#tenant-dialog [data-tenant-tab]").forEach(btn => {
+    const active = btn.dataset.tenantTab === tab;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", String(active));
+  });
+  document.querySelectorAll("#tenant-dialog [data-tenant-pane]").forEach(pane => {
+    pane.hidden = pane.dataset.tenantPane !== tab;
+  });
+  if (tab === "docs") renderTenantDialogDocs();
+  if (tab === "property") renderTenantPropertyTab();
+  if (tab === "community") tenantUpdateCanalOptions();
+}
+
+export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false) {
+  const permission = readonly ? "tenant:read" : "tenant:manage";
+  if (!requirePermission(permission, ownerId || "")) return;
+  const editingOwner = state.owners.find(item => item.id === ownerId);
+  const tenant = ownerTenants(editingOwner).find(item => item.id === id);
+  if (id && !tenant) return;
+  if (tenant && !requirePermission("tenant:manage", editingOwner.id)) return;
+  state.ui.viewingOwnerId = editingOwner?.id || null;
+  state.ui.editingTenantId = id;
+  tenantForm.reset();
+  tenantFormError.textContent = "";
+  tenantEditingDocs = tenant?.documents ? JSON.parse(JSON.stringify(tenant.documents)) : {};
+  editingTenantPropertyId = tenant?.propertyId || null;
+  tenantResetContactVerification(tenant);
+
+  tenantOwnerSelect.disabled = !!tenant;
+  tenantOwnerSelect.replaceChildren(new Option("Selecciona un propietario…", ""));
+  state.owners
+    .filter(owner => hasPermission("tenant:manage", owner.id))
+    .forEach(owner => tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)));
+  tenantOwnerSelect.value = editingOwner?.id || "";
+
+  if (tenant) {
+    ["name","surname","documentType","documentId","contractType","monthlyRent","deposit","emergencyPhone","phone","email","contractStart","contractEnd","authorizationNotes"].forEach(key => {
+      if (tenantForm.elements[key]) tenantForm.elements[key].value = tenant[key] || "";
+    });
+    const authorizations = new Set(Array.isArray(tenant.authorizations) ? tenant.authorizations : []);
+    Array.from(tenantForm.elements.authorizations).forEach(input => { input.checked = authorizations.has(input.value); });
+  } else {
+    tenantForm.elements.contractStart.value = getLocalDateInputValue();
+    tenantForm.elements.documentType.value = "DNI";
+  }
+
+  updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
+  renderTenantPropertyTab();
+  tenantUpdateCanalOptions();
+  const _commCb = document.querySelector("#tenant-auth-comm");
+  const _chanSel = tenantForm.elements.notificationPreference;
+  if (_chanSel) _chanSel.disabled = !(_commCb && _commCb.checked);
+  switchTenantDialogTab("general");
+  updateTenantUserSelect(tenant?.userId || "");
+  document.querySelector("#tenant-dialog-title").textContent = tenant ? (readonly ? `Ver inquilino: ${tenant.name} ${tenant.surname}` : "Editar inquilino") : "Nuevo inquilino";
+  setFormReadonly(tenantForm, readonly);
+  armarGuardia(tenantForm, tenantDialog);
+  if (!tenantDialog.open) tenantDialog.showModal();
+}
+
+/** Selector de cuenta de sistema vinculada al inquilino. */
+function updateTenantUserSelect(selectedUserId = "") {
+  const select = document.querySelector("#tenant-user-select");
+  if (!select) return;
+  const current = selectedUserId || tenantForm.elements.userId?.value || "";
+  select.replaceChildren(new Option("Sin cuenta de usuario", ""));
+  state.users.filter(user => user.activo).forEach(user => {
+    const isFree = !state.tenants.some(t => t.userId === user.id && t.id !== state.ui.editingTenantId);
+    const option = new Option(`${user.nombre || user.usuario} (${user.usuario})${isFree ? "" : " · ya vinculado"}`, user.id);
+    if (!isFree && user.id !== current) option.disabled = true;
+    select.add(option);
+  });
+  if (current) select.value = current;
+}
+
+export function closeTenantEditor() {
+  tenantDialog.close();
+  state.ui.editingTenantId = null;
+  tenantEditingDocs = {};
+  editingTenantPropertyId = null;
+}
+
+function renderTenantPropertyTab() {
+  const list = document.querySelector("#tenant-properties-list");
+  if (!list) return;
+  list.replaceChildren();
+  const panel = document.querySelector("#tenant-property-link-panel");
+  if (panel) panel.hidden = true;
+  if (!editingTenantPropertyId) {
+    const empty = document.createElement("p");
+    empty.className = "form-intro";
+    empty.textContent = "Este inquilino aún no tiene un inmueble vinculado. Asocia uno existente.";
+    list.append(empty);
+    return;
+  }
+  const property = state.properties.find(p => p.id === editingTenantPropertyId);
+  if (!property) {
+    editingTenantPropertyId = null;
+    renderTenantPropertyTab();
+    return;
+  }
+  const communityName = property.communityName || state.communities.find(c => c.id === property.communityId)?.name || "Sin comunidad";
+  const card = document.createElement("div");
+  card.className = "community-property-card";
+  const info = document.createElement("div");
+  info.className = "community-property-info";
+  const title = document.createElement("span");
+  title.className = "community-property-title";
+  title.textContent = `${property.plot || "Inmueble"} (${PROPERTY_TYPE_LABELS[property.propertyType] || "Unidad"})`;
+  const sub = document.createElement("span");
+  sub.className = "community-property-sub";
+  sub.textContent = `${communityName} · ${property.address || "Sin dirección"}`;
+  info.append(title, sub);
+  const actions = document.createElement("div");
+  actions.className = "community-property-actions";
+  const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${property.plot}`, `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`);
+  viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
+  const unlinkBtn = iconBtn("btn-delete", "Desvincular", `Desvincular ${property.plot}`, `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path></svg>`);
+  unlinkBtn.addEventListener("click", () => { editingTenantPropertyId = null; renderTenantPropertyTab(); });
+  actions.append(viewBtn, unlinkBtn);
+  card.append(info, actions);
+  list.append(card);
+}
+
+function renderTenantDocCard(key, ids) {
+  const { cardId, badgeId, dropzoneId, resultId, inputId } = ids;
+  const card = document.querySelector(cardId);
+  const badge = document.querySelector(badgeId);
+  const dropzone = document.querySelector(dropzoneId);
+  const result = document.querySelector(resultId);
+  const doc = tenantEditingDocs[key];
+  if (doc) {
+    card.classList.add("is-valid");
+    badge.className = "status-badge doc-approved";
+    badge.textContent = "Validado por sistema";
+    if (result) {
+      result.hidden = false;
+      result.replaceChildren();
+      const header = document.createElement("div");
+      header.className = "doc-validation-header";
+      header.innerHTML = `<div class="doc-file-meta"><span class="doc-file-icon">📄</span><div><p class="doc-file-name">${doc.fileName}</p><p class="doc-file-size">${Math.round(doc.fileSize/1024)} KB · Subido el ${doc.uploadedAt}</p></div></div><div class="doc-file-actions"><button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button><button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button></div>`;
+      result.append(header);
+      header.querySelector('[data-action="view"]').addEventListener("click", () => { const w=window.open(); w.document.write(`<img src="${doc.dataUrl}" style="max-width:100%"/>`); });
+      header.querySelector('[data-action="remove"]').addEventListener("click", () => { delete tenantEditingDocs[key]; renderTenantDialogDocs(); });
+    }
+    if (dropzone) dropzone.style.display = "none";
+  } else {
+    card.classList.remove("is-valid");
+    badge.className = "status-badge doc-pending";
+    badge.textContent = "Pendiente";
+    if (result) { result.hidden = true; result.replaceChildren(); }
+    if (dropzone) dropzone.style.display = "block";
+  }
+}
+
+function renderTenantDialogDocs() {
+  renderTenantDocCard("dni", { cardId: "#tenant-card-doc-dni", badgeId: "#tenant-badge-doc-dni", dropzoneId: "#tenant-dropzone-dni", resultId: "#tenant-result-doc-dni", inputId: "#tenant-input-doc-dni" });
+  renderTenantDocCard("contract", { cardId: "#tenant-card-doc-contract", badgeId: "#tenant-badge-doc-contract", dropzoneId: "#tenant-dropzone-contract", resultId: "#tenant-result-doc-contract", inputId: "#tenant-input-doc-contract" });
+  const count = (tenantEditingDocs["dni"] ? 1 : 0) + (tenantEditingDocs["contract"] ? 1 : 0);
+  const statusEl = document.querySelector("#tenant-docs-summary-status");
+  if (statusEl) statusEl.textContent = count + " de 2 documentos subidos";
+  const badgeTab = document.querySelector("#tenant-tab-docs-badge");
+  if (badgeTab) badgeTab.textContent = count + "/2";
+}
+
+async function handleTenantDocUpload(file, docType) {
+  const badgeId = docType === "contract" ? "#tenant-badge-doc-contract" : "#tenant-badge-doc-dni";
+  const badge = document.querySelector(badgeId);
+  badge.className = "status-badge doc-pending-admin";
+  badge.textContent = "⚡ Analizando...";
+  try {
+    const context = { name: tenantForm.elements.name.value.trim() || "Inquilino", surname: tenantForm.elements.surname.value.trim() || "", dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A" };
+    const result = await DocumentValidator.analyzeFile(file, docType === "contract" ? "contract" : "dni", context);
+    if (!result.isValid) {
+      badge.className = "status-badge doc-rejected";
+      badge.textContent = "Validación fallida";
+      alert("Error en la validación automática:\n\n" + result.error);
+      renderTenantDialogDocs();
+      return;
+    }
+    tenantEditingDocs[docType] = result.document;
+    toast(`Documento "${result.document.title}" validado automáticamente.`);
+    renderTenantDialogDocs();
+  } catch (err) {
+    alert("Error al procesar el archivo: " + err.message);
+    renderTenantDialogDocs();
+  }
+}
+
+function tenantTabForField(name) {
+  const field = tenantForm.elements[name];
+  const pane = field ? field.closest("[data-tenant-pane]") : null;
+  return pane ? pane.dataset.tenantPane : "general";
+}
+
+// Verification dialog logic (tenant)
+function tenantSetVerificationError(message) {
+  if (tenantVerificationError) tenantVerificationError.textContent = message || "";
+}
+
+async function tenantSendVerificationCode() {
+  const config = tenantVerificationKind === "phone"
+    ? { value: () => (tenantForm.elements.phone.value || "").replace(/\D/g, "").slice(0,9), isValid: v => /^[6-9]\d{8}$/.test(v), send: v => api.contact.sendPhoneCode(v) }
+    : { value: () => (tenantForm.elements.email.value || "").trim().toLowerCase(), isValid: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), send: v => api.contact.sendEmailCode(v) };
+  const value = config.value();
+  if (!config.isValid(value)) {
+    const msg = `Introduce un ${tenantVerificationKind === "phone" ? "teléfono" : "email"} válido antes de solicitar el código.`;
+    tenantSetVerificationError(msg);
+    tenantSetVerifyStatus(tenantVerificationKind, "error", msg);
+    return false;
+  }
+  tenantSetVerificationError("");
+  tenantVerificationResendBtn.disabled = true;
+  try {
+    const res = await config.send(value);
+    if (!res.challengeId) throw new Error("El servicio de verificación no devolvió el identificador del reto.");
+    Object.assign(tenantContactVerify[tenantVerificationKind], { pending: true, value, challengeId: res.challengeId, verified: false, verifiedAt: "" });
+    tenantSetVerifyStatus(tenantVerificationKind, "pending", `Código enviado${res.maskedDestination ? ` a ${res.maskedDestination}` : ""}.`);
+    if (res.devCode && tenantVerificationDemo && tenantVerificationDemoCode) {
+      tenantVerificationDemo.hidden = false;
+      tenantVerificationDemoCode.textContent = res.devCode;
+    }
+    return true;
+  } catch (error) {
+    tenantContactVerify[tenantVerificationKind].challengeId = "";
+    const msg = error instanceof Error ? error.message : String(error);
+    tenantSetVerificationError(msg);
+    tenantSetVerifyStatus(tenantVerificationKind, "error", msg);
+    return false;
+  } finally {
+    tenantVerificationResendBtn.disabled = false;
+  }
+}
+
+function tenantOpenVerificationDialog(kind) {
+  if (!tenantVerificationDialog) return;
+  tenantVerificationKind = kind;
+  const value = kind === "phone" ? (tenantForm.elements.phone.value || "").replace(/\D/g, "").slice(0,9) : (tenantForm.elements.email.value || "").trim().toLowerCase();
+  const isValid = kind === "phone" ? /^[6-9]\d{8}$/.test(value) : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  if (!isValid) {
+    tenantSetVerifyStatus(kind, "error", `Introduce un ${kind === "phone" ? "teléfono" : "email"} válido antes de verificar.`);
+    return;
+  }
+  tenantVerificationTitle.textContent = kind === "phone" ? "Verificar teléfono" : "Verificar email";
+  tenantVerificationDesc.textContent = kind === "phone"
+    ? "Enviaremos un código de 6 dígitos por SMS al número indicado."
+    : "Enviaremos un código de 6 dígitos por correo electrónico a la dirección indicada.";
+  tenantVerificationTarget.textContent = `${kind === "phone" ? "Teléfono" : "Email"}: ${value}`;
+  tenantVerificationDemo.hidden = true;
+  tenantVerificationCodeInput.value = "";
+  tenantSetVerificationError("");
+  tenantVerificationDialog.showModal();
+  tenantSendVerificationCode().then(sent => { if (sent) tenantVerificationCodeInput.focus(); });
+}
+
+if (tenantVerificationResendBtn) tenantVerificationResendBtn.addEventListener("click", async () => { await tenantSendVerificationCode(); tenantVerificationCodeInput.focus(); });
+if (tenantVerificationConfirmBtn) tenantVerificationConfirmBtn.addEventListener("click", async () => {
+  const code = tenantVerificationCodeInput.value.trim();
+  if (!/^\d{6}$/.test(code)) { tenantSetVerificationError("Introduce el código de 6 dígitos recibido."); return; }
+  if (!tenantContactVerify[tenantVerificationKind].pending || !tenantContactVerify[tenantVerificationKind].challengeId ||
+      tenantContactVerify[tenantVerificationKind].value !== (tenantVerificationKind === "phone" ? (tenantForm.elements.phone.value || "").replace(/\D/g,"").slice(0,9) : (tenantForm.elements.email.value || "").trim().toLowerCase())) {
+    tenantSetVerificationError("Solicita un código nuevo para el valor actual.");
+    return;
+  }
+  tenantVerificationConfirmBtn.disabled = true;
+  try {
+    const res = tenantVerificationKind === "phone"
+      ? await api.contact.confirmPhone(tenantContactVerify[tenantVerificationKind].challengeId, code)
+      : await api.contact.confirmEmail(tenantContactVerify[tenantVerificationKind].challengeId, code);
+    if (res.verified !== true || !res.verifiedAt) throw new Error("El código de verificación no es válido.");
+    tenantContactVerify[tenantVerificationKind].verified = true;
+    tenantContactVerify[tenantVerificationKind].pending = false;
+    tenantContactVerify[tenantVerificationKind].verifiedAt = res.verifiedAt;
+    tenantUpdateCanalOptions();
+    tenantSetVerifyStatus(tenantVerificationKind, "verified", tenantVerificationKind === "phone" ? "✓ Teléfono verificado por SMS" : "✓ Correo electrónico verificado");
+    toast(tenantVerificationKind === "phone" ? "Teléfono verificado correctamente." : "Correo electrónico verificado con éxito.");
+    tenantVerificationDialog.close();
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    tenantSetVerificationError(msg);
+    tenantSetVerifyStatus(tenantVerificationKind, "error", msg);
+  } finally {
+    tenantVerificationConfirmBtn.disabled = false;
+  }
+});
+if (closeTenantVerificationDialogBtn) closeTenantVerificationDialogBtn.addEventListener("click", () => tenantVerificationDialog.close());
+if (cancelTenantVerificationBtn) cancelTenantVerificationBtn.addEventListener("click", () => tenantVerificationDialog.close());
+
+const tenantBtnVerifyPhone = document.querySelector("#tenant-btn-verify-phone");
+if (tenantBtnVerifyPhone) tenantBtnVerifyPhone.addEventListener("click", () => tenantOpenVerificationDialog("phone"));
+const tenantBtnVerifyEmail = document.querySelector("#tenant-btn-verify-email");
+if (tenantBtnVerifyEmail) tenantBtnVerifyEmail.addEventListener("click", () => tenantOpenVerificationDialog("email"));
+
+// reset verification on input change
+const tenantPhoneInput = tenantForm.elements.phone;
+if (tenantPhoneInput) tenantPhoneInput.addEventListener("input", () => {
+  const clean = (tenantPhoneInput.value || "").replace(/\D/g, "").slice(0, 9);
+  tenantPhoneInput.value = clean;
+  if (clean !== tenantContactVerify.phone.value) {
+    tenantContactVerify.phone.verified = false;
+    tenantContactVerify.phone.verifiedAt = "";
+    tenantContactVerify.phone.pending = false;
+    tenantContactVerify.phone.challengeId = "";
+    tenantSetVerifyStatus("phone", "pending", "Pendiente de verificación");
+  }
+});
+const tenantOtherPhoneInput = tenantForm.elements.otherPhone;
+if (tenantOtherPhoneInput) tenantOtherPhoneInput.addEventListener("input", () => {
+  tenantOtherPhoneInput.value = (tenantOtherPhoneInput.value || "").replace(/\D/g, "").slice(0, 9);
+});
+const tenantEmailInput = tenantForm.elements.email;
+if (tenantEmailInput) tenantEmailInput.addEventListener("input", () => {
+  const current = (tenantEmailInput.value || "").trim().toLowerCase();
+  if (current !== tenantContactVerify.email.value) {
+    tenantContactVerify.email.verified = false;
+    tenantContactVerify.email.verifiedAt = "";
+    tenantContactVerify.email.pending = false;
+    tenantContactVerify.email.challengeId = "";
+    tenantSetVerifyStatus("email", "pending", "Pendiente de verificación");
+  }
+});
+
+// emergency phone digits
+const tenantEmergencyPhoneInput = tenantForm.elements.emergencyPhone;
+if (tenantEmergencyPhoneInput) tenantEmergencyPhoneInput.addEventListener("input", () => {
+  tenantEmergencyPhoneInput.value = (tenantEmergencyPhoneInput.value || "").replace(/\D/g, "").slice(0, 9);
+});
+
+// notification channel gating by checkbox
+const tenantAuthCommCheckbox = document.querySelector("#tenant-auth-comm");
+if (tenantAuthCommCheckbox) {
+  tenantAuthCommCheckbox.addEventListener("change", () => {
+    const select = tenantForm.elements.notificationPreference;
+    if (!select) return;
+    select.disabled = !tenantAuthCommCheckbox.checked;
+    if (tenantAuthCommCheckbox.checked) tenantUpdateCanalOptions();
+  });
+}
+
+// Tabs
+document.querySelectorAll("#tenant-dialog [data-tenant-tab]").forEach(btn => {
+  btn.addEventListener("click", () => switchTenantDialogTab(btn.dataset.tenantTab));
+});
+
+// Property link
+const btnTenantLinkProperty = document.querySelector("#btn-tenant-link-property");
+if (btnTenantLinkProperty) btnTenantLinkProperty.addEventListener("click", () => {
+  const panel = document.querySelector("#tenant-property-link-panel");
+  if (!panel) return;
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) {
+    const sel = document.querySelector("#tenant-property-link-select");
+    if (sel) {
+      sel.replaceChildren(new Option("Selecciona un inmueble…", ""));
+      const ownerId = tenantOwnerSelect.value;
+      const owner = state.owners.find(o => o.id === ownerId);
+      const props = owner ? ownerProperties(owner) : state.properties;
+      props.forEach(p => {
+        const cn = p.communityName || state.communities.find(c => c.id === p.communityId)?.name || "Sin comunidad";
+        sel.add(new Option(`${p.plot} · ${cn}`, p.id));
+      });
+      sel.value = editingTenantPropertyId || "";
+    }
+  }
+});
+const btnTenantConfirmProperty = document.querySelector("#btn-tenant-confirm-property");
+if (btnTenantConfirmProperty) btnTenantConfirmProperty.addEventListener("click", () => {
+  const sel = document.querySelector("#tenant-property-link-select");
+  if (sel && sel.value) editingTenantPropertyId = sel.value;
+  const panel = document.querySelector("#tenant-property-link-panel");
+  if (panel) panel.hidden = true;
+  renderTenantPropertyTab();
+});
+const btnTenantCancelProperty = document.querySelector("#btn-tenant-cancel-property");
+if (btnTenantCancelProperty) btnTenantCancelProperty.addEventListener("click", () => {
+  const panel = document.querySelector("#tenant-property-link-panel");
+  if (panel) panel.hidden = true;
+});
+
+// Docs upload
+const tenantInputDocDni = document.querySelector("#tenant-input-doc-dni");
+if (tenantInputDocDni) tenantInputDocDni.addEventListener("change", e => {
+  if (e.target.files && e.target.files[0]) handleTenantDocUpload(e.target.files[0], "dni");
+});
+const tenantInputDocContract = document.querySelector("#tenant-input-doc-contract");
+if (tenantInputDocContract) tenantInputDocContract.addEventListener("change", e => {
+  if (e.target.files && e.target.files[0]) handleTenantDocUpload(e.target.files[0], "contract");
+});
+const tenantDropzoneDni = document.querySelector("#tenant-dropzone-dni");
+if (tenantDropzoneDni) {
+  ["dragenter","dragover"].forEach(ev => tenantDropzoneDni.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); tenantDropzoneDni.classList.add("dragover"); }));
+  ["dragleave","drop"].forEach(ev => tenantDropzoneDni.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); tenantDropzoneDni.classList.remove("dragover"); }));
+  tenantDropzoneDni.addEventListener("drop", e => { const f=e.dataTransfer.files; if (f && f[0]) handleTenantDocUpload(f[0], "dni"); });
+}
+const tenantDropzoneContract = document.querySelector("#tenant-dropzone-contract");
+if (tenantDropzoneContract) {
+  ["dragenter","dragover"].forEach(ev => tenantDropzoneContract.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); tenantDropzoneContract.classList.add("dragover"); }));
+  ["dragleave","drop"].forEach(ev => tenantDropzoneContract.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); tenantDropzoneContract.classList.remove("dragover"); }));
+  tenantDropzoneContract.addEventListener("drop", e => { const f=e.dataTransfer.files; if (f && f[0]) handleTenantDocUpload(f[0], "contract"); });
+}
+const tenantBtnSampleDni = document.querySelector("#tenant-btn-sample-dni");
+if (tenantBtnSampleDni) tenantBtnSampleDni.addEventListener("click", () => {
+  const context = { name: tenantForm.elements.name.value.trim() || "Inquilino", surname: tenantForm.elements.surname.value.trim() || "", dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A" };
+  const sample = DocumentValidator.generateSampleDocument("dni", context);
+  if (!sample) return;
+  const badge = document.querySelector("#tenant-badge-doc-dni");
+  badge.className = "status-badge doc-pending-admin";
+  badge.textContent = "⚡ Analizando...";
+  window.setTimeout(() => {
+    tenantEditingDocs["dni"] = {
+      key: "dni", title: "Copia de DNI / NIE / CIF", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
+      autoValidation: { status: "passed", legibilityScore: 98, legibilityStatus: "Óptima", typeVerified: "Documento de identidad", checks: [], verifiedAt: new Date().toISOString() },
+      adminApproval: { status: "pending", reviewedAt: null, reviewedBy: null, notes: "" }
+    };
+    toast("Documento de prueba cargado y validado automáticamente.");
+    renderTenantDialogDocs();
+  }, 350);
+});
+
+const tenantBtnSampleContract = document.querySelector("#tenant-btn-sample-contract");
+if (tenantBtnSampleContract) tenantBtnSampleContract.addEventListener("click", () => {
+  const context = { name: tenantForm.elements.name.value.trim() || "Inquilino", surname: tenantForm.elements.surname.value.trim() || "", dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A" };
+  const sample = DocumentValidator.generateSampleDocument("propertyDeed", context);
+  if (!sample) return;
+  const badge = document.querySelector("#tenant-badge-doc-contract");
+  badge.className = "status-badge doc-pending-admin";
+  badge.textContent = "⚡ Analizando...";
+  window.setTimeout(() => {
+    tenantEditingDocs["contract"] = {
+      key: "contract", title: "Contrato de arrendamiento", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
+      autoValidation: { status: "passed", legibilityScore: 97, legibilityStatus: "Óptima", typeVerified: "Contrato de arrendamiento", checks: [], verifiedAt: new Date().toISOString() },
+      adminApproval: { status: "pending", reviewedAt: null, reviewedBy: null, notes: "" }
+    };
+    toast("Documento de prueba cargado y validado automáticamente.");
+    renderTenantDialogDocs();
+  }, 350);
+});
+
+// Owner select change
+tenantOwnerSelect.addEventListener("change", () => {
+  state.ui.viewingOwnerId = tenantOwnerSelect.value || null;
+  updateTenantPropertyOptions(tenantOwnerSelect.value);
+  editingTenantPropertyId = null;
+  renderTenantPropertyTab();
+});
+
+newTenantBtn.addEventListener("click", () => openTenantEditor(null, ""));
+document.querySelector("#close-tenant-dialog").addEventListener("click", () => intentarCerrar(tenantForm, tenantDialog));
+document.querySelector("#cancel-tenant-dialog").addEventListener("click", () => intentarCerrar(tenantForm, tenantDialog));
+
+// Submit
+tenantForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  tenantFormError.textContent = "";
+  const property = state.properties.find(item => item.id === editingTenantPropertyId);
+  const derivedOwnerId = property && Array.isArray(property.ownerIds) && property.ownerIds.length ? property.ownerIds[0] : (tenantOwnerSelect.value || "");
+  const owner = derivedOwnerId ? state.owners.find(item => item.id === derivedOwnerId) : null;
+  if (owner && !requirePermission("tenant:manage", owner.id)) {
+    tenantFormError.textContent = "No tenés permisos para gestionar este propietario.";
+    return;
+  }
+  const formData = new FormData(tenantForm);
+  const values = Object.fromEntries(formData);
+  const phone = (values.phone || "").replace(/\D/g, "");
+  const email = (values.email || "").trim().toLowerCase();
+  const messages = [];
+  if (!(values.name || "").trim()) messages.push("El nombre es obligatorio.");
+  if (!(values.surname || "").trim()) messages.push("Los apellidos son obligatorios.");
+  if (!(values.documentType || "").trim()) messages.push("El tipo de documento es obligatorio.");
+  if (!(values.documentId || "").trim()) messages.push("El DNI / NIE / CIF es obligatorio.");
+  if (!/^[6-9]\d{8}$/.test(phone)) messages.push("El teléfono principal debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.");
+  if (!isValidEmail(email)) messages.push("Introduce una dirección de email válida.");
+  if (!editingTenantPropertyId) messages.push("Selecciona un inmueble asociado a este inquilino.");
+  if (!isValidDateInput(values.contractStart)) messages.push("Indica una fecha de inicio de contrato válida.");
+  if (!isValidDateInput(values.contractEnd)) messages.push("Indica una fecha de fin de contrato válida.");
+  else if (values.contractStart && values.contractEnd && values.contractEnd < values.contractStart) messages.push("La fecha de fin no puede ser anterior al inicio del contrato.");
+  // verification checks
+  if (!tenantContactVerify.phone.verified || tenantContactVerify.phone.value !== phone) messages.push("Debes verificar el teléfono principal mediante el código enviado por SMS (pestaña Contacto).\n");
+  // Verificación de email opcional para inquilinos (sólo se valida formato)
+  if (messages.length) {
+    const tabMark = messages.find(m => typeof m === "string" && m.startsWith("__tab:"));
+    if (tabMark) switchTenantDialogTab(tabMark.slice(6));
+    else if (messages.some(m => m.includes("nombre") || m.includes("apellidos") || m.includes("documento"))) switchTenantDialogTab("general");
+    else if (messages.some(m => m.includes("teléfono") || m.includes("email"))) switchTenantDialogTab("contact");
+    else if (messages.some(m => m.includes("inmueble"))) switchTenantDialogTab("property");
+    else if (messages.some(m => m.includes("contrato") || m.includes("fecha"))) switchTenantDialogTab("contract");
+    showValidationErrors(messages, "Revisá los siguientes datos");
+    return;
+  }
+  const submittedAuthorizations = formData.getAll("authorizations");
+  if (submittedAuthorizations.some(v => !Object.hasOwn(TENANT_AUTHORIZATION_LABELS, v))) {
+    tenantFormError.textContent = "Selecciona únicamente autorizaciones disponibles.";
+    return;
+  }
+  const tenantId = state.ui.editingTenantId || crypto.randomUUID();
+  const tenant = {
+    id: tenantId,
+    name: values.name.trim(),
+    surname: values.surname.trim(),
+    documentType: values.documentType || "DNI",
+    documentId: (values.documentId || "").trim().toUpperCase(),
+    contractType: values.contractType || "vivienda_habitual",
+    monthlyRent: values.monthlyRent ? values.monthlyRent.trim().replace(",", ".") : "",
+    deposit: values.deposit ? values.deposit.trim().replace(",", ".") : "",
+    phone,
+    email,
+    propertyId: editingTenantPropertyId,
+    contractStart: values.contractStart,
+    contractEnd: values.contractEnd || "",
+    authorizations: submittedAuthorizations,
+    authorizationNotes: (values.authorizationNotes || "").trim(),
+    currency: values.currency || "EUR",
+    phoneVerified: tenantContactVerify.phone.verified,
+    phoneVerifiedAt: tenantContactVerify.phone.verifiedAt,
+    emailVerified: tenantContactVerify.email.verified,
+    emailVerifiedAt: tenantContactVerify.email.verifiedAt,
+    notificationPreference: values.notificationPreference || "email",
+    documents: tenantEditingDocs
+  };
+  const isEditing = !!state.ui.editingTenantId;
+  const payload = { id: tenantId, ownerId: derivedOwnerId, userId: tenantForm.elements.userId?.value || "", ...tenant };
+  try {
+    if (isEditing) await api.updateTenant(tenantId, payload);
+    else await api.createTenant(payload);
+  } catch (error) {
+    tenantFormError.textContent = error.message;
+    return;
+  }
+  await refreshState();
+  limpiarGuardia(tenantForm);
+  closeTenantEditor();
+  toast(isEditing ? "Inquilino actualizado." : "Inquilino creado.");
+});
+
+// openTenantDetail / closeTenantDetail unchanged
+export function openTenantDetail(ownerId, tenantId) {
+  if (!requirePermission("tenant:read", ownerId)) return;
+  const owner = state.owners.find(item => item.id === ownerId);
+  const tenant = ownerTenants(owner).find(item => item.id === tenantId);
+  if (!owner || !tenant) return;
+  state.ui.viewingOwnerId = owner.id;
+  state.ui.viewingTenantId = tenantId;
+  document.querySelector("#tenant-detail-title").textContent = `${tenant.name} ${tenant.surname}`;
+  document.querySelector("#tenant-detail-owner").textContent = `${owner.name} ${owner.surname}`;
+  document.querySelector("#tenant-detail-document").textContent = tenant.documentId || "No indicado";
+  document.querySelector("#tenant-detail-phone").textContent = tenant.phone || "—";
+  document.querySelector("#tenant-detail-email").textContent = tenant.email || "—";
+  const property = state.properties.find(item => item.id === tenant.propertyId);
+  document.querySelector("#tenant-detail-property").textContent = property
+    ? `${property.plot} · ${property.communityName || "Sin comunidad"} · ${property.address || "Sin dirección"}`
+    : "Unidad no disponible";
+  document.querySelector("#tenant-detail-contract-start").textContent = formatContractDate(tenant.contractStart);
+  document.querySelector("#tenant-detail-contract-end").textContent = formatContractDate(tenant.contractEnd);
+  document.querySelector("#tenant-detail-contract-status").textContent = getTenantContractStatus(tenant);
+  const contractTypeMap = { vivienda_habitual: "Vivienda habitual", temporada: "Arrendamiento de temporada", comercial: "Uso distinto de vivienda (local)", cesion: "Cesión o comodato" };
+  const contractTypeEl = document.querySelector("#tenant-detail-contract-type");
+  if (contractTypeEl) contractTypeEl.textContent = contractTypeMap[tenant.contractType] || "Vivienda habitual";
+  const monthlyRentEl = document.querySelector("#tenant-detail-monthly-rent");
+  if (monthlyRentEl) monthlyRentEl.textContent = tenant.monthlyRent ? `${tenant.monthlyRent} €` : "—";
+  const depositEl = document.querySelector("#tenant-detail-deposit");
+  if (depositEl) depositEl.textContent = tenant.deposit ? `${tenant.deposit} €` : "—";
+  const emergencyPhoneEl = document.querySelector("#tenant-detail-emergency-phone");
+  if (emergencyPhoneEl) emergencyPhoneEl.textContent = tenant.emergencyPhone || "—";
+  const authorizations = document.querySelector("#tenant-detail-authorizations");
+  authorizations.replaceChildren();
+  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map(v => TENANT_AUTHORIZATION_LABELS[v] || v);
+  if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
+  labels.forEach(label => { const item = document.createElement("li"); item.textContent = label; authorizations.append(item); });
+  document.querySelector("#tenant-detail-authorization-notes").textContent = tenant.authorizationNotes || "Sin observaciones.";
+  const viewPropertyButton = document.querySelector("#tenant-detail-view-property");
+  viewPropertyButton.hidden = !property;
+  viewPropertyButton.onclick = () => { if (property) openPropertyDetail(property.id); };
+  document.querySelector("#tenant-detail-edit-btn").hidden = !hasPermission("tenant:manage", owner.id);
+  if (!tenantDetailDialog.open) tenantDetailDialog.showModal();
+}
+
+export function closeTenantDetail() {
+  tenantDetailDialog.close();
+  state.ui.viewingTenantId = null;
+}
+
+export function openTenantDelete(tenantId, ownerId = state.ui.viewingOwnerId) {
+  if (!requirePermission("tenant:manage", ownerId || "")) return;
+  const owner = state.owners.find(item => item.id === ownerId);
+  const tenant = ownerTenants(owner).find(item => item.id === tenantId);
+  if (!owner || !tenant) return;
+  state.ui.viewingOwnerId = owner.id;
+  state.ui.deletingTenantId = tenantId;
+  document.querySelector("#tenant-delete-message").textContent = `Vas a eliminar a “${tenant.name} ${tenant.surname}”. Esta acción no se puede deshacer.`;
+  tenantDeleteDialog.showModal();
+}
+
+document.querySelector("#confirm-tenant-delete").addEventListener("click", async event => {
+  event.preventDefault();
+  const owner = state.owners.find(item => item.id === state.ui.viewingOwnerId);
+  if (!owner || !requirePermission("tenant:manage", owner.id)) return;
+  try {
+    await api.deleteTenant(state.ui.deletingTenantId);
+  } catch (error) {
+    toast(error.message);
+    tenantDeleteDialog.close();
+    state.ui.deletingTenantId = null;
+    return;
+  }
+  await refreshState();
+  tenantDeleteDialog.close();
+  state.ui.deletingTenantId = null;
+  if (window.location.hash.toLowerCase() === "#inquilinos") renderTenants();
+  else if (state.ui.viewingOwnerId) openOwnerDetail(state.ui.viewingOwnerId);
+  toast("Inquilino eliminado.");
+});

@@ -1,119 +1,101 @@
 # App Gestión Peñarrubia (Comunidades y Propietarios)
 
-Módulo de gestión y administración para la Asociación de Propietarios de Parcelas de Peñarrubia: CRUD de Comunidades de Vecinos y Entidad de Propietarios / Asociados.
+Aplicación web completa para la gestión de la Asociación de Propietarios de Parcelas de Peñarrubia: comunidades de vecinos, propietarios/asociados, inmuebles, inquilinos y documentación con validación automática.
+
+## Arquitectura
+
+- **Backend**: Node.js + Express + SQLite (`node:sqlite`, sin dependencias nativas). API REST, subida de archivos (`multer`) y verificación de contacto por OTP.
+- **Frontend**: vanilla JavaScript en módulos ES (sin build step), servido por el propio backend. Persistencia íntegra en base de datos — ya no se usa `localStorage`.
+- **Datos demo**: la base se inicializa con datos de ejemplo **solo si está vacía** al arrancar; los cambios persisten entre reinicios.
 
 ## Ejecución
 
-No requiere dependencias externas ni proceso de compilación. Abre `index.html` directamente en cualquier navegador moderno.
+```bash
+npm install
+npm start        # producción (http://localhost:3000)
+npm run dev      # desarrollo con recarga (node --watch)
+```
 
-Los datos se gestionan con persistencia local en `localStorage` (`penarrubia.communities.v1` y `penarrubia.owners.v1`) y cuentan con datos iniciales (semillas) de prueba precargados.
-La verificación de contacto requiere servir la aplicación desde un origen HTTP con los endpoints descritos abajo; sin backend, el envío falla de forma visible y el propietario no puede guardarse hasta verificar sus datos.
+La base de datos se crea en `data/penarrubia.db` y los archivos subidos en `uploads/` (ambos ignorados por git).
 
----
+## Estructura del proyecto
 
-## 1. Módulo Comunidades de Vecinos
+```
+server.js                 Entrada: Express, estáticos, rutas, seed
+src/
+  db.js                   Esquema SQLite + mapeadores de filas
+  domain.js               Lógica de negocio (reasignaciones, relaciones, contratos)
+  seed.js                 Datos demo (solo si la BD está vacía)
+  routes/
+    index.js              /api/bootstrap, /api/health
+    communities.js        CRUD de comunidades
+    owners.js             CRUD de propietarios (+ vínculo de inmueble transaccional)
+    properties.js         CRUD de inmuebles
+    tenants.js            CRUD de inquilinos (ownerId derivado del inmueble)
+    documents.js          Subida/descarga/borrado de archivos (multer, 15 MB)
+    notifications.js      Buzón del administrador y del propietario
+    verification.js       OTP de teléfono y email (código en consola + devCode)
+public/
+  index.html · styles.css
+  js/
+    main.js               Bootstrap: carga de estado + render global
+    api.js                Cliente fetch de la API
+    state.js              Estado en memoria + refreshState + selectores
+    utils.js              Formateadores, validadores y helpers de documentos
+    territory.js          Catálogo INE (provincia → municipio → CP)
+    docs-engine.js        Motor de validación del expediente de propietario
+    municipios-ine.js     Catálogo territorial (8.132 municipios, script clásico)
+    features/             navigation, home, comunidades, propietarios,
+                          inquilinos, inmuebles, notificaciones
+```
 
-- **Formulario y validaciones estrictas:**
-  - NIF obligatorio que comienza por `H` seguido de 8 dígitos numéricos.
-  - Teléfono y Otro teléfono obligatorios de 9 dígitos numéricos.
-  - Email de contacto obligatorio con validación de formato.
-  - Catálogo territorial local (`municipios-ine.js`) con 8.132 municipios y 52 provincias del INE.
-  - Código postal de 5 dígitos validado contra los códigos postales reales de España con autocompletado bidireccional de municipio y provincia.
-  - Observaciones opcionales.
-- **Tabla y visualización:**
-  - Paginación configurable (5 o 10 por página) con controles de página anterior, siguiente e indicador de página actual.
-  - Contador de propietarios censados en la ficha detallada de la comunidad.
-  - Botones de acción con iconos estándar accesibles (Más info, Editar y Eliminar con confirmación modal).
+## Modelo de datos
 
----
+- `communities`: datos de la comunidad + documentación adjunta.
+- `owners`: datos personales, verificación de contacto, IBAN y **expediente de documentación** (JSON del motor de validación client-side).
+- `properties`: inmuebles con **uno o más propietarios** (`ownerIds`, N:M) y **uno o más inquilinos** (`tenantIds`), pertenecientes a una única comunidad.
+- `tenants`: inquilinos con propietario e inmueble, contrato (tipo, renta, fianza, teléfono de emergencia) y autorizaciones.
+- `documents`: archivos subidos (por entidad: comunidad, inmueble o inquilino) con su archivo en disco.
+- `admin_emails` / `owner_notifications`: buzones del administrador y del propietario.
 
-## 2. Módulo Propietarios (Nueva Entidad)
+### Control de acceso (RBAC)
 
-Gestión completa de los propietarios y asociados vinculados a las comunidades de la asociación:
+La app implementa un modelo de roles en memoria (`admin` / `owner`) con matriz de permisos (`ROLE_PERMISSIONS`):
+- **admin**: acceso completo (gestión de comunidades, propietarios, inmuebles, inquilinos, aprobación documental).
+- **owner (demo)**: acceso restringido a su propio perfil, sus inmuebles e inquilinos, y lectura de su comunidad.
+- Es una demostración de frontend: no sustituye autenticación/autorización de servidor.
 
-- **Estructura y campos de la entidad:**
-  - **Nombre y Apellidos:** Campos independientes y validados.
-  - **DNI / NIE / CIF:** Tipo y documento obligatorios, validados y únicos. DNI/NIE usan su letra de control y CIF su dígito/letra de control.
-  - **Inmueble (obligatorios):** Comunidad vinculada, asociación con un inmueble existente o registro de uno nuevo, tipo de inmueble e identificador/número.
-  - **Datos opcionales del inmueble:** Referencia catastral (20 caracteres alfanuméricos cuando se informa), finca registral, planta, puerta, superficie (decimal positiva), coeficiente (0,0001–100 %) y uso.
-  - **Asociación con inmueble:** Combo con búsqueda por identificador y referencia catastral, limitado a la comunidad elegida; al elegir un inmueble existente carga sus datos editables.
-  - **Inmuebles del propietario:** La ficha muestra un desplegable con todos sus inmuebles y un filtro por comunidad; un propietario puede estar relacionado con inmuebles de distintas comunidades.
-  - **Condición de asociado:** Indicador de si el propietario es socio activo de la asociación (fundamental para el control de acceso inicial por DNI, cobro de cuotas y asambleas).
-  - **Contacto:** Teléfono principal español (9 dígitos, empieza por 6–9) y email obligatorios; ambos requieren verificación por código. Otro teléfono es opcional.
-  - **Dirección:** Dirección, provincia, municipio y código postal son obligatorios; provincia → municipio → código postal depende del catálogo territorial INE.
-  - **IBAN / Domiciliación:** Opcional; IBAN español de 24 caracteres validado por checksum MOD-97 y visualizado en bloques de cuatro.
-  - **Moneda de cuotas:** Selector con catálogo en memoria.
-  - **Observaciones:** Notas sobre el asociado, convocatorias o preferencias.
-- **Contrato requerido para el backend de verificación:**
-  - `POST /api/owners/contact/phone/send` con `{ "phone": "612345678" }`; responde `{ "challengeId": "...", "maskedDestination": "...", "expiresAt": "..." }`.
-  - `POST /api/owners/contact/phone/confirm` con `{ "challengeId": "...", "code": "123456" }`; responde `{ "verified": true, "verifiedAt": "..." }`.
-  - `POST /api/owners/contact/email/send` con `{ "email": "persona@dominio.es" }`; responde el mismo contrato de envío.
-  - `POST /api/owners/contact/email/confirm` con `{ "challengeId": "...", "code": "123456" }`; responde el mismo contrato de confirmación.
-  - El backend debe enviar el OTP, limitar intentos y caducidad, asociar el reto al destino y volver a comprobar la verificación al crear/actualizar el propietario. Los códigos nunca se muestran ni se autocompletan en el frontend.
-- **Catálogos y SUPOSICIÓN:** El catálogo de provincias, municipios y códigos postales se carga desde `municipios-ine.js`; moneda usa un catálogo local cacheado en memoria. SUPOSICIÓN: la mención «caching de moneda» se refiere a un combo de monedas con cache local, no a una operación financiera.
-- **Búsqueda y Filtros Combinados:**
-  - Búsqueda en vivo por nombre, apellidos, DNI/NIE, parcela, comunidad, teléfono o email.
-  - Filtro por Comunidad desplegable.
-  - Filtro por condición de asociado ("Solo asociados" o "No asociados").
-- **Tabla y Fichas:**
-  - Badges visuales para estado de asociado (`Asociado` en verde / `No asociado` en neutro), DNI en tipografía monospace y tag de comunidad.
-  - Ficha modal de "Más info" con todos los datos personales, bancarios y domiciliarios, con acceso directo a edición.
-  - Diálogo de confirmación accesible para eliminación.
-  - Paginación configurable (5 o 10 por página) sincronizada con los filtros aplicados.
-  - Prioridad de grilla: propietario, documento, inmueble, comunidad y acciones permanecen visibles; dirección, contacto, condición y documentación se ocultan progresivamente en ventanas estrechas. Las columnas prioritarias mantienen scroll horizontal.
-  - Navegación responsive entre secciones (sidebar en escritorio y barra superior en móviles).
+## API (resumen)
 
----
+- `GET /api/bootstrap` — estado completo de la aplicación.
+- `POST/PUT/DELETE /api/{communities|owners|properties|tenants}` — CRUD; el servidor resuelve la reasignación de inmuebles entre propietarios y el rearme de relaciones.
+- `POST /api/documents` (multipart: `entityType`, `entityId`, `files[]`) · `DELETE /api/documents/:id` · `GET /api/documents/:id/download`.
+- `POST /api/owners/contact/{phone|email}/{send|confirm}` — verificación OTP (10 min, 5 intentos). Sin proveedor real de SMS/email, el código se registra en la consola del servidor y se devuelve como `devCode` para pruebas.
+- `GET /api/notifications/*`, `POST /api/notifications/*` — buzones.
+- `GET /api/health`.
 
-## 2.1. Entidad Inmuebles
+## Funcionalidad principal
 
-- La sección **Inmuebles** permite crear y editar inmuebles; cada registro debe pertenecer a una comunidad y tener un propietario registrado.
-- El inmueble guarda dirección, tipo e identificador, datos catastrales opcionales, estado de recibos (al corriente o pagos pendientes) y documentos adjuntos.
-- Los inquilinos nuevos se registran desde la ficha del propietario y quedan vinculados a una de sus unidades; la ficha y el listado del inmueble muestran los contratos vigentes. Se conserva la relación con propietarios usada por registros anteriores.
-- Los documentos adjuntos se guardan en el navegador junto con el resto de datos `localStorage`; esta persistencia es de demostración y debe migrarse a almacenamiento de backend para producción.
-- Los inmuebles existentes se vinculan a sus propietarios por la relación guardada o, durante la migración inicial, por el inmueble principal ya registrado en la ficha del propietario. Las unidades de catálogo todavía sin propietario no aparecen como entidades hasta que se asocian desde la ficha de un propietario.
-- Una comunidad no se puede eliminar si tiene inmuebles asociados, ni un propietario si es titular de un inmueble; primero hay que reasignar esos registros.
+### Comunidades
+- CRUD con validaciones estrictas (NIF `H` + 8 dígitos, teléfonos de 9 dígitos, email, CP contra catálogo INE con autocompletado municipio/provincia).
+- Documentación adjunta con drag & drop multi-archivo y ficha detallada con propietarios censados.
 
----
+### Propietarios
+- Formulario en tres pestañas: **1. Datos personales**, **2. Inmueble** (un único selector que vincula al propietario con un inmueble existente, igual que la asociación «Propietario» del formulario de inmuebles; si el inmueble era de otro dueño se reasigna) y **3. Documentación requerida**.
+- Contacto con verificación por OTP de teléfono y email contra el backend.
+- Expediente documental (DNI, recibo bancario, escritura) con validación automática client-side (legibilidad, tipo de documento, coincidencia de datos), botones de documento de prueba, aprobación/rechazo administrativo y buzones de notificación.
+- IBAN con validación MOD-97, moneda de cuotas, dirección con catálogo territorial.
 
-## 2.2. Inquilinos y residentes
+### Inmuebles
+- CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
+- Documentación con dropzone drag & drop.
 
-- La opción **Inquilinos**, dentro de la navegación de **Propietarios**, muestra un listado independiente con búsqueda y filtros por comunidad y estado del contrato.
-- Desde la ficha de un propietario se pueden crear, consultar, editar y eliminar sus inquilinos.
-- Cada inquilino queda asociado a una unidad de ese propietario, con contacto, documento identificativo opcional y fechas de contrato.
-- El inicio del contrato, un teléfono español y un email válido son obligatorios; la fecha de fin es opcional y no puede ser anterior al inicio.
-- El detalle indica si el contrato está próximo, vigente o finalizado, y permite abrir la ficha de la unidad.
-- Las autorizaciones se registran mediante permisos explícitos para zonas comunes, comunicaciones e incidencias, además de observaciones de texto libre.
-- Los inquilinos se guardan dentro de la ficha del propietario en `localStorage`; este modelo local de demostración debe migrarse a backend para producción.
+### Inquilinos
+- Alta/edición seleccionando **directamente el inmueble** (el propietario se deduce de él; si se cambia a un inmueble de otro dueño, el inquilino cambia de propietario).
+- Pestaña de documentación multi-archivo y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
 
----
+## Notas para producción
 
-## 3. Módulo de Documentación y Aprobación Administrativa
-
-Permite a los propietarios adjuntar toda la documentación reglamentaria tanto en el alta de nuevo usuario como en la posterior edición de su ficha:
-
-- **Documentación Requerida:**
-  1. **Copia de DNI (ambas caras):** Documento de identidad español escaneado o fotografiado (ambas caras en un único archivo o documento).
-  2. **Recibo bancario o certificado de titularidad:** Justificante bancario que acredite la cuenta donde se domiciliará el pago de las cuotas.
-  3. **Copia de la escritura del inmueble:** Título o escritura acreditativa de la propiedad de la parcela/vivienda.
-
-- **Validación Automática del Sistema (Motor Client-Side):**
-  - **DNI Español:** Verificación de algoritmo oficial de control (módulo 23), detección de anverso y reverso, y ratio de aspecto.
-  - **Inspección de Legibilidad (Canvas Pixel Analysis):** Cálculo en tiempo real de resolución útil, luminancia media (evita documentos quemados u oscuros) y desviación típica de contraste (garantiza nitidez suficiente del texto impreso).
-  - **Recibo Bancario:** Comprobación de coincidencia del IBAN con la cuenta domiciliada del propietario.
-  - **Escritura:** Comprobación de vinculación a la parcela y legibilidad documental.
-  - **Asistente de Pruebas Rápidas:** Botones *"✨ Cargar de prueba válido"* para generar al vuelo documentos vectoriales/canvas de prueba válidos y agilizar testeos.
-
-- **Confirmación Inmediata al Usuario (Modal Emergente):**
-  - Tras procesar y superar las validaciones automáticas, el usuario recibe un diálogo modal emergente (`#doc-success-dialog`) confirmando que la documentación se ha cargado correctamente y queda a la espera de la resolución administrativa.
-
-- **Notificación por Email y Aprobación del Administrador:**
-  - **Envío de Notificación:** Al completar la subida, el sistema despacha una notificación por correo electrónico al Administrador solicitando la verificación y aprobación.
-  - **Plantilla de Email Interactiva (`#admin-email-dialog`):** Simula el correo recibido con remitente, asunto, resumen del propietario y botón directo *"Revisar y Aprobar Documentación"*.
-  - **Buzón del Administrador (`#admin-inbox-dialog`):** Contador de notificaciones pendientes en la barra superior con historial de avisos.
-  - **Panel de Aprobación Administrativa:** En la ficha del propietario, el Administrador puede inspeccionar el estado de cada documento, auditar el desglose de legibilidad y resolver el expediente mediante:
-    - **Aprobar Documentación:** Concede el estado oficial de documentación validada.
-    - **Solicitar Subsanación / Rechazar:** Permite especificar los motivos para que el propietario reenvíe los archivos requeridos.
-
-- **Aislamiento y Persistencia:**
-  - Toda la documentación queda vinculada **única y exclusivamente** al perfil del propietario en cuestión (`owner.documents` dentro de `penarrubia.owners.v1`), garantizando la privacidad e integridad de los datos.
+- La verificación de contacto es demostrativa: no hay proveedor real de SMS/email. Sustituir `src/routes/verification.js` por un proveedor real manteniendo el contrato de la API.
+- Los documentos se guardan en disco local (`uploads/`); en producción conviene almacenamiento externo (S3, etc.) y autenticación/autorización en la API.
+- `node:sqlite` es el motor embebido de Node (sin dependencias nativas); puede migrarse a `better-sqlite3` o PostgreSQL sin cambiar el contrato REST.
