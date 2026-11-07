@@ -239,7 +239,15 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
   db.prepare("UPDATE users SET rol = 'super_admin' WHERE rol IN ('administrador', 'rol-admin')").run();
   db.prepare("UPDATE users SET rol = 'user' WHERE rol NOT IN ('super_admin', 'administrator', 'community_admin', 'user')").run();
 }
-if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
+// Migración: cuentas sin contraseña reciben su nombre de usuario
+  const usersNoPass = db.prepare("SELECT id, usuario FROM users WHERE passwordHash = ''").all();
+  usersNoPass.forEach(u => {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.createHash("sha256").update(salt + ":" + u.usuario).digest("hex");
+    db.prepare("UPDATE users SET passwordHash = ? WHERE id = ?").run(salt + ":" + hash, u.id);
+  });
+
+  if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)");
   const seedPassword = (usuario) => {
     const salt = crypto.randomBytes(16).toString("hex");
@@ -249,6 +257,8 @@ if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user", seedPassword("recepcion"));
 }
 
+// Perfil Propietario simulado: cuenta para el propietario sembrado
+// (Carlos Ruiz) si aún no tiene usuario vinculado.
 // Perfil Propietario simulado: cuenta para el propietario sembrado
 // (Carlos Ruiz) si aún no tiene usuario vinculado.
 const carlosOwner = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1' AND (userId IS NULL OR userId = '')").get();
