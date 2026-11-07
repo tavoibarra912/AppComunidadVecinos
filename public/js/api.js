@@ -35,6 +35,7 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  communication: (path, method = "GET", payload) => request(`/communications${path}`, { method, ...(payload === undefined ? {} : { body: payload instanceof FormData ? payload : JSON.stringify(payload) }) }),
   getCurrentUser: () => request("/auth/me"),
   auth: (path, body) => request(`/auth/${path}`, { method: "POST", body: JSON.stringify(body || {}) }),
   getBootstrap: () => request("/bootstrap"),

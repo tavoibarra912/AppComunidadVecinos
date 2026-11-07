@@ -14,6 +14,7 @@ import { renderProperties } from "./features/inmuebles.js";
 import { renderTenants } from "./features/inquilinos.js";
 import { updateInboxBadge, updateOwnerInboxBadge } from "./features/notificaciones.js";
 import { renderAccountMenu } from "./features/account-menu.js";
+import { refreshCommunication } from "./features/communication.js";
 
 async function boot() {
   // Catálogo territorial del INE (script clásico con window.MUNICIPIOS_INE)
@@ -30,6 +31,7 @@ async function boot() {
     updateOwnerInboxBadge();
     applyRoleUI();
     renderAccountMenu();
+    refreshCommunication().catch(error => console.error("[communication]", error.message));
     handleRouting();
   });
 

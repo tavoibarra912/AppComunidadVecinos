@@ -8,6 +8,7 @@ import notificationsRouter from "./notifications.js";
 import verificationRouter from "./verification.js";
 import adminRouter from "./admin.js";
 import authRouter from "./auth.js";
+import communicationsRouter from "./communications.js";
 import {
   requireSession,
   sameOrigin,
@@ -83,6 +84,7 @@ router.use("/properties", propertiesRouter);
 router.use("/tenants", tenantsRouter);
 router.use("/documents", documentsRouter);
 router.use("/notifications", notificationAccess, notificationsRouter);
+router.use("/communications", communicationsRouter);
 router.use("/owners/contact", verificationRouter);
 router.use(
   "/admin",

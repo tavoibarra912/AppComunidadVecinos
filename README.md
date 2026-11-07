@@ -126,6 +126,30 @@ códigos de contacto también queda desactivado; se pueden guardar contactos sin
 - Alta/edición seleccionando **directamente el inmueble** (el propietario se deduce de él; si se cambia a un inmueble de otro dueño, el inquilino cambia de propietario).
 - Pestaña de documentación multi-archivo y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
 
+### Comunicación: tablón, calendario y reuniones
+
+- **Comunicación** está disponible desde la navegación y el buzón **Comunidad** de la barra superior, también para inquilinos. El contador muestra las comunicaciones sin leer. **Mis canales** permite aceptar o revocar avisos externos por cuenta; dentro de la app siempre están disponibles.
+- Los administradores con permiso para gestionar la comunidad crean avisos, eventos y reuniones en tres pasos: contenido, destinatarios y revisión. Admiten borradores, programación, inicio/fin, archivo, prioridad, fijado y recordatorios. Las fechas se guardan en UTC y se muestran en la zona local del navegador.
+- Destinos: toda la comunidad, propietarios, inquilinos o selección de perfiles/unidades. Una unidad seleccionada incluye sus propietarios e inquilinos vigentes; se deduplican cuentas. La vista previa identifica perfiles sin cuenta activa. La distribución guarda la lista de cuentas destinatarias; nuevos vecinos no reciben publicaciones históricas. La desvinculación o el fin del contrato revocan el acceso.
+- El detalle separa publicación, participación, reunión y seguimiento. Lectura y confirmación de recepción se registran por separado. Las ediciones publicadas se versionan, vuelven a marcar el aviso como pendiente y generan avisos de actualización. El guardado detecta conflictos de edición.
+- Reuniones: lugar/videollamada HTTPS, orden del día, confirmación de invitación, asistencia real, acuerdos y tareas con responsable/vencimiento. Los adjuntos admiten PDF/JPG/PNG, hasta 10 MB por archivo y 30 archivos por publicación. Se comprueba el contenido y cada descarga requiere sesión y acceso a esa publicación.
+- Las actas se suben como borradores privados de administración. **Publicar acta** habilita esa versión para destinatarios y genera un aviso. Las versiones publicadas se conservan; las correcciones se suben como versiones nuevas.
+- Comentarios habilitables por publicación, eliminación propia y moderación administrativa. Encuestas/votaciones de una pregunta con 2–12 opciones, respuesta simple o múltiple, cierre por fecha o manual y electorado de destinatarios o propietarios destinatarios. Una respuesta inmutable por cuenta; los resultados son agregados y pueden mostrarse en vivo o al cerrar. No se pondera por unidad, coeficiente ni representación.
+
+### Proveedores SMTP, SMS y WhatsApp
+
+Solo el **superadministrador** puede abrir **Administración → Configuración → Configurar proveedores**, o **Comunicación → Proveedores de envío**. Este control también se aplica en la API y no depende de mostrar u ocultar botones.
+
+- **SMTP:** servidor, puerto, TLS directo o STARTTLS obligatorio, usuario, contraseña y remitente. Implementado con [Nodemailer](https://nodemailer.com/smtp). No se desactiva la validación de certificados.
+- **SMS:** Twilio, con Account SID, Auth Token y teléfono emisor internacional.
+- **WhatsApp:** Twilio, con emisor habilitado y Content SID de una plantilla aprobada. La plantilla debe tener una variable de texto `{{1}}` para el aviso. Se utiliza la [API de mensajes de Twilio](https://www.twilio.com/docs/messaging/api/message-resource).
+- Los proveedores vienen desactivados. **Enviar prueba** hace un envío real al destino indicado, después de guardar la configuración. Los envíos de publicaciones requieren que el autor elija el canal y que el destinatario lo haya aceptado en **Mis canales**.
+- Las contraseñas/tokens se cifran con AES-256-GCM y nunca se devuelven al navegador. Un campo vacío conserva la credencial; la casilla de eliminación la borra. `APP_PROVIDER_KEY` admite una clave de 32 bytes codificada en 64 caracteres hexadecimales. Sin esa variable se genera `data/provider-key` (o dentro de `APP_DATA_DIR`). La clave debe conservarse junto con la base en una copia de seguridad privada; cambiarla impide descifrar las credenciales existentes. Estos datos locales están excluidos de Git.
+- Una cola SQLite procesa programación, recordatorios y envíos cada 30 segundos mientras el servidor está encendido. Los envíos aceptados no se repiten automáticamente. Los canales no autorizados o desactivados se registran como omitidos. Los fallos y las respuestas inciertas permiten reintento explícito desde Seguimiento; conviene revisar el proveedor para evitar duplicados tras una interrupción.
+- **Aceptado por el proveedor** no confirma entrega ni lectura: no hay un webhook de confirmación de entrega. El buzón de la app y sus lecturas son independientes. El SMTP de este módulo se utiliza para comunicaciones; la recuperación de contraseña y la verificación OTP siguen desactivadas.
+
+API del módulo: `GET /api/communications/{metadata|posts|preferences}`, `POST /preview`, `POST /posts`, `GET/PUT /posts/:id`, acciones `read`, `receipt`, `comments`, `ballot`, `rsvp`, `attendance`, `retry` y `files`. `GET/PUT /providers` y `POST /providers/test` están restringidos al superadministrador. Las tablas se crean de forma idempotente al arrancar, sin sustituir los datos existentes.
+
 ## Comprobaciones
 
 `npm test` ejecuta pruebas de dominio, arranque desde cero, migraciones, sesiones,

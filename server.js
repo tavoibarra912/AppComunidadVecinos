@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import apiRouter from "./src/routes/index.js";
 import { seedIfEmpty } from "./src/seed.js";
 import { rebuildPropertyTenantReferences } from "./src/domain.js";
+import { startCommunicationWorker } from "./src/communication-worker.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -41,6 +42,7 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, HOST, () => {
+  startCommunicationWorker();
   console.log(`[server] AppComunidadVecinos escuchando en http://localhost:${PORT}`);
   console.log("[server] Documentación de la API: GET /api/bootstrap, /api/health");
 });

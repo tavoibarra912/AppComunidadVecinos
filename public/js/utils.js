@@ -10,15 +10,16 @@ export function toast(message) {
   toastEl.textContent = message;
   window.clearTimeout(toastTimer);
   const supportsPopover = typeof toastEl.showPopover === "function";
+  // Un diálogo puede reconstruir su contenido y desconectar el aviso anterior.
+  // El popover se mantiene en el body y se abre después del modal en el top-layer.
+  const openDialog = document.querySelector("dialog[open]");
+  const host = supportsPopover ? document.body : openDialog || document.body;
+  if (toastEl.parentElement !== host || !toastEl.isConnected) host.appendChild(toastEl);
   if (supportsPopover) {
     if (toastEl.matches(":popover-open")) toastEl.hidePopover();
     toastEl.showPopover();
   }
   toastEl.classList.add("visible");
-  // Si hay un modal abierto, el toast se mete dentro para quedar en el top-layer
-  const openDialog = document.querySelector("dialog[open]");
-  if (openDialog && toastEl.parentElement !== openDialog) openDialog.appendChild(toastEl);
-  else if (!openDialog && toastEl.parentElement !== document.body) document.body.appendChild(toastEl);
   toastTimer = window.setTimeout(() => {
     toastEl.classList.remove("visible");
     if (supportsPopover && toastEl.matches(":popover-open")) toastEl.hidePopover();

@@ -7,6 +7,7 @@ import { renderTenants } from "./inquilinos.js";
 import { renderProperties } from "./inmuebles.js";
 import { renderHomeDashboard } from "./home.js";
 import { renderAdministracion } from "./administracion.js";
+import { renderCommunication } from "./communication.js";
 import "./auth.js";
 import { updateInboxBadge, updateOwnerInboxBadge } from "./notificaciones.js";
 
@@ -130,6 +131,10 @@ export function applyRoleUI() {
 export function handleRouting() {
   const hash = (window.location.hash || "#home").toLowerCase();
   const isOwner = state.activeRole === "owner";
+  const communicationSection = document.querySelector("#comunicacion");
+  communicationSection.hidden = true;
+  communicationSection.style.display = "none";
+  document.querySelectorAll('[href="#comunicacion"]').forEach(el => el.classList.remove("active"));
   if ((hash === "#inmuebles" && !hasPermission("property:read")) || (hash === "#inquilinos" && !hasPermission("tenant:read"))) {
     window.location.hash = "#home";
     return;
@@ -164,7 +169,13 @@ export function handleRouting() {
     if (el) el.classList.remove("active");
   });
 
-  if (hash === "#administracion") {
+  if (hash === "#comunicacion") {
+    communicationSection.hidden = false;
+    communicationSection.style.display = "block";
+    document.querySelectorAll('[href="#comunicacion"]').forEach(el => el.classList.add("active"));
+    document.title = "Peñarrubia · Comunicación";
+    renderCommunication();
+  } else if (hash === "#administracion") {
     if (!["admin:users", "admin:roles", "admin:settings"].some(p => hasPermission(p))) {
       window.location.hash = "#home";
       return;

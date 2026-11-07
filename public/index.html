@@ -6,11 +6,13 @@
   <meta name="description" content="Gestión de comunidades y propietarios de la Asociación Peñarrubia" />
   <title>Peñarrubia · Comunidades y Propietarios</title>
   <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="communication.css?v=1" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#home" aria-label="Inicio de Peñarrubia">peñarrubia<span>·</span></a>
     <div class="topbar-actions">
+      <a class="topbar-btn-inbox" id="comm-inbox-link" href="#comunicacion" aria-label="Mis comunicaciones de la comunidad" title="Buzón de comunicaciones de mi comunidad"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10 21h4"></path></svg><span class="comm-inbox-label">Comunidad</span><span class="comm-count" data-comm-unread hidden>0</span></a>
       <button class="topbar-btn-inbox" id="topbar-inbox-btn" type="button" aria-label="Buzón de avisos y correos del Administrador" title="Buzón de avisos del Administrador">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect width="20" height="16" x="2" y="4" rx="2"></rect>
@@ -53,6 +55,7 @@
     <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
     <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
     <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
+    <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion">Comunicación</a>
   </nav>
   <!-- PANTALLA DE LOGIN SIMULADO -->
   <div id="login-screen" class="login-screen" hidden>
@@ -149,6 +152,7 @@
       <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
       <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
       <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
+      <a class="nav-item" href="#comunicacion" id="nav-comunicacion">Comunicación <span id="communication-unread" class="comm-count" hidden>0</span></a>
       <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
     </aside>
 
@@ -443,6 +447,7 @@
       </section>
 
       <section class="admin-pane" data-admin-pane="settings" hidden>
+        <div id="admin-communication-providers" class="comm-callout" hidden><strong>Proveedores de comunicación</strong><p>Configurá el correo SMTP y los envíos por SMS y WhatsApp.</p><button type="button" class="secondary-button" id="admin-open-providers">Configurar proveedores</button></div>
         <form id="settings-form" novalidate>
           <div class="form-grid">
             <label class="full">Nombre de la asociación *
@@ -506,6 +511,12 @@
           </div>
         </form>
       </section>
+    </section>
+    <section class="content" id="comunicacion" hidden aria-labelledby="communication-title">
+      <div class="comm-heading"><div><p class="eyebrow">VIDA EN COMUNIDAD</p><h1 id="communication-title">Comunicación</h1><p class="comm-muted">Avisos, eventos, reuniones y decisiones de tu comunidad.</p></div><div class="comm-actions"><button type="button" class="secondary-button" id="comm-preferences">Mis canales</button><button type="button" class="secondary-button" id="comm-providers" hidden>Proveedores de envío</button><button type="button" class="primary-button" id="comm-new" hidden>Nueva publicación</button></div></div>
+      <div id="comm-tabs" class="comm-tabs" role="tablist" aria-label="Vistas de comunicación"><button type="button" role="tab" aria-selected="true" data-comm-view="board">Tablón</button><button type="button" role="tab" aria-selected="false" data-comm-view="calendar">Calendario</button><button type="button" role="tab" aria-selected="false" data-comm-view="meetings">Reuniones</button></div>
+      <div class="comm-filters"><label>Comunidad<select id="comm-community"><option value="">Todas mis comunidades</option></select></label><label>Tipo<select id="comm-type"><option value="">Todos</option><option value="notice">Avisos</option><option value="event">Eventos</option><option value="meeting">Reuniones</option></select></label><label>Estado<select id="comm-filter"><option value="current">Vigentes y próximos</option><option value="unread">Sin leer</option><option value="all">Todos e histórico</option><option value="draft">Borradores</option><option value="scheduled">Programados</option></select></label><label>Buscar<input id="comm-search" type="search" placeholder="Título o contenido" /></label><button type="button" class="secondary-button" id="comm-refresh">Actualizar</button></div>
+      <p id="comm-status" class="comm-muted" role="status" aria-live="polite"></p><div id="comm-content"></div>
     </section>
   </main>
 
