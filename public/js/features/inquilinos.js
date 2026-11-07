@@ -661,8 +661,8 @@ tenantForm.addEventListener("submit", async event => {
   if (!isValidDateInput(values.contractEnd)) messages.push("Indica una fecha de fin de contrato válida.");
   else if (values.contractStart && values.contractEnd && values.contractEnd < values.contractStart) messages.push("La fecha de fin no puede ser anterior al inicio del contrato.");
   // verification checks
-  if (!tenantContactVerify.phone.verified || tenantContactVerify.phone.value !== phone) messages.push("Debes verificar el teléfono principal mediante el código enviado por SMS.");
-  if (!tenantContactVerify.email.verified || tenantContactVerify.email.value !== email) messages.push("Debes verificar el email mediante el código enviado.");
+  if (!tenantContactVerify.phone.verified || tenantContactVerify.phone.value !== phone) messages.push("Debes verificar el teléfono principal mediante el código enviado por SMS (pestaña Contacto).\n");
+  // Verificación de email opcional para inquilinos (sólo se valida formato)
   if (messages.length) {
     const tabMark = messages.find(m => typeof m === "string" && m.startsWith("__tab:"));
     if (tabMark) switchTenantDialogTab(tabMark.slice(6));

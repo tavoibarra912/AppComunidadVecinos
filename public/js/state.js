@@ -295,11 +295,16 @@ export function hasPermission(permission, resourceId = "") {
   }
 
   // Gestión de dominio con alcance por comunidad para community_admin
-  if (["community:manage", "owner:manage", "property:manage", "tenant:manage", "document:approve"].includes(permission)) {
-    if (role === "super_admin" || role === "administrator") return true;
+  if (["community:manage", "community:delete", "owner:manage", "owner:delete", "property:manage", "property:delete", "tenant:manage", "tenant:delete", "document:approve", "document:delete"].includes(permission)) {
+    if (role === "super_admin") return true;
+    if (permission === "community:delete") return false; // sólo Super Admin
+    if (role === "administrator") return true;
     if (role === "community_admin") {
       if (!resourceId) return profiles.adminCommunityIds.length > 0;
-      const communityId = communityIdOfResource(permission, resourceId);
+      const communityId = communityIdOfResource(
+        permission.replace(":delete", ":manage"),
+        resourceId
+      );
       return communityId ? profiles.adminCommunityIds.includes(communityId) : profiles.adminCommunityIds.length > 0;
     }
     // Propietario: gestiona inquilinos de SUS inmuebles
@@ -308,6 +313,16 @@ export function hasPermission(permission, resourceId = "") {
       return profiles.ownerIds.includes(resourceId);
     }
     return false;
+  }
+
+  // Reportes y auditoría: roles administrativos
+  if (permission === "reports:read" || permission === "audit:read") {
+    return ["super_admin", "administrator", "community_admin"].includes(role);
+  }
+
+  // Documentos: lectura para todos los roles con acceso a datos
+  if (permission === "document:read") {
+    return role === "super_admin" || role === "administrator" || role === "community_admin" || isOwnerProfile || profiles.tenantIds.length > 0;
   }
 
   // Lectura de dominio

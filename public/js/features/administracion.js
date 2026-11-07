@@ -290,7 +290,7 @@ userForm?.addEventListener("submit", async event => {
       }
     }
   } catch (error) {
-    userError.textContent = error.message;
+    showValidationErrors([error.message], "No se pudo guardar el usuario");
     return;
   }
   limpiarGuardia(userForm);
@@ -411,15 +411,23 @@ function renderRolePermissions(selected = []) {
   if (!rolePermissionsList) return;
   rolePermissionsList.replaceChildren();
   const selectedSet = new Set(selected);
-  PERMISOS_CATALOGO.forEach(({ key, label }) => {
-    const item = document.createElement("label");
-    item.className = "role-permission-item";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.value = key;
-    checkbox.checked = selectedSet.has(key);
-    item.append(checkbox, document.createTextNode(" " + label));
-    rolePermissionsList.append(item);
+  // Agrupados por categoría para facilitar la lectura
+  const grupos = [...new Set(PERMISOS_CATALOGO.map(p => p.grupo))];
+  grupos.forEach(grupo => {
+    const header = document.createElement("p");
+    header.className = "form-section-title full";
+    header.textContent = grupo;
+    rolePermissionsList.append(header);
+    PERMISOS_CATALOGO.filter(p => p.grupo === grupo).forEach(({ key, label }) => {
+      const item = document.createElement("label");
+      item.className = "role-permission-item";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = key;
+      checkbox.checked = selectedSet.has(key);
+      item.append(checkbox, document.createTextNode(" " + label));
+      rolePermissionsList.append(item);
+    });
   });
 }
 

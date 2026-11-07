@@ -15,10 +15,14 @@ export function toast(message) {
     toastEl.showPopover();
   }
   toastEl.classList.add("visible");
+  // Si hay un modal abierto, el toast se mete dentro para quedar en el top-layer
+  const openDialog = document.querySelector("dialog[open]");
+  if (openDialog && toastEl.parentElement !== openDialog) openDialog.appendChild(toastEl);
+  else if (!openDialog && toastEl.parentElement !== document.body) document.body.appendChild(toastEl);
   toastTimer = window.setTimeout(() => {
     toastEl.classList.remove("visible");
     if (supportsPopover && toastEl.matches(":popover-open")) toastEl.hidePopover();
-  }, 2800);
+  }, 6000);
 }
 
 export function digitsOnly(value, max) {

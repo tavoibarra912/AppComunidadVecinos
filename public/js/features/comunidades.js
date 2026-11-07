@@ -22,7 +22,7 @@ function populateCommunityCurrencySelect(selected) {
   if (!select) return;
   select.replaceChildren();
   getCurrencies().forEach(currency => select.add(new Option(currency.name, currency.code)));
-  select.value = selected || "EUR";
+  select.value = selected || state.settings?.monedaPorDefecto || "EUR";
 }
 
 /** Selector de Administrador de Comunidad (usuario del sistema). */
@@ -69,7 +69,7 @@ function populateCurrencySelect(selected) {
   if (!select) return;
   select.replaceChildren();
   getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || "EUR";
+  select.value = selected || state.settings?.monedaPorDefecto || "EUR";
 }
 
 // Elementos de Comunidades
@@ -687,7 +687,7 @@ export function closeCommunityDetail() {
 }
 
 export function openCommunityDelete(id) {
-  if (!requirePermission("community:manage")) return;
+  if (!requirePermission("community:delete")) return;
   const c = state.communities.find(item => item.id === id);
   if (!c) return;
   deletingCommunityId = id;

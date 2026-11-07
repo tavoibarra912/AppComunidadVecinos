@@ -3,7 +3,7 @@ import multer from "multer";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { db, documentFromRow, UPLOADS_DIR } from "../db.js";
+import { db, documentFromRow, UPLOADS_DIR, getSettings } from "../db.js";
 
 const router = Router();
 
@@ -22,9 +22,20 @@ const storage = multer.diskStorage({
   }
 });
 
+const HARD_MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+function configuredMaxFileBytes() {
+  try {
+    const mb = Number(getSettings().documentosMaxSizeMb);
+    return (mb > 0 ? mb : 15) * 1024 * 1024;
+  } catch {
+    return 15 * 1024 * 1024;
+  }
+}
+
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024, files: 20 },
+  limits: { fileSize: HARD_MAX_FILE_BYTES, files: 20 },
   fileFilter: (req, file, cb) => {
     const extension = path.extname(file.originalname).replace(".", "").toLowerCase();
     const allowed = ALLOWED_MIME.includes(file.mimetype) || ["pdf", "jpg", "jpeg", "png", "webp"].includes(extension);
@@ -44,6 +55,15 @@ router.post("/", upload.array("files", 20), (req, res) => {
     return res.status(400).json({ error: "Indica entityType (community, property o tenant) y entityId." });
   }
   const files = req.files || [];
+  const maxBytes = configuredMaxFileBytes();
+  const oversized = files.filter(file => file.size > maxBytes);
+  if (oversized.length > 0) {
+    files.forEach(file => { try { fs.unlinkSync(file.path); } catch {} });
+    const nombres = oversized.map(f => f.originalname).join(", ");
+    return res.status(400).json({
+      error: `Los siguientes archivos superan el tamaño máximo permitido (${Math.round(maxBytes / 1024 / 1024)} MB): ${nombres}`
+    });
+  }
   if (files.length === 0) {
     return res.status(400).json({ error: "No se recibió ningún archivo." });
   }

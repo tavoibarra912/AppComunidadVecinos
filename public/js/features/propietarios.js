@@ -42,7 +42,7 @@ function populateCurrencySelect(selected) {
   if (!select) return;
   select.replaceChildren();
   getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || "EUR";
+  select.value = selected || state.settings?.monedaPorDefecto || "EUR";
 }
 
 // Elementos de Propietarios
@@ -1285,7 +1285,7 @@ document.querySelectorAll("#owner-detail-dialog [data-od-tab]").forEach(btn => {
 });
 
 export function openOwnerDelete(id) {
-  if (!requirePermission("owner:manage", id)) return;
+  if (!requirePermission("owner:delete", id)) return;
   const o = state.owners.find(item => item.id === id);
   if (!o) return;
   state.ui.deletingOwnerId = id;

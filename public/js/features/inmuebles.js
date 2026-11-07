@@ -17,7 +17,7 @@ function populateCurrencySelect(selected) {
   if (!select) return;
   select.replaceChildren();
   getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || "EUR";
+  select.value = selected || state.settings?.monedaPorDefecto || "EUR";
 }
 
 // Diálogo de eliminación de Inmuebles
@@ -65,7 +65,7 @@ function populatePropertyCurrencySelect(selected) {
   if (!select) return;
   select.replaceChildren();
   getCurrencies().forEach(currency => select.add(new Option(currency.name, currency.code)));
-  select.value = selected || "EUR";
+  select.value = selected || state.settings?.monedaPorDefecto || "EUR";
 }
 
 /** Titularidad disponible del inmueble en edición para un propietario NUEVO. */
@@ -813,7 +813,7 @@ document.querySelectorAll("#property-detail-dialog [data-pd-tab]").forEach(btn =
 
 
 export function openPropertyDelete(id) {
-  if (!requirePermission("property:manage")) return;
+  if (!requirePermission("property:delete")) return;
   const p = state.properties.find(item => item.id === id);
   if (!p) return;
   state.ui.deletingPropertyId = id;

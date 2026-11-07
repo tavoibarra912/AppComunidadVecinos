@@ -11,6 +11,8 @@
  *   - render(row): devuelve un Node o string HTML para la celda (opcional; por defecto el texto).
  */
 
+import { state } from "./state.js";
+
 const COLLATOR = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
 
 const ICON_CHEVRON_LEFT = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
@@ -99,6 +101,10 @@ export function createDataTable(options) {
   let groupKey = "";
   let page = 1;
   let pageSize = defaultPageSize;
+  if (state.settings?.filasPorPagina && pageSizeOptions.includes(Number(state.settings.filasPorPagina)) && !options.defaultPageSize) {
+    pageSize = Number(state.settings.filasPorPagina);
+    sizeSelect.value = String(pageSize);
+  }
 
   // --- Construcción del DOM ---
   mount.classList.add("table-engine");

@@ -3863,6 +3863,8 @@ dialog .toast {
 /* Checkbox alineado con los controles del formulario */
 .checkbox-line {
   display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -3873,13 +3875,20 @@ dialog .toast {
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
-  align-self: end;
 }
 
 .checkbox-line input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  margin: 0;
+  margin: 0 0 0 auto;
   accent-color: var(--brand);
   cursor: pointer;
+  order: 2;
+}
+
+/* Perfiles vinculados en horizontal (2 columnas) */
+.admin-link-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }

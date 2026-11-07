@@ -3,7 +3,17 @@ import crypto from "node:crypto";
 
 const router = Router();
 
-const CHALLENGE_TTL_MS = 10 * 60 * 1000;
+import { getSettings } from "../db.js";
+
+function otpTtlMs() {
+  const min = Number(getSettings().otpExpiraMinutos);
+  return (min > 0 ? min : 10) * 60 * 1000;
+}
+function otpResendMs() {
+  const sec = Number(getSettings().otpReenvioSegundos);
+  return (sec > 0 ? sec : 60) * 1000;
+}
+const CHALLENGE_TTL_MS = otpTtlMs();
 const MAX_ATTEMPTS = 5;
 const challenges = new Map();
 
@@ -24,7 +34,7 @@ function createChallenge(kind, destination) {
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
   const challenge = {
     id, kind, destination, code,
-    expiresAt: Date.now() + CHALLENGE_TTL_MS,
+    expiresAt: Date.now() + otpTtlMs(),
     attempts: 0
   };
   challenges.set(id, challenge);
