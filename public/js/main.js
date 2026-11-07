@@ -38,17 +38,12 @@ async function boot() {
   const sessionUser = sessionStorage.getItem("authUserId");
   if (sessionUser && state.users.some(u => u.id === sessionUser && u.activo)) {
     setActiveUser(sessionUser);
-  } else {
-    restoreActiveUser();
-  }
-  if (!getCurrentUser()) {
-    showLoginView("signin");
-  } else {
     hideLoginScreen();
+    applyRoleUI();
+    handleRouting();
+  } else {
+    showLoginView("signin");
   }
-
-  applyRoleUI();
-  handleRouting();
 }
 
 // Escape cierra modales; en los editores con guard, el Esc pregunta antes
