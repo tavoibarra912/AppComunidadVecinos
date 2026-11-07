@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 process.env.APP_DATA_DIR = mkdtempSync(path.join(tmpdir(), "penarrubia-test-"));
+process.env.APP_UPLOADS_DIR = path.join(process.env.APP_DATA_DIR, "uploads");
 
 const { db, ownerFromRow, communityFromRow, propertyFromRow, tenantFromRow } = await import("../../src/db.js");
 const { syncOwnerProperties, applyOwnerPropertyLink, rebuildOwnersPropertyIds, upsertTenant } = await import("../../src/domain.js");
@@ -202,8 +203,7 @@ test("propertyFromRow: mapea ownerPercentages y currency", () => {
 
 // ---------- Validaciones de rutas admin (PERMISOS_VALIDOS) ----------
 test("catálogo de permisos: los permisos de los roles del sistema son válidos", async () => {
-  const { PERMISOS_VALIDOS } = await import("../src/routes/admin.js").catch(() => ({ PERMISOS_VALIDOS: null }));
-  if (!PERMISOS_VALIDOS) return; // el módulo exporta el router, no el array; verificamos vía DB
+  const { PERMISOS_VALIDOS } = await import("../../src/routes/admin.js");
   const roles = db.prepare("SELECT nombre, permisos FROM roles").all();
   for (const role of roles) {
     const permisos = JSON.parse(role.permisos);

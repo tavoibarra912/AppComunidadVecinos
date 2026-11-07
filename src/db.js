@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = process.env.APP_DATA_DIR || path.join(__dirname, "..", "data");
-export const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
+export const UPLOADS_DIR = process.env.APP_UPLOADS_DIR || path.join(__dirname, "..", "uploads");
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
@@ -239,50 +239,74 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
   db.prepare("UPDATE users SET rol = 'super_admin' WHERE rol IN ('administrador', 'rol-admin')").run();
   db.prepare("UPDATE users SET rol = 'user' WHERE rol NOT IN ('super_admin', 'administrator', 'community_admin', 'user')").run();
 }
-// Migración: cuentas sin contraseña reciben su nombre de usuario
-  const usersNoPass = db.prepare("SELECT id, usuario FROM users WHERE passwordHash = ''").all();
-  usersNoPass.forEach(u => {
-    const salt = crypto.randomBytes(16).toString("hex");
-    const hash = crypto.createHash("sha256").update(salt + ":" + u.usuario).digest("hex");
-    db.prepare("UPDATE users SET passwordHash = ? WHERE id = ?").run(salt + ":" + hash, u.id);
-  });
+// Las cuentas sin contraseña requieren que un administrador les asigne una.
+// No se generan credenciales predecibles durante las migraciones.
+db.exec("UPDATE users SET rol = (SELECT nombre FROM roles WHERE roles.id = users.rol) WHERE EXISTS (SELECT 1 FROM roles WHERE roles.id = users.rol)");
+db.exec(`CREATE TABLE IF NOT EXISTS sessions (
+  tokenHash TEXT PRIMARY KEY, userId TEXT NOT NULL, expiresAt INTEGER NOT NULL
+); CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(userId);`);
+db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY)");
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'scoped-permissions-v1'").get()) {
+  for (const [name, additions] of [["user", ["tenant:manage", "tenant:delete", "document:read"]], ["community_admin", ["document:read"]]]) {
+    const role = db.prepare("SELECT id, permisos FROM roles WHERE nombre = ?").get(name);
+    if (role) db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify([...new Set([...JSON.parse(role.permisos), ...additions])]), role.id);
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('scoped-permissions-v1')").run();
+}
+// Retira únicamente las contraseñas de SSO generadas por la antigua migración.
+for (const user of db.prepare("SELECT id, usuario, passwordHash FROM users WHERE ssoProvider <> '' AND passwordHash <> ''").all()) {
+  const [salt, hash] = user.passwordHash.split(":");
+  if (hash && crypto.createHash("sha256").update(`${salt}:${user.usuario}`).digest("hex") === hash) {
+    db.prepare("UPDATE users SET passwordHash = '', resetToken = '', resetTokenExpira = '' WHERE id = ?").run(user.id);
+    db.prepare("DELETE FROM sessions WHERE userId = ?").run(user.id);
+  }
+}
 
-  if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
+function seedPassword(usuario) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return salt + ":" + crypto.createHash("sha256").update(`${salt}:${usuario}`).digest("hex");
+}
+
+if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
+  if (process.env.NODE_ENV === "production" && (!process.env.APP_ADMIN_PASSWORD || process.env.APP_ADMIN_PASSWORD.length < 12)) {
+    throw new Error("Para inicializar producción, configurá APP_ADMIN_PASSWORD con al menos 12 caracteres.");
+  }
   const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)");
-  const seedPassword = (usuario) => {
-    const salt = crypto.randomBytes(16).toString("hex");
-    return salt + ":" + crypto.createHash("sha256").update(salt + ":" + usuario + "").digest("hex");
-  };
-  insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin", seedPassword("admin"));
-  insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user", seedPassword("recepcion"));
+  const initialAdminPassword = process.env.APP_ADMIN_PASSWORD || "admin";
+  const adminSalt = crypto.randomBytes(16).toString("hex");
+  const adminHash = `scrypt:${adminSalt}:${crypto.scryptSync(initialAdminPassword, adminSalt, 64).toString("hex")}`;
+  insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin", adminHash);
+  if (process.env.NODE_ENV !== "production") insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user", seedPassword("recepcion"));
 }
 
-// Perfil Propietario simulado: cuenta para el propietario sembrado
-// (Carlos Ruiz) si aún no tiene usuario vinculado.
-// Perfil Propietario simulado: cuenta para el propietario sembrado
-// (Carlos Ruiz) si aún no tiene usuario vinculado.
-const carlosOwner = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1' AND (userId IS NULL OR userId = '')").get();
-if (carlosOwner && !db.prepare("SELECT id FROM users WHERE id = 'user-carlos'").get()) {
-  db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
-    .run("user-carlos", "Carlos", "Ruiz Mendoza", "carlos", "carlos@penarrubia.es", "user", seedPassword("carlos"));
-  db.prepare("UPDATE owners SET userId = 'user-carlos' WHERE id = 'own-seed-1'").run();
+export function ensureDemoProfiles() {
+  // Perfil Propietario simulado: cuenta para el propietario sembrado
+  // (Carlos Ruiz) si aún no tiene usuario vinculado.
+  const carlosOwner = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1' AND (userId IS NULL OR userId = '')").get();
+  if (carlosOwner && !db.prepare("SELECT id FROM users WHERE id = 'user-carlos'").get()) {
+    db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)")
+      .run("user-carlos", "Carlos", "Ruiz Mendoza", "carlos", "carlos@penarrubia.es", "user", seedPassword("carlos"));
+    db.prepare("UPDATE owners SET userId = 'user-carlos' WHERE id = 'own-seed-1'").run();
+  }
+  // Perfil Inquilino simulado: cuenta para el inquilino sembrado
+  // (Laura Martínez) si aún no tiene usuario vinculado.
+  const lauraTenant = db.prepare("SELECT id FROM tenants WHERE id = 'tenant-seed-1' AND (userId IS NULL OR userId = '')").get();
+  if (lauraTenant && !db.prepare("SELECT id FROM users WHERE id = 'user-laura'").get()) {
+    db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)")
+      .run("user-laura", "Laura", "Martínez Reyes", "laura", "laura@penarrubia.es", "user", seedPassword("laura"));
+    db.prepare("UPDATE tenants SET userId = 'user-laura' WHERE id = 'tenant-seed-1'").run();
+  }
+  // Perfil Administrador de Comunidad simulado: admin asignado a la
+  // comunidad sembrada principal.
+  const comPrincipal = db.prepare("SELECT id FROM communities WHERE id = 'com-seed-1' AND (adminUserId IS NULL OR adminUserId = '')").get();
+  if (comPrincipal && db.prepare("SELECT id FROM users WHERE id = 'user-admin-comunidad'").get() === undefined) {
+    db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)")
+      .run("user-admin-comunidad", "Gestor", "de Residencial Peñarrubia", "gestor.olivos", "gestor@penarrubia.es", "community_admin", seedPassword("gestor.olivos"));
+    db.prepare("UPDATE communities SET adminUserId = 'user-admin-comunidad' WHERE id = 'com-seed-1'").run();
+  }
 }
-// Perfil Inquilino simulado: cuenta para el inquilino sembrado
-// (Laura Martínez) si aún no tiene usuario vinculado.
-const lauraTenant = db.prepare("SELECT id FROM tenants WHERE id = 'tenant-seed-1' AND (userId IS NULL OR userId = '')").get();
-if (lauraTenant && !db.prepare("SELECT id FROM users WHERE id = 'user-laura'").get()) {
-  db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
-    .run("user-laura", "Laura", "Martínez Reyes", "laura", "laura@penarrubia.es", "user", seedPassword("laura"));
-  db.prepare("UPDATE tenants SET userId = 'user-laura' WHERE id = 'tenant-seed-1'").run();
-}
-// Perfil Administrador de Comunidad simulado: admin asignado a la
-// comunidad sembrada principal.
-const comPrincipal = db.prepare("SELECT id FROM communities WHERE id = 'com-seed-1' AND (adminUserId IS NULL OR adminUserId = '')").get();
-if (comPrincipal && db.prepare("SELECT id FROM users WHERE id = 'user-admin-comunidad'").get() === undefined) {
-  db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
-    .run("user-admin-comunidad", "Gestor", "de Residencial Peñarrubia", "gestor.olivos", "gestor@penarrubia.es", "community_admin", seedPassword("gestor.olivos"));
-  db.prepare("UPDATE communities SET adminUserId = 'user-admin-comunidad' WHERE id = 'com-seed-1'").run();
-}
+
+ensureDemoProfiles();
 
 ensureColumns("properties", {
   notes: "TEXT NOT NULL DEFAULT ''",

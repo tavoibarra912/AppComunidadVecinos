@@ -1,0 +1,70 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import crypto from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { DatabaseSync } from "node:sqlite";
+
+test("migración: SSO no recibe contraseñas predecibles y revoca las antiguas", async () => {
+  const directory = mkdtempSync(
+    path.join(tmpdir(), "penarrubia-migration-test-"),
+  );
+  process.env.APP_DATA_DIR = directory;
+  process.env.APP_UPLOADS_DIR = path.join(directory, "uploads");
+  const { db } = await import("../../src/db.js");
+  const salt = "0123456789abcdef0123456789abcdef";
+  const hash = crypto
+    .createHash("sha256")
+    .update(`${salt}:sso-legacy`)
+    .digest("hex");
+  db.prepare(
+    "INSERT INTO users (id,usuario,rol,ssoProvider,passwordHash) VALUES ('sso-legacy','sso-legacy','user','gmail',?)",
+  ).run(`${salt}:${hash}`);
+  db.prepare(
+    "INSERT INTO users (id,usuario,rol,ssoProvider) VALUES ('sso-empty','sso-empty','user','outlook')",
+  ).run();
+  db.prepare(
+    "INSERT INTO sessions (tokenHash,userId,expiresAt) VALUES ('old-session','sso-legacy',?)",
+  ).run(Date.now() + 100000);
+  db.close();
+  const url = new URL("../../src/db.js", import.meta.url).href;
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `const {db}=await import(${JSON.stringify(url)});db.close();`,
+    ],
+    { env: { ...process.env, APP_DATA_DIR: directory }, encoding: "utf8" },
+  );
+  const check = new DatabaseSync(path.join(directory, "penarrubia.db"));
+  try {
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      check.prepare("SELECT passwordHash FROM users WHERE id='sso-empty'").get()
+        .passwordHash,
+      "",
+    );
+    assert.equal(
+      check
+        .prepare("SELECT passwordHash FROM users WHERE id='sso-legacy'")
+        .get().passwordHash,
+      "",
+    );
+    assert.equal(
+      check
+        .prepare("SELECT COUNT(*) AS n FROM sessions WHERE userId='sso-legacy'")
+        .get().n,
+      0,
+    );
+  } finally {
+    check.close();
+    assert.equal(path.dirname(directory), path.resolve(tmpdir()));
+    assert.ok(
+      path.basename(directory).startsWith("penarrubia-migration-test-"),
+    );
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

@@ -14,11 +14,11 @@ export function getTenantContractStatus(tenant) {
 }
 
 function propertyOwnerIds(property) {
-  return Array.isArray(property.ownerIds) ? property.ownerIds : [];
+  return Array.isArray(property.ownerIds) ? property.ownerIds : JSON.parse(property.ownerIds || "[]");
 }
 
 function propertyTenantIds(property) {
-  return Array.isArray(property.tenantIds) ? property.tenantIds : [];
+  return Array.isArray(property.tenantIds) ? property.tenantIds : JSON.parse(property.tenantIds || "[]");
 }
 
 /**
@@ -131,6 +131,13 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
  * de cada inmueble (relación N:M).
  */
 export function rebuildOwnersPropertyIds() {
+  for (const property of db.prepare("SELECT id, ownerIds, ownerPercentages FROM properties").all()) {
+    const ids = propertyOwnerIds(property);
+    const saved = JSON.parse(property.ownerPercentages || "{}");
+    const valid = ids.every(id => Number(saved[id]) > 0) && ids.reduce((sum, id) => sum + Number(saved[id] || 0), 0) <= 100.0001;
+    const percentages = Object.fromEntries(ids.map((id, index) => [id, valid ? Number(saved[id]) : index === ids.length - 1 ? 100 - Math.round(10000 / ids.length) / 100 * (ids.length - 1) : Math.round(10000 / ids.length) / 100]));
+    db.prepare("UPDATE properties SET ownerPercentages = ? WHERE id = ?").run(JSON.stringify(percentages), property.id);
+  }
   const owners = db.prepare("SELECT id, propertyId FROM owners").all();
   const update = db.prepare("UPDATE owners SET propertyIds = ?, propertyId = ? WHERE id = ?");
   for (const owner of owners) {
@@ -181,8 +188,11 @@ export function upsertTenant(payload, tenantId) {
     throw new Error("El propietario seleccionado no existe.");
   }
 
-  const existing = tenantId ? db.prepare("SELECT id FROM tenants WHERE id = ?").get(tenantId) : null;
+  const existing = tenantId ? db.prepare("SELECT * FROM tenants WHERE id = ?").get(tenantId) : null;
   const userId = payload.userId !== undefined ? payload.userId : (existing?.userId || "");
+  const ownerIds = propertyOwnerIds(property);
+  if (!payload.ownerId) payload = { ...payload, ownerId: existing?.ownerId || ownerIds[0] || "" };
+  if (!ownerIds.includes(payload.ownerId)) throw new Error("El propietario debe ser titular del inmueble seleccionado.");
 
   if (existing) {
     db.prepare(
@@ -233,4 +243,19 @@ export function upsertTenant(payload, tenantId) {
 
   syncPropertyTenantReferences(tenantId);
   return payload.ownerId;
+}
+
+/** Reconstruye índices derivados y repara vínculos antiguos que sean inequívocos. */
+export function rebuildPropertyTenantReferences() {
+  const tenants = db.prepare("SELECT * FROM tenants").all();
+  for (const property of db.prepare("SELECT * FROM properties").all()) {
+    const linked = tenants.filter(t => t.propertyId === property.id);
+    const owners = propertyOwnerIds(property);
+    if (owners.length === 1) {
+      db.prepare("UPDATE tenants SET ownerId = ? WHERE propertyId = ? AND ownerId = ''").run(owners[0], property.id);
+    }
+    db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?").run(
+      JSON.stringify(linked.filter(t => getTenantContractStatus(t) === "Vigente").map(t => t.id)), property.id
+    );
+  }
 }

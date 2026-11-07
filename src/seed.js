@@ -1,4 +1,4 @@
-import { db } from "./db.js";
+import { db, ensureDemoProfiles } from "./db.js";
 import { rebuildOwnersPropertyIds, syncPropertyTenantReferences } from "./domain.js";
 
 const communitySeeds = [
@@ -160,12 +160,12 @@ const ownerNotificationSeeds = [
   {
     id: "notif-seed-1",
     ownerId: "own-seed-1",
-    title: "Documentación recibida y pre-validada",
+    title: "Documentación recibida para revisión",
     type: "info",
     date: "12/10/2026, 18:30",
     timestamp: Date.now() - 3600000,
     read: false,
-    message: "Tus 3 documentos obligatorios (DNI ambas caras, recibo bancario y copia de escritura) han sido verificados automáticamente por el sistema con legibilidad óptima (98%). El expediente está ahora a la espera de revisión y convalidación formal por parte del Administrador."
+    message: "Tus 3 documentos obligatorios se han recibido. El expediente está pendiente de revisión por parte de un administrador."
   },
   {
     id: "notif-seed-2",
@@ -262,10 +262,8 @@ export function seedIfEmpty() {
       insertOwnerNotification.run(n.id, n.ownerId, n.title, n.type, n.message, n.date, n.timestamp, n.read ? 1 : 0);
     });
 
-    // Usuarios, roles y configuración general (pantalla Administración)
-    const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
-    const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)");
-    db.prepare("INSERT INTO settings (id, data) VALUES ('general', ?)").run(JSON.stringify({
+    // Los roles y usuarios base ya se inicializaron en db.js.
+    db.prepare("INSERT OR IGNORE INTO settings (id, data) VALUES ('general', ?)").run(JSON.stringify({
       nombreAsociacion: "Asociación Peñarrubia",
       emailContacto: "admin@penarrubia.es",
       telefonoContacto: "600000000",
@@ -273,17 +271,6 @@ export function seedIfEmpty() {
       otpReenvioSegundos: 60,
       notificacionesEmail: true
     }));
-
-    const roles = [
-      { id: "rol-super-admin", nombre: "super_admin", descripcion: "Acceso total: administra y crea comunidades y administra todo el sistema (usuarios, roles, configuración).", permisos: ["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:read", "document:approve", "document:delete", "community:delete", "owner:delete", "property:delete", "tenant:delete", "reports:read", "audit:read", "admin:users", "admin:roles", "admin:settings", "admin_notification:read", "owner_notification:read"], sistema: 1 },
-      { id: "rol-admin-general", nombre: "administrator", descripcion: "Crea y administra comunidades y todo lo relativo a ellas (propietarios, inmuebles, inquilinos, documentación).", permisos: ["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "tenant:delete", "document:read", "document:approve", "document:delete", "reports:read", "admin_notification:read"], sistema: 1 },
-      { id: "rol-admin-comunidad", nombre: "community_admin", descripcion: "Administra una comunidad asignada y todo lo relativo a ella; no puede crear comunidades.", permisos: ["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve"], sistema: 1 },
-      { id: "rol-usuario", nombre: "user", descripcion: "Administra únicamente su propio perfil y sus datos.", permisos: ["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "owner_notification:read"], sistema: 1 }
-    ];
-    roles.forEach(r => insertRole.run(r.id, r.nombre, r.descripcion, JSON.stringify(r.permisos), r.sistema));
-
-    insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin");
-    insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user");
 
     // Relaciones propietario ↔ inmueble (N:M): por plot dentro de la comunidad.
     // Los propietarios sembrados son titulares únicos (100%).
@@ -306,10 +293,12 @@ export function seedIfEmpty() {
 
     // El propietario del inquilino se deriva del dueño del inmueble vinculado
     db.prepare(
-      "UPDATE tenants SET ownerId = (SELECT ownerId FROM properties WHERE id = tenants.propertyId)"
+      "UPDATE tenants SET ownerId = COALESCE((SELECT json_extract(ownerIds, '$[0]') FROM properties WHERE id = tenants.propertyId), '')"
     ).run();
 
     tenantSeeds.forEach(t => syncPropertyTenantReferences(t.id));
+
+    ensureDemoProfiles();
 
     db.exec("COMMIT");
     console.log(`[seed] Base de datos inicializada con datos de demo (${communitySeeds.length} comunidades, ${ownerSeeds.length} propietarios, ${propertySeeds.length} inmuebles, ${tenantSeeds.length} inquilinos).`);

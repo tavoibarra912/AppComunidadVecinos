@@ -1,3 +1,4 @@
+import { documentUrl, sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, propertyLabel, propertyOwnerIds, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, isValidEmail, isValidDateInput, formatContractDate, getLocalDateInputValue, makeSelectSearchable, readFileAsDataUrl, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
@@ -17,7 +18,7 @@ function iconBtn(className, title, ariaLabel, svg) {
   btn.className = `icon-action-btn ${className}`;
   btn.title = title;
   btn.setAttribute("aria-label", ariaLabel);
-  btn.innerHTML = svg;
+  btn.innerHTML = sanitizeHtml(svg);
   return btn;
 }
 
@@ -116,11 +117,11 @@ function tenantUpdateCanalOptions() {
 }
 
 function tenantRecords() {
-  return state.owners.flatMap(owner => ownerTenants(owner).map(tenant => ({
-    owner,
+  return state.tenants.filter(tenant => hasPermission("tenant:read", tenant.id)).map(tenant => ({
     tenant,
+    owner: state.owners.find(owner => owner.id === tenant.ownerId) || { id: "", name: "Sin propietario", surname: "" },
     property: state.properties.find(item => item.id === tenant.propertyId)
-  })));
+  }));
 }
 
 export function renderTenants() {
@@ -199,11 +200,11 @@ function switchTenantDialogTab(tab) {
 
 export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false) {
   const permission = readonly ? "tenant:read" : "tenant:manage";
-  if (!requirePermission(permission, ownerId || "")) return;
-  const editingOwner = state.owners.find(item => item.id === ownerId);
-  const tenant = ownerTenants(editingOwner).find(item => item.id === id);
+  if (!requirePermission(permission, id || ownerId || "")) return;
+  const tenant = id ? state.tenants.find(item => item.id === id) : null;
+  const editingOwner = state.owners.find(item => item.id === (tenant?.ownerId || ownerId));
   if (id && !tenant) return;
-  if (tenant && !requirePermission("tenant:manage", editingOwner.id)) return;
+  if (tenant && !readonly && !requirePermission("tenant:manage", tenant.id)) return;
   state.ui.viewingOwnerId = editingOwner?.id || null;
   state.ui.editingTenantId = id;
   tenantForm.reset();
@@ -215,7 +216,7 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
   tenantOwnerSelect.disabled = !!tenant;
   tenantOwnerSelect.replaceChildren(new Option("Selecciona un propietario…", ""));
   state.owners
-    .filter(owner => hasPermission("tenant:manage", owner.id))
+    .filter(owner => hasPermission("tenant:manage", owner.id) || readonly && owner.id === editingOwner?.id)
     .forEach(owner => tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)));
   tenantOwnerSelect.value = editingOwner?.id || "";
 
@@ -240,6 +241,7 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
   updateTenantUserSelect(tenant?.userId || "");
   document.querySelector("#tenant-dialog-title").textContent = tenant ? (readonly ? `Ver inquilino: ${tenant.name} ${tenant.surname}` : "Editar inquilino") : "Nuevo inquilino";
   setFormReadonly(tenantForm, readonly);
+  if (tenantForm.elements.userId) tenantForm.elements.userId.disabled = readonly || !hasPermission("admin:users");
   armarGuardia(tenantForm, tenantDialog);
   if (!tenantDialog.open) tenantDialog.showModal();
 }
@@ -256,7 +258,9 @@ function updateTenantUserSelect(selectedUserId = "") {
     if (!isFree && user.id !== current) option.disabled = true;
     select.add(option);
   });
+  if (current && ![...select.options].some(option => option.value === current)) select.add(new Option("Cuenta vinculada", current));
   if (current) select.value = current;
+  select.disabled = !hasPermission("admin:users");
 }
 
 export function closeTenantEditor() {
@@ -318,15 +322,25 @@ function renderTenantDocCard(key, ids) {
   if (doc) {
     card.classList.add("is-valid");
     badge.className = "status-badge doc-approved";
-    badge.textContent = "Validado por sistema";
+    badge.textContent = "Pendiente de revisión";
     if (result) {
       result.hidden = false;
       result.replaceChildren();
       const header = document.createElement("div");
       header.className = "doc-validation-header";
-      header.innerHTML = `<div class="doc-file-meta"><span class="doc-file-icon">📄</span><div><p class="doc-file-name">${doc.fileName}</p><p class="doc-file-size">${Math.round(doc.fileSize/1024)} KB · Subido el ${doc.uploadedAt}</p></div></div><div class="doc-file-actions"><button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button><button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button></div>`;
+      header.innerHTML = sanitizeHtml(`<div class="doc-file-meta"><span class="doc-file-icon">📄</span><div><p class="doc-file-name">${escapeHtml(doc.fileName)}</p><p class="doc-file-size">${Math.round(doc.fileSize/1024)} KB · Subido el ${escapeHtml(doc.uploadedAt)}</p></div></div><div class="doc-file-actions"><button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button><button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button></div>`);
       result.append(header);
-      header.querySelector('[data-action="view"]').addEventListener("click", () => { const w=window.open(); w.document.write(`<img src="${doc.dataUrl}" style="max-width:100%"/>`); });
+      header.querySelector('[data-action="view"]').addEventListener("click", () => {
+        const url = documentUrl(doc.dataUrl || doc.url);
+        if (!url) return toast("El archivo no está disponible.");
+        const viewer = window.open("about:blank", "_blank");
+        if (!viewer) return toast("Permití la ventana de vista previa en el navegador.");
+        viewer.opener = null;
+        const frame = viewer.document.createElement(doc.fileType === "application/pdf" ? "iframe" : "img");
+        if (frame.tagName === "IFRAME") frame.setAttribute("sandbox", "");
+        frame.src = url; frame.style.width = "100%"; frame.style.height = "90vh";
+        viewer.document.body.append(frame);
+      });
       header.querySelector('[data-action="remove"]').addEventListener("click", () => { delete tenantEditingDocs[key]; renderTenantDialogDocs(); });
     }
     if (dropzone) dropzone.style.display = "none";
@@ -594,7 +608,7 @@ if (tenantBtnSampleDni) tenantBtnSampleDni.addEventListener("click", () => {
   badge.textContent = "⚡ Analizando...";
   window.setTimeout(() => {
     tenantEditingDocs["dni"] = {
-      key: "dni", title: "Copia de DNI / NIE / CIF", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
+      isSample: true, key: "dni", title: "Copia de DNI / NIE / CIF", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
       autoValidation: { status: "passed", legibilityScore: 98, legibilityStatus: "Óptima", typeVerified: "Documento de identidad", checks: [], verifiedAt: new Date().toISOString() },
       adminApproval: { status: "pending", reviewedAt: null, reviewedBy: null, notes: "" }
     };
@@ -613,7 +627,7 @@ if (tenantBtnSampleContract) tenantBtnSampleContract.addEventListener("click", (
   badge.textContent = "⚡ Analizando...";
   window.setTimeout(() => {
     tenantEditingDocs["contract"] = {
-      key: "contract", title: "Contrato de arrendamiento", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
+      isSample: true, key: "contract", title: "Contrato de arrendamiento", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
       autoValidation: { status: "passed", legibilityScore: 97, legibilityStatus: "Óptima", typeVerified: "Contrato de arrendamiento", checks: [], verifiedAt: new Date().toISOString() },
       adminApproval: { status: "pending", reviewedAt: null, reviewedBy: null, notes: "" }
     };
@@ -639,7 +653,8 @@ tenantForm.addEventListener("submit", async event => {
   event.preventDefault();
   tenantFormError.textContent = "";
   const property = state.properties.find(item => item.id === editingTenantPropertyId);
-  const derivedOwnerId = property && Array.isArray(property.ownerIds) && property.ownerIds.length ? property.ownerIds[0] : (tenantOwnerSelect.value || "");
+  const selectedOwnerId = tenantOwnerSelect.value || "";
+  const derivedOwnerId = property?.ownerIds?.includes(selectedOwnerId) ? selectedOwnerId : (property?.ownerIds?.[0] || selectedOwnerId);
   const owner = derivedOwnerId ? state.owners.find(item => item.id === derivedOwnerId) : null;
   if (owner && !requirePermission("tenant:manage", owner.id)) {
     tenantFormError.textContent = "No tenés permisos para gestionar este propietario.";
@@ -658,10 +673,9 @@ tenantForm.addEventListener("submit", async event => {
   if (!isValidEmail(email)) messages.push("Introduce una dirección de email válida.");
   if (!editingTenantPropertyId) messages.push("Selecciona un inmueble asociado a este inquilino.");
   if (!isValidDateInput(values.contractStart)) messages.push("Indica una fecha de inicio de contrato válida.");
-  if (!isValidDateInput(values.contractEnd)) messages.push("Indica una fecha de fin de contrato válida.");
+  if (values.contractEnd && !isValidDateInput(values.contractEnd)) messages.push("Indica una fecha de fin de contrato válida.");
   else if (values.contractStart && values.contractEnd && values.contractEnd < values.contractStart) messages.push("La fecha de fin no puede ser anterior al inicio del contrato.");
   // verification checks
-  if (!tenantContactVerify.phone.verified || tenantContactVerify.phone.value !== phone) messages.push("Debes verificar el teléfono principal mediante el código enviado por SMS (pestaña Contacto).\n");
   // Verificación de email opcional para inquilinos (sólo se valida formato)
   if (messages.length) {
     const tabMark = messages.find(m => typeof m === "string" && m.startsWith("__tab:"));
@@ -720,7 +734,7 @@ tenantForm.addEventListener("submit", async event => {
 
 // openTenantDetail / closeTenantDetail unchanged
 export function openTenantDetail(ownerId, tenantId) {
-  if (!requirePermission("tenant:read", ownerId)) return;
+  if (!requirePermission("tenant:read", tenantId)) return;
   const owner = state.owners.find(item => item.id === ownerId);
   const tenant = ownerTenants(owner).find(item => item.id === tenantId);
   if (!owner || !tenant) return;

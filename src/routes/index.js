@@ -9,34 +9,71 @@ import verificationRouter from "./verification.js";
 import adminRouter from "./admin.js";
 import authRouter from "./auth.js";
 import {
-  listCommunities, listOwners, listProperties, listTenants,
-  listAdminEmails, listOwnerNotifications, listDocuments,
-  listUsers, listRoles, getSettings
+  requireSession,
+  sameOrigin,
+  visibleData,
+  allowed,
+  publicUser,
+  requirePermission,
+} from "../security.js";
+import { resourceAccess, notificationAccess } from "../access.js";
+import {
+  listCommunities,
+  listOwners,
+  listProperties,
+  listTenants,
+  listAdminEmails,
+  listOwnerNotifications,
+  listDocuments,
+  listUsers,
+  listRoles,
+  getSettings,
 } from "../db.js";
 
 const router = Router();
+router.use(sameOrigin);
+router.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+router.use("/auth", authRouter);
 
 router.get("/health", (req, res) => {
-  res.json({ status: "ok", uptime: process.uptime() });
+  res.json({
+    status: "ok",
+    app: "app-comunidad-vecinos",
+    pid: process.pid,
+    uptime: process.uptime(),
+  });
 });
+router.use(requireSession);
+router.use(resourceAccess);
 
 router.get("/bootstrap", (req, res) => {
+  const visible = visibleData(req.user);
   res.json({
-    communities: listCommunities().map(community => ({
+    communities: visible.communities.map((community) => ({
       ...community,
-      documents: listDocuments("community", community.id)
+      documents: listDocuments("community", community.id),
     })),
-    owners: listOwners(),
-    properties: listProperties().map(property => ({
+    owners: visible.owners,
+    properties: visible.properties.map((property) => ({
       ...property,
-      documents: listDocuments("property", property.id)
+      documents: listDocuments("property", property.id),
     })),
-    tenants: listTenants(),
-    adminEmails: listAdminEmails(),
-    ownerNotifications: listOwnerNotifications(),
-    users: listUsers(),
-    roles: listRoles(),
-    settings: getSettings()
+    tenants: visible.tenants,
+    adminEmails: allowed(req.user, "admin_notification:read")
+      ? listAdminEmails().filter((n) =>
+          allowed(req.user, "owner:read", n.ownerId),
+        )
+      : [],
+    ownerNotifications: listOwnerNotifications().filter((n) =>
+      allowed(req.user, "owner_notification:read", n.ownerId),
+    ),
+    users: visible.users,
+    roles: visible.roles,
+    settings: getSettings(),
+    currentUser: publicUser(req.user),
   });
 });
 
@@ -45,9 +82,21 @@ router.use("/owners", ownersRouter);
 router.use("/properties", propertiesRouter);
 router.use("/tenants", tenantsRouter);
 router.use("/documents", documentsRouter);
-router.use("/notifications", notificationsRouter);
+router.use("/notifications", notificationAccess, notificationsRouter);
 router.use("/owners/contact", verificationRouter);
-router.use("/admin", adminRouter);
-router.use("/auth", authRouter);
+router.use(
+  "/admin",
+  (req, res, next) => {
+    const section = req.path.split("/")[1];
+    if (
+      section === "roles" &&
+      req.method === "GET" &&
+      allowed(req.user, "admin:users")
+    )
+      return next();
+    return requirePermission(`admin:${section}`)(req, res, next);
+  },
+  adminRouter,
+);
 
 export default router;

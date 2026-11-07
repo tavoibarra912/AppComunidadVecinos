@@ -1,3 +1,5 @@
+import { sanitizeHtml, escapeHtml } from "./html.js";
+import { openDocViewer } from "./features/propietarios.js";
 import { state } from "./state.js";
 import { toast, readFileAsDataUrl } from "./utils.js";
 
@@ -7,14 +9,6 @@ const contactVerify = {
   phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
   email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
 };
-
-function populateCurrencySelect(selected) {
-  const select = document.querySelector("#owner-form")?.elements.currency;
-  if (!select) return;
-  select.replaceChildren();
-  getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || "EUR";
-}
 
 // Dropzones e Inputs de Documentos en Formulario
 const inputDocDni = document.querySelector("#input-doc-dni");
@@ -32,9 +26,11 @@ const resultDocDeed = document.querySelector("#result-doc-deed");
 const badgeDocDni = document.querySelector("#badge-doc-dni");
 const badgeDocBank = document.querySelector("#badge-doc-bank");
 const badgeDocDeed = document.querySelector("#badge-doc-deed");
+const tabDocsBadge = document.querySelector("#tab-docs-badge");
 const docsSummaryBar = document.querySelector("#docs-summary-bar");
 const docsSummaryStatus = document.querySelector("#docs-summary-status");
 const docsSummarySubtext = document.querySelector("#docs-summary-subtext");
+const ownerForm = document.querySelector("#owner-form");
 
 export function analyzeImageQuality(dataUrl) {
   return new Promise(resolve => {
@@ -100,94 +96,9 @@ export function analyzeImageQuality(dataUrl) {
   });
 }
 
-export function checkDocumentCorrespondence(fileName, docType, ownerContext = {}, imageInfo = null) {
-  const fn = (fileName || "").toLowerCase();
-
-  if (docType === "dni") {
-    // Verificar que no sea un documento de otro tipo
-    const invalidIndicators = ["recibo", "banco", "factura", "escritura", "nomina", "catastro", "agua", "luz"];
-    if (invalidIndicators.some(w => fn.includes(w))) {
-      return {
-        isValid: false,
-        error: "El archivo parece corresponder a otro tipo de documento y no a un DNI español. Se requiere una copia del DNI (ambas caras)."
-      };
-    }
-
-    const checks = [
-      { name: "Legibilidad y nitidez", passed: true, detail: "Texto, foto y caracteres de control legibles (> 300 DPI equiv.)" },
-      { name: "Tipo de documento oficial", passed: true, detail: "Reconocimiento de Documento Nacional de Identidad de España" },
-      { name: "Ambas caras (anverso y reverso)", passed: true, detail: "Anverso con filiación y reverso con zona MRZ detectados" },
-      { name: "Coincidencia de titular", passed: true, detail: ownerContext.dni ? `Coincide con DNI ${ownerContext.dni}` : "Identidad verificada" }
-    ];
-
-    return {
-      isValid: true,
-      title: "Copia de DNI (ambas caras)",
-      typeVerified: "Documento Nacional de Identidad (España) - Anverso y Reverso",
-      checks
-    };
-  }
-
-  if (docType === "bankReceipt") {
-    const invalidIndicators = ["dni", "pasaporte", "escritura", "notaria", "catastro"];
-    if (invalidIndicators.some(w => fn.includes(w))) {
-      return {
-        isValid: false,
-        error: "El archivo no parece ser un documento bancario. Se requiere un recibo bancario o certificado de titularidad donde figure el IBAN."
-      };
-    }
-
-    const checks = [
-      { name: "Legibilidad bancaria", passed: true, detail: "Membrete de entidad bancaria y datos de cuenta legibles" },
-      { name: "Entidad bancaria emisora", passed: true, detail: "Certificado emitido por entidad de crédito registrada" },
-      { name: "IBAN español y titularidad", passed: true, detail: ownerContext.iban ? `IBAN coincidente con domiciliación (${ownerContext.iban.slice(0, 10)}...)` : "Estructura de IBAN español verificada" }
-    ];
-
-    return {
-      isValid: true,
-      title: "Recibo bancario o certificado de titularidad",
-      typeVerified: "Certificado de titularidad bancaria con IBAN",
-      checks
-    };
-  }
-
-  if (docType === "propertyDeed") {
-    const invalidIndicators = ["dni", "pasaporte", "banco", "recibo_luz", "nomina"];
-    if (invalidIndicators.some(w => fn.includes(w))) {
-      return {
-        isValid: false,
-        error: "El archivo no parece ser una escritura de propiedad. Se requiere copia de la escritura pública notarial del inmueble o parcela."
-      };
-    }
-
-    const checks = [
-      { name: "Legibilidad notarial", passed: true, detail: "Copia nítida con sellos y protocolo notarial identificables" },
-      { name: "Escritura pública de propiedad", passed: true, detail: "Título legítimo de propiedad o compraventa legalizado" },
-      { name: "Acreditación de inmueble", passed: true, detail: ownerContext.plot ? `Adjudicación de ${ownerContext.plot}` : "Acreditación de finca/parcela registrada" }
-    ];
-
-    return {
-      isValid: true,
-      title: "Copia de la escritura del inmueble",
-      typeVerified: "Escritura notarial de propiedad y acreditación de finca",
-      checks
-    };
-  }
-
-  if (docType === "contract") {
-    const invalidIndicators = ["dni", "pasaporte", "escritura", "recibo"];
-    if (invalidIndicators.some(w => fn.includes(w))) {
-      return { isValid: false, error: "El archivo no parece ser un contrato. Se requiere el contrato de arrendamiento firmado." };
-    }
-    const checks = [
-      { name: "Legibilidad contractual", passed: true, detail: "Texto del contrato legible y completo" },
-      { name: "Firmas y fechas", passed: true, detail: "Firmas de las partes y fechas de vigencia detectadas" },
-      { name: "Coincidencia de partes", passed: true, detail: "Coincide con el inquilino y el inmueble vinculado" }
-    ];
-    return { isValid: true, title: "Contrato de arrendamiento", typeVerified: "Contrato de arrendamiento (LAU)", checks };
-  }
-
-  return { isValid: false, error: "Tipo de documento no reconocido." };
+export function checkDocumentCorrespondence(fileName, docType) {
+  const titles = { dni: "Copia de DNI (ambas caras)", bankReceipt: "Recibo bancario o certificado de titularidad", propertyDeed: "Copia de escritura", contract: "Contrato de arrendamiento" };
+  return titles[docType] ? { isValid: true, title: titles[docType], typeVerified: "Pendiente de revisión administrativa", checks: [] } : { isValid: false, error: "Tipo de documento no reconocido." };
 }
 
 export function generateSampleDocumentData(docType, ownerContext = {}) {
@@ -322,6 +233,9 @@ export const DocumentValidator = {
       };
     }
 
+    const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const pdfHeader = String.fromCharCode(...header.slice(0, 5));
+    if (isPdf && pdfHeader !== "%PDF-") return { isValid: false, error: "El contenido no corresponde a un PDF." };
     const dataUrl = await readFileAsDataUrl(file);
 
     let legibilityScore = 98;
@@ -342,8 +256,8 @@ export const DocumentValidator = {
         };
       }
     } else {
-      legibilityScore = 97;
-      legibilityStatus = "Óptima (documento PDF con estructura íntegra y legible)";
+      legibilityScore = null;
+      legibilityStatus = "Revisión manual pendiente";
     }
 
     const correspondence = checkDocumentCorrespondence(file.name, docType, ownerContext, imageInfo);
@@ -371,7 +285,7 @@ export const DocumentValidator = {
       uploadedAt: dateStr,
       dataUrl,
       autoValidation: {
-        status: "passed",
+        status: "pending_review",
         legibilityScore,
         legibilityStatus,
         typeVerified: correspondence.typeVerified,
@@ -401,10 +315,11 @@ export function getFormOwnerContext() {
   const commSelect = ownerForm.elements.communityId;
   const commName = commSelect.selectedOptions[0] ? commSelect.selectedOptions[0].textContent : "";
   return {
+    id: state.ui.editingOwnerId,
     name: ownerForm.elements.name.value.trim() || "Carlos",
     surname: ownerForm.elements.surname.value.trim() || "Ruiz Mendoza",
     dni: ownerForm.elements.dni.value.trim().toUpperCase() || "47895231P",
-    plot: ownerForm.elements.plot.value.trim() || "Parcela 14",
+    plot: ownerForm.elements.plot?.value.trim() || "Inmueble",
     communityName: commName || "Residencial Peñarrubia",
     iban: ownerForm.elements.iban.value.trim().toUpperCase() || "ES66 2100 0418 4012 3456 7891"
   };
@@ -436,7 +351,7 @@ export function renderOwnerDialogDocs() {
         badge.textContent = "Rechazado";
       } else {
         badge.className = "status-badge doc-approved";
-        badge.textContent = "Validado por sistema";
+        badge.textContent = "Pendiente de revisión";
       }
 
       result.hidden = false;
@@ -444,50 +359,24 @@ export function renderOwnerDialogDocs() {
 
       const validationHeader = document.createElement("div");
       validationHeader.className = "doc-validation-header";
-      validationHeader.innerHTML = `
+      validationHeader.innerHTML = sanitizeHtml(`
         <div class="doc-file-meta">
           <span class="doc-file-icon">📄</span>
           <div>
-            <p class="doc-file-name">${doc.fileName}</p>
-            <p class="doc-file-size">${Math.round(doc.fileSize / 1024)} KB · Subido el ${doc.uploadedAt}</p>
+            <p class="doc-file-name">${escapeHtml(doc.fileName)}</p>
+            <p class="doc-file-size">${Math.round(doc.fileSize / 1024)} KB · Subido el ${escapeHtml(doc.uploadedAt)}</p>
           </div>
         </div>
         <div class="doc-file-actions">
           <button class="btn-doc-action" type="button" data-action="view" data-doc="${key}">👁️ Ver</button>
           <button class="btn-doc-action danger" type="button" data-action="remove" data-doc="${key}">🗑️ Quitar</button>
         </div>
-      `;
+      `);
 
-      // Legibilidad
-      const legibility = document.createElement("div");
-      legibility.className = "legibility-box";
-      const score = doc.autoValidation?.legibilityScore || 98;
-      const status = doc.autoValidation?.legibilityStatus || "Óptima";
-      legibility.innerHTML = `
-        <div class="legibility-header">
-          <span>Legibilidad y calidad del documento:</span>
-          <span>${score}% (${status.split(" ")[0]})</span>
-        </div>
-        <div class="score-bar-wrap">
-          <div class="score-bar-fill" style="width: ${score}%;"></div>
-        </div>
-      `;
-
-      // Checks
-      const checksList = document.createElement("ul");
-      checksList.className = "checks-list";
-      const checks = doc.autoValidation?.checks || [];
-      checks.forEach(c => {
-        const li = document.createElement("li");
-        li.className = "check-item";
-        li.innerHTML = `
-          <span class="check-icon passed">✓</span>
-          <div><strong>${c.name}:</strong> <span>${c.detail}</span></div>
-        `;
-        checksList.append(li);
-      });
-
-      result.append(validationHeader, legibility, checksList);
+      const reviewNote = document.createElement("p");
+      reviewNote.className = "form-intro";
+      reviewNote.textContent = "La identidad, titularidad y legibilidad requieren revisión administrativa.";
+      result.append(validationHeader, reviewNote);
 
       validationHeader.querySelector('[data-action="view"]').addEventListener("click", () => {
         openDocViewer(getFormOwnerContext(), key, doc);
@@ -509,9 +398,9 @@ export function renderOwnerDialogDocs() {
   });
 
   tabDocsBadge.textContent = `${uploadedCount}/3`;
-  docsSummaryStatus.textContent = `${uploadedCount} de 3 documentos subidos y validados`;
+  docsSummaryStatus.textContent = `${uploadedCount} de 3 documentos recibidos`;
   if (uploadedCount === 3) {
-    docsSummarySubtext.textContent = "¡Expediente documental completo! Al guardar se remitirá el aviso al Administrador para su aprobación.";
+    docsSummarySubtext.textContent = "Archivos recibidos. Al guardar se remitirá un aviso al administrador para su revisión.";
     docsSummaryBar.style.background = "#f0fdf4";
     docsSummaryBar.style.borderColor = "#86efac";
   } else {
@@ -569,6 +458,7 @@ export function handleDocSampleLoad(docType) {
     editingDocs.current[docType] = {
       key: docType,
       title: correspondence.title,
+      isSample: true,
       fileName: sample.fileName,
       fileType: sample.fileType,
       fileSize: sample.fileSize,

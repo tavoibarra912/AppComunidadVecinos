@@ -1,7 +1,8 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, propertyFromRow, listDocuments } from "../db.js";
-import { rebuildOwnersPropertyIds } from "../domain.js";
+import { rebuildOwnersPropertyIds, rebuildPropertyTenantReferences } from "../domain.js";
+import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
 
@@ -43,6 +44,9 @@ function validatePropertyPayload(data, { requireOwners = true } = {}) {
     if (!db.prepare("SELECT id FROM owners WHERE id = ?").get(ownerId)) {
       return "Uno de los propietarios seleccionados ya no existe.";
     }
+  }
+  for (const tenantId of data.tenantIds || []) {
+    if (!db.prepare("SELECT id FROM tenants WHERE id = ?").get(tenantId)) return "Uno de los inquilinos seleccionados no existe.";
   }
   return normalizeOwnerPercentages(data).error || null;
 }
@@ -140,10 +144,12 @@ function storeProperty(id, data, community) {
 function syncTenantsForProperty(propertyId, tenantIds) {
   db.prepare("UPDATE tenants SET propertyId = '' WHERE propertyId = ? AND id NOT IN (SELECT j.value FROM json_each(?) j)")
     .run(propertyId, JSON.stringify(tenantIds));
-  const setTenant = db.prepare("UPDATE tenants SET propertyId = ? WHERE id = ?");
+  const owners = JSON.parse(db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propertyId).ownerIds || "[]");
+  const setTenant = db.prepare("UPDATE tenants SET propertyId = ?, ownerId = CASE WHEN ownerId IN (SELECT value FROM json_each(?)) THEN ownerId ELSE ? END WHERE id = ?");
   for (const tenantId of tenantIds) {
-    setTenant.run(propertyId, tenantId);
+    setTenant.run(propertyId, JSON.stringify(owners), owners[0] || "", tenantId);
   }
+  rebuildPropertyTenantReferences();
 }
 
 router.post("/", (req, res) => {
@@ -195,7 +201,7 @@ router.delete("/:id", (req, res) => {
   db.exec("BEGIN");
   try {
     db.prepare("UPDATE tenants SET propertyId = '' WHERE propertyId = ?").run(existing.id);
-    db.prepare("DELETE FROM documents WHERE entityType = 'property' AND entityId = ?").run(existing.id);
+    removeEntityFiles("property", existing.id);
     db.prepare("DELETE FROM properties WHERE id = ?").run(existing.id);
     rebuildOwnersPropertyIds();
     db.exec("COMMIT");

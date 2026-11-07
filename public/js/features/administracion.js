@@ -1,3 +1,4 @@
+import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, hasPermission, requirePermission } from "../state.js";
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
@@ -42,10 +43,12 @@ let editingRoleId = null;
 let dirtySnapshot = "";
 
 function puedeAdministrar() {
-  return state.activeRole === "admin" || hasPermission("admin:users");
+  return ["admin:users", "admin:roles", "admin:settings"].some(p => hasPermission(p));
 }
 
 function switchAdminTab(tab) {
+  const permissions = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings" };
+  if (!hasPermission(permissions[tab])) return;
   adminTabActual = tab;
   document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
     const active = btn.dataset.adminTab === tab;
@@ -166,7 +169,7 @@ function iconBtn(className, title, ariaLabel, svg) {
   btn.className = `icon-action-btn ${className}`;
   btn.title = title;
   btn.setAttribute("aria-label", ariaLabel);
-  btn.innerHTML = svg;
+  btn.innerHTML = sanitizeHtml(svg);
   return btn;
 }
 
@@ -258,7 +261,8 @@ userForm?.addEventListener("submit", async event => {
     usuario: userForm.elements.usuario.value.trim(),
     email: userForm.elements.email.value.trim(),
     rol: userForm.elements.rol.value,
-    activo: userForm.elements.activo.checked
+    activo: userForm.elements.activo.checked,
+    ...(userForm.elements.password.value ? { password: userForm.elements.password.value } : {})
   };
   if (!data.usuario) {
     userError.textContent = "El nombre de usuario es obligatorio.";
@@ -272,6 +276,9 @@ userForm?.addEventListener("submit", async event => {
       savedUser = await api.createUser(data);
     }
 
+    if (savedUser.id === state.currentUserId && (data.password || !data.activo)) {
+      window.dispatchEvent(new Event("auth:expired")); toast("Volvé a iniciar sesión para continuar."); return;
+    }
     // Sincronizar vinculaciones de perfiles (Propietario / Inquilino)
     // Super Admin no lleva perfiles vinculados: desvincular si los tuviera
     if (data.rol === "super_admin") {
@@ -310,6 +317,7 @@ async function deleteUser(id, usuario) {
     showValidationErrors([error.message], "No se puede eliminar el usuario");
     return;
   }
+  if (id === state.currentUserId) { window.dispatchEvent(new Event("auth:expired")); return; }
   await refreshState();
   renderUsers();
   toast(`Usuario ${usuario} eliminado.`);
@@ -548,7 +556,10 @@ export function renderAdministracion() {
   const nav = document.querySelector("#nav-administracion");
   if (nav) nav.hidden = !visible;
   if (!visible) return;
-  if (adminTabActual === "usuarios") renderUsers();
+  const permissions = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings" };
+  document.querySelectorAll("#administracion [data-admin-tab]").forEach(button => { button.hidden = !hasPermission(permissions[button.dataset.adminTab]); });
+  if (!hasPermission(permissions[adminTabActual])) adminTabActual = Object.keys(permissions).find(tab => hasPermission(permissions[tab]));
+  switchAdminTab(adminTabActual);
 }
 
 export { switchAdminTab };

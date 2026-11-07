@@ -1,3 +1,4 @@
+import { sanitizeHtml } from "./html.js";
 /**
  * Motor de tablas reutilizable: orden por columna, filtro único de texto,
  * agrupación, mostrar/ocultar columnas y paginación compacta con iconos.
@@ -124,7 +125,7 @@ export function createDataTable(options) {
   const columnsBtn = el("button", "table-columns-btn");
   columnsBtn.type = "button";
   columnsBtn.append(el("span", null, "Columnas"));
-  columnsBtn.insertAdjacentHTML("beforeend", ICON_CHEVRON_DOWN);
+  columnsBtn.insertAdjacentHTML("beforeend", sanitizeHtml(ICON_CHEVRON_DOWN));
   const columnsMenu = el("div", "table-columns-menu");
   columnsMenu.hidden = true;
   columnsWrap.append(columnsBtn, columnsMenu);
@@ -233,11 +234,11 @@ export function createDataTable(options) {
   pager.setAttribute("aria-label", "Paginación");
   const prevBtn = el("button", "pager-btn");
   prevBtn.type = "button";
-  prevBtn.innerHTML = ICON_CHEVRON_LEFT;
+  prevBtn.innerHTML = sanitizeHtml(ICON_CHEVRON_LEFT);
   prevBtn.setAttribute("aria-label", "Página anterior");
   const nextBtn = el("button", "pager-btn");
   nextBtn.type = "button";
-  nextBtn.innerHTML = ICON_CHEVRON_RIGHT;
+  nextBtn.innerHTML = sanitizeHtml(ICON_CHEVRON_RIGHT);
   nextBtn.setAttribute("aria-label", "Página siguiente");
   pager.append(prevBtn);
   footer.append(pager);
@@ -431,7 +432,7 @@ export function createDataTable(options) {
       if (rendered instanceof Node) {
         td.append(rendered);
       } else if (typeof rendered === "string") {
-        td.innerHTML = rendered;
+        td.innerHTML = sanitizeHtml(rendered);
       } else {
         td.textContent = col.value ? col.value(row) : "";
       }

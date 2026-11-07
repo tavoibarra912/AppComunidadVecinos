@@ -1,150 +1,150 @@
 import { Router } from "express";
-import {
-  hashPassword, newSalt, verifyPassword, newResetToken, resetTokenExpiry,
-  findUserByEmail, findUserById, findUserBySso, findUserByResetToken,
-  setPassword, simulateSsoLogin
-} from "../auth.js";
+import crypto from "node:crypto";
 import { db } from "../db.js";
+import {
+  verifyPassword,
+  passwordRecord,
+  findUserById,
+  findUserByEmail,
+  setPassword,
+} from "../auth.js";
+import {
+  createSession,
+  publicUser,
+  requireSession,
+  endSession,
+} from "../security.js";
+import { validEmail, passwordError } from "../validation.js";
 
 const router = Router();
-
-const SSO_PROVIDERS = ["gmail", "outlook", "facebook", "instagram"];
-
-function userPublic(user) {
-  const owner = db.prepare("SELECT id FROM owners WHERE userId = ?").get(user.id);
-  const tenants = db.prepare("SELECT id FROM tenants WHERE userId = ?").all(user.id);
-  const adminCommunities = db.prepare("SELECT id, name FROM communities WHERE adminUserId = ?").all(user.id);
-  return {
-    id: user.id,
-    nombre: user.nombre,
-    apellido: user.apellido,
-    usuario: user.usuario,
-    email: user.email,
-    rol: user.rol,
-    activo: !!user.activo,
-    ssoProvider: user.ssoProvider || "",
-    ownerId: owner?.id || "",
-    tenantIds: tenants.map(t => t.id),
-    adminCommunityIds: adminCommunities.map(c => c.id)
-  };
-}
-
-// POST /api/auth/signup — alta con rol menos permisivo (user)
+const attempts = new Map();
+router.use((req, res, next) => {
+  if (req.method !== "POST" || req.path === "/logout") return next();
+  const now = Date.now();
+  for (const [key, entry] of attempts)
+    if (entry.until < now) attempts.delete(key);
+  const key = req.ip;
+  const entry = attempts.get(key) || { count: 0, until: now + 15 * 60_000 };
+  if (entry.count >= 40)
+    return res
+      .status(429)
+      .json({
+        error: "Demasiados intentos. Volvé a intentar en unos minutos.",
+      });
+  entry.count++;
+  attempts.set(key, entry);
+  next();
+});
+router.get("/me", requireSession, (req, res) => res.json(publicUser(req.user)));
+router.post("/logout", requireSession, (req, res) => {
+  endSession(req, res);
+  res.json({ ok: true });
+});
 router.post("/signup", (req, res) => {
-  const { nombre, apellido, usuario, email, password } = req.body || {};
-  if (!email || !usuario || !password) {
-    return res.status(400).json({ error: "Usuario, email y contraseña son obligatorios." });
+  const {
+    nombre = "",
+    apellido = "",
+    usuario,
+    email,
+    password,
+  } = req.body || {};
+  if (
+    typeof usuario !== "string" ||
+    !/^[\p{L}\p{N}._-]{2,60}$/u.test(usuario.trim()) ||
+    !validEmail(email) ||
+    typeof nombre !== "string" ||
+    typeof apellido !== "string"
+  ) {
+    return res
+      .status(400)
+      .json({
+        error: "Indicá un usuario válido y una dirección de email válida.",
+      });
   }
-  if (password.length < 8) {
-    return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres." });
+  const error = passwordError(password);
+  if (error) return res.status(400).json({ error });
+  if (
+    findUserByEmail(email) ||
+    db
+      .prepare("SELECT id FROM users WHERE LOWER(usuario) = LOWER(?)")
+      .get(usuario.trim())
+  ) {
+    return res
+      .status(409)
+      .json({ error: "El usuario o el email ya están registrados." });
   }
-  if (findUserByEmail(email)) {
-    return res.status(409).json({ error: "Ya existe una cuenta con ese email." });
-  }
-  const dupUsuario = db.prepare("SELECT id FROM users WHERE LOWER(usuario) = LOWER(?)").get(String(usuario).trim());
-  if (dupUsuario) {
-    return res.status(409).json({ error: "Ya existe un usuario con ese nombre de usuario." });
-  }
-  const salt = newSalt();
   const id = crypto.randomUUID();
   db.prepare(
-    `INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash)
-     VALUES (?, ?, ?, ?, ?, 'user', 1, ?)`
+    "INSERT INTO users (id,nombre,apellido,usuario,email,rol,activo,passwordHash) VALUES (?,?,?,?,?,'user',1,?)",
   ).run(
-    id, (nombre || "").trim(), (apellido || "").trim(), String(usuario).trim(),
-    String(email).trim().toLowerCase(),
-    `${salt}:${hashPassword(password, salt)}`
+    id,
+    nombre.trim().slice(0, 60),
+    apellido.trim().slice(0, 80),
+    usuario.trim(),
+    email.trim().toLowerCase(),
+    passwordRecord(password),
   );
-  res.status(201).json(userPublic(findUserById(id)));
+  const user = findUserById(id);
+  createSession(user, res);
+  res.status(201).json(publicUser(user));
 });
-
-// POST /api/auth/signin — login con usuario/email + contraseña
 router.post("/signin", (req, res) => {
   const { usuario, password } = req.body || {};
-  if (!usuario || !password) {
-    return res.status(400).json({ error: "Usuario y contraseña son obligatorios." });
-  }
-  const user = db.prepare(
-    "SELECT * FROM users WHERE LOWER(usuario) = LOWER(?) OR LOWER(email) = LOWER(?)"
-  ).get(String(usuario).trim().toLowerCase(), String(usuario).trim().toLowerCase());
-  if (!user) {
+  if (
+    typeof usuario !== "string" ||
+    typeof password !== "string" ||
+    password.length > 128
+  )
+    return res.status(400).json({ error: "Indicá usuario y contraseña." });
+  const user = db
+    .prepare(
+      "SELECT * FROM users WHERE LOWER(usuario) = LOWER(?) OR LOWER(email) = LOWER(?)",
+    )
+    .get(usuario.trim(), usuario.trim());
+  if (!user?.activo || !verifyPassword(password, user.passwordHash))
     return res.status(401).json({ error: "Credenciales incorrectas." });
-  }
-  if (!user.activo) {
-    return res.status(403).json({ error: "La cuenta está desactivada." });
-  }
-  // Cuentas SSO sin contraseña: deben usar SSO o reset
-  if (user.ssoProvider && !user.passwordHash) {
-    return res.status(400).json({ error: `Esta cuenta usa ${user.ssoProvider}. Iniciá sesión con ese proveedor.` });
-  }
-  if (!user.passwordHash) {
-    return res.status(400).json({ error: "Esta cuenta no tiene contraseña configurada." });
-  }
-  if (!verifyPassword(password, user.passwordHash)) {
-    return res.status(401).json({ error: "Credenciales incorrectas." });
-  }
-  res.json(userPublic(user));
+  if (!user.passwordHash.startsWith("scrypt:")) setPassword(user.id, password);
+  createSession(user, res);
+  res.json(publicUser(user));
 });
-
-// POST /api/auth/sso — login simulado con proveedor SSO
-router.post("/sso", (req, res) => {
-  const { provider, email, nombre, apellido } = req.body || {};
-  if (!SSO_PROVIDERS.includes(provider)) {
-    return res.status(400).json({ error: "Proveedor SSO no soportado." });
-  }
-  if (!email) {
-    return res.status(400).json({ error: "El email es obligatorio para el SSO simulado." });
-  }
-  try {
-    const { user, creado } = simulateSsoLogin(provider, email, nombre, apellido);
-    if (!user.activo) return res.status(403).json({ error: "La cuenta está desactivada." });
-    res.json({ ...userPublic(user), creado });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// POST /api/auth/forgot-password — genera token y lo "envía" (simulado: lo devuelve)
-router.post("/forgot-password", (req, res) => {
-  const { email } = req.body || {};
-  if (!email) return res.status(400).json({ error: "Indicá tu email." });
-  const user = findUserByEmail(email);
-  // Respuesta idéntica exista o no la cuenta (no filtrar emails)
-  if (!user) {
-    return res.json({ ok: true, mensaje: "Si el email está registrado recibirás instrucciones." });
-  }
-  const token = newResetToken();
-  db.prepare("UPDATE users SET resetToken = ?, resetTokenExpira = ? WHERE id = ?")
-    .run(token, resetTokenExpiry(), user.id);
-  res.json({ ok: true, mensaje: "Si el email está registrado recibirás instrucciones.", token });
-});
-
-// POST /api/auth/reset-password — cambia la contraseña con el token
-router.post("/reset-password", (req, res) => {
-  const { token, password } = req.body || {};
-  if (!token || !password) return res.status(400).json({ error: "Token y contraseña son obligatorios." });
-  if (password.length < 8) return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres." });
-  const user = findUserByResetToken(token);
-  if (!user) return res.status(400).json({ error: "El token es inválido o expiró." });
-  setPassword(user.id, password);
+router.post("/sso", (_req, res) =>
+  res
+    .status(503)
+    .json({
+      error:
+        "El acceso con proveedores externos no está configurado. Usá usuario y contraseña.",
+    }),
+);
+router.post("/forgot-password", (_req, res) =>
+  res
+    .status(503)
+    .json({
+      error:
+        "La recuperación por correo no está configurada. Pedile a un administrador que asigne una nueva contraseña.",
+    }),
+);
+router.post("/reset-password", (_req, res) =>
+  res
+    .status(503)
+    .json({
+      error:
+        "La recuperación por correo no está configurada. Contactá al administrador.",
+    }),
+);
+router.post("/change-password", requireSession, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (
+    typeof currentPassword !== "string" ||
+    currentPassword.length > 128 ||
+    !verifyPassword(currentPassword, req.user.passwordHash)
+  )
+    return res
+      .status(401)
+      .json({ error: "La contraseña actual es incorrecta." });
+  const error = passwordError(newPassword);
+  if (error) return res.status(400).json({ error });
+  setPassword(req.user.id, newPassword);
+  endSession(req, res);
   res.json({ ok: true });
 });
-
-// POST /api/auth/change-password — cambiar contraseña estando logueado
-router.post("/change-password", (req, res) => {
-  const { userId, currentPassword, newPassword } = req.body || {};
-  const user = findUserById(userId);
-  if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
-  if (user.passwordHash) {
-    if (!currentPassword || !verifyPassword(currentPassword, user.passwordHash)) {
-      return res.status(401).json({ error: "La contraseña actual es incorrecta." });
-    }
-  }
-  if (!newPassword || newPassword.length < 8) {
-    return res.status(400).json({ error: "La nueva contraseña debe tener al menos 8 caracteres." });
-  }
-  setPassword(user.id, newPassword);
-  res.json({ ok: true });
-});
-
 export default router;

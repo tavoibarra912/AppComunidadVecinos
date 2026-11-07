@@ -27,18 +27,23 @@
         <span class="topbar-btn-label">Mis Avisos</span>
         <span class="badge-counter" id="owner-inbox-badge-count">1</span>
       </button>
-      <div class="role-selector-wrap">
+      <div class="role-selector-wrap" hidden>
         <label for="active-role-select" class="sr-only">Usuario conectado</label>
         <select id="active-role-select" class="role-select" title="Cambiar usuario (login simulado)"></select>
       </div>
-      <div class="account" id="user-account-badge"><span class="avatar" id="user-avatar">A</span> <span id="user-role-label">Administrador</span>
-        <button type="button" class="logout-btn" id="user-logout-btn" title="Cerrar sesión" aria-label="Cerrar sesión">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
-          </svg>
+      <div class="account-menu-wrap" id="user-account-badge">
+        <button type="button" class="account account-toggle" id="user-menu-toggle" aria-label="Abrir menú de usuario" aria-haspopup="menu" aria-expanded="false" aria-controls="user-menu">
+          <span class="avatar" id="user-avatar">?</span><span id="user-role-label">Mi cuenta</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
+        <div class="account-menu" id="user-menu" role="menu" aria-label="Opciones de mi cuenta" hidden>
+          <div class="account-menu-heading" role="presentation"><strong id="user-menu-name"></strong><span id="user-menu-email"></span></div>
+          <button class="account-menu-item" id="account-menu-profile" type="button" role="menuitem" tabindex="-1">Mi perfil</button>
+          <button class="account-menu-item" id="account-menu-password" type="button" role="menuitem" tabindex="-1">Cambiar contraseña</button>
+          <button class="account-menu-item" id="account-menu-community" type="button" role="menuitem" tabindex="-1">Mi comunidad</button>
+          <div class="account-menu-separator" role="separator"></div>
+          <button class="account-menu-item account-menu-danger" id="user-logout-btn" type="button" role="menuitem" tabindex="-1">Cerrar sesión</button>
+        </div>
       </div>
     </div>
   </header>
@@ -49,19 +54,6 @@
     <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
     <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
   </nav>
-  <main class="layout">
-    <aside class="sidebar" aria-label="Navegación">
-      <p class="sidebar-label" id="sidebar-label">GESTIÓN ADMINISTRADOR</p>
-      <a class="nav-item active" href="#home" id="nav-home">Inicio</a>
-      <a class="nav-item" href="#comunidades" id="nav-comunidades">Comunidades</a>
-      <a class="nav-item" href="#inmuebles" id="nav-inmuebles">Inmuebles</a>
-      <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
-      <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
-      <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
-      <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
-    </aside>
-
-  <body>
   <!-- PANTALLA DE LOGIN SIMULADO -->
   <div id="login-screen" class="login-screen" hidden>
     <div class="login-card">
@@ -71,25 +63,6 @@
       <div id="login-view-signin" class="login-view">
         <h1>Iniciar sesión</h1>
         <p class="login-sub">Accedé con tu cuenta para continuar.</p>
-        <button type="button" class="sso-btn sso-gmail" data-sso="gmail">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M5.3 6.2 12 12.9l6.7-6.7-.1-.1c-.3-.4-.9-.4-1.3-.1l-5.3 4.1L6.7 6c-.4-.3-1-.3-1.3.1l-.1.1Z"/><path fill="#4285F4" d="M12 12.9 5.3 6.2c-.3.4-.3 1 .1 1.3l4.1 5.3-4.1 5.3c-.3.4-.3.9.1 1.3l.1.1 6.4-6.6Z"/><path fill="#FBBC04" d="M18.7 6.2 12 12.9l6.4 6.6.1-.1c.4-.3.4-.9.1-1.3l-4.1-5.3 4.1-5.3c.4-.3.4-.9.1-1.3Z"/><path fill="#34A853" d="m12 13.9-6.5 6.5c.3.4.9.4 1.3.1l5.3-4.1 5.3 4.1c.4.3.9.3 1.3-.1l.1-.1-6.8-6.4Z"/></svg>
-          Continuar con Gmail
-        </button>
-        <button type="button" class="sso-btn sso-outlook" data-sso="outlook">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#0072C6" d="M2 5.5v13l8 2V3.5l-8 2Zm8 2.5v8l6.5-4L10 8Z"/><path fill="#0072C6" opacity=".8" d="M10 8v8l6.5-4-6.5-4Zm6.5 4 3.5-2.2L21 12l-1-1.8-3.5 2.3Zm0 0L20 14l1-2-1-2.2-3.5 2.2Z"/></svg>
-          Continuar con Outlook
-        </button>
-        <div class="sso-row">
-          <button type="button" class="sso-btn sso-small" data-sso="facebook">
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#1877F2" d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z"/></svg>
-            Facebook
-          </button>
-          <button type="button" class="sso-btn sso-small" data-sso="instagram">
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.2c3.2 0 3.6 0 4.9.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.9.1s-3.6 0-4.8-.1c-3.3-.1-4.8-1.7-4.9-4.9-.1-1.3-.1-1.6-.1-4.8s0-3.6.1-4.8C2.4 4 4 2.4 7.2 2.3c1.2-.1 1.6-.1 4.8-.1ZM12 0C8.7 0 8.3 0 7.1.1 2.7.3.3 2.7.1 7.1 0 8.3 0 8.7 0 12s0 3.7.1 4.9c.2 4.4 2.6 6.8 7 7C8.3 24 8.7 24 12 24s3.7 0 4.9-.1c4.4-.2 6.8-2.6 7-7 .1-1.2.1-1.6.1-4.9s0-3.7-.1-4.9c-.2-4.4-2.6-6.8-7-7C15.7 0 15.3 0 12 0Zm0 5.8A6.2 6.2 0 1 0 18.2 12 6.2 6.2 0 0 0 12 5.8Zm0 10.2A4 4 0 1 1 16 12a4 4 0 0 1-4 4Zm6.4-11.8a1.4 1.4 0 1 0 1.4 1.4 1.4 1.4 0 0 0-1.4-1.4Z"/></svg>
-            Instagram
-          </button>
-        </div>
-        <div class="login-divider"><span>o con tu cuenta</span></div>
         <form id="login-signin-form" novalidate>
           <label>Usuario o email *
             <input name="usuario" type="text" required autocomplete="username" placeholder="usuario o email" />
@@ -98,6 +71,7 @@
             <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
           </label>
           <p class="login-error" id="login-signin-error" role="alert"></p>
+          <p class="login-ok-msg" id="login-signin-notice" role="status" hidden></p>
           <button class="login-submit" type="submit">Iniciar sesión</button>
         </form>
         <div class="login-links">
@@ -140,7 +114,7 @@
       <!-- Vista: Forgot Password -->
       <div id="login-view-forgot" class="login-view" hidden>
         <h1>Recuperar contraseña</h1>
-        <p class="login-sub">Ingresá tu email y te enviamos las instrucciones.</p>
+        <p class="login-sub">El envío de correo todavía no está configurado. Un administrador puede asignarte una nueva contraseña.</p>
         <form id="login-forgot-form" novalidate>
           <label>Email *
             <input name="email" type="email" required autocomplete="email" />
@@ -165,6 +139,18 @@
       </div>
     </div>
   </div>
+
+  <main class="layout">
+    <aside class="sidebar" aria-label="Navegación">
+      <p class="sidebar-label" id="sidebar-label">GESTIÓN ADMINISTRADOR</p>
+      <a class="nav-item active" href="#home" id="nav-home">Inicio</a>
+      <a class="nav-item" href="#comunidades" id="nav-comunidades">Comunidades</a>
+      <a class="nav-item" href="#inmuebles" id="nav-inmuebles">Inmuebles</a>
+      <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
+      <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
+      <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
+      <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
+    </aside>
 
   <!-- SECCIÓN: HOME / DASHBOARD -->
     <section class="content" id="home">
@@ -300,8 +286,8 @@
     <!-- SECCIÓN: COMUNIDADES -->
     <section class="content" id="comunidades" hidden>
       <div class="owner-view-banner" id="owner-view-banner-com" style="display: none;">
-        <span>🏠 <strong>Modo Propietario:</strong> Estás visualizando los datos de la comunidad a la que perteneces (acceso en sólo lectura).</span>
-        <span class="status-badge member">Carlos Ruiz Mendoza</span>
+        <span><strong id="community-profile-title"></strong> <span id="community-profile-message"></span></span>
+        <span class="status-badge member" id="community-profile-name"></span>
       </div>
       <div class="page-heading">
         <div>
@@ -1032,7 +1018,7 @@
           <div class="docs-callout-icon">ℹ️</div>
           <div>
             <strong>Documentación exigida para el expediente del propietario:</strong>
-            <p>El sistema valida <strong>de forma automática</strong> que cada archivo corresponda al documento solicitado (reconocimiento de DNI español, recibo con IBAN y escritura notarial) y verifica que la <strong>legibilidad y resolución</strong> sean correctas. Tras superarla, el Administrador recibirá un aviso para su aprobación.</p>
+            <p>El sistema admite archivos PDF e imágenes. La identidad, el contenido y la legibilidad deben ser revisados por un administrador antes de aprobarlos.</p>
           </div>
         </div>
 
@@ -1066,7 +1052,7 @@
             <!-- Botón de prueba rápida para testing asistido -->
             <div class="doc-sample-bar">
               <button class="sample-doc-btn" type="button" id="btn-sample-dni">
-                ✨ Cargar DNI de prueba válido (simulación oficial)
+                ✨ Cargar ejemplo de DNI (sin validez)
               </button>
             </div>
 
@@ -1109,7 +1095,7 @@
 
             <div class="doc-sample-bar">
               <button class="sample-doc-btn" type="button" id="btn-sample-bank">
-                ✨ Cargar recibo bancario de prueba (IBAN válido)
+                ✨ Cargar ejemplo bancario (sin validez)
               </button>
             </div>
 
@@ -1148,7 +1134,7 @@
 
             <div class="doc-sample-bar">
               <button class="sample-doc-btn" type="button" id="btn-sample-deed">
-                ✨ Cargar escritura notarial de prueba (acreditación finca)
+                ✨ Cargar ejemplo de escritura (sin validez)
               </button>
             </div>
 
@@ -1668,7 +1654,7 @@
     </div>
   </dialog>
 
-  "<dialog id="tenant-detail-dialog" aria-labelledby="tenant-detail-title">
+  <dialog id="tenant-detail-dialog" aria-labelledby="tenant-detail-title">
     <div class="dialog-content">
       <div class="dialog-header">
         <div>
@@ -2184,6 +2170,9 @@
         <label>Email
           <input name="email" type="email" maxlength="120" autocomplete="email" />
         </label>
+        <label>Contraseña (obligatoria al crear; vacía para conservarla)
+          <input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" />
+        </label>
         <label>Rol *
           <select name="rol" required></select>
         </label>
@@ -2314,9 +2303,9 @@
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
       </div>
-      <h2 id="doc-success-title">¡Documentación procesada correctamente!</h2>
+      <h2 id="doc-success-title">Documentación recibida</h2>
       <p class="success-lead">
-        El sistema ha analizado y validado con éxito la documentación subida. Se ha verificado que cada archivo corresponde con lo solicitado y que la legibilidad es óptima.
+        Los archivos se han guardado y quedan pendientes de revisión administrativa.
       </p>
 
       <div class="success-audit-box">
@@ -2350,7 +2339,7 @@
         </div>
         <div class="step-badge highlight">
           <span class="step-num">2</span>
-          <span><strong>Aviso al Administrador:</strong> Se ha remitido un email al Administrador solicitándole la verificación y aprobación oficial de la documentación.</span>
+          <span><strong>Aviso al Administrador:</strong> Se ha creado un aviso en el buzón del administrador para que revise la documentación.</span>
         </div>
       </div>
 
@@ -2470,7 +2459,7 @@
           <!-- Renderizado del documento (imagen/canvas/svg) -->
         </div>
         <div class="doc-viewer-info-pane">
-          <h3 class="viewer-pane-heading">Informe de Verificación</h3>
+          <h3 class="viewer-pane-heading">Revisión documental</h3>
           <div class="viewer-meta-row">
             <span class="viewer-meta-label">Titular:</span>
             <span class="viewer-meta-val" id="doc-viewer-owner"></span>
@@ -2484,7 +2473,7 @@
             <span class="viewer-meta-val" id="doc-viewer-date"></span>
           </div>
           <div class="viewer-meta-row">
-            <span class="viewer-meta-label">Puntuación de legibilidad:</span>
+            <span class="viewer-meta-label">Evaluación de legibilidad:</span>
             <div class="score-bar-wrap">
               <div class="score-bar-fill" id="doc-viewer-score-bar" style="width: 98%;"></div>
             </div>
@@ -2492,7 +2481,7 @@
           </div>
 
           <div class="viewer-checks-wrap">
-            <h4>Comprobaciones superadas:</h4>
+            <h4>Revisión del contenido:</h4>
             <ul class="viewer-checks-list" id="doc-viewer-checks-list"></ul>
           </div>
 
@@ -2612,6 +2601,43 @@
         <button class="primary-button" type="button" id="close-validation-btn">Entendido</button>
       </div>
     </div>
+  </dialog>
+
+  <dialog id="account-profile-dialog" class="dialog-sm account-dialog" aria-labelledby="account-profile-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div><p class="eyebrow">MI CUENTA</p><h2 id="account-profile-title">Mi perfil</h2></div>
+        <button class="icon-button" type="button" aria-label="Cerrar mi perfil" data-close-account-dialog="account-profile-dialog">×</button>
+      </div>
+      <dl class="account-profile-grid">
+        <div><dt>Nombre</dt><dd id="account-profile-name"></dd></div>
+        <div><dt>Usuario</dt><dd id="account-profile-username"></dd></div>
+        <div><dt>Email</dt><dd id="account-profile-email"></dd></div>
+        <div><dt>Rol</dt><dd id="account-profile-role"></dd></div>
+      </dl>
+      <p class="form-intro" id="account-profile-hint"></p>
+      <div class="account-profile-links" id="account-profile-links"></div>
+      <div class="dialog-actions"><button class="primary-button" type="button" data-close-account-dialog="account-profile-dialog">Cerrar perfil</button></div>
+    </div>
+  </dialog>
+  <dialog id="account-password-dialog" class="dialog-sm account-dialog" aria-labelledby="account-password-title">
+    <form id="account-password-form" class="dialog-content" novalidate>
+      <div class="dialog-header">
+        <div><p class="eyebrow">SEGURIDAD</p><h2 id="account-password-title">Cambiar contraseña</h2></div>
+        <button class="icon-button" type="button" aria-label="Cerrar cambio de contraseña" data-close-account-dialog="account-password-dialog">×</button>
+      </div>
+      <p class="form-intro" id="account-password-help">Usá entre 8 y 128 caracteres. Al guardar se cerrarán tus sesiones y tendrás que iniciar sesión con la nueva contraseña.</p>
+      <div class="form-grid">
+        <label class="full">Contraseña actual<input name="currentPassword" type="password" autocomplete="current-password" maxlength="128" required /></label>
+        <label class="full">Nueva contraseña<input name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="account-password-help" required /></label>
+        <label class="full">Repetir nueva contraseña<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required /></label>
+      </div>
+      <p class="form-error" id="account-password-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" data-close-account-dialog="account-password-dialog">Cancelar</button>
+        <button class="primary-button" type="submit" id="account-password-submit">Guardar contraseña</button>
+      </div>
+    </form>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>

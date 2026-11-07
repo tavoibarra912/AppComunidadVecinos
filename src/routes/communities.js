@@ -1,8 +1,23 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, communityFromRow, listDocuments } from "../db.js";
+import { contactError } from "../validation.js";
+import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
+router.use((req, res, next) => {
+  if (["POST", "PUT"].includes(req.method)) {
+    const data = req.body || {};
+    const error = contactError(data) || (!/^H\d{8}$/.test(data.nif || "") ? "El NIF debe comenzar por H y tener 8 dígitos." : null);
+    if (error) return res.status(400).json({ error });
+    if (data.adminUserId) {
+      const account = db.prepare("SELECT rol FROM users WHERE id = ? AND activo = 1").get(data.adminUserId);
+      const role = account && db.prepare("SELECT nombre, permisos FROM roles WHERE id = ? OR nombre = ?").get(account.rol, account.rol);
+      if (!role || role.nombre !== "super_admin" && !JSON.parse(role.permisos).includes("community:manage")) return res.status(400).json({ error: "La cuenta asignada debe tener permisos de administración de comunidades." });
+    }
+  }
+  next();
+});
 
 function findCommunity(id) {
   const row = db.prepare("SELECT * FROM communities WHERE id = ?").get(id);
@@ -78,7 +93,7 @@ router.delete("/:id", (req, res) => {
   if (properties > 0) {
     return res.status(409).json({ error: "No se puede eliminar una comunidad con inmuebles asociados." });
   }
-  db.prepare("DELETE FROM documents WHERE entityType = 'community' AND entityId = ?").run(existing.id);
+  removeEntityFiles("community", existing.id);
   db.prepare("DELETE FROM communities WHERE id = ?").run(existing.id);
   res.json({ ok: true });
 });

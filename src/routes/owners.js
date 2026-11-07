@@ -2,8 +2,14 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { db, ownerFromRow } from "../db.js";
 import { applyOwnerPropertyLink, syncOwnerProperties } from "../domain.js";
+import { contactError } from "../validation.js";
 
 const router = Router();
+router.use((req, res, next) => {
+  const error = ["POST", "PUT"].includes(req.method) && contactError(req.body || {});
+  if (error) return res.status(400).json({ error });
+  next();
+});
 
 function findOwner(id) {
   const row = db.prepare("SELECT * FROM owners WHERE id = ?").get(id);

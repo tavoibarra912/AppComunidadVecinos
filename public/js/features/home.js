@@ -1,3 +1,5 @@
+import { openTenantDetail } from "./inquilinos.js";
+import { sanitizeHtml } from "../html.js";
 import { state, getCurrentOwnerProfile, ownerTenants, getTenantContractStatus, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { navigateToSection } from "./navigation.js";
 import { openOwnerEditor, renderOwners, openOwnerDetail } from "./propietarios.js";
@@ -54,10 +56,10 @@ export function renderHomeDashboard() {
     if (homeGreetingDesc) homeGreetingDesc.textContent = "Bienvenido a tu panel personal de Peñarrubia. Desde aquí puedes consultar el estado de tu comunidad (" + comName + "), tus parcelas y gestionar tu documentación oficial.";
     
     if (homeHeroActions) {
-      homeHeroActions.innerHTML = `
+      homeHeroActions.innerHTML = sanitizeHtml(`
         <button class="primary-button" id="home-owner-btn-docs" type="button">📄 Ver mi expediente</button>
         <button class="secondary-button" id="home-owner-btn-comm" type="button">🏠 Mi Comunidad</button>
-      `;
+      `);
       const btnDocs = document.querySelector("#home-owner-btn-docs");
       if (btnDocs) btnDocs.addEventListener("click", () => {
         navigateToSection("#propietarios");
@@ -86,14 +88,14 @@ export function renderHomeDashboard() {
     if (homeDocSummaryList && !currentOwner) {
       homeDocSummaryList.replaceChildren();
     } else if (homeDocSummaryList) {
-      const docs = currentOwner.docs || {};
+      const docs = currentOwner.documents || {};
       const items = [
         { key: "dni", title: "Copia de DNI (ambas caras)", data: docs.dni },
         { key: "bankReceipt", title: "Recibo bancario / Certificado", data: docs.bankReceipt },
         { key: "propertyDeed", title: "Copia de escritura notarial", data: docs.propertyDeed }
       ];
 
-      homeDocSummaryList.innerHTML = items.map(item => {
+      homeDocSummaryList.innerHTML = sanitizeHtml(items.map(item => {
         const d = item.data;
         let badgeText = "No aportado";
         let dotClass = "dot-none";
@@ -111,7 +113,7 @@ export function renderHomeDashboard() {
           } else {
             badgeText = "En revisión";
             dotClass = "dot-pending";
-            subtext = "Pre-validado por sistema (legibilidad óptima)";
+            subtext = "Pendiente de revisión administrativa";
           }
         }
 
@@ -127,11 +129,11 @@ export function renderHomeDashboard() {
             <span class="home-summary-badge-count">${badgeText}</span>
           </div>
         `;
-      }).join("");
+      }).join(""));
     }
 
     if (homeQuickActionsContainer) {
-      homeQuickActionsContainer.innerHTML = `
+      homeQuickActionsContainer.innerHTML = sanitizeHtml(`
         <button class="home-quick-btn" id="hq-btn-notifs" type="button">
           <span class="home-quick-icon">🔔</span>
           <div>
@@ -153,7 +155,7 @@ export function renderHomeDashboard() {
             <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Ficha informativa y contacto del administrador</div>
           </div>
         </button>
-      `;
+      `);
       const qNotif = document.querySelector("#hq-btn-notifs");
       if (qNotif) qNotif.addEventListener("click", openOwnerInbox);
       const qProf = document.querySelector("#hq-btn-profile");
@@ -172,7 +174,7 @@ export function renderHomeDashboard() {
     if (homeGreetingDesc) homeGreetingDesc.textContent = "Plataforma integral para el censo territorial, gestión de comunidades y convalidación documental de propietarios asociados.";
     
     if (homeHeroActions) {
-      homeHeroActions.innerHTML = `
+      homeHeroActions.innerHTML = sanitizeHtml(`
         <button class="icon-action-btn btn-add btn-lg" id="home-btn-new-comm" type="button" title="Nueva comunidad" aria-label="Nueva comunidad">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -187,7 +189,7 @@ export function renderHomeDashboard() {
             <line x1="22" y1="11" x2="16" y2="11"></line>
           </svg>
         </button>
-      `;
+      `);
       const btnC = document.querySelector("#home-btn-new-comm");
       if (btnC) btnC.addEventListener("click", () => openCommunityEditor());
       const btnO = document.querySelector("#home-btn-new-owner");
@@ -228,7 +230,7 @@ export function renderHomeDashboard() {
     if (homeActivitySubtitle) homeActivitySubtitle.textContent = "Resumen del censo de expedientes documentales";
 
     if (homeDocSummaryList) {
-      homeDocSummaryList.innerHTML = `
+      homeDocSummaryList.innerHTML = sanitizeHtml(`
         <div class="home-summary-row">
           <div class="home-summary-row-info">
             <span class="home-summary-dot dot-pending"></span>
@@ -269,11 +271,11 @@ export function renderHomeDashboard() {
           </div>
           <span class="home-summary-badge-count">${countNone}</span>
         </div>
-      `;
+      `);
     }
 
     if (homeQuickActionsContainer) {
-      homeQuickActionsContainer.innerHTML = `
+      homeQuickActionsContainer.innerHTML = sanitizeHtml(`
         <button class="home-quick-btn" id="hq-admin-inbox" type="button">
           <span class="home-quick-icon">📬</span>
           <div>
@@ -316,7 +318,7 @@ export function renderHomeDashboard() {
             <div style="font-size:11.5px;color:var(--muted);font-weight:400;">Filtra directamente la tabla por expedientes pendientes</div>
           </div>
         </button>
-      `;
+      `);
 
       const qInbox = document.querySelector("#hq-admin-inbox");
       if (qInbox) qInbox.addEventListener("click", openAdminInbox);
@@ -327,13 +329,35 @@ export function renderHomeDashboard() {
       const qFilt = document.querySelector("#hq-admin-filter-pending");
       if (qFilt) qFilt.addEventListener("click", () => {
         navigateToSection("#propietarios");
-        if (filterDocStatusSelect) {
-          filterDocStatusSelect.value = "pending_admin";
-          state.ui.ownerFilterDocStatus = "pending_admin";
-          ownerCurrentPage = 1;
-          renderOwners();
-        }
+        const search = document.querySelector("#search-owners");
+        if (search) { search.value = "Pendiente"; search.dispatchEvent(new Event("input", { bubbles: true })); }
       });
+    }
+  }
+
+  const memberCard = document.querySelector("#kpi-card-members");
+  if (memberCard) memberCard.hidden = false;
+  if (homeQuickActionsContainer?.parentElement) homeQuickActionsContainer.parentElement.hidden = false;
+  const propertyLink = document.querySelector("#kpi-card-owners a");
+  if (propertyLink) { propertyLink.href = "#propietarios"; propertyLink.textContent = "Ver propietarios →"; }
+  if (state.activeRole === "owner" && !getCurrentOwnerProfile()) {
+    if (memberCard) memberCard.hidden = true;
+    if (homeQuickActionsContainer?.parentElement) homeQuickActionsContainer.parentElement.hidden = true;
+    if (propertyLink) { propertyLink.href = "#inmuebles"; propertyLink.textContent = "Ver inmueble →"; }
+    const currentTenant = state.tenants.find(t => t.userId === state.currentUserId);
+    const property = state.properties.find(p => p.id === currentTenant?.propertyId);
+    homeGreetingTitle.textContent = currentTenant ? `Hola, ${currentTenant.name}` : "Cuenta creada";
+    homeGreetingDesc.textContent = currentTenant ? "Consultá los datos de tu contrato y de la comunidad donde vivís." : "Un administrador puede vincular tu cuenta a un perfil de propietario o inquilino.";
+    homeHeroRoleBadge.textContent = currentTenant ? "Área de inquilino" : "Mi cuenta";
+    homeHeroActions.replaceChildren(); homeQuickActionsContainer.replaceChildren(); homeDocSummaryList.replaceChildren();
+    homeActivityTitle.textContent = currentTenant ? "Tu contrato" : "Perfil pendiente de asignación";
+    homeActivitySubtitle.textContent = currentTenant ? "Datos disponibles para tu cuenta" : "Tus datos aparecerán cuando se vincule un perfil.";
+    if (currentTenant) {
+      const button = document.createElement("button"); button.type = "button"; button.className = "primary-button"; button.textContent = "Ver mi contrato";
+      button.addEventListener("click", () => openTenantDetail(currentTenant.ownerId, currentTenant.id)); homeHeroActions.append(button);
+      const summary = document.createElement("p"); summary.textContent = `${property?.plot || "Inmueble"} · ${getTenantContractStatus(currentTenant)}`; homeDocSummaryList.append(summary);
+      homeKpiComms.textContent = property?.communityId ? "1" : "0"; homeKpiCommsLabel.textContent = property?.communityName || "Sin comunidad asignada";
+      homeKpiOwners.textContent = property?.plot || "—"; homeKpiPendingDocs.textContent = getTenantContractStatus(currentTenant); homeKpiPendingLabel.textContent = "Estado del contrato"; homeKpiPendingSub.textContent = "";
     }
   }
 }

@@ -2,8 +2,20 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { db, tenantFromRow, listDocuments } from "../db.js";
 import { upsertTenant } from "../domain.js";
+import { contactError, dateError } from "../validation.js";
+import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
+router.use((req, res, next) => {
+  if (["POST", "PUT"].includes(req.method)) {
+    const data = req.body || {};
+    const error = contactError(data);
+    if (error) return res.status(400).json({ error });
+    if (dateError(data.contractStart) || data.contractEnd && dateError(data.contractEnd)) return res.status(400).json({ error: "Las fechas del contrato no son válidas." });
+    if (data.contractEnd && data.contractEnd < data.contractStart) return res.status(400).json({ error: "El fin de contrato no puede ser anterior al inicio." });
+  }
+  next();
+});
 
 function findTenant(id) {
   const row = db.prepare("SELECT * FROM tenants WHERE id = ?").get(id);
@@ -31,8 +43,11 @@ router.post("/", (req, res) => {
   }
   const id = data.id || crypto.randomUUID();
   try {
+    db.exec("BEGIN");
     upsertTenant(data, id);
+    db.exec("COMMIT");
   } catch (error) {
+    db.exec("ROLLBACK");
     return res.status(400).json({ error: error.message });
   }
   res.status(201).json(tenantPayload(findTenant(id)));
@@ -46,8 +61,11 @@ router.put("/:id", (req, res) => {
     return res.status(400).json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
   }
   try {
+    db.exec("BEGIN");
     upsertTenant(data, existing.id);
+    db.exec("COMMIT");
   } catch (error) {
+    db.exec("ROLLBACK");
     return res.status(400).json({ error: error.message });
   }
   res.json(tenantPayload(findTenant(existing.id)));
@@ -58,8 +76,11 @@ router.delete("/:id", (req, res) => {
   if (!existing) return res.status(404).json({ error: "Inquilino no encontrado." });
   db.exec("BEGIN");
   try {
-    db.prepare("UPDATE properties SET tenantRecordId = '' WHERE tenantRecordId = ?").run(existing.id);
-    db.prepare("DELETE FROM documents WHERE entityType = 'tenant' AND entityId = ?").run(existing.id);
+    for (const property of db.prepare("SELECT id, tenantIds FROM properties").all()) {
+      const ids = JSON.parse(property.tenantIds || "[]").filter(id => id !== existing.id);
+      db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?").run(JSON.stringify(ids), property.id);
+    }
+    removeEntityFiles("tenant", existing.id);
     db.prepare("DELETE FROM tenants WHERE id = ?").run(existing.id);
     db.exec("COMMIT");
   } catch (error) {

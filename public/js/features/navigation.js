@@ -1,5 +1,6 @@
 import { state, onDataChanged, ROLE_LABELS, setActiveUser, getCurrentUser, getCurrentUserRole, hasPermission, requirePermission } from "../state.js";
 import { toast } from "../utils.js";
+import { accountView } from "../account-view.js";
 import { renderCommunities } from "./comunidades.js";
 import { renderOwners } from "./propietarios.js";
 import { renderTenants } from "./inquilinos.js";
@@ -60,6 +61,7 @@ const contactVerify = {
 export function applyRoleUI() {
   const isOwner = state.activeRole === "owner";
   const user = getCurrentUser();
+  const account = accountView(state, ROLE_LABELS);
   const roleLabel = ROLE_LABELS[user?.rol] || user?.rol || "";
 
   // 1. Selector y perfil en topbar (login simulado)
@@ -69,10 +71,10 @@ export function applyRoleUI() {
 
   // 2. Buzones en topbar
   if (topbarInboxBtn) {
-    topbarInboxBtn.style.display = isOwner ? "none" : "";
+    topbarInboxBtn.style.display = hasPermission("admin_notification:read") ? "" : "none";
   }
   if (topbarOwnerInboxBtn) {
-    topbarOwnerInboxBtn.style.display = isOwner ? "" : "none";
+    topbarOwnerInboxBtn.style.display = hasPermission("owner_notification:read") ? "" : "none";
     if (isOwner) updateOwnerInboxBadge();
   }
 
@@ -84,19 +86,21 @@ export function applyRoleUI() {
   if (mobileNavComunidades) mobileNavComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
   if (navPropietarios) navPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (mobileNavPropietarios) mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
-  if (navInmuebles) navInmuebles.hidden = isOwner;
-  if (mobileNavInmuebles) mobileNavInmuebles.hidden = isOwner;
-  if (navAdministracion) navAdministracion.hidden = isOwner;
+  if (navInmuebles) navInmuebles.hidden = !hasPermission("property:read");
+  if (mobileNavInmuebles) mobileNavInmuebles.hidden = !hasPermission("property:read");
+  if (navAdministracion) navAdministracion.hidden = !["admin:users", "admin:roles", "admin:settings"].some(p => hasPermission(p));
   document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach(link => {
     link.hidden = isOwner;
   });
   newTenantBtn.hidden = isOwner;
 
+  for (const link of [navPropietarios, mobileNavPropietarios]) if (link) link.hidden = !hasPermission("owner:read");
+  for (const link of [navInquilinos, mobileNavInquilinos]) if (link) link.hidden = !hasPermission("tenant:read");
   // 4. Sección Comunidades
-  if (comHeadingEyebrow) comHeadingEyebrow.textContent = isOwner ? "MI COMUNIDAD ASIGNADA" : "ASOCIACIÓN DE PROPIETARIOS";
-  if (comHeadingTitle) comHeadingTitle.textContent = isOwner ? "Comunidad de vecinos" : "Comunidades de vecinos";
-  if (comHeadingSubtitle) comHeadingSubtitle.textContent = isOwner 
-    ? "Consulta los datos de la comunidad a la que perteneces (sólo lectura)." 
+  if (comHeadingEyebrow) comHeadingEyebrow.textContent = isOwner ? (account.communities.length ? "MIS COMUNIDADES" : "VINCULACIÓN DE PERFIL") : "ASOCIACIÓN DE PROPIETARIOS";
+  if (comHeadingTitle) comHeadingTitle.textContent = isOwner ? (account.communities.length > 1 ? "Mis comunidades" : "Mi comunidad") : "Comunidades de vecinos";
+  if (comHeadingSubtitle) comHeadingSubtitle.textContent = isOwner
+    ? "Aquí aparecen las comunidades vinculadas a tus perfiles."
     : "Consulta y gestiona las comunidades vinculadas a Peñarrubia.";
   if (newCommunityBtn) newCommunityBtn.style.display = isOwner ? "none" : "";
   if (comToolbar) comToolbar.style.display = isOwner ? "none" : "";
@@ -104,24 +108,29 @@ export function applyRoleUI() {
   // 5. Sección Propietarios
   if (ownersHeadingEyebrow) ownersHeadingEyebrow.textContent = isOwner ? "MI CUENTA Y DOCUMENTACIÓN" : "ASOCIACIÓN DE PROPIETARIOS";
   if (ownersHeadingTitle) ownersHeadingTitle.textContent = isOwner ? "Mi Perfil de Propietario" : "Propietarios";
-  if (ownersHeadingSubtitle) ownersHeadingSubtitle.textContent = isOwner 
-    ? "Consulta tu expediente de asociado, adjunta tus documentos requeridos y comprueba su estado de aprobación." 
+  if (ownersHeadingSubtitle) ownersHeadingSubtitle.textContent = isOwner
+    ? "Consulta tu expediente de asociado, adjunta tus documentos requeridos y comprueba su estado de aprobación."
     : "Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.";
   if (newOwnerBtn) newOwnerBtn.style.display = isOwner ? "none" : "";
   if (ownersToolbar) ownersToolbar.style.display = isOwner ? "none" : "";
 
   // 6. Banners informativos de modo propietario
   const bannerCom = document.querySelector("#owner-view-banner-com");
-  if (bannerCom) bannerCom.style.display = isOwner ? "flex" : "none";
+  if (bannerCom) {
+    bannerCom.style.display = isOwner ? "flex" : "none";
+    document.querySelector("#community-profile-title").textContent = `${account.communityTitle}:`;
+    document.querySelector("#community-profile-message").textContent = account.communityMessage;
+    document.querySelector("#community-profile-name").textContent = account.displayName;
+  }
   const bannerOwn = document.querySelector("#owner-view-banner-own");
-  if (bannerOwn) bannerOwn.style.display = isOwner ? "flex" : "none";
+  if (bannerOwn) bannerOwn.style.display = isOwner && account.owners.length > 0 ? "flex" : "none";
 }
 
 
 export function handleRouting() {
   const hash = (window.location.hash || "#home").toLowerCase();
   const isOwner = state.activeRole === "owner";
-  if ((hash === "#inmuebles" || hash === "#inquilinos") && isOwner) {
+  if ((hash === "#inmuebles" && !hasPermission("property:read")) || (hash === "#inquilinos" && !hasPermission("tenant:read"))) {
     window.location.hash = "#home";
     return;
   }
@@ -156,7 +165,7 @@ export function handleRouting() {
   });
 
   if (hash === "#administracion") {
-    if (state.activeRole !== "admin") {
+    if (!["admin:users", "admin:roles", "admin:settings"].some(p => hasPermission(p))) {
       window.location.hash = "#home";
       return;
     }
@@ -275,27 +284,9 @@ const activeRoleSelect = document.querySelector("#active-role-select");
 
 export function renderUserSelector() {
   if (!activeRoleSelect) return;
-  const previous = state.currentUserId;
   activeRoleSelect.replaceChildren();
-  state.users.filter(user => user.activo).forEach(user => {
-    const roleLabel = ROLE_LABELS[user.rol] || user.rol;
-    activeRoleSelect.add(new Option(`${user.nombre || user.usuario} · ${roleLabel}`, user.id));
-  });
-  if (previous) activeRoleSelect.value = previous;
+  const user = getCurrentUser();
+  if (user) activeRoleSelect.add(new Option(user.nombre || user.usuario, user.id));
+  activeRoleSelect.disabled = true;
+  activeRoleSelect.title = "Usuario conectado";
 }
-
-if (activeRoleSelect) {
-  activeRoleSelect.addEventListener("change", () => {
-    setActiveUser(activeRoleSelect.value);
-    applyRoleUI();
-    renderCommunities();
-    renderOwners();
-    renderProperties();
-    renderTenants();
-    renderHomeDashboard();
-    handleRouting();
-    toast(`Sesión simulada como ${getCurrentUser()?.usuario || "?"} (${ROLE_LABELS[getCurrentUserRole()] || getCurrentUserRole()}).`);
-  });
-  onDataChanged(() => renderUserSelector());
-}
-

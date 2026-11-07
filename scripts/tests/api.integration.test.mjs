@@ -1,0 +1,563 @@
+import { test, before, after } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import express from "express";
+
+const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-api-test-"));
+process.env.APP_DATA_DIR = directory;
+process.env.APP_UPLOADS_DIR = path.join(directory, "uploads");
+process.env.NODE_ENV = "test";
+const { db, UPLOADS_DIR } = await import("../../src/db.js");
+const { seedIfEmpty } = await import("../../src/seed.js");
+seedIfEmpty();
+const { default: router } = await import("../../src/routes/index.js");
+let server, base, admin, owner, tenant;
+
+function client() {
+  let cookie = "";
+  return async (route, method = "GET", body, extra = {}) => {
+    const response = await fetch(base + route, {
+      method,
+      headers: {
+        ...(body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...(cookie ? { Cookie: cookie } : {}),
+        ...extra,
+      },
+      body:
+        body === undefined
+          ? undefined
+          : body instanceof FormData
+            ? body
+            : JSON.stringify(body),
+    });
+    const setCookie = response.headers.get("set-cookie");
+    if (setCookie) cookie = setCookie.split(";")[0];
+    return {
+      status: response.status,
+      data: await response.json(),
+      cookie: setCookie,
+    };
+  };
+}
+before(async () => {
+  const app = express();
+  app.use(express.json({ limit: "60mb" }));
+  app.use("/api", router);
+  app.use((error, _req, res, _next) =>
+    res.status(500).json({ error: error.message }),
+  );
+  server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve) => server.once("listening", resolve));
+  base = `http://127.0.0.1:${server.address().port}/api`;
+  admin = client();
+  owner = client();
+  tenant = client();
+  for (const [request, usuario] of [
+    [admin, "admin"],
+    [owner, "carlos"],
+    [tenant, "laura"],
+  ]) {
+    const login = await request("/auth/signin", "POST", {
+      usuario,
+      password: usuario,
+    });
+    assert.equal(login.status, 200, JSON.stringify(login.data));
+  }
+});
+after(async () => {
+  server?.closeAllConnections();
+  if (server) await new Promise((resolve) => server.close(resolve));
+  db.close();
+  assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+  assert.ok(path.basename(directory).startsWith("penarrubia-api-test-"));
+  rmSync(directory, { recursive: true, force: true });
+});
+
+test("API privada: sin sesión no se pueden leer ni modificar registros", async () => {
+  const anonymous = client();
+  for (const route of ["/bootstrap", "/owners", "/admin/users"])
+    assert.equal((await anonymous(route)).status, 401);
+  assert.equal((await anonymous("/owners/own-seed-1", "DELETE")).status, 401);
+});
+test("login: cookie HttpOnly, contraseña incorrecta y origen ajeno", async () => {
+  const request = client();
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "admin",
+        password: "incorrecta",
+      })
+    ).status,
+    401,
+  );
+  const login = await request("/auth/signin", "POST", {
+    usuario: "admin",
+    password: "admin",
+  });
+  assert.match(login.cookie, /HttpOnly/i);
+  assert.match(login.cookie, /SameSite=Strict/i);
+  assert.equal(
+    (
+      await request(
+        "/admin/settings",
+        "PUT",
+        {},
+        { Origin: "https://example.invalid" },
+      )
+    ).status,
+    403,
+  );
+});
+test("bootstrap: propietario e inquilino sólo reciben datos de sus perfiles", async () => {
+  const own = await owner("/bootstrap");
+  assert.deepEqual(
+    own.data.owners.map((o) => o.id),
+    ["own-seed-1"],
+  );
+  assert.deepEqual(
+    own.data.users.map((u) => u.id),
+    ["user-carlos"],
+  );
+  assert.equal((await owner("/owners/own-seed-2")).status, 403);
+  assert.equal((await owner("/admin/users")).status, 403);
+  const rent = await tenant("/bootstrap");
+  assert.deepEqual(
+    rent.data.tenants.map((t) => t.id),
+    ["tenant-seed-1"],
+  );
+  assert.ok(rent.data.owners.every((o) => !o.iban && !o.dni));
+});
+test("copropietarios: el alta conserva titulares y porcentajes coherentes", async () => {
+  const result = await admin("/owners", "POST", {
+    name: "Copropietario",
+    surname: "Prueba",
+    dni: "00000000T",
+    email: "copropietario@example.test",
+    propertyIds: ["prop-seed-1"],
+  });
+  assert.equal(result.status, 201, JSON.stringify(result.data));
+  const property = (await admin("/properties/prop-seed-1")).data;
+  assert.ok(property.ownerIds.includes("own-seed-1"));
+  assert.ok(property.ownerIds.includes(result.data.id));
+  assert.equal(
+    Object.values(property.ownerPercentages).reduce((sum, n) => sum + n, 0),
+    100,
+  );
+});
+test("inquilinos: varios contratos no se sobrescriben y se conserva userId", async () => {
+  const payload = {
+    ownerId: "own-seed-1",
+    propertyId: "prop-seed-1",
+    name: "Inquilino",
+    surname: "Prueba",
+    phone: "600000000",
+    email: "tenant@example.test",
+    contractStart: "2020-01-01",
+    contractEnd: "",
+  };
+  for (const id of ["api-tenant-1", "api-tenant-2"])
+    assert.equal(
+      (await admin("/tenants", "POST", { ...payload, id })).status,
+      201,
+    );
+  let property = (await admin("/properties/prop-seed-1")).data;
+  assert.ok(property.tenantIds.includes("api-tenant-1"));
+  assert.ok(property.tenantIds.includes("api-tenant-2"));
+  await admin("/tenants/api-tenant-1", "PUT", {
+    ...payload,
+    userId: "user-consulta",
+  });
+  assert.equal(
+    (await admin("/tenants/api-tenant-1", "PUT", payload)).data.userId,
+    "user-consulta",
+  );
+  assert.equal((await admin("/tenants/api-tenant-2", "DELETE")).status, 200);
+  property = (await admin("/properties/prop-seed-1")).data;
+  assert.ok(!property.tenantIds.includes("api-tenant-2"));
+  assert.ok(property.tenantIds.includes("api-tenant-1"));
+});
+test("administración: contraseñas explícitas y respuestas sin secretos", async () => {
+  assert.equal(
+    (
+      await admin("/admin/users", "POST", {
+        usuario: "missing-password",
+        rol: "user",
+      })
+    ).status,
+    400,
+  );
+  const created = await admin("/admin/users", "POST", {
+    usuario: "new-user",
+    email: "new-user@example.test",
+    rol: "user",
+    password: "temporary-password",
+  });
+  assert.equal(created.status, 201);
+  assert.ok(!("passwordHash" in created.data));
+  const changed = await admin(`/admin/users/${created.data.id}`, "PUT", {
+    nombre: "Nombre editado",
+  });
+  assert.ok(!("resetToken" in changed.data));
+  assert.ok(!("passwordHash" in changed.data));
+  const login = client();
+  assert.equal(
+    (
+      await login("/auth/signin", "POST", {
+        usuario: "new-user",
+        password: "temporary-password",
+      })
+    ).status,
+    200,
+  );
+});
+test("protección del último superadministrador en borrado, baja y cambio de rol", async () => {
+  assert.equal((await admin("/admin/users/user-admin", "DELETE")).status, 409);
+  assert.equal(
+    (await admin("/admin/users/user-admin", "PUT", { activo: false })).status,
+    409,
+  );
+  assert.equal(
+    (await admin("/admin/users/user-admin", "PUT", { rol: "user" })).status,
+    409,
+  );
+});
+test("roles personalizados: permisos efectivos, sin borrar roles asignados por ID", async () => {
+  const role = await admin("/admin/roles", "POST", {
+    nombre: "Lectura personalizada",
+    permisos: ["community:read"],
+  });
+  const user = await admin("/admin/users", "POST", {
+    usuario: "role-user",
+    rol: role.data.id,
+    password: "temporary-password",
+  });
+  assert.equal(user.data.rol, "Lectura personalizada");
+  const request = client();
+  await request("/auth/signin", "POST", {
+    usuario: "role-user",
+    password: "temporary-password",
+  });
+  assert.equal((await request("/communities")).data.length, 7);
+  assert.equal(
+    (
+      await request("/communities", "POST", {
+        name: "No permitido",
+        nif: "H12345678",
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await admin(`/admin/roles/${role.data.id}`, "DELETE")).status,
+    409,
+  );
+  await admin(`/admin/roles/${role.data.id}`, "PUT", {
+    nombre: "Renombrado",
+    permisos: ["community:read", "community:create"],
+  });
+  assert.equal(
+    (
+      await request("/communities", "POST", {
+        name: "Permitido",
+        nif: "H12345678",
+      })
+    ).status,
+    201,
+  );
+});
+test("propietario: no puede cambiar perfiles, titularidad ni aprobar sus documentos", async () => {
+  const before = (await owner("/owners/own-seed-1")).data;
+  const changed = await owner("/owners/own-seed-1", "PUT", {
+    ...before,
+    userId: "user-admin",
+    isMember: false,
+    propertyIds: ["prop-seed-2"],
+    documents: {
+      ...before.documents,
+      dni: { ...before.documents.dni, adminApproval: { status: "approved" } },
+    },
+  });
+  assert.equal(changed.status, 200);
+  assert.equal(changed.data.userId, "user-carlos");
+  assert.equal(changed.data.isMember, before.isMember);
+  assert.notEqual(changed.data.documents.dni.adminApproval?.status, "approved");
+  assert.equal(
+    (await owner("/owners/own-seed-1")).data.propertyId,
+    before.propertyId,
+  );
+});
+test("buzones: avisos persisten y sólo el destinatario los puede marcar leídos", async () => {
+  const n = await admin("/notifications/owner-notifications", "POST", {
+    ownerId: "own-seed-1",
+    title: "Aviso",
+    message: "Prueba persistente",
+  });
+  assert.equal(n.status, 201);
+  assert.ok(
+    (await owner("/notifications/owner-notifications")).data.some(
+      (row) => row.id === n.data.id,
+    ),
+  );
+  assert.equal(
+    (
+      await tenant(`/notifications/owner-notifications/${n.data.id}`, "PATCH", {
+        read: true,
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await owner(`/notifications/owner-notifications/${n.data.id}`, "PATCH", {
+        read: true,
+      })
+    ).data.read,
+    true,
+  );
+  assert.equal((await admin("/notifications/admin-emails")).status, 200);
+});
+test("subidas: errores no dejan archivos, entidades inexistentes y contenido falso se rechazan", async () => {
+  const before = readdirSync(UPLOADS_DIR).sort();
+  for (const [entityType, entityId, content] of [
+    ["invalid", "x", "%PDF-1.4"],
+    ["property", "missing", "%PDF-1.4"],
+    ["property", "prop-seed-1", "fake"],
+  ]) {
+    const form = new FormData();
+    form.append("entityType", entityType);
+    form.append("entityId", entityId);
+    form.append(
+      "files",
+      new Blob([content], { type: "application/pdf" }),
+      "file.pdf",
+    );
+    assert.equal((await admin("/documents", "POST", form)).status, 400);
+    assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
+  }
+  const form = new FormData();
+  form.append("entityType", "property");
+  form.append("entityId", "prop-seed-1");
+  form.append(
+    "files",
+    new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
+    "valid.pdf",
+  );
+  const uploaded = await admin("/documents", "POST", form);
+  assert.equal(uploaded.status, 201);
+  assert.equal(
+    (await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status,
+    200,
+  );
+  assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
+});
+test("validaciones de servidor rechazan NIF y contacto inválidos", async () => {
+  assert.equal(
+    (
+      await admin("/communities", "POST", {
+        name: "Inválida",
+        nif: "NO-VALIDO",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await admin("/communities", "POST", {
+        name: "Inválida",
+        nif: "H99999999",
+        email: "no-email",
+      })
+    ).status,
+    400,
+  );
+});
+test("SSO y recuperación sin configurar no autentican ni filtran tokens", async () => {
+  const request = client();
+  const sso = await request("/auth/sso", "POST", {
+    provider: "gmail",
+    email: "admin@penarrubia.es",
+  });
+  assert.equal(sso.status, 503);
+  const reset = await request("/auth/forgot-password", "POST", {
+    email: "admin@penarrubia.es",
+  });
+  assert.equal(reset.status, 503);
+  assert.ok(!reset.data.token);
+});
+test("logout invalida la sesión en el servidor", async () => {
+  const request = client();
+  await request("/auth/signin", "POST", {
+    usuario: "admin",
+    password: "admin",
+  });
+  assert.equal((await request("/auth/logout", "POST")).status, 200);
+  assert.equal((await request("/bootstrap")).status, 401);
+});
+
+test("administrador de comunidad: no puede leer ni mover datos a otra comunidad", async () => {
+  const request = client();
+  await request("/auth/signin", "POST", {
+    usuario: "gestor.olivos",
+    password: "gestor.olivos",
+  });
+  const visible = await request("/bootstrap");
+  assert.deepEqual(
+    visible.data.communities.map((c) => c.id),
+    ["com-seed-1"],
+  );
+  assert.equal((await request("/communities/com-seed-2")).status, 403);
+  const property = (await request("/properties/prop-seed-1")).data;
+  assert.equal(
+    (
+      await request("/properties/prop-seed-1", "PUT", {
+        ...property,
+        communityId: "com-seed-2",
+      })
+    ).status,
+    403,
+  );
+});
+
+test("contraseña nueva revoca las sesiones y sustituye la contraseña anterior", async () => {
+  const request = client();
+  await request("/auth/signin", "POST", {
+    usuario: "new-user",
+    password: "temporary-password",
+  });
+  const user = (await request("/auth/me")).data;
+  assert.equal(
+    (
+      await admin(`/admin/users/${user.id}`, "PUT", {
+        password: "replacement-password",
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await request("/bootstrap")).status, 401);
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "new-user",
+        password: "temporary-password",
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "new-user",
+        password: "replacement-password",
+      })
+    ).status,
+    200,
+  );
+});
+
+test("la API rechaza perfiles inexistentes, listas inválidas y aprobaciones sin archivo", async () => {
+  const payload = (await admin("/owners/own-seed-1")).data;
+  assert.equal(
+    (
+      await admin("/owners/own-seed-1", "PUT", {
+        ...payload,
+        userId: "missing-user",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await admin("/owners/own-seed-1", "PUT", {
+        ...payload,
+        propertyIds: "invalid",
+      })
+    ).status,
+    400,
+  );
+  const documents = structuredClone(payload.documents);
+  documents.dni.adminApproval = { status: "approved" };
+  assert.equal(
+    (await admin("/owners/own-seed-1", "PUT", { ...payload, documents }))
+      .status,
+    400,
+  );
+});
+
+test("registro nuevo: sesión propia sin perfiles ni comunidades de otra cuenta", async () => {
+  const request = client();
+  const created = await request("/auth/signup", "POST", {
+    nombre: "Usuario",
+    apellido: "Nuevo",
+    usuario: "fresh-account",
+    email: "fresh-account@example.test",
+    password: "initial-password",
+  });
+  assert.equal(created.status, 201);
+  const bootstrap = (await request("/bootstrap")).data;
+  assert.equal(bootstrap.currentUser.id, created.data.id);
+  assert.deepEqual(bootstrap.owners, []);
+  assert.deepEqual(bootstrap.tenants, []);
+  assert.deepEqual(bootstrap.communities, []);
+  assert.deepEqual(
+    bootstrap.users.map((user) => user.id),
+    [created.data.id],
+  );
+});
+
+test("cambio de contraseña propio: valida la actual y cierra sólo las sesiones de esa cuenta", async () => {
+  const created = await admin("/admin/users", "POST", {
+    usuario: "self-password",
+    rol: "user",
+    password: "initial-password",
+  });
+  assert.equal(created.status, 201);
+  const request = client();
+  await request("/auth/signin", "POST", {
+    usuario: "self-password",
+    password: "initial-password",
+  });
+  assert.equal(
+    (
+      await request("/auth/change-password", "POST", {
+        currentPassword: "incorrect-password",
+        newPassword: "changed-password",
+      })
+    ).status,
+    401,
+  );
+  assert.equal((await request("/auth/me")).status, 200);
+  assert.equal(
+    (
+      await request("/auth/change-password", "POST", {
+        userId: "user-admin",
+        currentPassword: "initial-password",
+        newPassword: "changed-password",
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await request("/auth/me")).status, 401);
+  assert.equal((await admin("/auth/me")).status, 200);
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "self-password",
+        password: "initial-password",
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "self-password",
+        password: "changed-password",
+      })
+    ).status,
+    200,
+  );
+});

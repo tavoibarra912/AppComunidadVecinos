@@ -1,3 +1,5 @@
+import { sanitizeHtml, escapeHtml, documentUrl } from "../html.js";
+
 import { api } from "../api.js";
 import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, tenantsForProperty, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
@@ -28,7 +30,7 @@ function iconBtn(className, title, ariaLabel, svg) {
   btn.className = `icon-action-btn ${className}`;
   btn.title = title;
   btn.setAttribute("aria-label", ariaLabel);
-  btn.innerHTML = svg;
+  btn.innerHTML = sanitizeHtml(svg);
   return btn;
 }
 
@@ -609,6 +611,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     selectOwnerTerritory("", "", "");
   }
 
+  if (tabDocsBadge) tabDocsBadge.textContent = `${["dni", "bankReceipt", "propertyDeed"].filter(key => editingDocs.current[key]).length}/3`;
   updateOwnerUserSelect(o ? o.userId || "" : "");
   updateCommunityTabGating();
   updateCanalOptions();
@@ -640,7 +643,9 @@ function updateOwnerUserSelect(selectedUserId = "") {
     if (!isFree && user.id !== current) option.disabled = true;
     select.add(option);
   });
+  if (current && ![...select.options].some(option => option.value === current)) select.add(new Option("Cuenta vinculada", current));
   if (current) select.value = current;
+  select.disabled = !hasPermission("admin:users");
 }
 
 export function closeOwnerEditor() {
@@ -698,6 +703,7 @@ function applyOwnerDialogReadOnly(readOnly) {
     cancelBtn.setAttribute("aria-label", readOnly ? "Cerrar" : "Cancelar");
   }
   if (readOnly && ownerPropertyLinkPanel) ownerPropertyLinkPanel.hidden = true;
+  if (ownerForm.elements.userId) ownerForm.elements.userId.disabled = readOnly || !hasPermission("admin:users");
 }
 
 /** Selector único de comunidad del tab Comunidad. */
@@ -816,13 +822,13 @@ export function renderOwnerTenants(owner) {
     viewButton.dataset.tenantId = tenant.id;
     viewButton.title = "Ver información";
     viewButton.setAttribute("aria-label", `Ver información de ${tenant.name} ${tenant.surname}`);
-    viewButton.innerHTML = `
+    viewButton.innerHTML = sanitizeHtml(`
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="16" x2="12" y2="12"></line>
         <line x1="12" y1="8" x2="12.01" y2="8"></line>
       </svg>
-    `;
+    `);
     actions.append(viewButton);
 
     if (canManageTenants) {
@@ -833,12 +839,12 @@ export function renderOwnerTenants(owner) {
       editButton.dataset.tenantId = tenant.id;
       editButton.title = "Editar";
       editButton.setAttribute("aria-label", `Editar inquilino ${tenant.name} ${tenant.surname}`);
-      editButton.innerHTML = `
+      editButton.innerHTML = sanitizeHtml(`
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
           <path d="m15 5 4 4"></path>
         </svg>
-      `;
+      `);
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.className = "icon-action-btn btn-delete";
@@ -846,13 +852,13 @@ export function renderOwnerTenants(owner) {
       deleteButton.dataset.tenantId = tenant.id;
       deleteButton.title = "Eliminar";
       deleteButton.setAttribute("aria-label", `Eliminar inquilino ${tenant.name} ${tenant.surname}`);
-      deleteButton.innerHTML = `
+      deleteButton.innerHTML = sanitizeHtml(`
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 6h18"></path>
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
           <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
         </svg>
-      `;
+      `);
       actions.append(editButton, deleteButton);
     }
 
@@ -883,23 +889,22 @@ export function renderDetailDocsGrid(o) {
       if (isApproved) approvalBadge = '<span class="status-badge doc-approved">✓ Aprobado por Admin</span>';
       if (isRejected) approvalBadge = '<span class="status-badge doc-rejected">✗ Rechazado</span>';
 
-      card.innerHTML = `
+      card.innerHTML = sanitizeHtml(`
         <div class="detail-doc-card-top">
           <div>
             <h4 class="detail-doc-name">${title}</h4>
-            <p class="detail-doc-sub">${doc.fileName} (${Math.round(doc.fileSize / 1024)} KB)</p>
+            <p class="detail-doc-sub">${escapeHtml(doc.fileName)} (${Math.round(doc.fileSize / 1024)} KB)</p>
           </div>
           ${approvalBadge}
         </div>
         <div class="detail-doc-metrics">
-          <strong>Validación automática:</strong> ${doc.autoValidation?.typeVerified || "Verificado"}<br />
-          <strong>Legibilidad:</strong> ${doc.autoValidation?.legibilityScore || 98}% (${doc.autoValidation?.legibilityStatus?.split(" ")[0] || "Óptima"}) · Subido el ${doc.uploadedAt}
+          <strong>Revisión:</strong> Pendiente de evaluación administrativa · Subido el ${escapeHtml(doc.uploadedAt)}
         </div>
         <div class="detail-doc-actions">
           <button class="secondary-button" style="padding: 6px 12px; font-size: 12px;" type="button" data-action="view-doc" data-key="${key}">👁️ Ver documento</button>
           <button class="secondary-button" style="padding: 6px 12px; font-size: 12px;" type="button" data-action="replace-doc" data-key="${key}">🔄 Cambiar</button>
         </div>
-      `;
+      `);
 
       card.querySelector('[data-action="view-doc"]').addEventListener("click", () => {
         openDocViewer(o, key, doc);
@@ -909,7 +914,7 @@ export function renderDetailDocsGrid(o) {
         openOwnerEditor(o.id, "docs");
       });
     } else {
-      card.innerHTML = `
+      card.innerHTML = sanitizeHtml(`
         <div class="detail-doc-card-top">
           <div>
             <h4 class="detail-doc-name">${title}</h4>
@@ -923,7 +928,7 @@ export function renderDetailDocsGrid(o) {
         <div class="detail-doc-actions">
           <button class="primary-button" style="padding: 6px 12px; font-size: 12px;" type="button" data-action="upload-doc" data-key="${key}">+ Subir documento</button>
         </div>
-      `;
+      `);
       card.querySelector('[data-action="upload-doc"]').addEventListener("click", () => {
         closeOwnerDetail();
         openOwnerEditor(o.id, "docs");
@@ -941,45 +946,45 @@ export function renderDetailApprovalPanel(o, docStatus) {
   if (state.activeRole === "owner") {
     if (docStatus === "approved") {
       ownerDetailApprovalPanel.className = "admin-approval-panel approved-box";
-      ownerDetailApprovalPanel.innerHTML = `
+      ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
         <div class="approval-flex-row">
           <div class="approval-info-col">
             <h4 style="color: #15803d;">✓ Expediente Documental Aprobado Oficialmente</h4>
             <p>Toda tu documentación reglamentaria ha sido verificada y formalmente <strong>convalidada por el Administrador</strong>. Tu perfil de asociado está al día.</p>
           </div>
         </div>
-      `;
+      `);
     } else if (docStatus === "pending_admin") {
       ownerDetailApprovalPanel.className = "admin-approval-panel pending-box";
-      ownerDetailApprovalPanel.innerHTML = `
+      ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
         <div class="approval-flex-row">
           <div class="approval-info-col">
             <h4>⏳ Documentación en Revisión por el Administrador</h4>
-            <p>Tus documentos han superado la validación automática de formato y legibilidad del sistema. El Administrador ha sido notificado y resolverá la aprobación de tu expediente en breve.</p>
+            <p>Tus documentos se han recibido y están pendientes de revisión. El Administrador ha sido notificado y resolverá la aprobación de tu expediente en breve.</p>
           </div>
         </div>
-      `;
+      `);
     } else if (docStatus === "rejected") {
       const reason = o.documents?.dni?.adminApproval?.notes || "Documentación no conforme o incompleta.";
       ownerDetailApprovalPanel.className = "admin-approval-panel rejected-box";
-      ownerDetailApprovalPanel.innerHTML = `
+      ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
         <div class="approval-flex-row">
           <div class="approval-info-col">
             <h4 style="color: #b91c1c;">⚠️ Requerimiento de Subsanación</h4>
-            <p>El Administrador solicita correcciones en tu documentación: <em>“${reason}”</em>. Por favor, pulsa en 'Editar propietario' para volver a adjuntar los archivos requeridos.</p>
+            <p>El Administrador solicita correcciones en tu documentación: <em>“${escapeHtml(reason)}”</em>. Por favor, pulsa en 'Editar propietario' para volver a adjuntar los archivos requeridos.</p>
           </div>
         </div>
-      `;
+      `);
     } else {
       ownerDetailApprovalPanel.className = "admin-approval-panel";
-      ownerDetailApprovalPanel.innerHTML = `
+      ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
         <div class="approval-flex-row">
           <div class="approval-info-col">
             <h4>⚠️ Documentación Obligatoria Pendiente</h4>
             <p>Por favor, sube la copia de tu DNI (ambas caras), recibo bancario y escritura para que el Administrador pueda convalidar tu expediente.</p>
           </div>
         </div>
-      `;
+      `);
     }
     ownerDetailEditBtn.title = "Editar mis datos";
     ownerDetailEditBtn.setAttribute("aria-label", "Editar mis datos");
@@ -992,11 +997,11 @@ export function renderDetailApprovalPanel(o, docStatus) {
 
   if (docStatus === "pending_admin") {
     ownerDetailApprovalPanel.className = "admin-approval-panel pending-box";
-    ownerDetailApprovalPanel.innerHTML = `
+    ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
       <div class="approval-flex-row">
         <div class="approval-info-col">
           <h4>Resolución Administrativa de Expediente:</h4>
-          <p>La documentación ha sido <strong>validada de forma automática por el sistema</strong> (DNI español, cuenta bancaria y escritura conformes). Como Administrador, verifique el expediente y apruebe o solicite subsanación.</p>
+          <p>La documentación está <strong>pendiente de revisión administrativa</strong>. Como Administrador, verifique el expediente y apruebe o solicite subsanación.</p>
         </div>
         <div class="approval-buttons-wrap">
           <button class="btn-reject-danger" type="button" id="btn-detail-reject">
@@ -1007,7 +1012,7 @@ export function renderDetailApprovalPanel(o, docStatus) {
           </button>
         </div>
       </div>
-    `;
+    `);
 
     ownerDetailApprovalPanel.querySelector("#btn-detail-approve").addEventListener("click", () => {
       if (confirm(`¿Aprobar formalmente toda la documentación aportada por ${o.name} ${o.surname}?`)) {
@@ -1025,17 +1030,17 @@ export function renderDetailApprovalPanel(o, docStatus) {
     const reviewedBy = firstDoc?.adminApproval?.reviewedBy || "Administrador";
 
     ownerDetailApprovalPanel.className = "admin-approval-panel approved-box";
-    ownerDetailApprovalPanel.innerHTML = `
+    ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
       <div class="approval-flex-row">
         <div class="approval-info-col">
           <h4 style="color: #15803d;">✓ Documentación Aprobada Formalmente</h4>
-          <p>Expediente revisado y verificado con éxito por <strong>${reviewedBy}</strong> el ${reviewedDate}. El asociado dispone de su documentación debidamente convalidada.</p>
+          <p>Expediente revisado y verificado con éxito por <strong>${escapeHtml(reviewedBy)}</strong> el ${escapeHtml(reviewedDate)}. El asociado dispone de su documentación debidamente convalidada.</p>
         </div>
         <div class="approval-buttons-wrap">
           <button class="secondary-button" style="font-size: 12px;" type="button" id="btn-detail-reopen">Reabrir para revisión</button>
         </div>
       </div>
-    `;
+    `);
 
     ownerDetailApprovalPanel.querySelector("#btn-detail-reopen").addEventListener("click", () => {
       if (confirm("¿Deseas volver a marcar la documentación como pendiente de revisión?")) {
@@ -1046,17 +1051,17 @@ export function renderDetailApprovalPanel(o, docStatus) {
   } else if (docStatus === "rejected") {
     const reason = o.documents?.dni?.adminApproval?.notes || "Documentación no conforme o incompleta.";
     ownerDetailApprovalPanel.className = "admin-approval-panel rejected-box";
-    ownerDetailApprovalPanel.innerHTML = `
+    ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
       <div class="approval-flex-row">
         <div class="approval-info-col">
           <h4 style="color: #b91c1c;">✗ Documentación Rechazada / Pendiente de Subsanación</h4>
-          <p>Motivo indicado al propietario: <em>“${reason}”</em></p>
+          <p>Motivo indicado al propietario: <em>“${escapeHtml(reason)}”</em></p>
         </div>
         <div class="approval-buttons-wrap">
           <button class="primary-button" style="font-size: 12px;" type="button" id="btn-detail-reopen">Revisar de nuevo</button>
         </div>
       </div>
-    `;
+    `);
 
     ownerDetailApprovalPanel.querySelector("#btn-detail-reopen").addEventListener("click", () => {
       reopenOwnerDocs(o.id);
@@ -1064,7 +1069,7 @@ export function renderDetailApprovalPanel(o, docStatus) {
 
   } else {
     ownerDetailApprovalPanel.className = "admin-approval-panel";
-    ownerDetailApprovalPanel.innerHTML = `
+    ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
       <div class="approval-flex-row">
         <div class="approval-info-col">
           <h4>Expediente en curso:</h4>
@@ -1074,7 +1079,7 @@ export function renderDetailApprovalPanel(o, docStatus) {
           <button class="primary-button" style="font-size: 12px;" type="button" id="btn-detail-subir-docs">Subir documentación</button>
         </div>
       </div>
-    `;
+    `);
 
     ownerDetailApprovalPanel.querySelector("#btn-detail-subir-docs").addEventListener("click", () => {
       closeOwnerDetail();
@@ -1192,56 +1197,47 @@ export function openDocViewer(owner, docKey, docObj = null) {
   document.querySelector("#doc-viewer-filename").textContent = `${doc.fileName} (${Math.round(doc.fileSize / 1024)} KB)`;
   document.querySelector("#doc-viewer-date").textContent = doc.uploadedAt;
 
-  const score = doc.autoValidation?.legibilityScore || 98;
-  const status = doc.autoValidation?.legibilityStatus || "Óptima";
-  document.querySelector("#doc-viewer-score-bar").style.width = `${score}%`;
-  document.querySelector("#doc-viewer-score-text").textContent = `${score}% (${status.split(" ")[0]})`;
-
-  // Checklist
+  document.querySelector("#doc-viewer-score-bar").style.width = "0%";
+  document.querySelector("#doc-viewer-score-text").textContent = "Revisión manual pendiente";
   const checksListEl = document.querySelector("#doc-viewer-checks-list");
   checksListEl.replaceChildren();
-  const checks = doc.autoValidation?.checks || [];
-  checks.forEach(c => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span class="check-icon passed">✓</span> <span><strong>${c.name}:</strong> ${c.detail}</span>`;
-    checksListEl.append(li);
-  });
+  const note = document.createElement("li");
+  note.textContent = "El sistema no certifica automáticamente la identidad ni el contenido del documento.";
+  checksListEl.append(note);
 
   // Estado de aprobación
   const approvalBox = document.querySelector("#doc-viewer-approval-status");
   const isApproved = doc.adminApproval?.status === "approved";
-  approvalBox.innerHTML = `
+  approvalBox.innerHTML = sanitizeHtml(`
     <span class="status-badge ${isApproved ? "doc-approved" : "doc-pending-admin"}">
       ${isApproved ? "✓ Aprobado por Administrador" : "⏳ Pendiente de resolución administrativa"}
     </span>
-  `;
+  `);
 
   // Renderizar preview en pane
   const previewPane = document.querySelector("#doc-viewer-preview-pane");
   previewPane.replaceChildren();
 
-  let previewUrl = doc.dataUrl;
-  if (!previewUrl) {
-    const sample = DocumentValidator.generateSampleDocument(docKey, owner);
-    previewUrl = sample?.dataUrl;
-  }
+  let previewUrl = documentUrl(doc.dataUrl || doc.url);
 
   if (previewUrl) {
-    const img = document.createElement("img");
+    const img = document.createElement(doc.fileType === "application/pdf" ? "iframe" : "img");
+    if (img.tagName === "IFRAME") { img.setAttribute("sandbox", ""); img.title = "Vista previa del PDF"; img.style.width = "100%"; img.style.height = "400px"; }
     img.src = previewUrl;
     img.alt = doc.title;
     img.style.maxWidth = "100%";
     img.style.maxHeight = "400px";
     img.style.borderRadius = "6px";
     previewPane.append(img);
+    const download = document.createElement("a"); download.href = previewUrl; download.download = doc.fileName; download.textContent = "Descargar archivo"; previewPane.append(download);
   } else {
-    previewPane.innerHTML = `<p>Visualización del archivo ${doc.fileName}</p>`;
+    previewPane.textContent = "Este registro no contiene un archivo disponible. Adjuntá el documento real para poder revisarlo.";
   }
 
   // Botón rápido de aprobación individual (sólo disponible para Administrador)
   if (docViewerQuickApproveBtn) {
-    docViewerQuickApproveBtn.hidden = !hasPermission("document:approve");
-    docViewerQuickApproveBtn.onclick = () => {
+    docViewerQuickApproveBtn.hidden = !documentUrl(doc.dataUrl || doc.url) || !!doc.isSample || !hasPermission("document:approve", owner.id);
+    docViewerQuickApproveBtn.onclick = async () => {
       if (!requirePermission("document:approve")) return;
       doc.adminApproval = {
         status: "approved",
@@ -1249,6 +1245,9 @@ export function openDocViewer(owner, docKey, docObj = null) {
         reviewedBy: "Administrador",
         notes: "Aprobación individual desde visor."
       };
+      const savedOwner = state.owners.find(o => o.id === owner.id);
+      if (!savedOwner) return;
+      try { await api.updateOwner(owner.id, { ...savedOwner, documents: { ...savedOwner.documents, [docKey]: doc } }); await refreshState(); } catch (error) { toast(error.message); return; }
       renderOwners();
       if (ownerDetailDialog.open && state.ui.viewingOwnerId) openOwnerDetail(state.ui.viewingOwnerId);
       if (ownerDialog.open) renderOwnerDialogDocs();
@@ -1331,9 +1330,7 @@ export function collectOwnerErrors() {
   if (!phoneVal || !isValidPhone(phoneVal)) {
     errors.push("El teléfono principal es obligatorio y debe ser un número español válido de 9 dígitos.");
     marks.push("phone");
-  } else if (!contactVerify.phone.verified || contactVerify.phone.value !== phoneVal) {
-    errors.push("Debes verificar el teléfono principal mediante el código enviado por SMS.");
-    marks.push("phone");
+
   }
 
   const otherPhoneVal = digitsOnly(el("otherPhone")?.value || "", 9);
@@ -1449,7 +1446,8 @@ ownerForm.addEventListener("submit", async event => {
 
   const docKeys = ["dni", "bankReceipt", "propertyDeed"];
   const uploadedCount = docKeys.filter(k => !!editingDocs.current[k]).length;
-  const isCompleteDocs = uploadedCount === 3;
+  const previousDocs = state.owners.find(owner => owner.id === state.ui.editingOwnerId)?.documents || {};
+  const isCompleteDocs = uploadedCount === 3 && JSON.stringify(previousDocs) !== JSON.stringify(editingDocs.current);
 
   // El backend resuelve la vinculación N:M de los inmuebles (pestaña Inmueble)
   data.propertyIds = editingOwnerProperties.slice();
@@ -1475,7 +1473,7 @@ ownerForm.addEventListener("submit", async event => {
   // Sincronizar el % de titularidad del propietario en cada inmueble asociado
   for (const propertyId of editingOwnerProperties) {
     const property = state.properties.find(item => item.id === propertyId);
-    if (!property) continue;
+    if (!property || !hasPermission("property:manage", property.id)) continue;
     const ownerIds = [...new Set([...propertyOwnerIds(property), data.id])];
     const ownerPercentages = {
       ...(property.ownerPercentages || {}),
@@ -1495,20 +1493,21 @@ ownerForm.addEventListener("submit", async event => {
   // Si se han subido y validado los documentos requeridos:
   if (isCompleteDocs) {
     // 1. Remitir aviso por correo electrónico al Administrador
-    const emailSent = await sendAdminEmailNotification(data, editingDocs.current);
+    let emailSent;
+    try { emailSent = await sendAdminEmailNotification(data, editingDocs.current); } catch (error) { toast(`Los datos se guardaron; el aviso no pudo enviarse: ${error.message}`); return; }
 
     // 2. Notificar en el buzón personal del propietario
     addOwnerNotification({
       ownerId: data.id,
       title: "Documentación enviada para aprobación",
       type: "info",
-      message: "Tus 3 documentos obligatorios han superado la validación automática del sistema y se ha notificado al Administrador para su convalidación."
+      message: "Tus documentos se han recibido y están pendientes de revisión administrativa."
     });
 
     // 3. Mostrar mensaje emergente al usuario confirmando el proceso completado con éxito
-    document.querySelector("#success-audit-dni").textContent = `${editingDocs.current.dni?.autoValidation?.typeVerified || "DNI español verificado"} · Legibilidad ${editingDocs.current.dni?.autoValidation?.legibilityScore || 98}% (Óptima)`;
-    document.querySelector("#success-audit-bank").textContent = `${editingDocs.current.bankReceipt?.autoValidation?.typeVerified || "Certificado bancario con IBAN verificado"} · Legibilidad ${editingDocs.current.bankReceipt?.autoValidation?.legibilityScore || 96}%`;
-    document.querySelector("#success-audit-deed").textContent = `${editingDocs.current.propertyDeed?.autoValidation?.typeVerified || "Escritura notarial de propiedad verificada"} · Legibilidad ${editingDocs.current.propertyDeed?.autoValidation?.legibilityScore || 95}%`;
+    document.querySelector("#success-audit-dni").textContent = `Documentación recibida: pendiente de revisión administrativa.`;
+    document.querySelector("#success-audit-bank").textContent = `Documentación recibida: pendiente de revisión administrativa.`;
+    document.querySelector("#success-audit-deed").textContent = `Documentación recibida: pendiente de revisión administrativa.`;
 
     if (btnViewAdminEmail) {
       btnViewAdminEmail.style.display = state.activeRole === "owner" ? "none" : "";

@@ -425,6 +425,7 @@ export function intentarCerrar(form, dialog) {
  */
 export function setFormReadonly(form, readonly) {
   if (!form) return;
+  form.classList.toggle("is-readonly", readonly);
   // Sólo controles de valor: los botones (tabs, cierres) deben seguir
   // siendo operables en modo lectura
   form.querySelectorAll("input, select, textarea").forEach(element => {

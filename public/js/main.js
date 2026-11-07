@@ -1,8 +1,9 @@
 // ==========================================
 // PUNTO DE ENTRADA DE LA APLICACIÓN
 // ==========================================
-import { state, refreshState, onDataChanged, setActiveUser, restoreActiveUser, getCurrentUser, getCurrentUserRole, getUserProfiles } from "./state.js";
+import { state, refreshState, onDataChanged, setActiveUser } from "./state.js";
 import { loadLocations } from "./territory.js";
+import { api } from "./api.js";
 import { intentarCerrar } from "./utils.js";
 import { showLoginView, hideLoginScreen } from "./features/auth.js";
 import { applyRoleUI, handleRouting, renderUserSelector } from "./features/navigation.js";
@@ -12,6 +13,7 @@ import { renderOwners } from "./features/propietarios.js";
 import { renderProperties } from "./features/inmuebles.js";
 import { renderTenants } from "./features/inquilinos.js";
 import { updateInboxBadge, updateOwnerInboxBadge } from "./features/notificaciones.js";
+import { renderAccountMenu } from "./features/account-menu.js";
 
 async function boot() {
   // Catálogo territorial del INE (script clásico con window.MUNICIPIOS_INE)
@@ -26,24 +28,23 @@ async function boot() {
     renderHomeDashboard();
     updateInboxBadge();
     updateOwnerInboxBadge();
+    applyRoleUI();
+    renderAccountMenu();
+    handleRouting();
   });
 
-  // Carga inicial del estado desde el backend (única fuente de verdad)
-  await refreshState();
-
-  // Poblar selector de usuarios
-  renderUserSelector();
-
-  // Login simulado: si hay sesión activa, arrancar la app; si no, mostrar login
-  const sessionUser = sessionStorage.getItem("authUserId");
-  if (sessionUser && state.users.some(u => u.id === sessionUser && u.activo)) {
-    setActiveUser(sessionUser);
-    hideLoginScreen();
-    applyRoleUI();
-    handleRouting();
-  } else {
-    showLoginView("signin");
+  showLoginView("signin");
+  try {
+    await api.getCurrentUser();
+  } catch (error) {
+    if (error.status === 401) return;
+    throw error;
   }
+  await refreshState();
+  renderUserSelector();
+  hideLoginScreen();
+  applyRoleUI();
+  handleRouting();
 }
 
 // Escape cierra modales; en los editores con guard, el Esc pregunta antes
@@ -69,4 +70,7 @@ document.querySelectorAll("dialog").forEach(dialog => {
 
 boot().catch(error => {
   console.error("[main] Error de inicialización:", error);
+  showLoginView("signin");
+  document.querySelector("#login-signin-error").textContent =
+    `No se pudo iniciar la aplicación: ${error.message}. Recargá la página para reintentar.`;
 });

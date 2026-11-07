@@ -1,3 +1,4 @@
+import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
@@ -30,11 +31,12 @@ function updateCommunityAdminSelect(selectedUserId = "") {
   const select = communityForm.elements.adminUserId;
   if (!select) return;
   const current = selectedUserId || select.value;
-  select.replaceChildren();
-  state.users.filter(user => user.activo).forEach(user => {
+  select.replaceChildren(new Option("Sin administrador asignado", ""));
+  state.users.filter(user => user.activo && (user.rol === "super_admin" || state.roles.find(role => role.nombre === user.rol || role.id === user.rol)?.permisos.includes("community:manage"))).forEach(user => {
     const label = `${user.nombre || user.usuario} ${user.apellido || ""} (${user.usuario})`.trim();
     select.add(new Option(label, user.id));
   });
+  if (current && ![...select.options].some(option => option.value === current)) select.add(new Option("Administrador asignado", current));
   if (current) select.value = current;
   // Al asignar un usuario, precarga el campo Administrador de fincas
   select.removeEventListener("change", onAdminUserChange);
@@ -55,7 +57,7 @@ function iconBtn(className, title, ariaLabel, svg) {
   btn.className = `icon-action-btn ${className}`;
   btn.title = title;
   btn.setAttribute("aria-label", ariaLabel);
-  btn.innerHTML = svg;
+  btn.innerHTML = sanitizeHtml(svg);
   return btn;
 }
 
@@ -109,8 +111,8 @@ export function renderCommunities() {
       countEl: communityCount,
       entitySingular: "comunidad",
       entityPlural: "comunidades",
-      emptyTitle: "No hay comunidades que mostrar",
-      emptyText: "Crea una comunidad o cambia los criterios de búsqueda.",
+      emptyTitle: state.activeRole === "owner" && state.communities.length === 0 ? "Sin comunidad asignada" : "No hay comunidades que mostrar",
+      emptyText: state.activeRole === "owner" && state.communities.length === 0 ? "Un administrador debe vincular tu perfil a un inmueble o comunidad para que aparezca aquí." : "No hay resultados. Revisá los criterios de búsqueda.",
       getRows: () => visibleCommunities(),
       columns: [
         {
@@ -174,7 +176,7 @@ export function renderCommunities() {
             wrap.append(btnInfo);
             if (!isOwner) {
               const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${community.name}`, ICON_DOCS);
-              btnDocs.addEventListener("click", () => openCommunityEditor(community.id, "docs"));
+              btnDocs.addEventListener("click", () => openCommunityEditor(community.id, "docs", !hasPermission("community:manage", community.id)));
               const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${community.name}`, ICON_EDIT);
               btnEdit.addEventListener("click", () => openCommunityEditor(community.id));
               const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${community.name}`, ICON_DELETE);
@@ -192,7 +194,7 @@ export function renderCommunities() {
 }
 
 export function openCommunityEditor(id = null, defaultTab = "details", readonly = false) {
-  if (!requirePermission("community:manage")) return;
+  if (!requirePermission(id ? (readonly ? "community:read" : "community:manage") : "community:create", id || "")) return;
   editingCommunityId = id;
   communityForm.reset();
   communityError.textContent = "";
@@ -290,7 +292,7 @@ function renderCommunityEditorProperties(c) {
     viewBtn.type = "button";
     viewBtn.className = "icon-action-btn btn-info";
     viewBtn.title = "Ver inmueble";
-    viewBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+    viewBtn.innerHTML = sanitizeHtml(`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`);
     viewBtn.addEventListener("click", () => {
       communityDialog.close();
       openPropertyDetail(prop.id);
@@ -300,7 +302,7 @@ function renderCommunityEditorProperties(c) {
     unlinkBtn.type = "button";
     unlinkBtn.className = "icon-action-btn btn-delete";
     unlinkBtn.title = "Desvincular de esta comunidad";
-    unlinkBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    unlinkBtn.innerHTML = sanitizeHtml(`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`);
     unlinkBtn.addEventListener("click", async () => {
       try {
         await api.updateProperty(prop.id, { ...prop, communityId: "", communityName: "" });
@@ -420,7 +422,7 @@ function docFileRow({ name, size, href, removeAttrs }) {
   row.className = "doc-file-row";
   const icon = document.createElement("span");
   icon.className = "doc-file-icon";
-  icon.innerHTML = ICON_FILE_DOC;
+  icon.innerHTML = sanitizeHtml(ICON_FILE_DOC);
   const info = document.createElement("div");
   info.className = "doc-file-info";
   if (href) {
@@ -610,7 +612,7 @@ function renderCommunityDetailDocs(c) {
     row.className = "doc-file-row";
     const icon = document.createElement("span");
     icon.className = "doc-file-icon";
-    icon.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+    icon.innerHTML = sanitizeHtml(`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`);
     const info = document.createElement("div");
     info.className = "doc-file-info";
     const link = document.createElement("a");

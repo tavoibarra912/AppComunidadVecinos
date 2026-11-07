@@ -9,6 +9,8 @@ async function request(path, options = {}) {
   try {
     response = await fetch(`${API_BASE}${path}`, {
       headers: options.body instanceof FormData ? undefined : { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(30000),
+      credentials: "same-origin",
       ...options
     });
   } catch (error) {
@@ -24,12 +26,17 @@ async function request(path, options = {}) {
     }
   }
   if (!response.ok) {
-    throw new Error(result?.error || `Error del servidor (${response.status}).`);
+    const error = new Error(result?.error || `Error del servidor (${response.status}).`);
+    error.status = response.status;
+    if (response.status === 401 && path !== "/auth/me" && path !== "/auth/change-password" && !path.startsWith("/auth/sign")) window.dispatchEvent(new Event("auth:expired"));
+    throw error;
   }
   return result;
 }
 
 export const api = {
+  getCurrentUser: () => request("/auth/me"),
+  auth: (path, body) => request(`/auth/${path}`, { method: "POST", body: JSON.stringify(body || {}) }),
   getBootstrap: () => request("/bootstrap"),
 
   // --- Comunidades ---

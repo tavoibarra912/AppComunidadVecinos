@@ -1,3 +1,4 @@
+import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, propertyLabel, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { toast, renderDocumentRecords, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
@@ -51,7 +52,7 @@ function iconBtn(className, title, ariaLabel, svg) {
   btn.className = `icon-action-btn ${className}`;
   btn.title = title;
   btn.setAttribute("aria-label", ariaLabel);
-  btn.innerHTML = svg;
+  btn.innerHTML = sanitizeHtml(svg);
   return btn;
 }
 
@@ -424,7 +425,7 @@ function docFileRow({ name, size, href, download = false, removeAttrs }) {
   row.className = "doc-file-row";
   const icon = document.createElement("span");
   icon.className = "doc-file-icon";
-  icon.innerHTML = ICON_FILE_DOC;
+  icon.innerHTML = sanitizeHtml(ICON_FILE_DOC);
   const info = document.createElement("div");
   info.className = "doc-file-info";
   if (href) {
@@ -485,7 +486,7 @@ export function renderPropertyDocumentList() {
 }
 
 export function openPropertyEditor(id = null, defaultTab = "general", readonly = false) {
-  if (!requirePermission("property:manage")) return;
+  if (!requirePermission(readonly ? "property:read" : "property:manage", id || "")) return;
   state.ui.editingPropertyId = id;
   propertyForm.reset();
   propertyFormError.textContent = "";
@@ -668,7 +669,7 @@ export function renderProperties() {
             wrap.append(btnInfo);
             if (hasPermission("property:manage")) {
               const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${property.plot}`, ICON_DOCS);
-              btnDocs.addEventListener("click", () => openPropertyEditor(property.id, "docs"));
+              btnDocs.addEventListener("click", () => openPropertyEditor(property.id, "docs", !hasPermission("property:manage", property.id)));
               const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${property.plot}`, ICON_EDIT);
               btnEdit.addEventListener("click", () => openPropertyEditor(property.id));
               const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${property.plot}`, ICON_DELETE);
@@ -783,7 +784,7 @@ export function openPropertyDetail(id) {
     property.documents.forEach(documentRecord => {
       const link = document.createElement("a");
       link.textContent = documentRecord.fileName;
-      link.href = documentRecord.dataUrl || "#";
+      link.href = documentRecord.url || documentRecord.dataUrl || "#";
       link.target = "_blank";
       link.rel = "noopener";
       link.download = documentRecord.fileName;
