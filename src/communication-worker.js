@@ -6,6 +6,7 @@ import {
   phase,
 } from "./communication-store.js";
 import { sendMessage, destination } from "./delivery-providers.js";
+import { processRecoveryMail, recoverInterruptedMail } from "./password-recovery.js";
 
 let running = false;
 export async function processCommunications(send = sendMessage) {
@@ -92,12 +93,13 @@ export async function processCommunications(send = sendMessage) {
   }
 }
 export function startCommunicationWorker() {
+  recoverInterruptedMail();
   // Un envío interrumpido puede haber sido aceptado: no se reenvía automáticamente.
   db.prepare(
     "UPDATE communication_outbox SET state='uncertain',error='El servidor se reinició durante el envío. Revisá el proveedor antes de reintentar.' WHERE state='sending'",
   ).run();
   const tick = () =>
-    processCommunications().catch((error) =>
+    processRecoveryMail().then(() => processCommunications()).catch((error) =>
       console.error(
         "[communication-worker]",
         error.status

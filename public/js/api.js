@@ -77,6 +77,7 @@ export const api = {
   deleteUser: id => request(`/admin/users/${id}`, { method: "DELETE" }),
   linkOwner: (userId, ownerId) => request(`/admin/users/${userId}/link-owner`, { method: "PUT", body: JSON.stringify({ ownerId }) }),
   linkTenant: (userId, tenantId) => request(`/admin/users/${userId}/link-tenant`, { method: "PUT", body: JSON.stringify({ tenantId }) }),
+  listAudit: params => request(`/audit?${new URLSearchParams(params)}`),
   listRoles: () => request("/admin/roles"),
   createRole: payload => request("/admin/roles", { method: "POST", body: JSON.stringify(payload) }),
   updateRole: (id, payload) => request(`/admin/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) }),

@@ -9,6 +9,7 @@ import verificationRouter from "./verification.js";
 import adminRouter from "./admin.js";
 import authRouter from "./auth.js";
 import communicationsRouter from "./communications.js";
+import { auditRequests, listAudit } from "../audit.js";
 import {
   requireSession,
   sameOrigin,
@@ -32,6 +33,7 @@ import {
 } from "../db.js";
 
 const router = Router();
+router.use(auditRequests);
 router.use(sameOrigin);
 router.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
@@ -48,6 +50,10 @@ router.get("/health", (req, res) => {
   });
 });
 router.use(requireSession);
+router.get("/audit", requirePermission("audit:read"), (req, res, next) => {
+  try { res.json(listAudit(req.query)); }
+  catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }
+});
 router.use(resourceAccess);
 
 router.get("/bootstrap", (req, res) => {

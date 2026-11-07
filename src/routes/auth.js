@@ -15,6 +15,7 @@ import {
   endSession,
 } from "../security.js";
 import { validEmail, passwordError } from "../validation.js";
+import { requestRecovery, resetRecoveredPassword } from "../password-recovery.js";
 
 const router = Router();
 const attempts = new Map();
@@ -101,10 +102,12 @@ router.post("/signin", (req, res) => {
       "SELECT * FROM users WHERE LOWER(usuario) = LOWER(?) OR LOWER(email) = LOWER(?)",
     )
     .get(usuario.trim(), usuario.trim());
+  req.auditTarget = user?.id || "";
   if (!user?.activo || !verifyPassword(password, user.passwordHash))
     return res.status(401).json({ error: "Credenciales incorrectas." });
   if (!user.passwordHash.startsWith("scrypt:")) setPassword(user.id, password);
   createSession(user, res);
+  req.user = user;
   res.json(publicUser(user));
 });
 router.post("/sso", (_req, res) =>
@@ -115,22 +118,14 @@ router.post("/sso", (_req, res) =>
         "El acceso con proveedores externos no está configurado. Usá usuario y contraseña.",
     }),
 );
-router.post("/forgot-password", (_req, res) =>
-  res
-    .status(503)
-    .json({
-      error:
-        "La recuperación por correo no está configurada. Pedile a un administrador que asigne una nueva contraseña.",
-    }),
-);
-router.post("/reset-password", (_req, res) =>
-  res
-    .status(503)
-    .json({
-      error:
-        "La recuperación por correo no está configurada. Contactá al administrador.",
-    }),
-);
+router.post("/forgot-password", (req, res, next) => {
+  try { res.json(requestRecovery(req.body?.email, req)); }
+  catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }
+});
+router.post("/reset-password", (req, res, next) => {
+  try { res.json(resetRecoveredPassword(req.body?.token, req.body?.password, req)); }
+  catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }
+});
 router.post("/change-password", requireSession, (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   if (

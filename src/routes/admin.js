@@ -110,6 +110,10 @@ router.put("/users/:id", (req, res) => {
     existing.id,
   );
   if (req.body.password) setPassword(existing.id, req.body.password);
+  if (!data.activo || (data.email || "").trim().toLowerCase() !== (existing.email || "").toLowerCase()) {
+    db.prepare("UPDATE users SET resetToken='',resetTokenExpira='' WHERE id=?").run(existing.id);
+    db.prepare("DELETE FROM password_recovery_mail WHERE userId=?").run(existing.id);
+  }
   if (!data.activo)
     db.prepare("DELETE FROM sessions WHERE userId=?").run(existing.id);
   res.json(

@@ -39,6 +39,8 @@ export function can(user, permission, resourceId = "", data) {
   const role = roles.find((r) => r.id === user.rol || r.nombre === user.rol);
   if (!role) return false;
   if (role.nombre === "super_admin") return true;
+  // The global security history is not a community-scoped resource.
+  if (permission === "audit:read") return !["user", "community_admin"].includes(role.nombre) && !!role.permisos?.includes(permission);
   const ownOwners = owners.filter((o) => o.userId === user.id).map((o) => o.id);
   const ownTenants = tenants.filter((t) => t.userId === user.id);
   const ownedProperties = properties.filter((p) =>

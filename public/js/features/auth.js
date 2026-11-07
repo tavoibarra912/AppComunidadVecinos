@@ -7,6 +7,19 @@ import { toast, limpiarGuardia } from "../utils.js";
 import { applyRoleUI, handleRouting, renderUserSelector } from "./navigation.js";
 
 const loginScreen = document.querySelector("#login-screen");
+let recoveryToken = "";
+export function showRecoveryFromLink() {
+  if (!window.location.hash.startsWith("#reset-password=")) return false;
+  const match = /^#reset-password=([a-f0-9]{64})$/.exec(window.location.hash);
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  showLoginView("forgot");
+  recoveryToken = match?.[1] || "";
+  document.querySelector("#login-forgot-form").hidden = true;
+  document.querySelector("#login-reset-block").hidden = false;
+  document.querySelector("#login-reset-error").textContent = recoveryToken ? "" : "El enlace no es válido. Solicitá uno nuevo.";
+  return true;
+}
+window.addEventListener("hashchange", showRecoveryFromLink);
 try {
   const notice = sessionStorage.getItem("authNotice");
   if (notice) {
@@ -18,6 +31,9 @@ try {
 } catch {}
 
 export function showLoginView(view) {
+  document.querySelector("#login-forgot-form").hidden = false;
+  document.querySelector("#login-reset-block").hidden = true;
+  recoveryToken = "";
   loginScreen.hidden = false;
   document.querySelector(".topbar").style.display = "none";
   document.querySelector(".mobile-nav").style.display = "none";
@@ -120,12 +136,20 @@ document.querySelector("#login-reset-form")?.addEventListener("submit", async ev
   event.preventDefault();
   const errorEl = document.querySelector("#login-reset-error");
   errorEl.textContent = "";
-  const token = document.querySelector("#login-reset-block")?.dataset.token || "";
+  const token = recoveryToken;
   const password = event.target.elements.password.value;
+  if (password !== event.target.elements.password2.value) {
+    errorEl.textContent = "Las contraseñas no coinciden.";
+    return;
+  }
   try {
     await loginApi("reset-password", { token, password });
-    toast("Contraseña actualizada. Ya podés iniciar sesión.");
+    clearSession();
+    event.target.reset();
     showLoginView("signin");
+    const notice = document.querySelector("#login-signin-notice");
+    notice.textContent = "Contraseña actualizada. Iniciá sesión con la nueva contraseña.";
+    notice.hidden = false;
   } catch (error) {
     errorEl.textContent = error.message;
   }

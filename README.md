@@ -93,9 +93,47 @@ al perfil de propietario o inquilino correspondiente; la comunidad se deriva del
 inmueble vinculado. Mientras falte ese vínculo, «Mi comunidad» explica que el perfil
 está pendiente, sin mostrar nombres ni comunidades de los datos de ejemplo.
 
-El SSO y la recuperación por email están desactivados hasta configurar proveedores
-reales. Sin SMTP, un administrador debe asignar la nueva contraseña. El envío de
-códigos de contacto también queda desactivado; se pueden guardar contactos sin verificar.
+El SSO y la verificación OTP siguen desactivados. La recuperación de contraseña
+usa el SMTP configurado en Administración → Configuración → Configurar proveedores.
+Además, definí `APP_PUBLIC_URL` con el origen de la aplicación: por ejemplo,
+`http://localhost:3000` en desarrollo o `https://vecinos.example.org` en producción.
+No se usa el encabezado Host para construir enlaces; en producción se exige HTTPS.
+
+### Recuperación de contraseña
+
+Desde «Olvidé mi contraseña», indicá el email de la cuenta. La respuesta es igual
+para cuentas inexistentes, inactivas y activas; no contiene tokens. Se admite una
+solicitud por minuto por dirección, además del límite de intentos por IP. El correo
+se procesa desde una cola SQLite cada 30 segundos con el servidor encendido,
+independientemente de las preferencias de avisos comunitarios.
+
+El enlace vence en 30 minutos, es de un solo uso y una nueva solicitud invalida el
+anterior. El token se guarda como hash; la copia temporal para SMTP se cifra y se
+elimina al terminar el envío. El navegador retira el fragmento del historial al
+abrir el formulario. Se pide confirmar la nueva contraseña, se revocan todas las
+sesiones de la cuenta y no se inicia sesión automáticamente. Cambiar el email o
+desactivar la cuenta desde Administración invalida los enlaces pendientes.
+
+Sin SMTP habilitado o sin `APP_PUBLIC_URL` válido se informa que falta configurar
+el servicio, sin aparentar un envío. Los fallos o envíos interrumpidos quedan en
+la auditoría, invalidan el enlace y no se reenvían automáticamente: solicitá uno
+nuevo después de revisar el proveedor. «Aceptado por SMTP» no confirma entrega.
+
+### Auditoría de seguridad
+
+**Administración → Auditoría** consulta el historial persistente de logins correctos
+y fallidos, cierres de sesión, accesos API denegados y altas/cambios/bajas de usuarios
+y roles. Incluye fecha UTC (mostrada en horario local), actor, recurso, resultado,
+IP y valores anteriores/posteriores de campos administrativos permitidos. También
+registra solicitud, envío y finalización de recuperación. No guarda contraseñas,
+cookies, tokens, cuerpos completos ni parámetros de consulta.
+
+La API `GET /api/audit?limit=25&offset=0&action=login` exige sesión y `audit:read`.
+Admite hasta 100 resultados por página. Es un permiso global: no se habilita para
+roles `user` ni `community_admin`, aunque se marque en su editor; sí para roles
+personalizados autorizados explícitamente y el superadministrador. No existe una
+API de modificación o borrado del historial. Definí una política de retención y
+protección de sus copias de seguridad para producción.
 
 ## API (resumen)
 
@@ -146,7 +184,7 @@ Solo el **superadministrador** puede abrir **Administración → Configuración 
 - Los proveedores vienen desactivados. **Enviar prueba** hace un envío real al destino indicado, después de guardar la configuración. Los envíos de publicaciones requieren que el autor elija el canal y que el destinatario lo haya aceptado en **Mis canales**.
 - Las contraseñas/tokens se cifran con AES-256-GCM y nunca se devuelven al navegador. Un campo vacío conserva la credencial; la casilla de eliminación la borra. `APP_PROVIDER_KEY` admite una clave de 32 bytes codificada en 64 caracteres hexadecimales. Sin esa variable se genera `data/provider-key` (o dentro de `APP_DATA_DIR`). La clave debe conservarse junto con la base en una copia de seguridad privada; cambiarla impide descifrar las credenciales existentes. Estos datos locales están excluidos de Git.
 - Una cola SQLite procesa programación, recordatorios y envíos cada 30 segundos mientras el servidor está encendido. Los envíos aceptados no se repiten automáticamente. Los canales no autorizados o desactivados se registran como omitidos. Los fallos y las respuestas inciertas permiten reintento explícito desde Seguimiento; conviene revisar el proveedor para evitar duplicados tras una interrupción.
-- **Aceptado por el proveedor** no confirma entrega ni lectura: no hay un webhook de confirmación de entrega. El buzón de la app y sus lecturas son independientes. El SMTP de este módulo se utiliza para comunicaciones; la recuperación de contraseña y la verificación OTP siguen desactivadas.
+- **Aceptado por el proveedor** no confirma entrega ni lectura: no hay un webhook de confirmación de entrega. El buzón de la app y sus lecturas son independientes. El SMTP también se utiliza para recuperación de contraseña cuando `APP_PUBLIC_URL` está configurado; la verificación OTP sigue desactivada.
 
 API del módulo: `GET /api/communications/{metadata|posts|preferences}`, `POST /preview`, `POST /posts`, `GET/PUT /posts/:id`, acciones `read`, `receipt`, `comments`, `ballot`, `rsvp`, `attendance`, `retry` y `files`. `GET/PUT /providers` y `POST /providers/test` están restringidos al superadministrador. Las tablas se crean de forma idempotente al arrancar, sin sustituir los datos existentes.
 

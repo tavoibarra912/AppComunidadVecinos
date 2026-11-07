@@ -5,7 +5,7 @@ import { state, refreshState, onDataChanged, setActiveUser } from "./state.js";
 import { loadLocations } from "./territory.js";
 import { api } from "./api.js";
 import { intentarCerrar } from "./utils.js";
-import { showLoginView, hideLoginScreen } from "./features/auth.js";
+import { showLoginView, hideLoginScreen, showRecoveryFromLink } from "./features/auth.js";
 import { applyRoleUI, handleRouting, renderUserSelector } from "./features/navigation.js";
 import { renderHomeDashboard } from "./features/home.js";
 import { renderCommunities } from "./features/comunidades.js";
@@ -35,6 +35,7 @@ async function boot() {
     handleRouting();
   });
 
+  if (showRecoveryFromLink()) return;
   showLoginView("signin");
   try {
     await api.getCurrentUser();

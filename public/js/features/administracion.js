@@ -3,6 +3,8 @@ import { api } from "../api.js";
 import { state, refreshState, hasPermission, requirePermission } from "../state.js";
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { createDataTable } from "../table.js";
+import { renderAudit } from "./audit.js";
+const ADMIN_TABS = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings", auditoria: "audit:read" };
 
 // ==========================================
 // PANTALLA ADMINISTRACIÓN: Usuarios / Roles / Configuración
@@ -43,11 +45,11 @@ let editingRoleId = null;
 let dirtySnapshot = "";
 
 function puedeAdministrar() {
-  return ["admin:users", "admin:roles", "admin:settings"].some(p => hasPermission(p));
+  return Object.values(ADMIN_TABS).some(p => hasPermission(p));
 }
 
 function switchAdminTab(tab) {
-  const permissions = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings" };
+  const permissions = ADMIN_TABS;
   if (!hasPermission(permissions[tab])) return;
   adminTabActual = tab;
   document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
@@ -61,6 +63,7 @@ function switchAdminTab(tab) {
   if (tab === "usuarios") renderUsers();
   if (tab === "roles") renderRoles();
   if (tab === "settings") renderSettings();
+  if (tab === "auditoria") renderAudit();
 }
 
 document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
@@ -556,7 +559,7 @@ export function renderAdministracion() {
   const nav = document.querySelector("#nav-administracion");
   if (nav) nav.hidden = !visible;
   if (!visible) return;
-  const permissions = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings" };
+  const permissions = ADMIN_TABS;
   document.querySelectorAll("#administracion [data-admin-tab]").forEach(button => { button.hidden = !hasPermission(permissions[button.dataset.adminTab]); });
   if (!hasPermission(permissions[adminTabActual])) adminTabActual = Object.keys(permissions).find(tab => hasPermission(permissions[tab]));
   switchAdminTab(adminTabActual);

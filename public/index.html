@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
   <meta name="description" content="Gestión de comunidades y propietarios de la Asociación Peñarrubia" />
   <title>Peñarrubia · Comunidades y Propietarios</title>
   <link rel="stylesheet" href="styles.css?v=2" />
@@ -117,7 +118,7 @@
       <!-- Vista: Forgot Password -->
       <div id="login-view-forgot" class="login-view" hidden>
         <h1>Recuperar contraseña</h1>
-        <p class="login-sub">El envío de correo todavía no está configurado. Un administrador puede asignarte una nueva contraseña.</p>
+        <p class="login-sub">Indicá el email de tu cuenta. Si está registrada y activa, recibirás un enlace válido durante 30 minutos.</p>
         <form id="login-forgot-form" novalidate>
           <label>Email *
             <input name="email" type="email" required autocomplete="email" />
@@ -131,6 +132,9 @@
           <form id="login-reset-form" novalidate>
             <label>Nueva contraseña * (mín. 8)
               <input name="password" type="password" required minlength="8" autocomplete="new-password" />
+            </label>
+            <label>Repetir nueva contraseña *
+              <input name="password2" type="password" required minlength="8" autocomplete="new-password" />
             </label>
             <p class="login-error" id="login-reset-error" role="alert"></p>
             <button class="login-submit" type="submit">Cambiar contraseña</button>
@@ -408,6 +412,7 @@
         <button class="community-editor-tab active" type="button" data-admin-tab="usuarios" aria-selected="true">Usuarios</button>
         <button class="community-editor-tab" type="button" data-admin-tab="roles" aria-selected="false">Roles</button>
         <button class="community-editor-tab" type="button" data-admin-tab="settings" aria-selected="false">Configuración General</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="auditoria" aria-selected="false">Auditoría</button>
       </nav>
 
       <section class="admin-pane" data-admin-pane="usuarios">
@@ -444,6 +449,39 @@
           </div>
         </div>
         <div id="roles-table"></div>
+      </section>
+
+      <section class="admin-pane" data-admin-pane="auditoria" hidden>
+        <h3>Auditoría de seguridad</h3>
+        <p>Accesos y cambios de usuarios y roles. Solo disponible con permiso global de auditoría.</p>
+        <form id="audit-filter" class="form-grid">
+          <label>Evento
+            <select name="action">
+              <option value="">Todos</option>
+              <option value="login">Inicio de sesión</option>
+              <option value="logout">Cierre de sesión</option>
+              <option value="access-denied">Acceso denegado</option>
+              <option value="users.created">Usuario creado</option>
+              <option value="users.updated">Usuario modificado</option>
+              <option value="users.deleted">Usuario eliminado</option>
+              <option value="users.link-owner">Vínculo de propietario</option>
+              <option value="users.link-tenant">Vínculo de inquilino</option>
+              <option value="roles.created">Rol creado</option>
+              <option value="roles.updated">Rol modificado</option>
+              <option value="roles.deleted">Rol eliminado</option>
+              <option value="password-recovery.requested">Recuperación solicitada</option>
+              <option value="password-recovery.mail">Correo de recuperación</option>
+              <option value="password-recovery.completed">Contraseña recuperada</option>
+            </select>
+          </label>
+          <button type="submit" class="secondary-button">Actualizar</button>
+        </form>
+        <p id="audit-status" role="status" aria-live="polite"></p>
+        <div id="audit-results" style="overflow-x:auto"></div>
+        <div class="dialog-actions">
+          <button type="button" class="secondary-button" id="audit-prev">Anterior</button>
+          <button type="button" class="secondary-button" id="audit-next">Siguiente</button>
+        </div>
       </section>
 
       <section class="admin-pane" data-admin-pane="settings" hidden>

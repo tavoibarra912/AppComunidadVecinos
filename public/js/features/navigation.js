@@ -89,7 +89,7 @@ export function applyRoleUI() {
   if (mobileNavPropietarios) mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (navInmuebles) navInmuebles.hidden = !hasPermission("property:read");
   if (mobileNavInmuebles) mobileNavInmuebles.hidden = !hasPermission("property:read");
-  if (navAdministracion) navAdministracion.hidden = !["admin:users", "admin:roles", "admin:settings"].some(p => hasPermission(p));
+  if (navAdministracion) navAdministracion.hidden = !["admin:users", "admin:roles", "admin:settings", "audit:read"].some(p => hasPermission(p));
   document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach(link => {
     link.hidden = isOwner;
   });
@@ -176,7 +176,7 @@ export function handleRouting() {
     document.title = "Peñarrubia · Comunicación";
     renderCommunication();
   } else if (hash === "#administracion") {
-    if (!["admin:users", "admin:roles", "admin:settings"].some(p => hasPermission(p))) {
+    if (!["admin:users", "admin:roles", "admin:settings", "audit:read"].some(p => hasPermission(p))) {
       window.location.hash = "#home";
       return;
     }
