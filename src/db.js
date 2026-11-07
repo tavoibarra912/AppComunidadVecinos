@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -208,6 +209,14 @@ ensureColumns("communities", {
   adminUserId: "TEXT NOT NULL DEFAULT ''"
 });
 
+ensureColumns("users", {
+  passwordHash: "TEXT NOT NULL DEFAULT ''",
+  ssoProvider: "TEXT NOT NULL DEFAULT ''",
+  ssoId: "TEXT NOT NULL DEFAULT ''",
+  resetToken: "TEXT NOT NULL DEFAULT ''",
+  resetTokenExpira: "TEXT NOT NULL DEFAULT ''"
+});
+
 ensureColumns("owners", {
   userId: "TEXT NOT NULL DEFAULT ''"
 });
@@ -231,9 +240,13 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
   db.prepare("UPDATE users SET rol = 'user' WHERE rol NOT IN ('super_admin', 'administrator', 'community_admin', 'user')").run();
 }
 if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
-  const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)");
-  insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin");
-  insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user");
+  const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)");
+  const seedPassword = (usuario) => {
+    const salt = crypto.randomBytes(16).toString("hex");
+    return salt + ":" + crypto.createHash("sha256").update(salt + ":" + usuario + "").digest("hex");
+  };
+  insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin", seedPassword("admin"));
+  insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user", seedPassword("recepcion"));
 }
 
 // Perfil Propietario simulado: cuenta para el propietario sembrado
@@ -241,7 +254,7 @@ if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
 const carlosOwner = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1' AND (userId IS NULL OR userId = '')").get();
 if (carlosOwner && !db.prepare("SELECT id FROM users WHERE id = 'user-carlos'").get()) {
   db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
-    .run("user-carlos", "Carlos", "Ruiz Mendoza", "carlos", "carlos@penarrubia.es", "user");
+    .run("user-carlos", "Carlos", "Ruiz Mendoza", "carlos", "carlos@penarrubia.es", "user", seedPassword("carlos"));
   db.prepare("UPDATE owners SET userId = 'user-carlos' WHERE id = 'own-seed-1'").run();
 }
 // Perfil Inquilino simulado: cuenta para el inquilino sembrado
@@ -249,7 +262,7 @@ if (carlosOwner && !db.prepare("SELECT id FROM users WHERE id = 'user-carlos'").
 const lauraTenant = db.prepare("SELECT id FROM tenants WHERE id = 'tenant-seed-1' AND (userId IS NULL OR userId = '')").get();
 if (lauraTenant && !db.prepare("SELECT id FROM users WHERE id = 'user-laura'").get()) {
   db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
-    .run("user-laura", "Laura", "Martínez Reyes", "laura", "laura@penarrubia.es", "user");
+    .run("user-laura", "Laura", "Martínez Reyes", "laura", "laura@penarrubia.es", "user", seedPassword("laura"));
   db.prepare("UPDATE tenants SET userId = 'user-laura' WHERE id = 'tenant-seed-1'").run();
 }
 // Perfil Administrador de Comunidad simulado: admin asignado a la
@@ -257,7 +270,7 @@ if (lauraTenant && !db.prepare("SELECT id FROM users WHERE id = 'user-laura'").g
 const comPrincipal = db.prepare("SELECT id FROM communities WHERE id = 'com-seed-1' AND (adminUserId IS NULL OR adminUserId = '')").get();
 if (comPrincipal && db.prepare("SELECT id FROM users WHERE id = 'user-admin-comunidad'").get() === undefined) {
   db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo) VALUES (?, ?, ?, ?, ?, ?, 1)")
-    .run("user-admin-comunidad", "Gestor", "de Residencial Peñarrubia", "gestor.olivos", "gestor@penarrubia.es", "community_admin");
+    .run("user-admin-comunidad", "Gestor", "de Residencial Peñarrubia", "gestor.olivos", "gestor@penarrubia.es", "community_admin", seedPassword("gestor.olivos"));
   db.prepare("UPDATE communities SET adminUserId = 'user-admin-comunidad' WHERE id = 'com-seed-1'").run();
 }
 
@@ -499,7 +512,8 @@ export function listUsers() {
     email: row.email,
     rol: row.rol,
     activo: !!row.activo,
-    creadoEn: row.creadoEn
+    creadoEn: row.creadoEn,
+    ssoProvider: row.ssoProvider || ""
   }));
 }
 

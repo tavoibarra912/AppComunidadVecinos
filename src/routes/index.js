@@ -7,6 +7,7 @@ import documentsRouter from "./documents.js";
 import notificationsRouter from "./notifications.js";
 import verificationRouter from "./verification.js";
 import adminRouter from "./admin.js";
+import authRouter from "./auth.js";
 import {
   listCommunities, listOwners, listProperties, listTenants,
   listAdminEmails, listOwnerNotifications, listDocuments,
@@ -47,5 +48,6 @@ router.use("/documents", documentsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/owners/contact", verificationRouter);
 router.use("/admin", adminRouter);
+router.use("/auth", authRouter);
 
 export default router;

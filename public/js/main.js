@@ -1,10 +1,11 @@
 // ==========================================
 // PUNTO DE ENTRADA DE LA APLICACIÓN
 // ==========================================
-import { refreshState, onDataChanged, state as appState, restoreActiveUser, getCurrentUser, getCurrentUserRole, getUserProfiles } from "./state.js";
+import { state, refreshState, onDataChanged, setActiveUser, restoreActiveUser, getCurrentUser, getCurrentUserRole, getUserProfiles } from "./state.js";
 import { loadLocations } from "./territory.js";
 import { intentarCerrar } from "./utils.js";
-import { applyRoleUI, handleRouting } from "./features/navigation.js";
+import { showLoginView, hideLoginScreen } from "./features/auth.js";
+import { applyRoleUI, handleRouting, renderUserSelector } from "./features/navigation.js";
 import { renderHomeDashboard } from "./features/home.js";
 import { renderCommunities } from "./features/comunidades.js";
 import { renderOwners } from "./features/propietarios.js";
@@ -30,8 +31,21 @@ async function boot() {
   // Carga inicial del estado desde el backend (única fuente de verdad)
   await refreshState();
 
-  // Login simulado: restaura el usuario activo (o el primer super_admin)
-  restoreActiveUser();
+  // Poblar selector de usuarios
+  renderUserSelector();
+
+  // Login simulado: si hay sesión activa, arrancar la app; si no, mostrar login
+  const sessionUser = sessionStorage.getItem("authUserId");
+  if (sessionUser && state.users.some(u => u.id === sessionUser && u.activo)) {
+    setActiveUser(sessionUser);
+  } else {
+    restoreActiveUser();
+  }
+  if (!getCurrentUser()) {
+    showLoginView("signin");
+  } else {
+    hideLoginScreen();
+  }
 
   applyRoleUI();
   handleRouting();

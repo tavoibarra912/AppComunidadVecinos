@@ -6,6 +6,7 @@ import { renderTenants } from "./inquilinos.js";
 import { renderProperties } from "./inmuebles.js";
 import { renderHomeDashboard } from "./home.js";
 import { renderAdministracion } from "./administracion.js";
+import "./features/auth.js";
 import { updateInboxBadge, updateOwnerInboxBadge } from "./notificaciones.js";
 
 const userAvatar = document.querySelector("#user-avatar");
@@ -272,7 +273,7 @@ window.addEventListener("hashchange", handleRouting);
 // Login simulado: selector de usuario en el topbar
 const activeRoleSelect = document.querySelector("#active-role-select");
 
-function renderUserSelector() {
+export function renderUserSelector() {
   if (!activeRoleSelect) return;
   const previous = state.currentUserId;
   activeRoleSelect.replaceChildren();
