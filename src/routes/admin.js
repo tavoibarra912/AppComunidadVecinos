@@ -5,11 +5,12 @@ import { db, listUsers, listRoles, getSettings } from "../db.js";
 const router = Router();
 
 const PERMISOS_VALIDOS = [
-  "community:read", "community:manage",
-  "owner:read", "owner:manage", "owner:edit", "owner:documents:submit",
-  "property:read", "property:manage",
-  "tenant:read", "tenant:manage",
-  "document:approve",
+  "community:read", "community:create", "community:manage", "community:delete",
+  "owner:read", "owner:manage", "owner:edit", "owner:delete", "owner:documents:submit",
+  "property:read", "property:manage", "property:delete",
+  "tenant:read", "tenant:manage", "tenant:delete",
+  "document:read", "document:approve", "document:delete",
+  "reports:read", "audit:read",
   "admin:users", "admin:roles", "admin:settings",
   "admin_notification:read", "owner_notification:read"
 ];

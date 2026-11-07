@@ -343,7 +343,7 @@
             </button>
           </div>
         </div>
-        <div class="roles-list" id="roles-list"></div>
+        <div id="roles-table"></div>
       </section>
 
       <section class="admin-pane" data-admin-pane="settings" hidden>
@@ -368,6 +368,35 @@
             <label class="full checkbox-line">
               <input type="checkbox" name="notificacionesEmail" />
               Enviar notificaciones por correo electrónico
+            </label>
+            <p class="form-section-title full">Documentos</p>
+            <label>Tamaño máximo por documento (MB)
+              <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
+            </label>
+            <label>Moneda por defecto
+              <select name="monedaPorDefecto">
+                <option value="EUR">Euro (EUR)</option>
+                <option value="USD">Dólar estadounidense (USD)</option>
+                <option value="GBP">Libra esterlina (GBP)</option>
+                <option value="CHF">Franco suizo (CHF)</option>
+              </select>
+            </label>
+            <p class="form-section-title full">Contratos y vencimientos</p>
+            <label>Aviso de vencimiento de contrato (días antes)
+              <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
+            </label>
+            <p class="form-section-title full">Sistema</p>
+            <label>Filas por página en las tablas
+              <select name="filasPorPagina">
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+            <label class="full checkbox-line">
+              <input type="checkbox" name="mantenimiento" />
+              Modo mantenimiento (bloquea el acceso a usuarios no administradores)
             </label>
           </div>
           <div class="dialog-actions">
@@ -2053,6 +2082,7 @@
           Usuario activo
         </label>
         <p class="form-section-title full">Perfiles vinculados</p>
+        <div class="admin-link-section" id="user-link-section">
         <label>Perfil Propietario
           <select name="linkedOwnerId" id="user-linked-owner"></select>
           <span class="field-hint">Vinculá el registro de propietario existente (por DNI, nombre o inmueble).</span>
@@ -2061,13 +2091,15 @@
           <select name="linkedTenantId" id="user-linked-tenant"></select>
           <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
         </label>
+        </div>
+        <p class="field-hint full" id="user-link-superadmin-hint" hidden>El Super Administrador administra todo el sistema: no necesita perfiles vinculados.</p>
       </div>
       <p class="form-error" id="user-form-error" role="alert"></p>
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-user-dialog" title="Cancelar" aria-label="Cancelar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="18" x2="18" y2="6"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
         <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar usuario" aria-label="Guardar usuario">

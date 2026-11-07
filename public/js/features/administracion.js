@@ -8,22 +8,31 @@ import { createDataTable } from "../table.js";
 // ==========================================
 
 const PERMISOS_CATALOGO = [
-  { key: "community:read", label: "Ver comunidades" },
-  { key: "community:manage", label: "Gestionar comunidades" },
-  { key: "owner:read", label: "Ver propietarios" },
-  { key: "owner:manage", label: "Gestionar propietarios" },
-  { key: "owner:edit", label: "Editar su propio perfil" },
-  { key: "owner:documents:submit", label: "Subir documentación propia" },
-  { key: "property:read", label: "Ver inmuebles" },
-  { key: "property:manage", label: "Gestionar inmuebles" },
-  { key: "tenant:read", label: "Ver inquilinos" },
-  { key: "tenant:manage", label: "Gestionar inquilinos" },
-  { key: "document:approve", label: "Aprobar documentación" },
-  { key: "admin:users", label: "Administrar usuarios" },
-  { key: "admin:roles", label: "Administrar roles" },
-  { key: "admin:settings", label: "Administrar configuración" },
-  { key: "admin_notification:read", label: "Ver buzón del administrador" },
-  { key: "owner_notification:read", label: "Ver su buzón de avisos" }
+  { key: "community:read", label: "Ver comunidades", grupo: "Comunidades" },
+  { key: "community:create", label: "Crear comunidades", grupo: "Comunidades" },
+  { key: "community:manage", label: "Administrar comunidades", grupo: "Comunidades" },
+  { key: "community:delete", label: "Eliminar comunidades", grupo: "Comunidades" },
+  { key: "owner:read", label: "Ver propietarios", grupo: "Propietarios" },
+  { key: "owner:manage", label: "Gestionar propietarios", grupo: "Propietarios" },
+  { key: "owner:edit", label: "Editar su propio perfil", grupo: "Propietarios" },
+  { key: "owner:delete", label: "Eliminar propietarios", grupo: "Propietarios" },
+  { key: "owner:documents:submit", label: "Subir documentación propia", grupo: "Propietarios" },
+  { key: "property:read", label: "Ver inmuebles", grupo: "Inmuebles" },
+  { key: "property:manage", label: "Gestionar inmuebles", grupo: "Inmuebles" },
+  { key: "property:delete", label: "Eliminar inmuebles", grupo: "Inmuebles" },
+  { key: "tenant:read", label: "Ver inquilinos", grupo: "Inquilinos" },
+  { key: "tenant:manage", label: "Gestionar inquilinos", grupo: "Inquilinos" },
+  { key: "tenant:delete", label: "Eliminar inquilinos", grupo: "Inquilinos" },
+  { key: "document:read", label: "Ver documentos", grupo: "Documentación" },
+  { key: "document:approve", label: "Aprobar documentación", grupo: "Documentación" },
+  { key: "document:delete", label: "Eliminar documentos", grupo: "Documentación" },
+  { key: "reports:read", label: "Ver reportes", grupo: "Reportes y auditoría" },
+  { key: "audit:read", label: "Ver auditoría", grupo: "Reportes y auditoría" },
+  { key: "admin:users", label: "Administrar usuarios", grupo: "Sistema" },
+  { key: "admin:roles", label: "Administrar roles", grupo: "Sistema" },
+  { key: "admin:settings", label: "Administrar configuración", grupo: "Sistema" },
+  { key: "admin_notification:read", label: "Ver buzón del administrador", grupo: "Notificaciones" },
+  { key: "owner_notification:read", label: "Ver su buzón de avisos", grupo: "Notificaciones" }
 ];
 
 let userTable = null;
@@ -200,8 +209,16 @@ function openUserEditor(id = null) {
 
 /** Puebla los selects de vinculación con los registros sin cuenta asignada. */
 function renderUserLinkSelects(user) {
-  const linkedOwnerId = user?.linkedOwnerId || "";
-  const linkedTenantIds = user?.linkedTenantIds || [];
+  const isSuperAdmin = user?.rol === "super_admin";
+  const linkSection = document.querySelector("#user-link-section");
+  const superHint = document.querySelector("#user-link-superadmin-hint");
+  if (linkSection) linkSection.hidden = isSuperAdmin;
+  if (superHint) superHint.hidden = !isSuperAdmin;
+  if (isSuperAdmin) return;
+
+  // Vínculos actuales calculados desde los registros (no desde la cuenta)
+  const linkedOwnerId = (state.owners.find(o => o.userId === user?.id) || {}).id || "";
+  const linkedTenantId = (state.tenants.find(t => t.userId === user?.id) || {}).id || "";
 
   if (userLinkedOwnerSelect) {
     userLinkedOwnerSelect.replaceChildren(new Option("Sin perfil Propietario", ""));
@@ -214,20 +231,19 @@ function renderUserLinkSelects(user) {
         owner.id
       ));
     });
-    userLinkedOwnerSelect.value = linkedOwnerId;
+    if (linkedOwnerId) userLinkedOwnerSelect.value = linkedOwnerId;
   }
 
   if (userLinkedTenantSelect) {
     userLinkedTenantSelect.replaceChildren(new Option("Sin perfil Inquilino", ""));
     state.tenants.forEach(tenant => {
       if (tenant.userId && tenant.userId !== user?.id) return;
-      const owner = state.owners.find(o => o.id === tenant.ownerId);
       userLinkedTenantSelect.add(new Option(
         `${tenant.name} ${tenant.surname} (${tenant.documentId || "sin documento"})`,
         tenant.id
       ));
     });
-    if (linkedTenantIds.length > 0) userLinkedTenantSelect.value = linkedTenantIds[0];
+    if (linkedTenantId) userLinkedTenantSelect.value = linkedTenantId;
   }
 }
 
@@ -257,15 +273,21 @@ userForm?.addEventListener("submit", async event => {
     }
 
     // Sincronizar vinculaciones de perfiles (Propietario / Inquilino)
-    const currentLinkedOwnerId = state.owners.find(o => o.userId === savedUser.id)?.id || "";
-    const newOwnerId = userLinkedOwnerSelect?.value || "";
-    if (newOwnerId !== currentLinkedOwnerId) {
-      await api.linkOwner(savedUser.id, newOwnerId);
-    }
-    const currentLinkedTenantId = state.tenants.find(t => t.userId === savedUser.id)?.id || "";
-    const newTenantId = userLinkedTenantSelect?.value || "";
-    if (newTenantId !== currentLinkedTenantId) {
-      await api.linkTenant(savedUser.id, newTenantId);
+    // Super Admin no lleva perfiles vinculados: desvincular si los tuviera
+    if (data.rol === "super_admin") {
+      await api.linkOwner(savedUser.id, "");
+      await api.linkTenant(savedUser.id, "");
+    } else {
+      const currentLinkedOwnerId = state.owners.find(o => o.userId === savedUser.id)?.id || "";
+      const newOwnerId = userLinkedOwnerSelect?.value || "";
+      if (newOwnerId !== currentLinkedOwnerId) {
+        await api.linkOwner(savedUser.id, newOwnerId);
+      }
+      const currentLinkedTenantId = state.tenants.find(t => t.userId === savedUser.id)?.id || "";
+      const newTenantId = userLinkedTenantSelect?.value || "";
+      if (newTenantId !== currentLinkedTenantId) {
+        await api.linkTenant(savedUser.id, newTenantId);
+      }
     }
   } catch (error) {
     userError.textContent = error.message;
@@ -298,38 +320,86 @@ document.querySelector("#close-user-dialog")?.addEventListener("click", () => in
 document.querySelector("#cancel-user-dialog")?.addEventListener("click", () => intentarCerrar(userForm, userDialog));
 
 // ---------- Roles ----------
+let rolesTable = null;
+
 function renderRoles() {
   if (!puedeAdministrar()) return;
-  const listEl = document.querySelector("#roles-list");
-  if (!listEl) return;
-  listEl.replaceChildren();
-  state.roles.forEach(role => {
-    const card = document.createElement("div");
-    card.className = "community-property-card";
-    const info = document.createElement("div");
-    info.className = "community-property-info";
-    const title = document.createElement("span");
-    title.className = "community-property-title";
-    title.textContent = role.nombre + (role.sistema ? " (sistema)" : "");
-    const usuarios = state.users.filter(u => u.rol === role.nombre).length;
-    const sub = document.createElement("span");
-    sub.className = "community-property-sub";
-    sub.textContent = `${role.descripcion || "Sin descripción"} · ${role.permisos.length} permisos · ${usuarios} usuario(s)`;
-    info.append(title, sub);
-
-    const actions = document.createElement("div");
-    actions.className = "community-property-actions";
-    const btnEdit = iconBtn("btn-edit", "Editar rol", `Editar rol ${role.nombre}`, ICON_EDIT);
-    btnEdit.addEventListener("click", () => openRoleEditor(role.id));
-    actions.append(btnEdit);
-    if (!role.sistema) {
-      const btnDelete = iconBtn("btn-delete", "Eliminar rol", `Eliminar rol ${role.nombre}`, ICON_DELETE);
-      btnDelete.addEventListener("click", () => deleteRole(role.id, role.nombre));
-      actions.append(btnDelete);
-    }
-    card.append(info, actions);
-    listEl.append(card);
-  });
+  if (!rolesTable) {
+    rolesTable = createDataTable({
+      mount: document.querySelector("#roles-table"),
+      entitySingular: "rol",
+      entityPlural: "roles",
+      emptyTitle: "No hay roles",
+      emptyText: "Creá el primer rol de la plataforma.",
+      getRows: () => state.roles,
+      columns: [
+        {
+          key: "nombre",
+          label: "Rol",
+          value: r => r.nombre,
+          defaultVisible: true,
+          render: r => {
+            const wrap = document.createElement("div");
+            const name = document.createElement("span");
+            name.className = "community-name";
+            name.textContent = r.nombre;
+            wrap.append(name);
+            if (r.sistema) {
+              const badge = document.createElement("span");
+              badge.className = "status-badge doc-approved";
+              badge.textContent = "Sistema";
+              wrap.append(badge);
+            }
+            return wrap;
+          }
+        },
+        { key: "descripcion", label: "Descripción", value: r => r.descripcion || "—", defaultVisible: true },
+        {
+          key: "permisos",
+          label: "Permisos",
+          value: r => String(r.permisos.length),
+          defaultVisible: true,
+          render: r => {
+            const badge = document.createElement("span");
+            badge.className = "dni-badge";
+            badge.textContent = `${r.permisos.length} permisos`;
+            return badge;
+          }
+        },
+        {
+          key: "usuarios",
+          label: "Usuarios",
+          groupable: false,
+          value: r => String(state.users.filter(u => u.rol === r.nombre).length)
+        },
+        {
+          key: "actions",
+          label: "Acciones",
+          srOnlyLabel: true,
+          defaultVisible: true,
+          hideable: false,
+          groupable: false,
+          sortable: false,
+          value: () => "",
+          render: r => {
+            const wrap = document.createElement("div");
+            wrap.className = "row-actions";
+            const btnEdit = iconBtn("btn-edit", "Editar rol", `Editar rol ${r.nombre}`, ICON_EDIT);
+            btnEdit.addEventListener("click", () => openRoleEditor(r.id));
+            wrap.append(btnEdit);
+            if (!r.sistema) {
+              const btnDelete = iconBtn("btn-delete", "Eliminar rol", `Eliminar rol ${r.nombre}`, ICON_DELETE);
+              btnDelete.addEventListener("click", () => deleteRole(r.id, r.nombre));
+              wrap.append(btnDelete);
+            }
+            return wrap;
+          }
+        }
+      ]
+    });
+  } else {
+    rolesTable.refresh();
+  }
 }
 
 const roleDialog = document.querySelector("#role-dialog");
@@ -431,6 +501,11 @@ function renderSettings() {
   settingsForm.elements.otpExpiraMinutos.value = s.otpExpiraMinutos ?? 10;
   settingsForm.elements.otpReenvioSegundos.value = s.otpReenvioSegundos ?? 60;
   settingsForm.elements.notificacionesEmail.checked = s.notificacionesEmail !== false;
+  settingsForm.elements.documentosMaxSizeMb.value = s.documentosMaxSizeMb ?? 15;
+  settingsForm.elements.monedaPorDefecto.value = s.monedaPorDefecto || "EUR";
+  settingsForm.elements.diasAvisoVencimientoContrato.value = s.diasAvisoVencimientoContrato ?? 30;
+  settingsForm.elements.filasPorPagina.value = s.filasPorPagina ?? 10;
+  settingsForm.elements.mantenimiento.checked = !!s.mantenimiento;
   armarGuardia(settingsForm, settingsForm.closest(".admin-pane") || document.querySelector("#administracion"));
 }
 
@@ -443,7 +518,12 @@ settingsForm?.addEventListener("submit", async event => {
     telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
     otpExpiraMinutos: Number(settingsForm.elements.otpExpiraMinutos.value) || 10,
     otpReenvioSegundos: Number(settingsForm.elements.otpReenvioSegundos.value) || 60,
-    notificacionesEmail: settingsForm.elements.notificacionesEmail.checked
+    notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
+    documentosMaxSizeMb: Number(settingsForm.elements.documentosMaxSizeMb.value) || 15,
+    monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
+    diasAvisoVencimientoContrato: Number(settingsForm.elements.diasAvisoVencimientoContrato.value) || 30,
+    filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
+    mantenimiento: settingsForm.elements.mantenimiento.checked
   };
   try {
     state.settings = await api.updateSettings(data);
