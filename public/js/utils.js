@@ -5,9 +5,33 @@
 const toastEl = document.querySelector("#toast");
 let toastTimer = 0;
 
-export function toast(message) {
+const TOAST_ICONOS = {
+  info: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><line x1=\"12\" y1=\"16\" x2=\"12\" y2=\"12\"></line><line x1=\"12\" y1=\"8\" x2=\"12.01\" y2=\"8\"></line></svg>",
+  success: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\"></path><polyline points=\"22 4 12 14.01 9 11.01\"></polyline></svg>",
+  error: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><line x1=\"15\" y1=\"9\" x2=\"9\" y2=\"15\"></line><line x1=\"9\" y1=\"9\" x2=\"15\" y2=\"15\"></line></svg>",
+  warning: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"></path><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"></line><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"></line></svg>"
+};
+
+/** Deduce el tipo de toast por el contenido del mensaje (para las 78 llamadas existentes). */
+function detectarTipoToast(mensaje) {
+  if (/no se pudo|inválid|incorrect|no coincide|no tenés permiso|no está permitido|ya existe|no es válid|no corresponde/i.test(mensaje)) return "error";
+  if (/no se puede|antes de|desvinculá|elimina los|reasigna|pendiente de verificación|esperá/i.test(mensaje)) return "warning";
+  if (/correcto|éxito|exitosamente|guardad|eliminad|cread|actualizad|registrad|enviad|verificado|cerrad|restablecid|sincronizad/i.test(mensaje)) return "success";
+  return "info";
+}
+
+export function toast(message, tipo) {
   if (!toastEl) return;
-  toastEl.textContent = message;
+  const tipoFinal = tipo && TOAST_ICONOS[tipo] ? tipo : detectarTipoToast(message);
+  toastEl.dataset.tipo = tipoFinal;
+  toastEl.replaceChildren();
+  const icono = document.createElement("span");
+  icono.className = "toast-icono";
+  icono.innerHTML = TOAST_ICONOS[tipoFinal];
+  const texto = document.createElement("span");
+  texto.className = "toast-texto";
+  texto.textContent = message;
+  toastEl.append(icono, texto);
   window.clearTimeout(toastTimer);
   const supportsPopover = typeof toastEl.showPopover === "function";
   // Un diálogo puede reconstruir su contenido y desconectar el aviso anterior.
@@ -19,11 +43,14 @@ export function toast(message) {
     if (toastEl.matches(":popover-open")) toastEl.hidePopover();
     toastEl.showPopover();
   }
+  // Reiniciar la transición: forzar reflow con el toast fuera de pantalla.
+  toastEl.classList.remove("visible");
+  void toastEl.offsetWidth;
   toastEl.classList.add("visible");
   toastTimer = window.setTimeout(() => {
     toastEl.classList.remove("visible");
     if (supportsPopover && toastEl.matches(":popover-open")) toastEl.hidePopover();
-  }, 6000);
+  }, 5200);
 }
 
 export function digitsOnly(value, max) {
