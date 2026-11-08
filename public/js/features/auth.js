@@ -58,7 +58,12 @@ async function startSession(user) {
   limpiarGuardia(document.querySelector("#owner-form"));
   hideLoginScreen();
   applyRoleUI();
-  handleRouting();
+  // Tras autenticar, la pantalla a mostrar es Inicio.
+  if (window.location.hash !== "#home") {
+    window.location.hash = "#home";
+  } else {
+    handleRouting();
+  }
 }
 
 // Navegación entre vistas
