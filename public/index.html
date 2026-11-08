@@ -1,31 +1,46 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="referrer" content="no-referrer" />
   <script id="brand-json" type="application/json">__BRAND_JSON__</script>
-  <style id="brand-vars">__BRAND_STYLE__</style>
+  <style id="brand-vars">
+    __BRAND_STYLE__
+  </style>
   <meta name="description" content="Gestión de comunidades y propietarios de la Asociación Peñarrubia" />
   <title>Peñarrubia · Comunidades y Propietarios</title>
   <link rel="stylesheet" href="styles.css?v=3" />
   <link rel="stylesheet" href="communication.css?v=1" />
 </head>
+
 <body>
   <header class="topbar">
-    <a class="brand" href="#home" aria-label="Inicio de Peñarrubia"><img id="topbar-brand-logo" class="brand-logo" alt="" hidden />peñarrubia<span>·</span></a>
+    <a class="brand" href="#home" aria-label="Inicio de Peñarrubia"><img id="topbar-brand-logo" class="brand-logo"
+        alt="" hidden />peñarrubia<span>·</span></a>
     <div class="topbar-actions">
-      <a class="topbar-btn-inbox" id="comm-inbox-link" href="#comunicacion" aria-label="Mis comunicaciones de la comunidad" title="Buzón de comunicaciones de mi comunidad"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10 21h4"></path></svg><span class="comm-inbox-label">Comunidad</span><span class="comm-count" data-comm-unread hidden>0</span></a>
-      <button class="topbar-btn-inbox" id="topbar-inbox-btn" type="button" aria-label="Buzón de avisos y correos del Administrador" title="Buzón de avisos del Administrador">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <a class="topbar-btn-inbox" id="comm-inbox-link" href="#comunicacion"
+        aria-label="Mis comunicaciones de la comunidad" title="Buzón de comunicaciones de mi comunidad"><svg width="18"
+          height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+          <path d="M10 21h4"></path>
+        </svg><span class="comm-inbox-label">Comunidad</span><span class="comm-count" data-comm-unread
+          hidden>0</span></a>
+      <button class="topbar-btn-inbox" id="topbar-inbox-btn" type="button"
+        aria-label="Buzón de avisos y correos del Administrador" title="Buzón de avisos del Administrador">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect width="20" height="16" x="2" y="4" rx="2"></rect>
           <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
         </svg>
         <span class="topbar-btn-label">Avisos Admin</span>
         <span class="badge-counter" id="inbox-badge-count">1</span>
       </button>
-      <button class="topbar-btn-inbox topbar-btn-owner" id="topbar-owner-inbox-btn" type="button" aria-label="Mis avisos y notificaciones de propietario" title="Mis avisos" style="display: none;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <button class="topbar-btn-inbox topbar-btn-owner" id="topbar-owner-inbox-btn" type="button"
+        aria-label="Mis avisos y notificaciones de propietario" title="Mis avisos" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
         </svg>
@@ -37,17 +52,26 @@
         <select id="active-role-select" class="role-select" title="Cambiar usuario (login simulado)"></select>
       </div>
       <div class="account-menu-wrap" id="user-account-badge">
-        <button type="button" class="account account-toggle" id="user-menu-toggle" aria-label="Abrir menú de usuario" aria-haspopup="menu" aria-expanded="false" aria-controls="user-menu">
+        <button type="button" class="account account-toggle" id="user-menu-toggle" aria-label="Abrir menú de usuario"
+          aria-haspopup="menu" aria-expanded="false" aria-controls="user-menu">
           <span class="avatar" id="user-avatar">?</span><span id="user-role-label">Mi cuenta</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
         <div class="account-menu" id="user-menu" role="menu" aria-label="Opciones de mi cuenta" hidden>
-          <div class="account-menu-heading" role="presentation"><strong id="user-menu-name"></strong><span id="user-menu-email"></span></div>
-          <button class="account-menu-item" id="account-menu-profile" type="button" role="menuitem" tabindex="-1">Mi perfil</button>
-          <button class="account-menu-item" id="account-menu-password" type="button" role="menuitem" tabindex="-1">Cambiar contraseña</button>
-          <button class="account-menu-item" id="account-menu-community" type="button" role="menuitem" tabindex="-1">Mi comunidad</button>
+          <div class="account-menu-heading" role="presentation"><strong id="user-menu-name"></strong><span
+              id="user-menu-email"></span></div>
+          <button class="account-menu-item" id="account-menu-profile" type="button" role="menuitem" tabindex="-1">Mi
+            perfil</button>
+          <button class="account-menu-item" id="account-menu-password" type="button" role="menuitem"
+            tabindex="-1">Cambiar contraseña</button>
+          <button class="account-menu-item" id="account-menu-community" type="button" role="menuitem" tabindex="-1">Mi
+            comunidad</button>
           <div class="account-menu-separator" role="separator"></div>
-          <button class="account-menu-item account-menu-danger" id="user-logout-btn" type="button" role="menuitem" tabindex="-1">Cerrar sesión</button>
+          <button class="account-menu-item account-menu-danger" id="user-logout-btn" type="button" role="menuitem"
+            tabindex="-1">Cerrar sesión</button>
         </div>
       </div>
     </div>
@@ -63,15 +87,16 @@
   <!-- PANTALLA DE LOGIN SIMULADO -->
   <div id="login-screen" class="login-screen" hidden>
     <div class="login-card">
-      <div class="login-brand"><img id="login-brand-logo" class="login-brand-logo" alt="" hidden />peñarrubia<span>·</span></div>
+      <div class="login-brand"><img id="login-brand-logo" class="login-brand-logo" alt=""
+          hidden />peñarrubia<span>·</span></div>
 
       <!-- Vista: Sign In -->
       <div id="login-view-signin" class="login-view">
         <h1>Iniciar sesión</h1>
         <p class="login-sub">Accedé con tu cuenta para continuar.</p>
         <form id="login-signin-form" novalidate>
-          <label>Usuario o email *
-            <input name="usuario" type="text" required autocomplete="username" placeholder="usuario o email" />
+          <label>Usuario o Email *
+            <input name="usuario" type="text" required autocomplete="username" placeholder="Usuario o Email" />
           </label>
           <label>Contraseña *
             <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
@@ -89,7 +114,8 @@
       <!-- Vista: Signup -->
       <div id="login-view-signup" class="login-view" hidden>
         <h1>Crear cuenta</h1>
-        <p class="login-sub">Tu cuenta se crea con el rol más básico. Un administrador puede asignarte más permisos después.</p>
+        <p class="login-sub">Tu cuenta se crea con el rol más básico. Un administrador puede asignarte más permisos
+          después.</p>
         <form id="login-signup-form" novalidate>
           <label>Nombre
             <input name="nombre" maxlength="60" autocomplete="given-name" />
@@ -120,7 +146,8 @@
       <!-- Vista: Forgot Password -->
       <div id="login-view-forgot" class="login-view" hidden>
         <h1>Recuperar contraseña</h1>
-        <p class="login-sub">Indicá el email de tu cuenta. Si está registrada y activa, recibirás un enlace válido durante 30 minutos.</p>
+        <p class="login-sub">Indicá el email de tu cuenta. Si está registrada y activa, recibirás un enlace válido
+          durante 30 minutos.</p>
         <form id="login-forgot-form" novalidate>
           <label>Email *
             <input name="email" type="email" required autocomplete="email" />
@@ -158,11 +185,12 @@
       <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
       <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
       <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
-      <a class="nav-item" href="#comunicacion" id="nav-comunicacion">Comunicación <span id="communication-unread" class="comm-count" hidden>0</span></a>
+      <a class="nav-item" href="#comunicacion" id="nav-comunicacion">Comunicación <span id="communication-unread"
+          class="comm-count" hidden>0</span></a>
       <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
     </aside>
 
-  <!-- SECCIÓN: HOME / DASHBOARD -->
+    <!-- SECCIÓN: HOME / DASHBOARD -->
     <section class="content" id="home">
       <!-- Banner de bienvenida dinámico -->
       <div class="home-hero-card">
@@ -172,16 +200,21 @@
             <span id="home-hero-role-badge">Panel Principal · Administrador</span>
           </div>
           <h1 id="home-greeting-title">Bienvenido a la gestión de Peñarrubia</h1>
-          <p id="home-greeting-desc">Plataforma integral para el censo territorial, gestión de propietarios y convalidación documental oficial.</p>
+          <p id="home-greeting-desc">Plataforma integral para el censo territorial, gestión de propietarios y
+            convalidación documental oficial.</p>
           <div class="home-hero-actions" id="home-hero-actions">
-            <button class="icon-action-btn btn-add btn-lg" id="home-btn-new-comm" type="button" title="Nueva comunidad" aria-label="Nueva comunidad">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-add btn-lg" id="home-btn-new-comm" type="button" title="Nueva comunidad"
+              aria-label="Nueva comunidad">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
             </button>
-            <button class="icon-action-btn btn-info btn-lg" id="home-btn-new-owner" type="button" title="Nuevo propietario" aria-label="Nuevo propietario">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-info btn-lg" id="home-btn-new-owner" type="button"
+              title="Nuevo propietario" aria-label="Nuevo propietario">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
                 <line x1="19" y1="8" x2="19" y2="14"></line>
@@ -203,7 +236,8 @@
       <div class="home-kpi-grid">
         <div class="kpi-card" id="kpi-card-comms">
           <div class="kpi-icon kpi-icon-blue">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 21h18"></path>
               <path d="M5 21V7l8-4v18"></path>
               <path d="M19 21V11l-6-3"></path>
@@ -221,7 +255,8 @@
 
         <div class="kpi-card" id="kpi-card-owners">
           <div class="kpi-icon kpi-icon-emerald">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -237,8 +272,10 @@
 
         <div class="kpi-card" id="kpi-card-members">
           <div class="kpi-icon kpi-icon-teal">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
+              </path>
             </svg>
           </div>
           <div class="kpi-data">
@@ -250,7 +287,8 @@
 
         <div class="kpi-card" id="kpi-card-pending-docs">
           <div class="kpi-icon kpi-icon-amber">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
@@ -270,7 +308,8 @@
           <div class="home-card-header">
             <div>
               <h2 class="home-card-title" id="home-activity-title">Estado de la Documentación</h2>
-              <p class="home-card-subtitle" id="home-activity-subtitle">Resumen de expedientes y convalidaciones documentales</p>
+              <p class="home-card-subtitle" id="home-activity-subtitle">Resumen de expedientes y convalidaciones
+                documentales</p>
             </div>
           </div>
           <div class="home-doc-summary-list" id="home-doc-summary-list">
@@ -303,10 +342,13 @@
         <div>
           <p class="eyebrow" id="comunidades-heading-eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
           <h1 id="comunidades-heading-title">Comunidades de vecinos</h1>
-          <p class="subtitle" id="comunidades-heading-subtitle">Consulta y gestiona las comunidades vinculadas a Peñarrubia.</p>
+          <p class="subtitle" id="comunidades-heading-subtitle">Consulta y gestiona las comunidades vinculadas a
+            Peñarrubia.</p>
         </div>
-        <button class="icon-action-btn btn-add btn-lg" id="new-community" type="button" title="Nueva comunidad" aria-label="Nueva comunidad">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-add btn-lg" id="new-community" type="button" title="Nueva comunidad"
+          aria-label="Nueva comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -330,8 +372,10 @@
           <h1>Inmuebles</h1>
           <p class="subtitle">Gestiona inmuebles vinculados a una comunidad, sus propietarios e inquilinos.</p>
         </div>
-        <button class="icon-action-btn btn-add btn-lg" id="new-property" type="button" title="Nuevo inmueble" aria-label="Nuevo inmueble">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-add btn-lg" id="new-property" type="button" title="Nuevo inmueble"
+          aria-label="Nuevo inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -350,21 +394,25 @@
     <!-- SECCIÓN: PROPIETARIOS -->
     <section class="content" id="propietarios" hidden>
       <div class="owner-view-banner" id="owner-view-banner-own" style="display: none;">
-        <span>👤 <strong>Modo Propietario:</strong> Estás accediendo a tu ficha personal. Puedes subir y actualizar tu documentación para convalidación administrativa.</span>
+        <span>👤 <strong>Modo Propietario:</strong> Estás accediendo a tu ficha personal. Puedes subir y actualizar tu
+          documentación para convalidación administrativa.</span>
         <span class="status-badge member">Expediente Particular</span>
       </div>
       <div class="page-heading">
         <div>
           <p class="eyebrow" id="owners-heading-eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
           <h1 id="owners-heading-title">Propietarios</h1>
-          <p class="subtitle" id="owners-heading-subtitle">Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.</p>
+          <p class="subtitle" id="owners-heading-subtitle">Consulta y gestiona los propietarios y asociados vinculados a
+            Peñarrubia.</p>
         </div>
-        <button class="icon-action-btn btn-add btn-lg" id="new-owner" type="button" title="Nuevo propietario" aria-label="Nuevo propietario">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
+        <button class="icon-action-btn btn-add btn-lg" id="new-owner" type="button" title="Nuevo propietario"
+          aria-label="Nuevo propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
       </div>
       <div class="toolbar" id="owners-toolbar">
         <label class="search-field" for="search-owners">
@@ -382,10 +430,13 @@
         <div>
           <p class="eyebrow">PROPIETARIOS · RESIDENTES</p>
           <h1>Inquilinos</h1>
-          <p class="subtitle">Consulta y gestiona los inquilinos, sus unidades, contratos, contactos y autorizaciones.</p>
+          <p class="subtitle">Consulta y gestiona los inquilinos, sus unidades, contratos, contactos y autorizaciones.
+          </p>
         </div>
-        <button class="icon-action-btn btn-add btn-lg" id="new-tenant" type="button" title="Nuevo inquilino" aria-label="Nuevo inquilino">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-add btn-lg" id="new-tenant" type="button" title="Nuevo inquilino"
+          aria-label="Nuevo inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -411,10 +462,13 @@
         </div>
       </div>
       <nav class="community-editor-tabs admin-tabs" aria-label="Secciones de administración">
-        <button class="community-editor-tab active" type="button" data-admin-tab="usuarios" aria-selected="true">Usuarios</button>
+        <button class="community-editor-tab active" type="button" data-admin-tab="usuarios"
+          aria-selected="true">Usuarios</button>
         <button class="community-editor-tab" type="button" data-admin-tab="roles" aria-selected="false">Roles</button>
-        <button class="community-editor-tab" type="button" data-admin-tab="settings" aria-selected="false">Configuración General</button>
-        <button class="community-editor-tab" type="button" data-admin-tab="auditoria" aria-selected="false">Auditoría</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="settings" aria-selected="false">Configuración
+          General</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="auditoria"
+          aria-selected="false">Auditoría</button>
       </nav>
 
       <section class="admin-pane" data-admin-pane="usuarios">
@@ -424,8 +478,10 @@
             <p class="detail-section-subtitle">Alta, edición y asignación de roles.</p>
           </div>
           <div class="heading-actions">
-            <button class="icon-action-btn btn-add" id="new-user" type="button" title="Nuevo usuario" aria-label="Nuevo usuario">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-add" id="new-user" type="button" title="Nuevo usuario"
+              aria-label="Nuevo usuario">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
@@ -439,11 +495,14 @@
         <div class="detail-section-heading">
           <div>
             <h3>Roles y permisos</h3>
-            <p class="detail-section-subtitle">Definí qué puede hacer cada rol. Los roles del sistema no se pueden eliminar.</p>
+            <p class="detail-section-subtitle">Definí qué puede hacer cada rol. Los roles del sistema no se pueden
+              eliminar.</p>
           </div>
           <div class="heading-actions">
-            <button class="icon-action-btn btn-add" id="new-role" type="button" title="Nuevo rol" aria-label="Nuevo rol">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-add" id="new-role" type="button" title="Nuevo rol"
+              aria-label="Nuevo rol">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
@@ -487,7 +546,10 @@
       </section>
 
       <section class="admin-pane" data-admin-pane="settings" hidden>
-        <div id="admin-communication-providers" class="comm-callout" hidden><strong>Proveedores de comunicación</strong><p>Configurá el correo SMTP y los envíos por SMS y WhatsApp.</p><button type="button" class="secondary-button" id="admin-open-providers">Configurar proveedores</button></div>
+        <div id="admin-communication-providers" class="comm-callout" hidden><strong>Proveedores de comunicación</strong>
+          <p>Configurá el correo SMTP y los envíos por SMS y WhatsApp.</p><button type="button" class="secondary-button"
+            id="admin-open-providers">Configurar proveedores</button>
+        </div>
         <form id="settings-form" novalidate>
           <div class="form-grid">
             <label class="full">Nombre de la asociación *
@@ -559,8 +621,10 @@
             </label>
           </div>
           <div class="dialog-actions">
-            <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar configuración" aria-label="Guardar configuración">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar configuración"
+              aria-label="Guardar configuración">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
                 <polyline points="7 3 7 8 15 8"></polyline>
@@ -571,10 +635,39 @@
       </section>
     </section>
     <section class="content" id="comunicacion" hidden aria-labelledby="communication-title">
-      <div class="comm-heading"><div><p class="eyebrow">VIDA EN COMUNIDAD</p><h1 id="communication-title">Comunicación</h1><p class="comm-muted">Avisos, eventos, reuniones y decisiones de tu comunidad.</p></div><div class="comm-actions"><button type="button" class="secondary-button" id="comm-preferences">Mis canales</button><button type="button" class="secondary-button" id="comm-providers" hidden>Proveedores de envío</button><button type="button" class="primary-button" id="comm-new" hidden>Nueva publicación</button></div></div>
-      <div id="comm-tabs" class="comm-tabs" role="tablist" aria-label="Vistas de comunicación"><button type="button" role="tab" aria-selected="true" data-comm-view="board">Tablón</button><button type="button" role="tab" aria-selected="false" data-comm-view="calendar">Calendario</button><button type="button" role="tab" aria-selected="false" data-comm-view="meetings">Reuniones</button></div>
-      <div class="comm-filters"><label>Comunidad<select id="comm-community"><option value="">Todas mis comunidades</option></select></label><label>Tipo<select id="comm-type"><option value="">Todos</option><option value="notice">Avisos</option><option value="event">Eventos</option><option value="meeting">Reuniones</option></select></label><label>Estado<select id="comm-filter"><option value="current">Vigentes y próximos</option><option value="unread">Sin leer</option><option value="all">Todos e histórico</option><option value="draft">Borradores</option><option value="scheduled">Programados</option></select></label><label>Buscar<input id="comm-search" type="search" placeholder="Título o contenido" /></label><button type="button" class="secondary-button" id="comm-refresh">Actualizar</button></div>
-      <p id="comm-status" class="comm-muted" role="status" aria-live="polite"></p><div id="comm-content"></div>
+      <div class="comm-heading">
+        <div>
+          <p class="eyebrow">VIDA EN COMUNIDAD</p>
+          <h1 id="communication-title">Comunicación</h1>
+          <p class="comm-muted">Avisos, eventos, reuniones y decisiones de tu comunidad.</p>
+        </div>
+        <div class="comm-actions"><button type="button" class="secondary-button" id="comm-preferences">Mis
+            canales</button><button type="button" class="secondary-button" id="comm-providers" hidden>Proveedores de
+            envío</button><button type="button" class="primary-button" id="comm-new" hidden>Nueva publicación</button>
+        </div>
+      </div>
+      <div id="comm-tabs" class="comm-tabs" role="tablist" aria-label="Vistas de comunicación"><button type="button"
+          role="tab" aria-selected="true" data-comm-view="board">Tablón</button><button type="button" role="tab"
+          aria-selected="false" data-comm-view="calendar">Calendario</button><button type="button" role="tab"
+          aria-selected="false" data-comm-view="meetings">Reuniones</button></div>
+      <div class="comm-filters"><label>Comunidad<select id="comm-community">
+            <option value="">Todas mis comunidades</option>
+          </select></label><label>Tipo<select id="comm-type">
+            <option value="">Todos</option>
+            <option value="notice">Avisos</option>
+            <option value="event">Eventos</option>
+            <option value="meeting">Reuniones</option>
+          </select></label><label>Estado<select id="comm-filter">
+            <option value="current">Vigentes y próximos</option>
+            <option value="unread">Sin leer</option>
+            <option value="all">Todos e histórico</option>
+            <option value="draft">Borradores</option>
+            <option value="scheduled">Programados</option>
+          </select></label><label>Buscar<input id="comm-search" type="search"
+            placeholder="Título o contenido" /></label><button type="button" class="secondary-button"
+          id="comm-refresh">Actualizar</button></div>
+      <p id="comm-status" class="comm-muted" role="status" aria-live="polite"></p>
+      <div id="comm-content"></div>
     </section>
   </main>
 
@@ -587,103 +680,122 @@
           <p class="eyebrow">COMUNIDADES</p>
           <h2 id="dialog-title">Nueva Comunidad</h2>
         </div>
-        <button class="icon-button" type="button" id="close-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-dialog" aria-label="Cerrar"><svg width="20" height="20"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro">Los campos marcados con * son obligatorios.</p>
       <nav class="community-editor-tabs" aria-label="Secciones de la Comunidad">
-        <button class="community-editor-tab active" type="button" data-community-tab="details" aria-selected="true">General</button>
-        <button class="community-editor-tab" type="button" data-community-tab="contact" aria-selected="false">Contacto y Domicilio</button>
-        <button class="community-editor-tab" type="button" data-community-tab="finance" aria-selected="false">Financiero</button>
-        <button class="community-editor-tab" id="community-properties-tab" type="button" data-community-tab="properties" aria-selected="false">Inmuebles (0)</button>
-        <button class="community-editor-tab" type="button" data-community-tab="docs" aria-selected="false">Documentación</button>
+        <button class="community-editor-tab active" type="button" data-community-tab="details"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-community-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-community-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" id="community-properties-tab" type="button" data-community-tab="properties"
+          aria-selected="false">Inmuebles (0)</button>
+        <button class="community-editor-tab" type="button" data-community-tab="docs"
+          aria-selected="false">Documentación</button>
       </nav>
       <section class="community-editor-pane" id="community-tab-details" data-community-pane="details">
-      <div class="form-grid">
-        <label class="full">Identificador Comunidad *
-          <input name="name" maxlength="100" required />
-        </label>
-        <label>NIF *
-          <input name="nif" maxlength="9" required pattern="H[0-9]{8}" placeholder="H12345678" title="El NIF debe ser H seguido de 8 dígitos." />
-        </label>
-        <label>Presidente (contacto)
-          <input name="president" maxlength="100" placeholder="Nombre y teléfono" />
-        </label>
-        <label>Administrador de fincas
-          <input name="administrator" maxlength="100" placeholder="Nombre / N.º colegiado" />
-        </label>
-        <label>Año de constitución
-          <input name="constitutionYear" maxlength="4" inputmode="numeric" placeholder="Ej: 2005" />
-        </label>
-        <label class="full">Observaciones
-          <textarea name="notes" rows="3" maxlength="500"></textarea>
-        </label>
-        <label class="full">Administrador de Comunidad (usuario del sistema)
-          <select name="adminUserId" id="community-admin-select">
-            <option value="">Sin asignar (se completa manualmente en Presidente/Administrador)</option>
-          </select>
-          <span class="field-hint">Asigná la cuenta de usuario que administra esta comunidad. Se completa también el campo Administrador de fincas.</span>
-        </label>
-      </div>
+        <div class="form-grid">
+          <label class="full">Identificador Comunidad *
+            <input name="name" maxlength="100" required />
+          </label>
+          <label>NIF *
+            <input name="nif" maxlength="9" required pattern="H[0-9]{8}" placeholder="H12345678"
+              title="El NIF debe ser H seguido de 8 dígitos." />
+          </label>
+          <label>Presidente (opcional)
+            <input name="president" maxlength="100" placeholder="Nombre y teléfono" />
+          </label>
+          <label>Administrador de Fincas (opcional)
+            <input name="administrator" maxlength="100" placeholder="Nombre / N.º colegiado" />
+          </label>
+          <label>Año de Constitución (opcional)
+            <input name="constitutionYear" maxlength="4" inputmode="numeric" placeholder="Ej: 2005" />
+          </label>
+          <label class="full">Observaciones (opcional)
+            <textarea name="notes" rows="3" maxlength="500"></textarea>
+          </label>
+          <label class="full">Administrador de Comunidad (usuario del sistema)
+            <select name="adminUserId" id="community-admin-select">
+              <option value="">Sin asignar (se completa manualmente en Presidente/Administrador)</option>
+            </select>
+            <span class="field-hint">Asigná la cuenta de usuario que administra esta comunidad. Se completa también el
+              campo Administrador de fincas.</span>
+          </label>
+        </div>
       </section>
       <section class="community-editor-pane" id="community-tab-contact" data-community-pane="contact" hidden>
-      <div class="form-grid">
-        <label>Teléfono Principal *
-          <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
-        </label>
-        <label>Teléfono Secundario
-          <input name="otherPhone" maxlength="9" inputmode="numeric" placeholder="600000000 (opcional)" style="max-width: 120px;" />
-        </label>
-        <label>Email *
-          <input name="email" type="email" required maxlength="120" placeholder="contacto@Comunidad.es" />
-        </label>
-        <label class="full">Dirección *
-          <input name="address" maxlength="140" required />
-        </label>
-        <label>Código postal *
-          <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}" placeholder="00000" />
-        </label>
-        <label>Municipio *
-          <select name="city" required disabled>
-            <option value="">Cargando municipios…</option>
-          </select>
-        </label>
-        <label>Provincia *
-          <select name="province" required disabled>
-            <option value="">Cargando provincias…</option>
-          </select>
-        </label>
-      </div>
+        <div class="form-grid">
+          <label>Teléfono Principal *
+            <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+          </label>
+          <label>Teléfono Secundario (opcional)
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
+          </label>
+          <label>Email *
+            <input name="email" type="email" required maxlength="120" placeholder="contacto@Comunidad.es" />
+          </label>
+          <label class="full">Dirección *
+            <input name="address" maxlength="140" required />
+          </label>
+          <label>Código postal *
+            <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}"
+              placeholder="00000" />
+          </label>
+          <label>Municipio *
+            <select name="city" required disabled>
+              <option value="">Cargando municipios…</option>
+            </select>
+          </label>
+          <label>Provincia *
+            <select name="province" required disabled>
+              <option value="">Cargando provincias…</option>
+            </select>
+          </label>
+        </div>
       </section>
       <section class="community-editor-pane" id="community-tab-finance" data-community-pane="finance" hidden>
-      <div class="form-grid">
-        <label>IBAN de la Comunidad
-          <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text" autocomplete="off" />
-        </label>
-        <label>Moneda
-          <select name="currency">
-            <option value="">Cargando monedas…</option>
-          </select>
-        </label>
-        <label>Fondo de reserva (€)
-          <input name="reserveFund" inputmode="decimal" maxlength="12" placeholder="Ej: 3500.00" />
-        </label>
-      </div>
+        <div class="form-grid">
+          <label>IBAN de la Comunidad (opcional)
+            <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
+              autocomplete="off" />
+          </label>
+          <label>Moneda (opcional)
+            <select name="currency">
+              <option value="">Cargando monedas…</option>
+            </select>
+          </label>
+          <label>Fondo de reserva (€) (opcional)
+            <input name="reserveFund" inputmode="decimal" maxlength="12" placeholder="Ej: 3500.00" />
+          </label>
+        </div>
       </section>
       <section class="community-editor-pane" id="community-tab-properties" data-community-pane="properties" hidden>
         <div class="detail-section-heading">
           <div>
             <h3>Inmuebles (<span id="community-edit-property-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Asocia inmuebles existentes, crea nuevos o desvincula los que ya no pertenezcan a esta Comunidad.</p>
+            <p class="detail-section-subtitle">Asocia inmuebles existentes, crea nuevos o desvincula los que ya no
+              pertenezcan a esta Comunidad.</p>
           </div>
           <div class="heading-actions">
-            <button class="icon-action-btn btn-add" id="btn-community-edit-add-property" type="button" title="Crear nuevo Inmueble" aria-label="Crear nuevo Inmueble">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-add" id="btn-community-edit-add-property" type="button"
+              title="Crear nuevo Inmueble" aria-label="Crear nuevo Inmueble">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
             </button>
-            <button class="icon-action-btn btn-info" id="btn-community-edit-link-property" type="button" title="Asociar Inmueble existente" aria-label="Asociar Inmueble existente">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-info" id="btn-community-edit-link-property" type="button"
+              title="Asociar Inmueble existente" aria-label="Asociar Inmueble existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
               </svg>
@@ -694,11 +806,20 @@
           <label>Inmueble
             <select id="community-edit-link-property-select"></select>
           </label>
-          <button class="icon-action-btn btn-save" id="btn-community-edit-confirm-link" type="button" title="Asociar Inmueble" aria-label="Asociar Inmueble">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <button class="icon-action-btn btn-save" id="btn-community-edit-confirm-link" type="button"
+            title="Asociar Inmueble" aria-label="Asociar Inmueble">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </button>
-          <button class="icon-action-btn btn-cancel" id="btn-community-edit-cancel-link" type="button" title="Cancelar" aria-label="Cancelar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <button class="icon-action-btn btn-cancel" id="btn-community-edit-cancel-link" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
         <div class="community-properties-list" id="community-edit-properties-list"></div>
@@ -707,13 +828,16 @@
         <div class="detail-section-heading">
           <div>
             <h3>Documentación de la comunidad (<span id="community-doc-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Adjunta actas, contratos, certificados u otros archivos. Se guardan al pulsar Guardar.</p>
+            <p class="detail-section-subtitle">Adjunta actas, contratos, certificados u otros archivos. Se guardan al
+              pulsar Guardar.</p>
           </div>
         </div>
         <div class="doc-dropzone-compact" id="community-doc-dropzone">
-          <input id="community-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+          <input id="community-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
+            class="doc-file-input" />
           <div class="doc-dropzone-compact-content">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -726,14 +850,18 @@
       </section>
       <p class="form-error" id="form-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-dialog" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar Comunidad" aria-label="Guardar Comunidad">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar Comunidad"
+          aria-label="Guardar Comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
@@ -751,98 +879,111 @@
           <p class="eyebrow">COMUNIDADES</p>
           <h2 id="detail-dialog-title">Información de la comunidad</h2>
         </div>
-        <button class="icon-button" type="button" id="close-detail-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-detail-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
-      <p class="form-intro">Consulta detallada de la comunidad (sólo lectura; para modificar usá «Editar comunidad»).</p>
+      <p class="form-intro">Consulta detallada de la comunidad (sólo lectura; para modificar usá «Editar comunidad»).
+      </p>
       <nav class="community-editor-tabs" aria-label="Secciones de la comunidad">
-        <button class="community-editor-tab active" type="button" data-cd-tab="general" aria-selected="true">General</button>
-        <button class="community-editor-tab" type="button" data-cd-tab="contact" aria-selected="false">Contacto y Domicilio</button>
-        <button class="community-editor-tab" type="button" data-cd-tab="finance" aria-selected="false">Financiero</button>
-        <button class="community-editor-tab" type="button" data-cd-tab="properties" aria-selected="false">Inmuebles</button>
-        <button class="community-editor-tab" type="button" data-cd-tab="docs" aria-selected="false">Documentación</button>
+        <button class="community-editor-tab active" type="button" data-cd-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="properties"
+          aria-selected="false">Inmuebles</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="docs"
+          aria-selected="false">Documentación</button>
       </nav>
       <section class="community-editor-pane" data-cd-pane="general">
-      <div class="detail-grid">
-        <div class="detail-item full">
-          <span class="detail-label">Identificador Comunidad</span>
-          <span class="detail-value highlight" id="detail-name"></span>
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">Identificador Comunidad</span>
+            <span class="detail-value highlight" id="detail-name"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">NIF</span>
+            <span class="detail-value badge" id="detail-nif"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Propietarios censados</span>
+            <span class="detail-value badge" id="detail-owners-count">0</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Presidente</span>
+            <span class="detail-value" id="detail-president"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Administrador de fincas</span>
+            <span class="detail-value" id="detail-administrator"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Año de constitución</span>
+            <span class="detail-value" id="detail-constitutionYear"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Observaciones</span>
+            <span class="detail-value" id="detail-notes"></span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">NIF</span>
-          <span class="detail-value badge" id="detail-nif"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Propietarios censados</span>
-          <span class="detail-value badge" id="detail-owners-count">0</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Presidente</span>
-          <span class="detail-value" id="detail-president"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Administrador de fincas</span>
-          <span class="detail-value" id="detail-administrator"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Año de constitución</span>
-          <span class="detail-value" id="detail-constitutionYear"></span>
-        </div>
-        <div class="detail-item full">
-          <span class="detail-label">Observaciones</span>
-          <span class="detail-value" id="detail-notes"></span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-cd-pane="contact" hidden>
-      <div class="detail-grid">
-        <div class="detail-item" id="detail-item-phone">
-          <span class="detail-label">Teléfono Principal</span>
-          <span class="detail-value" id="detail-phone"></span>
+        <div class="detail-grid">
+          <div class="detail-item" id="detail-item-phone">
+            <span class="detail-label">Teléfono Principal</span>
+            <span class="detail-value" id="detail-phone"></span>
+          </div>
+          <div class="detail-item" id="detail-item-otherPhone">
+            <span class="detail-label">Teléfono Secundario</span>
+            <span class="detail-value" id="detail-otherPhone"></span>
+          </div>
+          <div class="detail-item" id="detail-item-email">
+            <span class="detail-label">Email</span>
+            <span class="detail-value" id="detail-email"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Dirección</span>
+            <span class="detail-value" id="detail-address"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Código postal</span>
+            <span class="detail-value" id="detail-postalCode"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Municipio</span>
+            <span class="detail-value" id="detail-city"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Provincia</span>
+            <span class="detail-value" id="detail-province"></span>
+          </div>
         </div>
-        <div class="detail-item" id="detail-item-otherPhone">
-          <span class="detail-label">Teléfono Secundario</span>
-          <span class="detail-value" id="detail-otherPhone"></span>
-        </div>
-        <div class="detail-item" id="detail-item-email">
-          <span class="detail-label">Email</span>
-          <span class="detail-value" id="detail-email"></span>
-        </div>
-        <div class="detail-item full">
-          <span class="detail-label">Dirección</span>
-          <span class="detail-value" id="detail-address"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Código postal</span>
-          <span class="detail-value" id="detail-postalCode"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Municipio</span>
-          <span class="detail-value" id="detail-city"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Provincia</span>
-          <span class="detail-value" id="detail-province"></span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-cd-pane="finance" hidden>
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">IBAN de la comunidad</span>
-          <span class="detail-value" id="detail-iban"></span>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">IBAN de la comunidad</span>
+            <span class="detail-value" id="detail-iban"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Fondo de reserva</span>
+            <span class="detail-value" id="detail-reserveFund"></span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Fondo de reserva</span>
-          <span class="detail-value" id="detail-reserveFund"></span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-cd-pane="properties" hidden>
-      <!-- Inmuebles de la comunidad (sólo lectura; la edición se hace desde "Editar comunidad") -->
+        <!-- Inmuebles de la comunidad (sólo lectura; la edición se hace desde "Editar comunidad") -->
         <div class="detail-section-heading">
           <div>
-            <h3 id="community-detail-properties-heading">Inmuebles (<span id="community-detail-prop-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Consulta de unidades y parcelas censadas (1 a n). Para asociar o desvincular, usa «Editar comunidad».</p>
+            <h3 id="community-detail-properties-heading">Inmuebles (<span id="community-detail-prop-count">0</span>)
+            </h3>
+            <p class="detail-section-subtitle">Consulta de unidades y parcelas censadas (1 a n). Para asociar o
+              desvincular, usa «Editar comunidad».</p>
           </div>
         </div>
         <div id="community-properties-list" class="community-properties-list"></div>
@@ -858,14 +999,18 @@
       </section>
 
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-detail-btn" title="Cerrar" aria-label="Cerrar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-edit btn-lg" type="button" id="detail-edit-btn" title="Editar comunidad" aria-label="Editar comunidad">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="detail-edit-btn" title="Editar comunidad"
+          aria-label="Editar comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
             <path d="m15 5 4 4"></path>
           </svg>
@@ -881,13 +1026,16 @@
       <p id="delete-message"></p>
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" value="cancel" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-delete btn-lg" id="confirm-delete" value="confirm" title="Eliminar comunidad" aria-label="Eliminar comunidad">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-delete" value="confirm" title="Eliminar comunidad"
+          aria-label="Eliminar comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -906,18 +1054,30 @@
           <p class="eyebrow">PROPIETARIOS</p>
           <h2 id="owner-dialog-title">Nuevo propietario</h2>
         </div>
-        <button class="icon-button" type="button" id="close-owner-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-owner-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
-      <p class="form-intro owner-readonly-note" id="owner-readonly-note" hidden>Ficha en modo lectura. Pulsá el lápiz para editar los datos.</p>
+      <p class="form-intro owner-readonly-note" id="owner-readonly-note" hidden>Ficha en modo lectura. Pulsá el lápiz
+        para editar los datos.</p>
 
       <!-- Pestañas del formulario: General · Contacto y Domicilio · Comunidad y Notificaciones · Financiero · Inmueble · Documentación -->
       <nav class="community-editor-tabs" aria-label="Secciones del propietario">
-        <button class="community-editor-tab active" type="button" data-owner-tab="general" aria-selected="true">General</button>
-        <button class="community-editor-tab" type="button" data-owner-tab="contact" aria-selected="false">Contacto y Domicilio</button>
-        <button class="community-editor-tab" type="button" data-owner-tab="community" aria-selected="false">Comunidad y Notificaciones</button>
-        <button class="community-editor-tab" type="button" data-owner-tab="banking" aria-selected="false">Financiero</button>
-        <button class="community-editor-tab" type="button" data-owner-tab="property" aria-selected="false">Inmueble</button>
-        <button class="community-editor-tab" type="button" data-owner-tab="docs" aria-selected="false">Documentación <span class="tab-badge" id="tab-docs-badge">0/3</span></button>
+        <button class="community-editor-tab active" type="button" data-owner-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="community" aria-selected="false">Comunidad y
+          Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="banking"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="property"
+          aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="docs" aria-selected="false">Documentación
+          <span class="tab-badge" id="tab-docs-badge">0/3</span></button>
       </nav>
 
       <!-- PESTAÑA: GENERAL (identificación) -->
@@ -929,7 +1089,8 @@
             <input name="name" maxlength="60" required placeholder="Nombre" autocomplete="given-name" />
           </label>
           <label>Apellidos *
-            <input name="surname" maxlength="80" required placeholder="Primer y segundo apellido" autocomplete="family-name" />
+            <input name="surname" maxlength="80" required placeholder="Primer y segundo apellido"
+              autocomplete="family-name" />
           </label>
           <label>Tipo de documento *
             <select name="documentType" required>
@@ -939,10 +1100,12 @@
             </select>
           </label>
           <label>DNI / NIE / CIF *
-            <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI, NIE o CIF español." inputmode="text" autocomplete="off" />
+            <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI, NIE o CIF español."
+              inputmode="text" autocomplete="off" />
           </label>
           <label class="full">Observaciones
-            <textarea name="notes" rows="3" maxlength="500" placeholder="Observaciones del propietario (opcional)"></textarea>
+            <textarea name="notes" rows="3" maxlength="500"
+              placeholder="Observaciones del propietario (opcional)"></textarea>
           </label>
           <label class="full">Usuario del sistema
             <select name="userId" id="owner-user-select">
@@ -985,7 +1148,8 @@
               <option value="phone">Teléfono / Mensajería</option>
             </select>
           </label>
-          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente están verificados en la pestaña Contacto y Domicilio.</p>
+          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
+            están verificados en la pestaña Contacto y Domicilio.</p>
         </div>
       </section>
 
@@ -997,14 +1161,18 @@
             <p class="detail-section-subtitle">Asocia inmuebles existentes o crea uno nuevo. Puedes vincular varios.</p>
           </div>
           <div class="heading-actions">
-            <button class="icon-action-btn btn-add" id="btn-owner-add-property" type="button" title="Crear inmueble" aria-label="Crear inmueble">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-add" id="btn-owner-add-property" type="button" title="Crear inmueble"
+              aria-label="Crear inmueble">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
             </button>
-            <button class="icon-action-btn btn-info" id="btn-owner-link-property" type="button" title="Asociar inmueble existente" aria-label="Asociar inmueble existente">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-info" id="btn-owner-link-property" type="button"
+              title="Asociar inmueble existente" aria-label="Asociar inmueble existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
               </svg>
@@ -1015,11 +1183,20 @@
           <label>Inmueble
             <select id="owner-property-link-select"></select>
           </label>
-          <button class="icon-action-btn btn-save" id="btn-owner-confirm-property" type="button" title="Asociar inmueble" aria-label="Asociar inmueble">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <button class="icon-action-btn btn-save" id="btn-owner-confirm-property" type="button"
+            title="Asociar inmueble" aria-label="Asociar inmueble">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </button>
-          <button class="icon-action-btn btn-cancel" id="btn-owner-cancel-property" type="button" title="Cancelar" aria-label="Cancelar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <button class="icon-action-btn btn-cancel" id="btn-owner-cancel-property" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
         <div class="community-properties-list" id="owner-properties-list"></div>
@@ -1031,23 +1208,28 @@
           <p class="form-section-title full">Contacto</p>
           <label id="label-phone">Teléfono principal *
             <div class="verify-row">
-              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000" autocomplete="tel" />
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+                autocomplete="tel" />
               <button class="secondary-button verify-btn" type="button" id="btn-verify-phone">Verificar</button>
             </div>
-            <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
+            <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label>Teléfono Secundario
-            <input name="otherPhone" maxlength="9" inputmode="numeric" placeholder="600 000 000 (opcional)" style="max-width: 140px;" />
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
           </label>
           <label class="full" id="label-email">Email *
             <div class="verify-row">
-              <input name="email" type="email" maxlength="120" required placeholder="propietario@email.es" autocomplete="email" />
+              <input name="email" type="email" maxlength="120" required placeholder="propietario@email.es"
+                autocomplete="email" />
               <button class="secondary-button verify-btn" type="button" id="btn-verify-email">Verificar</button>
             </div>
-            <span class="verify-status" id="email-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
+            <span class="verify-status" id="email-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label class="full">Dirección *
-            <input name="address" maxlength="140" required placeholder="Calle, número, piso..." autocomplete="street-address" />
+            <input name="address" maxlength="140" required placeholder="Calle, número, piso..."
+              autocomplete="street-address" />
           </label>
           <label>Provincia *
             <select name="province" required disabled>
@@ -1071,9 +1253,10 @@
       <section class="community-editor-pane" id="owner-tab-banking" data-owner-pane="banking" hidden>
         <div class="form-grid">
           <label class="full">IBAN
-            <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text" autocomplete="off" />
+            <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
+              autocomplete="off" />
           </label>
-          <label>Moneda
+          <label>Moneda (opcional)
             <select name="currency">
               <option value="">Cargando monedas…</option>
             </select>
@@ -1087,7 +1270,8 @@
           <div class="docs-callout-icon">ℹ️</div>
           <div>
             <strong>Documentación exigida para el expediente del propietario:</strong>
-            <p>El sistema admite archivos PDF e imágenes. La identidad, el contenido y la legibilidad deben ser revisados por un administrador antes de aprobarlos.</p>
+            <p>El sistema admite archivos PDF e imágenes. La identidad, el contenido y la legibilidad deben ser
+              revisados por un administrador antes de aprobarlos.</p>
           </div>
         </div>
 
@@ -1099,21 +1283,25 @@
                 <span class="doc-card-num">1</span>
                 <div>
                   <h3 class="doc-card-title">Copia de DNI (ambas caras) *</h3>
-                  <p class="doc-card-desc">Documento Nacional de Identidad español vigente (PDF o JPG/PNG). Debe incluir anverso y reverso.</p>
+                  <p class="doc-card-desc">Documento Nacional de Identidad español vigente (PDF o JPG/PNG). Debe incluir
+                    anverso y reverso.</p>
                 </div>
               </div>
               <span class="doc-card-badge status-badge doc-pending" id="badge-doc-dni">Pendiente</span>
             </div>
 
             <div class="doc-dropzone" id="dropzone-dni">
-              <input type="file" id="input-doc-dni" accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+              <input type="file" id="input-doc-dni" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
               <div class="dropzone-content">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
                   <circle cx="9" cy="9" r="2"></circle>
                   <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
                 </svg>
-                <p class="dropzone-text"><strong>Arrastra tu DNI aquí</strong> o <span class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-text"><strong>Arrastra tu DNI aquí</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
                 <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
               </div>
             </div>
@@ -1138,16 +1326,19 @@
                 <span class="doc-card-num">2</span>
                 <div>
                   <h3 class="doc-card-title">Recibo bancario o certificado de titularidad *</h3>
-                  <p class="doc-card-desc">Documento bancario donde se domiciliará el pago de cuotas. Debe figurar el IBAN y el nombre del titular.</p>
+                  <p class="doc-card-desc">Documento bancario donde se domiciliará el pago de cuotas. Debe figurar el
+                    IBAN y el nombre del titular.</p>
                 </div>
               </div>
               <span class="doc-card-badge status-badge doc-pending" id="badge-doc-bank">Pendiente</span>
             </div>
 
             <div class="doc-dropzone" id="dropzone-bank">
-              <input type="file" id="input-doc-bank" accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+              <input type="file" id="input-doc-bank" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
               <div class="dropzone-content">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M3 21h18"></path>
                   <path d="M3 10h18"></path>
                   <path d="M5 6l7-3 7 3"></path>
@@ -1157,7 +1348,8 @@
                   <path d="M12 14v4"></path>
                   <path d="M16 14v4"></path>
                 </svg>
-                <p class="dropzone-text"><strong>Arrastra el recibo o certificado</strong> o <span class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-text"><strong>Arrastra el recibo o certificado</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
                 <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
               </div>
             </div>
@@ -1180,23 +1372,27 @@
                 <span class="doc-card-num">3</span>
                 <div>
                   <h3 class="doc-card-title">Copia de la escritura del inmueble *</h3>
-                  <p class="doc-card-desc">Copia simple o escritura notarial de compraventa/propiedad que acredite la posesión del inmueble o parcela.</p>
+                  <p class="doc-card-desc">Copia simple o escritura notarial de compraventa/propiedad que acredite la
+                    posesión del inmueble o parcela.</p>
                 </div>
               </div>
               <span class="doc-card-badge status-badge doc-pending" id="badge-doc-deed">Pendiente</span>
             </div>
 
             <div class="doc-dropzone" id="dropzone-deed">
-              <input type="file" id="input-doc-deed" accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+              <input type="file" id="input-doc-deed" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
               <div class="dropzone-content">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                   <line x1="16" y1="13" x2="8" y2="13"></line>
                   <line x1="16" y1="17" x2="8" y2="17"></line>
                   <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                <p class="dropzone-text"><strong>Arrastra la escritura aquí</strong> o <span class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-text"><strong>Arrastra la escritura aquí</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
                 <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
               </div>
             </div>
@@ -1216,7 +1412,8 @@
         <div class="docs-summary-bar" id="docs-summary-bar">
           <div class="docs-summary-text">
             <span id="docs-summary-status">0 de 3 documentos subidos</span>
-            <span class="docs-summary-subtext" id="docs-summary-subtext">Sube los tres documentos requeridos para completar el expediente.</span>
+            <span class="docs-summary-subtext" id="docs-summary-subtext">Sube los tres documentos requeridos para
+              completar el expediente.</span>
           </div>
         </div>
       </section>
@@ -1224,20 +1421,26 @@
       <p class="form-error" id="owner-form-error" role="alert"></p>
 
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-owner-dialog" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-owner-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-readonly-edit-btn" title="Editar propietario" aria-label="Editar propietario" hidden>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-readonly-edit-btn"
+          title="Editar propietario" aria-label="Editar propietario" hidden>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
             <path d="m15 5 4 4"></path>
           </svg>
         </button>
-        <button class="icon-action-btn btn-save btn-lg" type="submit" id="btn-save-owner" title="Guardar propietario" aria-label="Guardar propietario">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-save btn-lg" type="submit" id="btn-save-owner" title="Guardar propietario"
+          aria-label="Guardar propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
@@ -1255,100 +1458,111 @@
           <p class="eyebrow">PROPIETARIOS</p>
           <h2 id="owner-detail-title">Ficha del propietario</h2>
         </div>
-        <button class="icon-button" type="button" id="close-owner-detail-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-owner-detail-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro">Ficha del propietario (sólo lectura; para modificar usá «Editar propietario»).</p>
       <nav class="community-editor-tabs" aria-label="Secciones del propietario">
-        <button class="community-editor-tab active" type="button" data-od-tab="general" aria-selected="true">General</button>
-        <button class="community-editor-tab" type="button" data-od-tab="contact" aria-selected="false">Contacto y Domicilio</button>
-        <button class="community-editor-tab" type="button" data-od-tab="community" aria-selected="false">Comunidad y Notificaciones</button>
-        <button class="community-editor-tab" type="button" data-od-tab="banking" aria-selected="false">Financiero</button>
-        <button class="community-editor-tab" type="button" data-od-tab="property" aria-selected="false">Inmueble</button>
-        <button class="community-editor-tab" type="button" data-od-tab="docs" aria-selected="false">Documentación</button>
+        <button class="community-editor-tab active" type="button" data-od-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-od-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-od-tab="community" aria-selected="false">Comunidad y
+          Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-od-tab="banking"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-od-tab="property"
+          aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-od-tab="docs"
+          aria-selected="false">Documentación</button>
       </nav>
       <section class="community-editor-pane" data-od-pane="general">
-      <div class="detail-grid">
-        <div class="detail-item full">
-          <span class="detail-label">Nombre completo</span>
-          <span class="detail-value highlight" id="owner-detail-name"></span>
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">Nombre completo</span>
+            <span class="detail-value highlight" id="owner-detail-name"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">DNI / NIE / CIF</span>
+            <span class="detail-value badge" id="owner-detail-dni"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Condición en la asociación</span>
+            <span class="detail-value" id="owner-detail-member"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Observaciones</span>
+            <span class="detail-value" id="owner-detail-notes"></span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">DNI / NIE / CIF</span>
-          <span class="detail-value badge" id="owner-detail-dni"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Condición en la asociación</span>
-          <span class="detail-value" id="owner-detail-member"></span>
-        </div>
-        <div class="detail-item full">
-          <span class="detail-label">Observaciones</span>
-          <span class="detail-value" id="owner-detail-notes"></span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-od-pane="contact" hidden>
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">Teléfono principal</span>
-          <span class="detail-value" id="owner-detail-phone"></span>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Teléfono principal</span>
+            <span class="detail-value" id="owner-detail-phone"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Teléfono Secundario</span>
+            <span class="detail-value" id="owner-detail-otherPhone"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Email</span>
+            <span class="detail-value" id="owner-detail-email"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Dirección</span>
+            <span class="detail-value" id="owner-detail-address"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Código postal</span>
+            <span class="detail-value" id="owner-detail-postalCode"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Municipio</span>
+            <span class="detail-value" id="owner-detail-city"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Provincia</span>
+            <span class="detail-value" id="owner-detail-province"></span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Teléfono Secundario</span>
-          <span class="detail-value" id="owner-detail-otherPhone"></span>
-        </div>
-        <div class="detail-item full">
-          <span class="detail-label">Email</span>
-          <span class="detail-value" id="owner-detail-email"></span>
-        </div>
-        <div class="detail-item full">
-          <span class="detail-label">Dirección</span>
-          <span class="detail-value" id="owner-detail-address"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Código postal</span>
-          <span class="detail-value" id="owner-detail-postalCode"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Municipio</span>
-          <span class="detail-value" id="owner-detail-city"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Provincia</span>
-          <span class="detail-value" id="owner-detail-province"></span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-od-pane="community" hidden>
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">Comunidad vinculada</span>
-          <span class="detail-value" id="owner-detail-community"></span>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Comunidad vinculada</span>
+            <span class="detail-value" id="owner-detail-community"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Derecho de voto en Junta</span>
+            <span class="detail-value badge" id="owner-detail-votingRights">Con derecho a voto</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Representante legal</span>
+            <span class="detail-value" id="owner-detail-legalRepresentative">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Canal de notificaciones</span>
+            <span class="detail-value" id="owner-detail-notificationPreference">—</span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Derecho de voto en Junta</span>
-          <span class="detail-value badge" id="owner-detail-votingRights">Con derecho a voto</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Representante legal</span>
-          <span class="detail-value" id="owner-detail-legalRepresentative">—</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Canal de notificaciones</span>
-          <span class="detail-value" id="owner-detail-notificationPreference">—</span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-od-pane="banking" hidden>
-      <div class="detail-grid">
-        <div class="detail-item full">
-          <span class="detail-label">IBAN</span>
-          <span class="detail-value" id="owner-detail-iban"></span>
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">IBAN</span>
+            <span class="detail-value" id="owner-detail-iban"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Moneda</span>
+            <span class="detail-value" id="owner-detail-currency"></span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Moneda</span>
-          <span class="detail-value" id="owner-detail-currency"></span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-od-pane="property" hidden>
         <div class="detail-grid">
@@ -1361,7 +1575,7 @@
             <span class="detail-value" id="owner-detail-property-type"></span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">Referencia catastral</span>
+            <span class="detail-label">Referencia Catastral</span>
             <span class="detail-value" id="owner-detail-cadastral"></span>
           </div>
           <div class="detail-item">
@@ -1389,7 +1603,8 @@
             </div>
             <span class="status-badge" id="owner-detail-property-count">0 inmuebles</span>
           </div>
-          <p class="form-intro">Puedes filtrar por comunidad y seleccionar cualquiera de los inmuebles asociados a esta persona.</p>
+          <p class="form-intro">Puedes filtrar por comunidad y seleccionar cualquiera de los inmuebles asociados a esta
+            persona.</p>
           <div class="property-selector-row">
             <label>Comunidad
               <select id="owner-detail-property-community">
@@ -1413,7 +1628,8 @@
           </div>
           <p class="form-intro">Inquilinos de las unidades de este propietario.</p>
           <div class="tenant-list" id="owner-detail-tenant-list"></div>
-          <p class="form-intro" id="owner-detail-tenant-empty">Este propietario todavía no tiene inquilinos registrados.</p>
+          <p class="form-intro" id="owner-detail-tenant-empty">Este propietario todavía no tiene inquilinos registrados.
+          </p>
         </section>
       </section>
       <section class="community-editor-pane" data-od-pane="docs" hidden>
@@ -1436,14 +1652,18 @@
       </section>
 
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-detail-btn" title="Cerrar" aria-label="Cerrar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-detail-edit-btn" title="Editar propietario" aria-label="Editar propietario">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-detail-edit-btn"
+          title="Editar propietario" aria-label="Editar propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
             <path d="m15 5 4 4"></path>
           </svg>
@@ -1452,22 +1672,33 @@
     </div>
   </dialog>
 
-    <dialog id="tenant-dialog" aria-labelledby="tenant-dialog-title">
+  <dialog id="tenant-dialog" aria-labelledby="tenant-dialog-title">
     <form id="tenant-form" novalidate>
       <div class="dialog-header">
         <div>
           <p class="eyebrow">INQUILINOS</p>
           <h2 id="tenant-dialog-title">Nuevo inquilino</h2>
         </div>
-        <button class="icon-button" type="button" id="close-tenant-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-tenant-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <nav class="community-editor-tabs" aria-label="Secciones del inquilino">
-        <button class="community-editor-tab active" type="button" data-tenant-tab="general" aria-selected="true">General</button>
-        <button class="community-editor-tab" type="button" data-tenant-tab="contact" aria-selected="false">Contacto y Domicilio</button>
-        <button class="community-editor-tab" type="button" data-tenant-tab="community" aria-selected="false">Comunidad y Notificaciones</button>
-        <button class="community-editor-tab" type="button" data-tenant-tab="contract" aria-selected="false">Contrato</button>
-        <button class="community-editor-tab" type="button" data-tenant-tab="property" aria-selected="false">Inmueble</button>
-        <button class="community-editor-tab" type="button" data-tenant-tab="docs" aria-selected="false">Documentación <span class="tab-badge" id="tenant-tab-docs-badge">0/2</span></button>
+        <button class="community-editor-tab active" type="button" data-tenant-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="community" aria-selected="false">Comunidad y
+          Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="contract"
+          aria-selected="false">Contrato</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="property"
+          aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="docs" aria-selected="false">Documentación
+          <span class="tab-badge" id="tenant-tab-docs-badge">0/2</span></button>
       </nav>
 
       <section class="community-editor-pane" id="tenant-tab-general" data-tenant-pane="general">
@@ -1490,7 +1721,8 @@
             <input name="documentId" maxlength="20" required autocomplete="off" />
           </label>
           <label class="full">Observaciones
-            <textarea name="authorizationNotes" rows="3" maxlength="500" placeholder="Observaciones del inquilino (opcional)"></textarea>
+            <textarea name="authorizationNotes" rows="3" maxlength="500"
+              placeholder="Observaciones del inquilino (opcional)"></textarea>
           </label>
           <label class="full">Usuario del sistema
             <select name="userId" id="tenant-user-select">
@@ -1507,20 +1739,24 @@
           <p class="form-section-title full">Contacto</p>
           <label id="tenant-label-phone">Teléfono Principal *
             <div class="verify-row">
-              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000" autocomplete="tel" />
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+                autocomplete="tel" />
               <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-phone">Verificar</button>
             </div>
-            <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
+            <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label>Teléfono Secundario
-            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600 000 000 (opcional)" />
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
           </label>
           <label class="full" id="tenant-label-email">Email *
             <div class="verify-row">
-              <input name="email" type="email" maxlength="120" required placeholder="inquilino@email.es" autocomplete="email" />
+              <input name="email" type="email" maxlength="120" required placeholder="inquilino@email.es"
+                autocomplete="email" />
               <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-email">Verificar</button>
             </div>
-            <span class="verify-status" id="tenant-email-verify-status" role="status" aria-live="polite">Pendiente de verificación</span>
+            <span class="verify-status" id="tenant-email-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
         </div>
       </section>
@@ -1531,8 +1767,10 @@
           <fieldset class="full tenant-authorizations">
             <legend>Autorizaciones concedidas</legend>
             <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
-            <label><input type="checkbox" name="authorizations" value="community_communications" id="tenant-auth-comm" /> Recibir comunicaciones de la comunidad</label>
-            <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de la unidad</label>
+            <label><input type="checkbox" name="authorizations" value="community_communications"
+                id="tenant-auth-comm" /> Recibir comunicaciones de la comunidad</label>
+            <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de
+              la unidad</label>
           </fieldset>
           <label class="full">Canal preferente de notificaciones (LPH art. 9)
             <select name="notificationPreference">
@@ -1541,7 +1779,8 @@
               <option value="phone">Teléfono / Mensajería</option>
             </select>
           </label>
-          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente están verificados en la pestaña Contacto y Domicilio.</p>
+          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
+            están verificados en la pestaña Contacto y Domicilio.</p>
         </div>
       </section>
 
@@ -1586,8 +1825,10 @@
             <p class="detail-section-subtitle">Un inquilino solo puede estar vinculado a un inmueble.</p>
           </div>
           <div class="heading-actions">
-            <button class="icon-action-btn btn-info" id="btn-tenant-link-property" type="button" title="Asociar inmueble existente" aria-label="Asociar inmueble existente">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-info" id="btn-tenant-link-property" type="button"
+              title="Asociar inmueble existente" aria-label="Asociar inmueble existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
               </svg>
@@ -1598,11 +1839,20 @@
           <label>Inmueble
             <select id="tenant-property-link-select"></select>
           </label>
-          <button class="icon-action-btn btn-save" id="btn-tenant-confirm-property" type="button" title="Asociar inmueble" aria-label="Asociar inmueble">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <button class="icon-action-btn btn-save" id="btn-tenant-confirm-property" type="button"
+            title="Asociar inmueble" aria-label="Asociar inmueble">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </button>
-          <button class="icon-action-btn btn-cancel" id="btn-tenant-cancel-property" type="button" title="Cancelar" aria-label="Cancelar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <button class="icon-action-btn btn-cancel" id="btn-tenant-cancel-property" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
         <div class="community-properties-list" id="tenant-properties-list"></div>
@@ -1613,7 +1863,8 @@
           <div class="docs-callout-icon">ℹ️</div>
           <div>
             <strong>Documentación del inquilino:</strong>
-            <p>El sistema valida de forma automática la legibilidad y correspondencia de cada archivo. Tras superarla, el Administrador recibirá un aviso para su aprobación.</p>
+            <p>El sistema valida de forma automática la legibilidad y correspondencia de cada archivo. Tras superarla,
+              el Administrador recibirá un aviso para su aprobación.</p>
           </div>
         </div>
         <div class="docs-upload-container">
@@ -1629,41 +1880,47 @@
               <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-dni">Pendiente</span>
             </div>
             <div class="doc-dropzone" id="tenant-dropzone-dni">
-              <input type="file" id="tenant-input-doc-dni" accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+              <input type="file" id="tenant-input-doc-dni" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
               <div class="dropzone-content">
-                <p class="dropzone-text"><strong>Arrastra tu documento aquí</strong> o <span class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-text"><strong>Arrastra tu documento aquí</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
                 <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
               </div>
             </div>
             <div class="doc-sample-bar">
-              <button class="sample-doc-btn" type="button" id="tenant-btn-sample-dni">✨ Cargar documento de prueba</button>
+              <button class="sample-doc-btn" type="button" id="tenant-btn-sample-dni">✨ Cargar documento de
+                prueba</button>
             </div>
             <div class="doc-validation-result" id="tenant-result-doc-dni" hidden></div>
           </div>
         </div>
-          <div class="doc-upload-card" id="tenant-card-doc-contract">
-            <div class="doc-card-header">
-              <div class="doc-card-title-wrap">
-                <span class="doc-card-num">2</span>
-                <div>
-                  <h3 class="doc-card-title">Contrato de arrendamiento *</h3>
-                  <p class="doc-card-desc">Contrato firmado (PDF o JPG/PNG).</p>
-                </div>
-              </div>
-              <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-contract">Pendiente</span>
-            </div>
-            <div class="doc-dropzone" id="tenant-dropzone-contract">
-              <input type="file" id="tenant-input-doc-contract" accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
-              <div class="dropzone-content">
-                <p class="dropzone-text"><strong>Arrastra el contrato aquí</strong> o <span class="dropzone-browse">selecciona un archivo</span></p>
-                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+        <div class="doc-upload-card" id="tenant-card-doc-contract">
+          <div class="doc-card-header">
+            <div class="doc-card-title-wrap">
+              <span class="doc-card-num">2</span>
+              <div>
+                <h3 class="doc-card-title">Contrato de arrendamiento *</h3>
+                <p class="doc-card-desc">Contrato firmado (PDF o JPG/PNG).</p>
               </div>
             </div>
-            <div class="doc-sample-bar">
-              <button class="sample-doc-btn" type="button" id="tenant-btn-sample-contract">✨ Cargar contrato de prueba</button>
-            </div>
-            <div class="doc-validation-result" id="tenant-result-doc-contract" hidden></div>
+            <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-contract">Pendiente</span>
           </div>
+          <div class="doc-dropzone" id="tenant-dropzone-contract">
+            <input type="file" id="tenant-input-doc-contract" accept=".pdf,image/jpeg,image/png,image/webp"
+              class="doc-file-input" />
+            <div class="dropzone-content">
+              <p class="dropzone-text"><strong>Arrastra el contrato aquí</strong> o <span
+                  class="dropzone-browse">selecciona un archivo</span></p>
+              <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+            </div>
+          </div>
+          <div class="doc-sample-bar">
+            <button class="sample-doc-btn" type="button" id="tenant-btn-sample-contract">✨ Cargar contrato de
+              prueba</button>
+          </div>
+          <div class="doc-validation-result" id="tenant-result-doc-contract" hidden></div>
+        </div>
         <div class="docs-summary-bar" id="tenant-docs-summary-bar">
           <div class="docs-summary-text">
             <span id="tenant-docs-summary-status">0 de 2 documentos subidos</span>
@@ -1673,14 +1930,18 @@
 
       <p class="form-error" id="tenant-form-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-dialog" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar inquilino" aria-label="Guardar inquilino">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar inquilino"
+          aria-label="Guardar inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
@@ -1690,7 +1951,7 @@
     </form>
   </dialog>
 
-    <!-- Diálogo de verificación de contacto para inquilinos -->
+  <!-- Diálogo de verificación de contacto para inquilinos -->
   <dialog id="tenant-verification-dialog" class="dialog-sm" aria-labelledby="tenant-verification-title">
     <div class="dialog-content">
       <div class="dialog-header">
@@ -1698,7 +1959,12 @@
           <p class="eyebrow">VERIFICACIÓN DE CONTACTO</p>
           <h2 id="tenant-verification-title">Verificar teléfono</h2>
         </div>
-        <button class="icon-button" type="button" id="close-tenant-verification-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-tenant-verification-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro" id="tenant-verification-desc"></p>
       <div class="verification-target" id="tenant-verification-target"></div>
@@ -1707,12 +1973,15 @@
         <strong id="tenant-verification-demo-code"></strong>
       </div>
       <label class="verification-code-label">Código de verificación
-        <input id="tenant-verification-code-input" maxlength="6" inputmode="numeric" placeholder="000000" autocomplete="one-time-code" />
+        <input id="tenant-verification-code-input" maxlength="6" inputmode="numeric" placeholder="000000"
+          autocomplete="one-time-code" />
       </label>
       <p class="form-error" id="tenant-verification-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-verification-btn" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-verification-btn"
+          title="Cancelar" aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -1730,7 +1999,12 @@
           <p class="eyebrow">INQUILINOS</p>
           <h2 id="tenant-detail-title">Ficha del inquilino</h2>
         </div>
-        <button class="icon-button" type="button" id="close-tenant-detail-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-tenant-detail-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <div class="detail-grid">
         <div class="detail-item">
@@ -1752,7 +2026,8 @@
         <div class="detail-item full">
           <span class="detail-label">Unidad</span>
           <span class="detail-value" id="tenant-detail-property"></span>
-          <button class="secondary-button tenant-property-link" id="tenant-detail-view-property" type="button">Ver unidad</button>
+          <button class="secondary-button tenant-property-link" id="tenant-detail-view-property" type="button">Ver
+            unidad</button>
         </div>
         <div class="detail-item">
           <span class="detail-label">Inicio del contrato</span>
@@ -1792,14 +2067,18 @@
         </div>
       </div>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-detail-btn" title="Cerrar" aria-label="Cerrar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-edit btn-lg" type="button" id="tenant-detail-edit-btn" title="Editar inquilino" aria-label="Editar inquilino">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="tenant-detail-edit-btn"
+          title="Editar inquilino" aria-label="Editar inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
             <path d="m15 5 4 4"></path>
           </svg>
@@ -1814,13 +2093,16 @@
       <p id="tenant-delete-message"></p>
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" value="cancel" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-delete btn-lg" id="confirm-tenant-delete" value="confirm" title="Eliminar inquilino" aria-label="Eliminar inquilino">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-tenant-delete" value="confirm"
+          title="Eliminar inquilino" aria-label="Eliminar inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -1838,10 +2120,16 @@
           <p class="eyebrow">VERIFICACIÓN DE CONTACTO</p>
           <h2 id="verification-title">Verificar teléfono</h2>
         </div>
-        <button class="icon-button" type="button" id="close-verification-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-verification-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro" id="verification-desc">
-        Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca a los 10 minutos y puede solicitarse uno nuevo cada 60 segundos. Cada código es de un solo uso.
+        Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca a los 10 minutos y puede
+        solicitarse uno nuevo cada 60 segundos. Cada código es de un solo uso.
       </p>
       <div class="verification-target" id="verification-target"></div>
       <div class="verification-demo" id="verification-demo" hidden>
@@ -1849,12 +2137,15 @@
         <strong id="verification-demo-code"></strong>
       </div>
       <label class="verification-code-label">Código de verificación
-        <input id="verification-code-input" maxlength="6" inputmode="numeric" placeholder="000000" autocomplete="one-time-code" />
+        <input id="verification-code-input" maxlength="6" inputmode="numeric" placeholder="000000"
+          autocomplete="one-time-code" />
       </label>
       <p class="form-error" id="verification-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-verification-btn" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-verification-btn" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg>
@@ -1872,16 +2163,28 @@
           <p class="eyebrow">INMUEBLES</p>
           <h2 id="property-dialog-title">Nuevo Inmueble</h2>
         </div>
-        <button class="icon-button" type="button" id="close-property-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-property-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
-      <p class="form-intro">La Comunidad, al menos un propietario y la dirección son obligatorios. Los inquilinos y documentos son opcionales.</p>
+      <p class="form-intro">La Comunidad, al menos un propietario y la dirección son obligatorios. Los inquilinos y
+        documentos son opcionales.</p>
       <nav class="community-editor-tabs property-editor-tabs" aria-label="Secciones del Inmueble">
-        <button class="community-editor-tab active" type="button" data-property-tab="general" aria-selected="true">General</button>
-        <button class="community-editor-tab" type="button" data-property-tab="details" aria-selected="false">Detalles y Domicilio</button>
-        <button class="community-editor-tab" type="button" data-property-tab="finance" aria-selected="false">Financiero</button>
-        <button class="community-editor-tab" type="button" data-property-tab="owners" aria-selected="false">Propietarios</button>
-        <button class="community-editor-tab" type="button" data-property-tab="tenants" aria-selected="false">Inquilinos</button>
-        <button class="community-editor-tab" type="button" data-property-tab="docs" aria-selected="false">Documentación</button>
+        <button class="community-editor-tab active" type="button" data-property-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-property-tab="details" aria-selected="false">Detalles y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-property-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-property-tab="owners"
+          aria-selected="false">Propietarios</button>
+        <button class="community-editor-tab" type="button" data-property-tab="tenants"
+          aria-selected="false">Inquilinos</button>
+        <button class="community-editor-tab" type="button" data-property-tab="docs"
+          aria-selected="false">Documentación</button>
       </nav>
       <section class="property-editor-pane" data-property-pane="general">
         <div class="form-grid">
@@ -1901,11 +2204,12 @@
               <option value="trastero">Trastero</option>
             </select>
           </label>
-          <label>Referencia catastral
+          <label>Referencia Catastral
             <input name="cadastralRef" maxlength="20" />
           </label>
           <label class="full">Observaciones
-            <textarea name="notes" rows="3" maxlength="500" placeholder="Observaciones del inmueble (opcional)"></textarea>
+            <textarea name="notes" rows="3" maxlength="500"
+              placeholder="Observaciones del inmueble (opcional)"></textarea>
           </label>
         </div>
       </section>
@@ -1915,7 +2219,8 @@
             <input name="address" maxlength="140" required autocomplete="street-address" />
           </label>
           <label>Código postal *
-            <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}" placeholder="00000" />
+            <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}"
+              placeholder="00000" />
           </label>
           <label>Municipio *
             <select name="city" required disabled>
@@ -1972,7 +2277,7 @@
           <label>Cuota de Comunidad
             <input name="communityFee" inputmode="decimal" maxlength="10" placeholder="Ej: 65.50" />
           </label>
-          <label>Moneda
+          <label>Moneda (opcional)
             <select name="currency">
               <option value="">Cargando monedas…</option>
             </select>
@@ -1988,22 +2293,27 @@
           </label>
         </div>
       </section>
-      
+
       <section class="property-editor-pane" data-property-pane="owners" hidden>
         <div class="detail-section-heading">
           <div>
             <h3>Propietarios asociados (<span id="property-owner-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Asocia propietarios existentes, crea nuevos o desvincula los que ya no correspondan. Debe quedar al menos uno asociado.</p>
+            <p class="detail-section-subtitle">Asocia propietarios existentes, crea nuevos o desvincula los que ya no
+              correspondan. Debe quedar al menos uno asociado.</p>
           </div>
           <div class="heading-actions">
-            <button class="icon-action-btn btn-add" id="btn-property-add-owner" type="button" title="Crear propietario" aria-label="Crear propietario">            
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-add" id="btn-property-add-owner" type="button" title="Crear propietario"
+              aria-label="Crear propietario">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
             </button>
-            <button class="icon-action-btn btn-info" id="btn-property-link-owner" type="button" title="Asociar propietario existente" aria-label="Asociar propietario existente">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-info" id="btn-property-link-owner" type="button"
+              title="Asociar propietario existente" aria-label="Asociar propietario existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
               </svg>
@@ -2014,11 +2324,20 @@
           <label>Propietario
             <select id="property-owner-link-select"></select>
           </label>
-          <button class="icon-action-btn btn-save" id="btn-property-confirm-owner" type="button" title="Asociar propietario" aria-label="Asociar propietario">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <button class="icon-action-btn btn-save" id="btn-property-confirm-owner" type="button"
+            title="Asociar propietario" aria-label="Asociar propietario">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </button>
-          <button class="icon-action-btn btn-cancel" id="btn-property-cancel-owner" type="button" title="Cancelar" aria-label="Cancelar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <button class="icon-action-btn btn-cancel" id="btn-property-cancel-owner" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
         <div class="community-properties-list" id="property-owners-list"></div>
@@ -2027,17 +2346,22 @@
         <div class="detail-section-heading">
           <div>
             <h3>Inquilinos asociados (<span id="property-tenant-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Asocia inquilinos de los propietarios vinculados, crea nuevos o desvincula los existentes.</p>
+            <p class="detail-section-subtitle">Asocia inquilinos de los propietarios vinculados, crea nuevos o
+              desvincula los existentes.</p>
           </div>
           <div class="heading-actions">
-            <button class="icon-action-btn btn-add" id="btn-property-add-tenant" type="button" title="Crear inquilino" aria-label="Crear inquilino">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-add" id="btn-property-add-tenant" type="button" title="Crear inquilino"
+              aria-label="Crear inquilino">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
             </button>
-            <button class="icon-action-btn btn-info" id="btn-property-link-tenant" type="button" title="Asociar inquilino existente" aria-label="Asociar inquilino existente">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <button class="icon-action-btn btn-info" id="btn-property-link-tenant" type="button"
+              title="Asociar inquilino existente" aria-label="Asociar inquilino existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
               </svg>
@@ -2048,11 +2372,20 @@
           <label>Inquilino
             <select id="property-tenant-link-select"></select>
           </label>
-          <button class="icon-action-btn btn-save" id="btn-property-confirm-tenant" type="button" title="Asociar inquilino" aria-label="Asociar inquilino">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <button class="icon-action-btn btn-save" id="btn-property-confirm-tenant" type="button"
+            title="Asociar inquilino" aria-label="Asociar inquilino">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </button>
-          <button class="icon-action-btn btn-cancel" id="btn-property-cancel-tenant" type="button" title="Cancelar" aria-label="Cancelar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <button class="icon-action-btn btn-cancel" id="btn-property-cancel-tenant" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
         <div class="community-properties-list" id="property-tenants-list"></div>
@@ -2061,13 +2394,16 @@
         <div class="detail-section-heading">
           <div>
             <h3>Documentación del inmueble (<span id="property-doc-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Adjunta escrituras, certificados energéticos u otros archivos. Se guardan al pulsar Guardar.</p>
+            <p class="detail-section-subtitle">Adjunta escrituras, certificados energéticos u otros archivos. Se guardan
+              al pulsar Guardar.</p>
           </div>
         </div>
         <div class="doc-dropzone-compact" id="property-doc-dropzone">
-          <input id="property-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" class="doc-file-input" />
+          <input id="property-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
+            class="doc-file-input" />
           <div class="doc-dropzone-compact-content">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -2080,14 +2416,18 @@
       </section>
       <p class="form-error" id="property-form-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-property-dialog" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-property-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar Inmueble" aria-label="Guardar Inmueble">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar Inmueble"
+          aria-label="Guardar Inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
@@ -2104,80 +2444,91 @@
           <p class="eyebrow">INMUEBLES</p>
           <h2 id="property-detail-title">Ficha del inmueble</h2>
         </div>
-        <button class="icon-button" type="button" id="close-property-detail-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-property-detail-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro">Consulta detallada del inmueble (sólo lectura; para modificar usá «Editar inmueble»).</p>
       <nav class="community-editor-tabs" aria-label="Secciones del inmueble">
-        <button class="community-editor-tab active" type="button" data-pd-tab="general" aria-selected="true">General</button>
-        <button class="community-editor-tab" type="button" data-pd-tab="details" aria-selected="false">Detalles y Domicilio</button>
-        <button class="community-editor-tab" type="button" data-pd-tab="finance" aria-selected="false">Financiero</button>
-        <button class="community-editor-tab" type="button" data-pd-tab="owners" aria-selected="false">Propietarios</button>
-        <button class="community-editor-tab" type="button" data-pd-tab="tenants" aria-selected="false">Inquilinos</button>
-        <button class="community-editor-tab" type="button" data-pd-tab="docs" aria-selected="false">Documentación</button>
+        <button class="community-editor-tab active" type="button" data-pd-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="details" aria-selected="false">Detalles y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="owners"
+          aria-selected="false">Propietarios</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="tenants"
+          aria-selected="false">Inquilinos</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="docs"
+          aria-selected="false">Documentación</button>
       </nav>
       <section class="community-editor-pane" data-pd-pane="general">
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">Tipo e identificador</span>
-          <span class="detail-value" id="property-detail-label"></span>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Tipo e identificador</span>
+            <span class="detail-value" id="property-detail-label"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Comunidad</span>
+            <span class="detail-value" id="property-detail-community"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Referencia Catastral</span>
+            <span class="detail-value" id="property-detail-registry"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Observaciones</span>
+            <span class="detail-value" id="property-detail-notes">—</span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Comunidad</span>
-          <span class="detail-value" id="property-detail-community"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Referencia catastral / finca</span>
-          <span class="detail-value" id="property-detail-registry"></span>
-        </div>
-        <div class="detail-item full">
-          <span class="detail-label">Observaciones</span>
-          <span class="detail-value" id="property-detail-notes">—</span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-pd-pane="details" hidden>
-      <div class="detail-grid">
-        <div class="detail-item full">
-          <span class="detail-label">Dirección</span>
-          <span class="detail-value" id="property-detail-address"></span>
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">Dirección</span>
+            <span class="detail-value" id="property-detail-address"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Código postal · Municipio · Provincia</span>
+            <span class="detail-value" id="property-detail-location">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Planta, puerta, superficie</span>
+            <span class="detail-value" id="property-detail-characteristics"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Bloque / Portal / Escalera</span>
+            <span class="detail-value" id="property-detail-staircase">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Certificado Energético</span>
+            <span class="detail-value badge" id="property-detail-energyCertificate">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Uso</span>
+            <span class="detail-value" id="property-detail-use">—</span>
+          </div>
         </div>
-        <div class="detail-item full">
-          <span class="detail-label">Código postal · Municipio · Provincia</span>
-          <span class="detail-value" id="property-detail-location">—</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Planta, puerta, superficie</span>
-          <span class="detail-value" id="property-detail-characteristics"></span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Bloque / Portal / Escalera</span>
-          <span class="detail-value" id="property-detail-staircase">—</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Certificado Energético</span>
-          <span class="detail-value badge" id="property-detail-energyCertificate">—</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Uso</span>
-          <span class="detail-value" id="property-detail-use">—</span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-pd-pane="finance" hidden>
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">Cuota de comunidad</span>
-          <span class="detail-value" id="property-detail-communityFee">—</span>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Cuota de comunidad</span>
+            <span class="detail-value" id="property-detail-communityFee">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Coeficiente de participación</span>
+            <span class="detail-value" id="property-detail-coef">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Estado de recibos</span>
+            <span class="detail-value" id="property-detail-receipts"></span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Coeficiente de participación</span>
-          <span class="detail-value" id="property-detail-coef">—</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Estado de recibos</span>
-          <span class="detail-value" id="property-detail-receipts"></span>
-        </div>
-      </div>
       </section>
       <section class="community-editor-pane" data-pd-pane="owners" hidden>
         <div class="detail-item full">
@@ -2200,14 +2551,18 @@
         </div>
       </section>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-btn" title="Cerrar" aria-label="Cerrar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-edit btn-lg" type="button" id="property-detail-edit-btn" title="Editar inmueble" aria-label="Editar inmueble">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="property-detail-edit-btn"
+          title="Editar inmueble" aria-label="Editar inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
             <path d="m15 5 4 4"></path>
           </svg>
@@ -2224,7 +2579,12 @@
           <p class="eyebrow">ADMINISTRACIÓN</p>
           <h2 id="user-dialog-title">Nuevo usuario</h2>
         </div>
-        <button class="icon-button" type="button" id="close-user-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-user-dialog" aria-label="Cerrar"><svg width="20" height="20"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <div class="form-grid">
         <label>Nombre
@@ -2254,27 +2614,32 @@
         </label>
         <p class="form-section-title full">Perfiles vinculados</p>
         <div class="admin-link-section" id="user-link-section">
-        <label>Perfil Propietario
-          <select name="linkedOwnerId" id="user-linked-owner"></select>
-          <span class="field-hint">Vinculá el registro de propietario existente (por DNI, nombre o inmueble).</span>
-        </label>
-        <label>Perfil Inquilino
-          <select name="linkedTenantId" id="user-linked-tenant"></select>
-          <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
-        </label>
+          <label>Perfil Propietario
+            <select name="linkedOwnerId" id="user-linked-owner"></select>
+            <span class="field-hint">Vinculá el registro de propietario existente (por DNI, nombre o inmueble).</span>
+          </label>
+          <label>Perfil Inquilino
+            <select name="linkedTenantId" id="user-linked-tenant"></select>
+            <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
+          </label>
         </div>
-        <p class="field-hint full" id="user-link-superadmin-hint" hidden>El Super Administrador administra todo el sistema: no necesita perfiles vinculados.</p>
+        <p class="field-hint full" id="user-link-superadmin-hint" hidden>El Super Administrador administra todo el
+          sistema: no necesita perfiles vinculados.</p>
       </div>
       <p class="form-error" id="user-form-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-user-dialog" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-user-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar usuario" aria-label="Guardar usuario">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar usuario"
+          aria-label="Guardar usuario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
@@ -2292,7 +2657,12 @@
           <p class="eyebrow">ADMINISTRACIÓN</p>
           <h2 id="role-dialog-title">Nuevo rol</h2>
         </div>
-        <button class="icon-button" type="button" id="close-role-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-role-dialog" aria-label="Cerrar"><svg width="20" height="20"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <div class="form-grid">
         <label class="full">Nombre del rol *
@@ -2308,14 +2678,17 @@
       </div>
       <p class="form-error" id="role-form-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-role-dialog" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-role-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg>
         </button>
         <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar rol" aria-label="Guardar rol">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
@@ -2333,7 +2706,12 @@
           <p class="eyebrow">CAMBIOS SIN GUARDAR</p>
           <h2>¿Cerrar sin guardar?</h2>
         </div>
-        <button class="icon-button" type="button" id="close-confirm-close-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-confirm-close-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro">Hay cambios pendientes de guardar en este formulario. Si cerrás ahora se van a perder.</p>
       <div class="dialog-actions">
@@ -2349,14 +2727,18 @@
       <h2 id="property-delete-title">¿Eliminar inmueble?</h2>
       <p id="property-delete-message"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" id="cancel-property-delete-btn" type="button" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" id="cancel-property-delete-btn" type="button" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-delete btn-lg" id="confirm-property-delete" type="button" title="Eliminar inmueble" aria-label="Eliminar inmueble">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-property-delete" type="button"
+          title="Eliminar inmueble" aria-label="Eliminar inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -2370,7 +2752,8 @@
   <dialog id="doc-success-dialog" aria-labelledby="doc-success-title">
     <div class="dialog-content success-modal-content">
       <div class="success-icon-wrap">
-        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#198b84" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#198b84" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
@@ -2407,16 +2790,19 @@
       <div class="success-next-steps">
         <div class="step-badge">
           <span class="step-num">1</span>
-          <span><strong>Registro único:</strong> Los documentos han quedado guardados y relacionados <em>sólo y únicamente</em> para este usuario.</span>
+          <span><strong>Registro único:</strong> Los documentos han quedado guardados y relacionados <em>sólo y
+              únicamente</em> para este usuario.</span>
         </div>
         <div class="step-badge highlight">
           <span class="step-num">2</span>
-          <span><strong>Aviso al Administrador:</strong> Se ha creado un aviso en el buzón del administrador para que revise la documentación.</span>
+          <span><strong>Aviso al Administrador:</strong> Se ha creado un aviso en el buzón del administrador para que
+            revise la documentación.</span>
         </div>
       </div>
 
       <div class="dialog-actions">
-        <button class="secondary-button" type="button" id="btn-view-admin-email">✉️ Ver email enviado al Administrador</button>
+        <button class="secondary-button" type="button" id="btn-view-admin-email">✉️ Ver email enviado al
+          Administrador</button>
         <button class="primary-button" type="button" id="close-doc-success-btn">Entendido y continuar</button>
       </div>
     </div>
@@ -2430,14 +2816,20 @@
           <p class="eyebrow">NOTIFICACIÓN POR CORREO ELECTRÓNICO</p>
           <h2 id="admin-email-title">Email recibido por el Administrador</h2>
         </div>
-        <button class="icon-button" type="button" id="close-admin-email-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-admin-email-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
 
       <div class="email-envelope">
         <div class="email-meta-bar">
           <div class="email-meta-row">
             <span class="email-meta-label">De:</span>
-            <span class="email-meta-value"><strong>Sistema Peñarrubia</strong> &lt;notificaciones@penarrubia.es&gt;</span>
+            <span class="email-meta-value"><strong>Sistema Peñarrubia</strong>
+              &lt;notificaciones@penarrubia.es&gt;</span>
           </div>
           <div class="email-meta-row">
             <span class="email-meta-label">Para:</span>
@@ -2449,7 +2841,8 @@
           </div>
           <div class="email-meta-row">
             <span class="email-meta-label">Asunto:</span>
-            <span class="email-meta-value email-subject" id="email-subject-display">[Peñarrubia] Solicitud de verificación y aprobación de documentación</span>
+            <span class="email-meta-value email-subject" id="email-subject-display">[Peñarrubia] Solicitud de
+              verificación y aprobación de documentación</span>
           </div>
         </div>
 
@@ -2460,7 +2853,10 @@
           </div>
           <p class="email-salutation">Estimado Administrador,</p>
           <p>
-            El usuario propietario <strong id="email-owner-name">Carlos Ruiz Mendoza</strong> con DNI <code id="email-owner-dni">47895231P</code>, perteneciente a la comunidad <strong id="email-owner-comm">Residencial Peñarrubia</strong> (<span id="email-owner-plot">Parcela 14</span>), ha completado la subida de la documentación requerida para su cuenta.
+            El usuario propietario <strong id="email-owner-name">Carlos Ruiz Mendoza</strong> con DNI <code
+              id="email-owner-dni">47895231P</code>, perteneciente a la comunidad <strong
+              id="email-owner-comm">Residencial Peñarrubia</strong> (<span id="email-owner-plot">Parcela 14</span>), ha
+            completado la subida de la documentación requerida para su cuenta.
           </p>
           <p>
             El sistema ha realizado la <strong>validación automática previa</strong> con resultado satisfactorio:
@@ -2483,15 +2879,19 @@
           </div>
 
           <div class="email-alert-notice">
-            <p><strong>Acción requerida:</strong> Por favor, acceda a la plataforma para verificar el contenido documental y proceder a su <strong>aprobación oficial</strong> o, si procede, solicitar subsanación al propietario.</p>
+            <p><strong>Acción requerida:</strong> Por favor, acceda a la plataforma para verificar el contenido
+              documental y proceder a su <strong>aprobación oficial</strong> o, si procede, solicitar subsanación al
+              propietario.</p>
           </div>
         </div>
       </div>
 
       <div class="dialog-actions">
         <button class="secondary-button" type="button" id="close-admin-email-btn">Cerrar</button>
-        <a class="secondary-button" id="email-mailto-link" href="#" target="_blank">Abrir en cliente de correo local (mailto)</a>
-        <button class="primary-button" type="button" id="email-goto-approval-btn">Revisar y Aprobar Documentación</button>
+        <a class="secondary-button" id="email-mailto-link" href="#" target="_blank">Abrir en cliente de correo local
+          (mailto)</a>
+        <button class="primary-button" type="button" id="email-goto-approval-btn">Revisar y Aprobar
+          Documentación</button>
       </div>
     </div>
   </dialog>
@@ -2504,9 +2904,15 @@
           <p class="eyebrow">BUZÓN ADMINISTRATIVO</p>
           <h2 id="admin-inbox-title">Buzón de avisos y notificaciones</h2>
         </div>
-        <button class="icon-button" type="button" id="close-admin-inbox-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-admin-inbox-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
-      <p class="form-intro">Historial de correos y avisos generados automáticamente al procesarse documentación de propietarios.</p>
+      <p class="form-intro">Historial de correos y avisos generados automáticamente al procesarse documentación de
+        propietarios.</p>
       <div class="inbox-list" id="admin-inbox-list">
         <!-- Rellenado dinámicamente -->
       </div>
@@ -2524,7 +2930,12 @@
           <p class="eyebrow" id="doc-viewer-eyebrow">DOCUMENTACIÓN DE PROPIETARIO</p>
           <h2 id="doc-viewer-title">Visor de Documento</h2>
         </div>
-        <button class="icon-button" type="button" id="close-doc-viewer-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-doc-viewer-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <div class="doc-viewer-body">
         <div class="doc-viewer-preview-pane" id="doc-viewer-preview-pane">
@@ -2577,15 +2988,24 @@
           <p class="eyebrow">ADMINISTRACIÓN</p>
           <h2 id="doc-reject-title">Rechazar / Solicitar subsanación</h2>
         </div>
-        <button class="icon-button" type="button" id="close-doc-reject-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-doc-reject-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
-      <p class="form-intro">Indica el motivo del rechazo para que el propietario conozca qué documento o aspecto debe corregir.</p>
+      <p class="form-intro">Indica el motivo del rechazo para que el propietario conozca qué documento o aspecto debe
+        corregir.</p>
       <label class="full" style="display:block; margin: 16px 0;">Motivo del requerimiento *
-        <textarea id="doc-reject-reason" required rows="3" style="width:100%;" placeholder="Ej: La imagen del DNI no muestra con claridad los números del reverso, o el recibo bancario no acredita la titularidad requerida..."></textarea>
+        <textarea id="doc-reject-reason" required rows="3" style="width:100%;"
+          placeholder="Ej: La imagen del DNI no muestra con claridad los números del reverso, o el recibo bancario no acredita la titularidad requerida..."></textarea>
       </label>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-doc-reject-btn" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-doc-reject-btn" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -2602,13 +3022,16 @@
       <p id="owner-delete-message"></p>
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" value="cancel" title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <button class="icon-action-btn btn-delete btn-lg" id="confirm-owner-delete" value="confirm" title="Eliminar propietario" aria-label="Eliminar propietario">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-owner-delete" value="confirm"
+          title="Eliminar propietario" aria-label="Eliminar propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
@@ -2626,14 +3049,21 @@
           <p class="eyebrow">MI ÁREA PERSONAL</p>
           <h2 id="owner-inbox-title">Mis Avisos y Notificaciones</h2>
         </div>
-        <button class="icon-button" type="button" id="close-owner-inbox-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-owner-inbox-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
-      <p class="form-intro">Consulta aquí las notificaciones sobre el estado de tu documentación, resoluciones del administrador y avisos comunitarios.</p>
+      <p class="form-intro">Consulta aquí las notificaciones sobre el estado de tu documentación, resoluciones del
+        administrador y avisos comunitarios.</p>
       <div class="inbox-list" id="owner-inbox-list">
         <!-- Renderizado dinámicamente -->
       </div>
       <div class="dialog-actions">
-        <button class="secondary-button" type="button" id="mark-all-owner-notifs-read-btn">Marcar todos como leídos</button>
+        <button class="secondary-button" type="button" id="mark-all-owner-notifs-read-btn">Marcar todos como
+          leídos</button>
         <button class="primary-button" type="button" id="close-owner-inbox-btn">Cerrar buzón</button>
       </div>
     </div>
@@ -2647,7 +3077,12 @@
           <p class="eyebrow">VALIDACIÓN</p>
           <h2 id="owner-validation-title">Revisa los datos del propietario</h2>
         </div>
-        <button class="icon-button" type="button" id="close-owner-validation-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-owner-validation-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro">No se ha podido guardar. Corrige todos los puntos siguientes:</p>
       <ul class="validation-error-list" id="owner-validation-list" aria-live="assertive"></ul>
@@ -2665,7 +3100,12 @@
           <p class="eyebrow">VALIDACIÓN</p>
           <h2 id="validation-title">Revisá los siguientes datos</h2>
         </div>
-        <button class="icon-button" type="button" id="close-validation-dialog" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="18" x2="18" y2="6"></line></svg></button>
+        <button class="icon-button" type="button" id="close-validation-dialog" aria-label="Cerrar"><svg width="20"
+            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="18" x2="18" y2="6"></line>
+          </svg></button>
       </div>
       <p class="form-intro">No se ha podido guardar. Corregí todos los puntos siguientes:</p>
       <ul class="validation-error-list" id="validation-list" aria-live="assertive"></ul>
@@ -2678,35 +3118,61 @@
   <dialog id="account-profile-dialog" class="dialog-sm account-dialog" aria-labelledby="account-profile-title">
     <div class="dialog-content">
       <div class="dialog-header">
-        <div><p class="eyebrow">MI CUENTA</p><h2 id="account-profile-title">Mi perfil</h2></div>
-        <button class="icon-button" type="button" aria-label="Cerrar mi perfil" data-close-account-dialog="account-profile-dialog">×</button>
+        <div>
+          <p class="eyebrow">MI CUENTA</p>
+          <h2 id="account-profile-title">Mi perfil</h2>
+        </div>
+        <button class="icon-button" type="button" aria-label="Cerrar mi perfil"
+          data-close-account-dialog="account-profile-dialog">×</button>
       </div>
       <dl class="account-profile-grid">
-        <div><dt>Nombre</dt><dd id="account-profile-name"></dd></div>
-        <div><dt>Usuario</dt><dd id="account-profile-username"></dd></div>
-        <div><dt>Email</dt><dd id="account-profile-email"></dd></div>
-        <div><dt>Rol</dt><dd id="account-profile-role"></dd></div>
+        <div>
+          <dt>Nombre</dt>
+          <dd id="account-profile-name"></dd>
+        </div>
+        <div>
+          <dt>Usuario</dt>
+          <dd id="account-profile-username"></dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd id="account-profile-email"></dd>
+        </div>
+        <div>
+          <dt>Rol</dt>
+          <dd id="account-profile-role"></dd>
+        </div>
       </dl>
       <p class="form-intro" id="account-profile-hint"></p>
       <div class="account-profile-links" id="account-profile-links"></div>
-      <div class="dialog-actions"><button class="primary-button" type="button" data-close-account-dialog="account-profile-dialog">Cerrar perfil</button></div>
+      <div class="dialog-actions"><button class="primary-button" type="button"
+          data-close-account-dialog="account-profile-dialog">Cerrar perfil</button></div>
     </div>
   </dialog>
   <dialog id="account-password-dialog" class="dialog-sm account-dialog" aria-labelledby="account-password-title">
     <form id="account-password-form" class="dialog-content" novalidate>
       <div class="dialog-header">
-        <div><p class="eyebrow">SEGURIDAD</p><h2 id="account-password-title">Cambiar contraseña</h2></div>
-        <button class="icon-button" type="button" aria-label="Cerrar cambio de contraseña" data-close-account-dialog="account-password-dialog">×</button>
+        <div>
+          <p class="eyebrow">SEGURIDAD</p>
+          <h2 id="account-password-title">Cambiar contraseña</h2>
+        </div>
+        <button class="icon-button" type="button" aria-label="Cerrar cambio de contraseña"
+          data-close-account-dialog="account-password-dialog">×</button>
       </div>
-      <p class="form-intro" id="account-password-help">Usá entre 8 y 128 caracteres. Al guardar se cerrarán tus sesiones y tendrás que iniciar sesión con la nueva contraseña.</p>
+      <p class="form-intro" id="account-password-help">Usá entre 8 y 128 caracteres. Al guardar se cerrarán tus sesiones
+        y tendrás que iniciar sesión con la nueva contraseña.</p>
       <div class="form-grid">
-        <label class="full">Contraseña actual<input name="currentPassword" type="password" autocomplete="current-password" maxlength="128" required /></label>
-        <label class="full">Nueva contraseña<input name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="account-password-help" required /></label>
-        <label class="full">Repetir nueva contraseña<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required /></label>
+        <label class="full">Contraseña actual<input name="currentPassword" type="password"
+            autocomplete="current-password" maxlength="128" required /></label>
+        <label class="full">Nueva contraseña<input name="newPassword" type="password" autocomplete="new-password"
+            minlength="8" maxlength="128" aria-describedby="account-password-help" required /></label>
+        <label class="full">Repetir nueva contraseña<input name="confirmPassword" type="password"
+            autocomplete="new-password" minlength="8" maxlength="128" required /></label>
       </div>
       <p class="form-error" id="account-password-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="secondary-button" type="button" data-close-account-dialog="account-password-dialog">Cancelar</button>
+        <button class="secondary-button" type="button"
+          data-close-account-dialog="account-password-dialog">Cancelar</button>
         <button class="primary-button" type="submit" id="account-password-submit">Guardar contraseña</button>
       </div>
     </form>
@@ -2714,6 +3180,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
   <script src="js/municipios-ine.js?v=2"></script>
-  <script type="module" src="js/main.js?v=2"></script>
+  <script type="module" src="js/main.js?v=3"></script>
 </body>
+
 </html>

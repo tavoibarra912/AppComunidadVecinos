@@ -104,7 +104,6 @@ export function createDataTable(options) {
   let pageSize = defaultPageSize;
   if (state.settings?.filasPorPagina && pageSizeOptions.includes(Number(state.settings.filasPorPagina)) && !options.defaultPageSize) {
     pageSize = Number(state.settings.filasPorPagina);
-    sizeSelect.value = String(pageSize);
   }
 
   // --- Construcción del DOM ---
