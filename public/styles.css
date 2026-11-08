@@ -280,7 +280,8 @@ select:focus {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 9px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 1px 2px #152b3a08;
 }
 
@@ -420,6 +421,13 @@ td {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+/* Con más columnas de las que entran: ancho mínimo legible por columna y
+   barra de desplazamiento horizontal en el contenedor */
+.table-engine th,
+.table-engine td {
+  min-width: 120px;
 }
 
 .table-engine-controls {
