@@ -935,6 +935,85 @@ select {
   line-height: 1.45;
 }
 
+/* Panel de proveedores de comunicación (Configuración) */
+.proveedores-panel .proveedor-card {
+  border: 1px solid var(--line, #dbe3ec);
+  border-radius: 12px;
+  background: #fff;
+  padding: 16px;
+  margin: 0 0 16px;
+}
+
+.proveedores-panel .proveedor-titulo {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink, #16283a);
+}
+
+.proveedores-panel .proveedor-desc {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--muted, #607081);
+}
+
+.proveedores-panel .comm-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink, #16283a);
+  cursor: pointer;
+}
+
+.proveedores-panel .comm-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--brand, #198b84);
+  cursor: pointer;
+}
+
+.proveedores-panel .comm-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 10px 0;
+}
+
+.proveedores-panel .proveedor-campo {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #3f4f61;
+  margin: 10px 0;
+}
+
+.proveedores-panel .proveedor-campo select {
+  min-height: 38px;
+  border: 1px solid #cbd5df;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13.5px;
+  background: #fff;
+}
+
+.proveedores-panel .proveedor-acciones {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 16px;
+}
+
+.proveedores-panel #comm-test-result {
+  font-size: 13px;
+  color: var(--ink, #16283a);
+  margin: 8px 0 0;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

@@ -581,7 +581,6 @@ function renderSettings() {
   settingsForm.elements.telefonoContacto.value = s.telefonoContacto || "";
   settingsForm.elements.otpExpiraMinutos.value = s.otpExpiraMinutos ?? 10;
   settingsForm.elements.otpReenvioSegundos.value = s.otpReenvioSegundos ?? 60;
-  settingsForm.elements.notificacionesEmail.checked = s.notificacionesEmail !== false;
   settingsForm.elements.documentosMaxSizeMb.value = s.documentosMaxSizeMb ?? 15;
   settingsForm.elements.monedaPorDefecto.value = s.monedaPorDefecto || "EUR";
   settingsForm.elements.diasAvisoVencimientoContrato.value = s.diasAvisoVencimientoContrato ?? 30;
@@ -591,7 +590,6 @@ function renderSettings() {
   settingsForm.elements.marcaNombre.value = marca.nombre || "Peñarrubia";
   settingsForm.elements.marcaColorPrimario.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorPrimario || "") ? marca.colorPrimario : "#11273e";
   settingsForm.elements.marcaColorAcento.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorAcento || "") ? marca.colorAcento : "#198b84";
-  settingsForm.elements.marcaQuitarLogo.checked = false;
   settingsForm.elements.marcaLogo.value = "";
   const preview = document.querySelector("#marca-logo-preview");
   if (preview) {
@@ -620,8 +618,7 @@ function readMarca() {
       reader.onload = () => build(reader.result);
       reader.onerror = () => build(undefined);
       reader.readAsDataURL(file);
-    } else if (settingsForm.elements.marcaQuitarLogo.checked) build("");
-    else build(undefined);
+    } else build(undefined);
   });
 }
 
@@ -634,7 +631,6 @@ settingsForm?.addEventListener("submit", async event => {
     telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
     otpExpiraMinutos: Number(settingsForm.elements.otpExpiraMinutos.value) || 10,
     otpReenvioSegundos: Number(settingsForm.elements.otpReenvioSegundos.value) || 60,
-    notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
     documentosMaxSizeMb: Number(settingsForm.elements.documentosMaxSizeMb.value) || 15,
     monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
     diasAvisoVencimientoContrato: Number(settingsForm.elements.diasAvisoVencimientoContrato.value) || 30,
