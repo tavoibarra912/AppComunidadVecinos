@@ -183,4 +183,11 @@ test("recuperación: inactivos no reciben correo y el origen es confiable", () =
   process.env.NODE_ENV = "production";
   assert.throws(recoveryUrl, /APP_PUBLIC_URL/);
   process.env.NODE_ENV = "test";
+  // En desarrollo no hace falta configurarla: usa localhost y el puerto activo.
+  delete process.env.APP_PUBLIC_URL;
+  assert.equal(recoveryUrl().origin, `http://localhost:${process.env.PORT || 3000}`);
+  process.env.NODE_ENV = "production";
+  assert.throws(recoveryUrl, /APP_PUBLIC_URL/);
+  process.env.NODE_ENV = "test";
+  process.env.APP_PUBLIC_URL = "http://localhost:3000";
 });

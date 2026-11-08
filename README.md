@@ -95,9 +95,10 @@ está pendiente, sin mostrar nombres ni comunidades de los datos de ejemplo.
 
 El SSO y la verificación OTP siguen desactivados. La recuperación de contraseña
 usa el SMTP configurado en Administración → Configuración → Configurar proveedores.
-Además, definí `APP_PUBLIC_URL` con el origen de la aplicación: por ejemplo,
-`http://localhost:3000` en desarrollo o `https://vecinos.example.org` en producción.
-No se usa el encabezado Host para construir enlaces; en producción se exige HTTPS.
+En desarrollo no hace falta configurar el origen: el enlace se construye con
+`http://localhost:` + `PORT`. En producción hay que definir `APP_PUBLIC_URL` con
+el origen HTTPS de la aplicación (por ejemplo, `https://vecinos.example.org`).
+Nunca se usa el encabezado Host para construir enlaces.
 
 ### Recuperación de contraseña
 
@@ -114,8 +115,8 @@ abrir el formulario. Se pide confirmar la nueva contraseña, se revocan todas la
 sesiones de la cuenta y no se inicia sesión automáticamente. Cambiar el email o
 desactivar la cuenta desde Administración invalida los enlaces pendientes.
 
-Sin SMTP habilitado o sin `APP_PUBLIC_URL` válido se informa que falta configurar
-el servicio, sin aparentar un envío. Los fallos o envíos interrumpidos quedan en
+Sin SMTP habilitado (y en producción, sin `APP_PUBLIC_URL` válido) se informa
+que falta configurar el servicio, sin aparentar un envío. Los fallos o envíos interrumpidos quedan en
 la auditoría, invalidan el enlace y no se reenvían automáticamente: solicitá uno
 nuevo después de revisar el proveedor. «Aceptado por SMTP» no confirma entrega.
 

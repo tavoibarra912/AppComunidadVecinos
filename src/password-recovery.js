@@ -18,8 +18,9 @@ const digest = value => crypto.createHash("sha256").update(value).digest("hex");
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 export const RECOVERY_MESSAGE = "Si existe una cuenta activa con ese email, se enviarán instrucciones para recuperar la contraseña. Revisá también la carpeta de correo no deseado.";
 export function recoveryUrl() {
+  const configured = process.env.APP_PUBLIC_URL || (process.env.NODE_ENV !== "production" ? `http://localhost:${process.env.PORT || 3000}` : undefined);
   let url;
-  try { url = new URL(process.env.APP_PUBLIC_URL); } catch { throw fail("Configurá APP_PUBLIC_URL para habilitar la recuperación de contraseña.", 503); }
+  try { url = new URL(configured); } catch { throw fail("Configurá APP_PUBLIC_URL para habilitar la recuperación de contraseña.", 503); }
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (url.username || url.password || url.search || url.hash || url.pathname !== "/" || (url.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && local && url.protocol === "http:")))
     throw fail("APP_PUBLIC_URL debe ser el origen HTTPS de la aplicación (HTTP solo en localhost de desarrollo).", 503);
