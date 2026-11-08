@@ -156,18 +156,27 @@ export function saveProviders(input) {
           "SMTP necesita servidor, remitente, usuario y contraseña.",
         );
     } else {
-      if (s.provider !== "twilio")
-        throw problem("El proveedor de mensajería admitido es Twilio.");
-      out.provider = "twilio";
-      if (
-        out.enabled &&
-        (!/^AC[a-f0-9]{32}$/i.test(out.accountSid) ||
-          !phoneNumber(out.from) ||
-          !out.token)
-      )
-        throw problem(
-          `${channel}: indicá Account SID, token y número emisor internacional.`,
-        );
+      if (!["twilio", "brevo"].includes(s.provider))
+        throw problem("El proveedor de mensajería admitido es Twilio o Brevo.");
+      if (channel === "whatsapp" && s.provider === "brevo")
+        throw problem("WhatsApp está disponible con Twilio; Brevo solo ofrece SMS.");
+      out.provider = s.provider;
+      if (out.enabled) {
+        if (s.provider === "twilio") {
+          if (
+            !/^AC[a-f0-9]{32}$/i.test(out.accountSid) ||
+            !phoneNumber(out.from) ||
+            !out.token
+          )
+            throw problem(
+              `${channel}: indicá Account SID, token y número emisor internacional.`,
+            );
+        } else if (!out.token || !/^[a-zA-Z0-9 -]{2,11}$/.test(out.from)) {
+          throw problem(
+            `${channel} (Brevo): indicá la API key y un nombre de remitente de 2 a 11 caracteres alfanuméricos.`,
+          );
+        }
+      }
       if (
         channel === "whatsapp" &&
         out.enabled &&
@@ -234,6 +243,32 @@ export async function sendMessage(
   }
   if (!["sms", "whatsapp"].includes(channel) || !phoneNumber(to))
     throw problem("Canal o teléfono de destino no válido.");
+  if (!s.provider) s.provider = "twilio";
+  if (s.provider === "brevo") {
+    const response = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
+      method: "POST",
+      headers: {
+        "api-key": s.token,
+        "Content-Type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({
+        type: "transactional",
+        to,
+        sender: s.from,
+        content: message.slice(0, 1200),
+      }),
+      signal: AbortSignal.timeout(15000),
+      redirect: "error",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok)
+      throw problem(
+        `Brevo rechazó el envío${result.message ? `: ${result.message}` : "."}`,
+        502,
+      );
+    return result.messageId || result.reference || "brevo-accepted";
+  }
   const body = new URLSearchParams({
     To: channel === "whatsapp" ? `whatsapp:${to}` : to,
     From: channel === "whatsapp" ? `whatsapp:${s.from}` : s.from,
