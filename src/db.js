@@ -3,6 +3,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_BRAND } from "./branding.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = process.env.APP_DATA_DIR || path.join(__dirname, "..", "data");
@@ -563,7 +564,7 @@ export function listRoles() {
 
 export function getSettings() {
   const row = db.prepare("SELECT data FROM settings WHERE id = 'general'").get();
-  return parseJson(row?.data, null) || {
+  const defaults = {
     nombreAsociacion: "Asociación Peñarrubia",
     emailContacto: "admin@penarrubia.es",
     telefonoContacto: "600000000",
@@ -571,6 +572,8 @@ export function getSettings() {
     otpReenvioSegundos: 60,
     notificacionesEmail: true
   };
+  const saved = parseJson(row?.data, null);
+  return saved ? { ...saved, marca: { ...DEFAULT_BRAND, ...(saved.marca || {}) } } : { ...defaults, marca: { ...DEFAULT_BRAND } };
 }
 
 export function listDocuments(entityType, entityId) {

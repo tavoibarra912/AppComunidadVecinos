@@ -4,6 +4,7 @@ import { state, refreshState, hasPermission, requirePermission } from "../state.
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { createDataTable } from "../table.js";
 import { renderAudit } from "./audit.js";
+import { applyBrand } from "../brand.js";
 const ADMIN_TABS = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings", auditoria: "audit:read" };
 
 // ==========================================
@@ -525,7 +526,42 @@ function renderSettings() {
   settingsForm.elements.diasAvisoVencimientoContrato.value = s.diasAvisoVencimientoContrato ?? 30;
   settingsForm.elements.filasPorPagina.value = s.filasPorPagina ?? 10;
   settingsForm.elements.mantenimiento.checked = !!s.mantenimiento;
+  const marca = s.marca || {};
+  settingsForm.elements.marcaNombre.value = marca.nombre || "Peñarrubia";
+  settingsForm.elements.marcaColorPrimario.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorPrimario || "") ? marca.colorPrimario : "#11273e";
+  settingsForm.elements.marcaColorAcento.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorAcento || "") ? marca.colorAcento : "#198b84";
+  settingsForm.elements.marcaQuitarLogo.checked = false;
+  settingsForm.elements.marcaLogo.value = "";
+  const preview = document.querySelector("#marca-logo-preview");
+  if (preview) {
+    preview.hidden = !marca.logoDataUrl;
+    if (marca.logoDataUrl) preview.src = marca.logoDataUrl;
+    else preview.removeAttribute("src");
+  }
   armarGuardia(settingsForm, settingsForm.closest(".admin-pane") || document.querySelector("#administracion"));
+}
+
+function readMarca() {
+  const file = settingsForm.elements.marcaLogo.files?.[0];
+  return new Promise((resolve, reject) => {
+    const build = logoDataUrl => {
+      const marca = {
+        nombre: settingsForm.elements.marcaNombre.value.trim(),
+        colorPrimario: settingsForm.elements.marcaColorPrimario.value,
+        colorAcento: settingsForm.elements.marcaColorAcento.value
+      };
+      if (logoDataUrl !== undefined) marca.logoDataUrl = logoDataUrl;
+      resolve(marca);
+    };
+    if (file) {
+      if (file.size > 230_400) return reject(new Error("El logo no puede superar los 225 KB."));
+      const reader = new FileReader();
+      reader.onload = () => build(reader.result);
+      reader.onerror = () => build(undefined);
+      reader.readAsDataURL(file);
+    } else if (settingsForm.elements.marcaQuitarLogo.checked) build("");
+    else build(undefined);
+  });
 }
 
 settingsForm?.addEventListener("submit", async event => {
@@ -542,10 +578,12 @@ settingsForm?.addEventListener("submit", async event => {
     monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
     diasAvisoVencimientoContrato: Number(settingsForm.elements.diasAvisoVencimientoContrato.value) || 30,
     filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
-    mantenimiento: settingsForm.elements.mantenimiento.checked
+    mantenimiento: settingsForm.elements.mantenimiento.checked,
+    marca: await readMarca()
   };
   try {
     state.settings = await api.updateSettings(data);
+    applyBrand(state.settings.marca);
     limpiarGuardia(settingsForm, settingsForm.closest(".admin-pane") || document.querySelector("#administracion"));
     toast("Configuración guardada.");
   } catch (error) {

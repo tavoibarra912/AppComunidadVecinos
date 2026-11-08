@@ -5,6 +5,7 @@ import { publicUser } from "../security.js";
 import { passwordRecord, setPassword } from "../auth.js";
 import { passwordError, validEmail } from "../validation.js";
 import { PERMISSIONS } from "../../public/js/permissions.js";
+import { validateBrand } from "../branding.js";
 export const PERMISOS_VALIDOS = PERMISSIONS;
 const router = Router();
 const roleFor = (value) =>
@@ -282,9 +283,14 @@ router.put("/settings", (req, res) => {
     return res
       .status(400)
       .json({ error: "El límite de archivos debe estar entre 1 y 50 MB." });
+  const brandError = validateBrand(data.marca);
+  if (brandError) return res.status(400).json({ error: brandError });
+  const current = getSettings();
+  const next = { ...current, ...data };
+  if (data.marca) next.marca = { ...current.marca, ...data.marca };
   db.prepare(
     "INSERT INTO settings (id,data) VALUES ('general',?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
-  ).run(JSON.stringify({ ...getSettings(), ...data }));
+  ).run(JSON.stringify(next));
   res.json(getSettings());
 });
 export default router;

@@ -4,6 +4,8 @@ import { setPassword } from "./auth.js";
 import { passwordError, validEmail } from "./validation.js";
 import { providers, seal, unseal, smtpTransport } from "./delivery-providers.js";
 import { recordAudit } from "./audit.js";
+import { getSettings } from "./db.js";
+import { brandOf } from "./branding.js";
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS password_recovery_requests (emailHash TEXT PRIMARY KEY, requestedAt INTEGER NOT NULL);
@@ -64,6 +66,12 @@ export function resetRecoveredPassword(token, password, req) {
   } catch (failure) { db.exec("ROLLBACK"); throw failure; }
   return { ok: true };
 }
+export function recoveryMessage({ brand = brandOf(getSettings()), url }) {
+  return {
+    subject: `Recuperar tu contraseña de ${brand.nombre}`,
+    text: `Solicitaste recuperar tu contraseña de ${brand.nombre}. Abrí este enlace (válido durante 30 minutos y para un solo uso):\n\n${url}\n\nSi no lo solicitaste, ignorá este correo. Tu contraseña no cambió.`,
+  };
+}
 export async function sendRecoveryEmail({ to, url }) {
   const config = providers(false).smtp;
   if (!config.enabled) throw fail("SMTP desactivado.", 503);
@@ -71,8 +79,7 @@ export async function sendRecoveryEmail({ to, url }) {
   try {
     const result = await transport.sendMail({
       from: { name: config.fromName, address: config.from }, to,
-      subject: "Recuperar tu contraseña de Peñarrubia",
-      text: `Solicitaste recuperar tu contraseña. Abrí este enlace (válido durante 30 minutos y para un solo uso):\n\n${url}\n\nSi no lo solicitaste, ignorá este correo. Tu contraseña no cambió.`,
+      ...recoveryMessage({ url }),
     });
     if (!result.accepted?.length) throw fail("SMTP rechazó el destinatario.", 502);
   } finally { transport.close(); }

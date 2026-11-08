@@ -60,6 +60,33 @@ body {
   color: var(--brand);
 }
 
+.brand-logo {
+  height: 26px;
+  width: auto;
+  margin-right: 9px;
+  vertical-align: -6px;
+}
+
+.login-brand-logo {
+  display: block;
+  max-width: 220px;
+  max-height: 72px;
+  margin: 0 auto 14px;
+  object-fit: contain;
+}
+
+.marca-logo-preview {
+  display: block;
+  max-width: 260px;
+  max-height: 80px;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  background: #fff;
+  object-fit: contain;
+}
+
 .account {
   display: flex;
   gap: 9px;
@@ -972,7 +999,7 @@ select {
   gap: 8px;
   background: #f0f7f6;
   border: 1px solid #c9e6e3;
-  color: #116f6a;
+  color: var(--brand-dark);
   padding: 7px 13px;
   border-radius: 20px;
   font-size: 13px;
@@ -983,7 +1010,7 @@ select {
 
 .topbar-btn-inbox:hover {
   background: #def0ee;
-  border-color: #198b84;
+  border-color: var(--brand);
 }
 
 .badge-counter {
@@ -1153,7 +1180,7 @@ select {
 }
 
 .doc-upload-card.is-valid .doc-card-num {
-  background: #198b84;
+  background: var(--brand);
   color: white;
 }
 
@@ -1348,7 +1375,7 @@ select {
 
 .score-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #198b84);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--brand) 55%, #34d399), var(--brand));
   border-radius: 4px;
   transition: width 0.4s ease;
 }
@@ -2204,7 +2231,7 @@ select {
   align-items: center;
   justify-content: space-between;
   font-size: 13px;
-  color: #116f6a;
+  color: var(--brand-dark);
 }
 
 
@@ -2212,7 +2239,7 @@ select {
    SECCIÓN HOME / DASHBOARD
    ========================================== */
 .home-hero-card {
-  background: linear-gradient(135deg, #11273e 0%, #163e5b 60%, #198b84 100%);
+  background: linear-gradient(135deg, var(--nav) 0%, color-mix(in srgb, var(--nav) 74%, var(--brand)) 60%, var(--brand) 100%);
   border-radius: 12px;
   padding: 32px 36px;
   color: #ffffff;
@@ -2616,7 +2643,7 @@ select {
   margin: 8px 0 0;
   padding-top: 12px;
   border-top: 1px solid var(--line);
-  color: #116f6a;
+  color: var(--brand-dark);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -3936,7 +3963,7 @@ dialog .toast {
   position: fixed;
   inset: 0;
   z-index: 500;
-  background: linear-gradient(160deg, #1c3a52 0%, #24475e 50%, #1c3a52 100%);
+  background: linear-gradient(160deg, var(--nav) 0%, color-mix(in srgb, var(--nav) 80%, var(--brand)) 50%, var(--nav) 100%);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -6,6 +6,8 @@ import apiRouter from "./src/routes/index.js";
 import { seedIfEmpty } from "./src/seed.js";
 import { rebuildPropertyTenantReferences } from "./src/domain.js";
 import { startCommunicationWorker } from "./src/communication-worker.js";
+import { renderIndex } from "./src/branding.js";
+import { getSettings } from "./src/db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -32,6 +34,12 @@ app.use(express.json({ limit: "60mb" }));
 app.use("/api", apiRouter);
 app.get("/vendor/dompurify.mjs", (_req, res) => res.sendFile(path.join(__dirname, "node_modules/dompurify/dist/purify.es.mjs")));
 
+// La página principal llega con la marca embebida (nombre, colores, logo):
+// no es un endpoint público y la CSP no permite scripts inline.
+app.get("/", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.type("html").send(renderIndex(path.join(PUBLIC_DIR, "index.html"), getSettings()));
+});
 app.use(express.static(PUBLIC_DIR));
 
 app.use((error, req, res, next) => {

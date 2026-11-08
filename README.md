@@ -119,6 +119,23 @@ el servicio, sin aparentar un envío. Los fallos o envíos interrumpidos quedan 
 la auditoría, invalidan el enlace y no se reenvían automáticamente: solicitá uno
 nuevo después de revisar el proveedor. «Aceptado por SMTP» no confirma entrega.
 
+### Marca (white-label)
+
+En **Administración → Configuración General → Marca** se personalizan nombre
+visible, color principal, color de acento y logo (PNG, JPG, SVG o WebP, máx.
+225 KB). La marca se guarda en `settings/general` y se valida en el servidor
+(solo `admin:settings`). No hay endpoint público de marca ni dominio
+customizable: el servidor incrusta nombre y variables de color en el propio
+`index.html` al servirlo (bloque `<script type="application/json">` + un
+`<style>` con variables CSS), por lo que también la pantalla de login llega ya
+personalizada y la CSP (sin scripts inline) sigue intacta. Los colores
+anteriores son los por defecto y actúan de respaldo. El logo se almacena como
+data URL en la configuración, con vista previa en el formulario. El nombre de
+marca se aplica en la barra superior, el login, el título de la pestaña, el
+saludo de inicio y el correo de recuperación de contraseña. Los cambios se
+muestran de inmediato al guardar; el resto de clientes los recibe en la
+próxima recarga.
+
 ### Auditoría de seguridad
 
 **Administración → Auditoría** consulta el historial persistente de logins correctos
