@@ -285,6 +285,16 @@ if (legacyAdmin && !db.prepare("SELECT 1 AS existe FROM users WHERE usuario = 's
   }
 }
 
+// El rol super_admin de bases antiguas puede no traer el permiso de auditoría.
+const superRole = db.prepare("SELECT id, permisos FROM roles WHERE nombre = 'super_admin'").get();
+if (superRole) {
+  const lista = JSON.parse(superRole.permisos || "[]");
+  if (!lista.includes("audit:read")) {
+    lista.push("audit:read");
+    db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify(lista), superRole.id);
+  }
+}
+
 if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   if (process.env.NODE_ENV === "production" && (!process.env.APP_ADMIN_PASSWORD || process.env.APP_ADMIN_PASSWORD.length < 12)) {
     throw new Error("Para inicializar producción, configurá APP_ADMIN_PASSWORD con al menos 12 caracteres.");

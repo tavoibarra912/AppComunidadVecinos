@@ -608,9 +608,12 @@ export function renderAdministracion() {
   const visible = puedeAdministrar();
   const nav = document.querySelector("#nav-administracion");
   if (nav) nav.hidden = !visible;
-  if (!visible) return;
+  // Los tabs y paneles se ocultan según el permiso del rol, aunque se fuerce
+  // la URL; sin ningún permiso admin la pantalla queda vacía.
   const permissions = ADMIN_TABS;
   document.querySelectorAll("#administracion [data-admin-tab]").forEach(button => { button.hidden = !hasPermission(permissions[button.dataset.adminTab]); });
+  document.querySelectorAll("#administracion [data-admin-pane]").forEach(pane => { pane.hidden = !hasPermission(permissions[pane.dataset.adminPane]); });
+  if (!visible) return;
   if (!hasPermission(permissions[adminTabActual])) adminTabActual = Object.keys(permissions).find(tab => hasPermission(permissions[tab]));
   switchAdminTab(adminTabActual);
 }

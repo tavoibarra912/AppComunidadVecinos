@@ -388,6 +388,20 @@ test("SSO y recuperación sin configurar no autentican ni filtran tokens", async
   assert.equal(reset.status, 503);
   assert.ok(!reset.data.token);
 });
+test("auditoría: tab y API responden al permiso audit:read del rol", async () => {
+  assert.equal((await admin("/admin/roles", "POST", { nombre: "auditor-tab", descripcion: "solo auditoría", permisos: ["audit:read"] })).status, 201);
+  assert.equal((await admin("/admin/roles", "POST", { nombre: "sin-audit-tab", descripcion: "sin auditoría", permisos: ["community:read"] })).status, 201);
+  assert.equal((await admin("/admin/users", "POST", { nombre: "Auditor", apellido: "Tab", usuario: "auditor-tab-1", password: "clave-auditoria-1", rol: "auditor-tab", activo: true })).status, 201);
+  assert.equal((await admin("/admin/users", "POST", { nombre: "Sin", apellido: "Audit", usuario: "sin-audit-tab-1", password: "clave-sinaudito-1", rol: "sin-audit-tab", activo: true })).status, 201);
+  const con = client();
+  const sin = client();
+  assert.equal((await con("/auth/signin", "POST", { usuario: "auditor-tab-1", password: "clave-auditoria-1" })).status, 200);
+  assert.equal((await sin("/auth/signin", "POST", { usuario: "sin-audit-tab-1", password: "clave-sinaudito-1" })).status, 200);
+  assert.equal((await con("/audit")).status, 200);
+  assert.equal((await sin("/audit")).status, 403);
+  assert.equal((await sin("/admin/users")).status, 403);
+});
+
 test("logout invalida la sesión en el servidor", async () => {
   const request = client();
   await request("/auth/signin", "POST", {

@@ -146,6 +146,11 @@ IP y valores anteriores/posteriores de campos administrativos permitidos. Tambi�
 registra solicitud, envío y finalización de recuperación. No guarda contraseñas,
 cookies, tokens, cuerpos completos ni parámetros de consulta.
 
+El tab es un permiso de rol: sólo se ve con «Ver auditoría» (`audit:read`), que
+se otorga o quita en el editor de roles; sin el permiso, el tab y su panel
+quedan ocultos aunque se force la URL, y la API responde 403. El rol
+`super_admin` lo trae siempre (acceso total).
+
 La API `GET /api/audit?limit=25&offset=0&action=login` exige sesión y `audit:read`.
 Admite hasta 100 resultados por página. Es un permiso global: no se habilita para
 roles `user` ni `community_admin`, aunque se marque en su editor; sí para roles
