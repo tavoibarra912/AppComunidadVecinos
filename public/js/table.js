@@ -28,6 +28,21 @@ function el(tag, className, text) {
 }
 
 export function createDataTable(options) {
+  const tabla = crearInstancia(options);
+  // Registro para aplicar en vivo «Filas por página» desde Configuración.
+  instancias.add(tabla);
+  return tabla;
+}
+
+const instancias = new Set();
+
+export function aplicarFilasPorPagina(filas) {
+  const valor = Number(filas);
+  if (!valor) return;
+  instancias.forEach(tabla => tabla.setPageSize?.(valor));
+}
+
+function crearInstancia(options) {
   const {
     mount,
     columns,
@@ -442,13 +457,15 @@ export function createDataTable(options) {
 
   refresh();
 
-  return {
+  const tabla = {
     refresh,
     setPageSize(size) {
-      pageSize = size;
+      if (!pageSizeOptions.includes(Number(size))) return;
+      pageSize = Number(size);
       page = 1;
-      sizeSelect.value = String(size);
+      sizeSelect.value = String(pageSize);
       refresh();
     }
   };
+  return tabla;
 }

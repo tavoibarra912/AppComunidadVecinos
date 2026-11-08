@@ -2,7 +2,7 @@ import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, hasPermission, requirePermission } from "../state.js";
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
-import { createDataTable } from "../table.js";
+import { createDataTable, aplicarFilasPorPagina } from "../table.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
 import { applyBrand } from "../brand.js";
@@ -645,6 +645,7 @@ settingsForm?.addEventListener("submit", async event => {
   try {
     state.settings = await api.updateSettings(data);
     applyBrand(state.settings.marca);
+    aplicarFilasPorPagina(state.settings.filasPorPagina);
     limpiarGuardia(settingsForm, settingsForm.closest(".admin-pane") || document.querySelector("#administracion"));
     toast("Configuración guardada.");
   } catch (error) {
