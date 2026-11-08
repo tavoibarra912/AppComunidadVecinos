@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   "admin:users",
   "admin:roles",
   "admin:settings",
+  "admin:providers",
   "admin_notification:read",
   "owner_notification:read",
 ];
@@ -40,7 +41,8 @@ export function can(user, permission, resourceId = "", data) {
   if (!role) return false;
   if (role.nombre === "super_admin") return true;
   // The global security history is not a community-scoped resource.
-  if (permission === "audit:read") return !["user", "community_admin"].includes(role.nombre) && !!role.permisos?.includes(permission);
+  // Permisos globales: nunca para roles de comunidad o usuario final.
+  if (permission === "audit:read" || permission === "admin:providers") return !["user", "community_admin"].includes(role.nombre) && !!role.permisos?.includes(permission);
   const ownOwners = owners.filter((o) => o.userId === user.id).map((o) => o.id);
   const ownTenants = tenants.filter((t) => t.userId === user.id);
   const ownedProperties = properties.filter((p) =>

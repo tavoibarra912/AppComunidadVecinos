@@ -94,7 +94,8 @@ inmueble vinculado. Mientras falte ese vínculo, «Mi comunidad» explica que el
 está pendiente, sin mostrar nombres ni comunidades de los datos de ejemplo.
 
 El SSO y la verificación OTP siguen desactivados. La recuperación de contraseña
-usa el SMTP configurado en Administración → Configuración → Configurar proveedores.
+usa el SMTP configurado en Administración → Configuración → Proveedores de
+comunicación (requiere el permiso «Configurar proveedores de comunicación»).
 En desarrollo no hace falta configurar el origen: el enlace se construye con
 `http://localhost:` + `PORT`. En producción hay que definir `APP_PUBLIC_URL` con
 el origen HTTPS de la aplicación (por ejemplo, `https://vecinos.example.org`).
@@ -199,7 +200,12 @@ protección de sus copias de seguridad para producción.
 
 ### Proveedores SMTP, SMS y WhatsApp
 
-Solo el **superadministrador** puede abrir **Administración → Configuración → Configurar proveedores**, o **Comunicación → Proveedores de envío**. Este control también se aplica en la API y no depende de mostrar u ocultar botones.
+La configuración vive en **Administración → Configuración → Proveedores de
+comunicación** (sub-tab; ya no es un modal) y requiere el permiso de rol
+«Configurar proveedores de comunicación» (`admin:providers`), que se otorga en
+el editor de roles. Ese control también se aplica en la API y no depende de
+mostrar u ocultar botones; los accesos directos «Proveedores de envío»
+(Comunicación) llevan a esa pantalla sólo a quien tiene el permiso.
 
 - **SMTP:** servidor, puerto, TLS directo o STARTTLS obligatorio, usuario, contraseña y remitente. Implementado con [Nodemailer](https://nodemailer.com/smtp). No se desactiva la validación de certificados.
 - **SMS:** Twilio, con Account SID, Auth Token y teléfono emisor internacional.

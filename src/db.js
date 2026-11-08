@@ -232,7 +232,7 @@ ensureColumns("tenants", {
 if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
   db.exec("DELETE FROM roles");
   const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
-  insertRole.run("rol-super-admin", "super_admin", "Acceso total: administra y crea comunidades y administra todo el sistema (usuarios, roles, configuración).", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:read", "document:approve", "document:delete", "community:delete", "owner:delete", "property:delete", "tenant:delete", "reports:read", "audit:read", "admin:users", "admin:roles", "admin:settings", "admin_notification:read", "owner_notification:read"]), 1);
+  insertRole.run("rol-super-admin", "super_admin", "Acceso total: administra y crea comunidades y administra todo el sistema (usuarios, roles, configuración).", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:read", "document:approve", "document:delete", "community:delete", "owner:delete", "property:delete", "tenant:delete", "reports:read", "audit:read", "admin:users", "admin:roles", "admin:settings", "admin:providers", "admin_notification:read", "owner_notification:read"]), 1);
   insertRole.run("rol-admin-general", "administrator", "Crea y administra comunidades y todo lo relativo a ellas (propietarios, inmuebles, inquilinos, documentación).", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin_notification:read"]), 1);
   insertRole.run("rol-admin-comunidad", "community_admin", "Administra una comunidad asignada y todo lo relativo a ella; no puede crear comunidades.", JSON.stringify(["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve"]), 1);
   insertRole.run("rol-usuario", "user", "Administra únicamente su propio perfil y sus datos.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "owner_notification:read"]), 1);
@@ -289,9 +289,9 @@ if (legacyAdmin && !db.prepare("SELECT 1 AS existe FROM users WHERE usuario = 's
 const superRole = db.prepare("SELECT id, permisos FROM roles WHERE nombre = 'super_admin'").get();
 if (superRole) {
   const lista = JSON.parse(superRole.permisos || "[]");
-  if (!lista.includes("audit:read")) {
-    lista.push("audit:read");
-    db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify(lista), superRole.id);
+  const faltantes = ["audit:read", "admin:providers"].filter(p => !lista.includes(p));
+  if (faltantes.length) {
+    db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify([...lista, ...faltantes]), superRole.id);
   }
 }
 

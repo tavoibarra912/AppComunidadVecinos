@@ -546,10 +546,11 @@
       </section>
 
       <section class="admin-pane" data-admin-pane="settings" hidden>
-        <div id="admin-communication-providers" class="comm-callout" hidden><strong>Proveedores de comunicación</strong>
-          <p>Configurá el correo SMTP y los envíos por SMS y WhatsApp.</p><button type="button" class="secondary-button"
-            id="admin-open-providers">Configurar proveedores</button>
-        </div>
+        <nav class="community-editor-tabs" id="settings-subtabs" role="tablist" aria-label="Secciones de configuración">
+          <button type="button" class="community-editor-tab active" data-settings-tab="general" aria-selected="true">General</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="proveedores" aria-selected="false" hidden>Proveedores de comunicación</button>
+        </nav>
+        <div id="settings-general-panel">
         <form id="settings-form" novalidate>
           <div class="form-grid">
             <label class="full">Nombre de la asociación *
@@ -632,6 +633,8 @@
             </button>
           </div>
         </form>
+        </div>
+        <div id="settings-proveedores-panel" hidden></div>
       </section>
     </section>
     <section class="content" id="comunicacion" hidden aria-labelledby="communication-title">

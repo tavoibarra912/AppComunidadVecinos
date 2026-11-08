@@ -4,6 +4,7 @@ import { state, refreshState, hasPermission, requirePermission } from "../state.
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { createDataTable } from "../table.js";
 import { renderAudit } from "./audit.js";
+import { renderProvidersPanel } from "./communication.js";
 import { applyBrand } from "../brand.js";
 const ADMIN_TABS = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings", auditoria: "audit:read" };
 
@@ -35,6 +36,7 @@ const PERMISOS_CATALOGO = [
   { key: "admin:users", label: "Administrar usuarios", grupo: "Sistema" },
   { key: "admin:roles", label: "Administrar roles", grupo: "Sistema" },
   { key: "admin:settings", label: "Administrar configuración", grupo: "Sistema" },
+  { key: "admin:providers", label: "Configurar proveedores de comunicación", grupo: "Sistema" },
   { key: "admin_notification:read", label: "Ver buzón del administrador", grupo: "Notificaciones" },
   { key: "owner_notification:read", label: "Ver su buzón de avisos", grupo: "Notificaciones" }
 ];
@@ -46,12 +48,16 @@ let editingRoleId = null;
 let dirtySnapshot = "";
 
 function puedeAdministrar() {
-  return Object.values(ADMIN_TABS).some(p => hasPermission(p));
+  return Object.values(ADMIN_TABS).some(p => hasPermission(p)) || hasPermission("admin:providers");
+}
+
+// El tab de Configuración también lo ven quienes sólo administran proveedores.
+function conPermisoTab(tab) {
+  return hasPermission(ADMIN_TABS[tab]) || (tab === "settings" && hasPermission("admin:providers"));
 }
 
 function switchAdminTab(tab) {
-  const permissions = ADMIN_TABS;
-  if (!hasPermission(permissions[tab])) return;
+  if (!conPermisoTab(tab)) return;
   adminTabActual = tab;
   document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
     const active = btn.dataset.adminTab === tab;
@@ -63,12 +69,55 @@ function switchAdminTab(tab) {
   });
   if (tab === "usuarios") renderUsers();
   if (tab === "roles") renderRoles();
-  if (tab === "settings") renderSettings();
+  if (tab === "settings") prepararSettings();
   if (tab === "auditoria") renderAudit();
 }
 
 document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
   btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab));
+});
+
+// ---------- Sub-tabs de Configuración: General / Proveedores ----------
+let settingsTab = "general";
+
+function prepararSettings() {
+  const conProveedores = hasPermission("admin:providers");
+  const conGeneral = hasPermission("admin:settings");
+  document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach(btn => {
+    btn.hidden = btn.dataset.settingsTab === "proveedores" ? !conProveedores : !conGeneral;
+  });
+  if (settingsTab === "proveedores" && !conProveedores) settingsTab = "general";
+  if (settingsTab === "general" && !conGeneral && conProveedores) settingsTab = "proveedores";
+  switchSettingsTab(settingsTab);
+}
+
+async function switchSettingsTab(tab) {
+  settingsTab = tab;
+  document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach(btn => {
+    const active = btn.dataset.settingsTab === tab;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", String(active));
+  });
+  const panelGeneral = document.querySelector("#settings-general-panel");
+  const panelProveedores = document.querySelector("#settings-proveedores-panel");
+  if (panelGeneral) panelGeneral.hidden = tab !== "general";
+  if (panelProveedores) panelProveedores.hidden = tab !== "proveedores";
+  if (tab === "general") renderSettings();
+  if (tab === "proveedores" && panelProveedores) {
+    panelProveedores.replaceChildren();
+    try { await renderProvidersPanel(panelProveedores); }
+    catch (error) { panelProveedores.innerHTML = `<p class="form-error">${error.message}</p>`; }
+  }
+}
+
+document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach(btn => {
+  btn.addEventListener("click", () => switchSettingsTab(btn.dataset.settingsTab));
+});
+
+window.addEventListener("admin:goto-proveedores", () => {
+  adminTabActual = "settings";
+  settingsTab = "proveedores";
+  renderAdministracion();
 });
 
 // ---------- Usuarios ----------
@@ -610,11 +659,10 @@ export function renderAdministracion() {
   if (nav) nav.hidden = !visible;
   // Los tabs y paneles se ocultan según el permiso del rol, aunque se fuerce
   // la URL; sin ningún permiso admin la pantalla queda vacía.
-  const permissions = ADMIN_TABS;
-  document.querySelectorAll("#administracion [data-admin-tab]").forEach(button => { button.hidden = !hasPermission(permissions[button.dataset.adminTab]); });
-  document.querySelectorAll("#administracion [data-admin-pane]").forEach(pane => { pane.hidden = !hasPermission(permissions[pane.dataset.adminPane]); });
+  document.querySelectorAll("#administracion [data-admin-tab]").forEach(button => { button.hidden = !conPermisoTab(button.dataset.adminTab); });
+  document.querySelectorAll("#administracion [data-admin-pane]").forEach(pane => { pane.hidden = !conPermisoTab(pane.dataset.adminPane); });
   if (!visible) return;
-  if (!hasPermission(permissions[adminTabActual])) adminTabActual = Object.keys(permissions).find(tab => hasPermission(permissions[tab]));
+  if (!conPermisoTab(adminTabActual)) adminTabActual = Object.keys(ADMIN_TABS).find(conPermisoTab) || "usuarios";
   switchAdminTab(adminTabActual);
 }
 

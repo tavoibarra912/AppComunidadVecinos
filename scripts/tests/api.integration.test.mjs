@@ -402,6 +402,20 @@ test("auditoría: tab y API responden al permiso audit:read del rol", async () =
   assert.equal((await sin("/admin/users")).status, 403);
 });
 
+test("proveedores de comunicación: visible sólo con el permiso admin:providers", async () => {
+  assert.equal((await admin("/admin/roles", "POST", { nombre: "proveedor-tab", descripcion: "solo proveedores", permisos: ["admin:providers"] })).status, 201);
+  assert.equal((await admin("/admin/roles", "POST", { nombre: "sin-proveedores", descripcion: "sin proveedores", permisos: ["community:read"] })).status, 201);
+  assert.equal((await admin("/admin/users", "POST", { nombre: "Proveedor", apellido: "Tab", usuario: "proveedor-tab-1", password: "clave-proveedores-1", rol: "proveedor-tab", activo: true })).status, 201);
+  assert.equal((await admin("/admin/users", "POST", { nombre: "Sin", apellido: "Proveedor", usuario: "sin-proveedor-1", password: "clave-sinprovee-1", rol: "sin-proveedores", activo: true })).status, 201);
+  const con = client();
+  const sin = client();
+  assert.equal((await con("/auth/signin", "POST", { usuario: "proveedor-tab-1", password: "clave-proveedores-1" })).status, 200);
+  assert.equal((await sin("/auth/signin", "POST", { usuario: "sin-proveedor-1", password: "clave-sinprovee-1" })).status, 200);
+  assert.equal((await con("/communications/providers")).status, 200);
+  assert.equal((await sin("/communications/providers")).status, 403);
+  assert.equal((await sin("/communications/providers", "PUT", {})).status, 403);
+});
+
 test("logout invalida la sesión en el servidor", async () => {
   const request = client();
   await request("/auth/signin", "POST", {

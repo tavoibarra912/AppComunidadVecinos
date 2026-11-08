@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import multer from "multer";
 import { db } from "../db.js";
-import { policyData } from "../security.js";
+import { policyData, allowed } from "../security.js";
 import {
   allPosts,
   postById,
@@ -42,9 +42,9 @@ const route = (fn) => (req, res, next) =>
         : next(error),
     );
 const adminOnly = (req) => {
-  if (!superAdmin(req.user))
+  if (!allowed(req.user, "admin:providers", "", policyData()))
     throw problem(
-      "Solo el superadministrador puede configurar los proveedores.",
+      "No tenés permiso para configurar los proveedores de comunicación.",
       403,
     );
 };
