@@ -98,7 +98,9 @@ test("auditoría: permiso explícito global, nunca por administrar una comunidad
 });
 test("recuperación: configuración ausente e inputs inválidos no aparentan envío", async () => {
   assert.equal((await request("/auth/forgot-password", "POST", { email: "invalid" })).status, 400);
-  assert.equal((await request("/auth/forgot-password", "POST", { email: user().email })).status, 503);
+  const sinConfig = await request("/auth/forgot-password", "POST", { email: user().email });
+  assert.equal(sinConfig.status, 200);
+  assert.ok(sinConfig.data.mensaje && !sinConfig.data.token);
   assert.equal((await request("/auth/reset-password", "POST", { token: "bad", password: "valid-password" })).status, 400);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM password_recovery_mail").get().n, 0);
 });

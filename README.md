@@ -116,8 +116,10 @@ abrir el formulario. Se pide confirmar la nueva contraseña, se revocan todas la
 sesiones de la cuenta y no se inicia sesión automáticamente. Cambiar el email o
 desactivar la cuenta desde Administración invalida los enlaces pendientes.
 
-Sin SMTP habilitado (y en producción, sin `APP_PUBLIC_URL` válido) se informa
-que falta configurar el servicio, sin aparentar un envío. Los fallos o envíos interrumpidos quedan en
+Si el SMTP no está habilitado (o falta `APP_PUBLIC_URL` en producción), la
+solicitud se registra en el log del servidor y en la auditoría, y se responde
+con el mismo mensaje genérico: el usuario final nunca ve errores de
+configuración del servidor. Los fallos o envíos interrumpidos quedan en
 la auditoría, invalidan el enlace y no se reenvían automáticamente: solicitá uno
 nuevo después de revisar el proveedor. «Aceptado por SMTP» no confirma entrega.
 

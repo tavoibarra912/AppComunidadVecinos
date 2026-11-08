@@ -28,8 +28,21 @@ export function recoveryUrl() {
 }
 export function requestRecovery(email, req) {
   if (!validEmail(email)) throw fail("Indicá una dirección de email válida.");
-  const url = recoveryUrl();
-  if (!providers().smtp.enabled) throw fail("El correo SMTP no está habilitado. Contactá al administrador.", 503);
+  let url;
+  try {
+    url = recoveryUrl();
+  } catch (error) {
+    // Error de configuración del servidor: nunca se muestra al usuario final.
+    // Se registra en el log y en la auditoría y se responde con el mensaje genérico.
+    console.error("[recuperación] origen no configurado:", error.message);
+    recordAudit({ action: "password-recovery.config-faltante", req, outcome: "failure", details: { motivo: error.message } });
+    return { mensaje: RECOVERY_MESSAGE };
+  }
+  if (!providers().smtp.enabled) {
+    console.error("[recuperación] solicitada con SMTP deshabilitado; no se envió ningún correo.");
+    recordAudit({ action: "password-recovery.smtp-deshabilitado", req, outcome: "failure", details: { motivo: "SMTP no habilitado" } });
+    return { mensaje: RECOVERY_MESSAGE };
+  }
   const address = email.trim().toLowerCase(), now = Date.now(), emailHash = digest(address);
   db.prepare("DELETE FROM password_recovery_requests WHERE requestedAt < ?").run(now - 3600000);
   const recent = db.prepare("SELECT requestedAt FROM password_recovery_requests WHERE emailHash=?").get(emailHash);

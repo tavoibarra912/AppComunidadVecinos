@@ -385,8 +385,8 @@ test("SSO y recuperación sin configurar no autentican ni filtran tokens", async
   const reset = await request("/auth/forgot-password", "POST", {
     email: "admin@penarrubia.es",
   });
-  assert.equal(reset.status, 503);
-  assert.ok(!reset.data.token);
+  assert.equal(reset.status, 200);
+  assert.ok(reset.data.mensaje && !reset.data.token);
 });
 test("auditoría: tab y API responden al permiso audit:read del rol", async () => {
   assert.equal((await admin("/admin/roles", "POST", { nombre: "auditor-tab", descripcion: "solo auditoría", permisos: ["audit:read"] })).status, 201);
