@@ -299,6 +299,16 @@ function renderCommunityEditorProperties(c) {
       openPropertyDetail(prop.id);
     });
 
+    const docsBtn = document.createElement("button");
+    docsBtn.type = "button";
+    docsBtn.className = "icon-action-btn btn-docs";
+    docsBtn.title = "Documentación del inmueble";
+    docsBtn.innerHTML = sanitizeHtml(`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`);
+    docsBtn.addEventListener("click", () => {
+      communityDialog.close();
+      openPropertyEditor(prop.id, "docs", !hasPermission("property:manage", prop.id));
+    });
+
     const unlinkBtn = document.createElement("button");
     unlinkBtn.type = "button";
     unlinkBtn.className = "icon-action-btn btn-delete";
@@ -317,7 +327,7 @@ function renderCommunityEditorProperties(c) {
       toast(`Inmueble ${prop.plot} desvinculado de la comunidad.`);
     });
 
-    actions.append(viewBtn, unlinkBtn);
+    actions.append(viewBtn, docsBtn, unlinkBtn);
     card.append(info, actions);
     listEl.append(card);
   });

@@ -1,4 +1,5 @@
 import { sanitizeHtml, escapeHtml } from "../html.js";
+import { openDocViewer, DocumentValidator } from "../docs-engine.js";
 import { api } from "../api.js";
 import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, propertyLabel, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { toast, renderDocumentRecords, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
@@ -420,37 +421,45 @@ export function updatePropertyPeopleSelectors(selectedOwnerIds = [], selectedTen
 
 const ICON_FILE_DOC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
 
-function docFileRow({ name, size, href, download = false, removeAttrs }) {
-  const row = document.createElement("div");
-  row.className = "doc-file-row";
-  const icon = document.createElement("span");
-  icon.className = "doc-file-icon";
-  icon.innerHTML = sanitizeHtml(ICON_FILE_DOC);
-  const info = document.createElement("div");
-  info.className = "doc-file-info";
-  if (href) {
-    const link = document.createElement("a");
-    link.className = "doc-file-name";
-    link.textContent = name;
-    link.href = href;
-    link.target = "_blank";
-    link.rel = "noopener";
-    if (download) link.download = name;
-    info.append(link);
-  } else {
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "doc-file-name";
-    nameSpan.textContent = name;
-    info.append(nameSpan);
-  }
-  const sizeSpan = document.createElement("span");
-  sizeSpan.className = "doc-file-size";
-  sizeSpan.textContent = size;
-  info.append(sizeSpan);
-  const removeButton = iconBtn("btn-delete", "Quitar archivo", `Quitar ${name}`, ICON_DELETE);
-  Object.entries(removeAttrs).forEach(([attr, value]) => { removeButton.dataset[attr] = value; });
-  row.append(icon, info, removeButton);
-  return row;
+function getFormPropertyContext() {
+  const property = state.properties.find(item => item.id === state.ui.editingPropertyId);
+  return {
+    plot: propertyForm.elements.plot.value.trim() || property?.plot || "Inmueble",
+    communityName: property?.communityName || (state.communities.find(c => c.id === propertyForm.elements.communityId.value)?.name) || "Comunidad",
+    address: propertyForm.elements.address.value.trim() || property?.address || "",
+    cadastralRef: propertyForm.elements.cadastralRef.value.trim() || property?.cadastralRef || ""
+  };
+}
+
+/* Misma tarjeta de documento que usan comunidad y el motor de propietarios */
+function docFileCard({ name, size, doc, isPending, removeAttrs, entityContext }) {
+  const card = document.createElement("div");
+  card.className = "doc-upload-card is-valid";
+  const header = document.createElement("div");
+  header.className = "doc-validation-header";
+  header.style.marginBottom = "0";
+  header.style.paddingBottom = "0";
+  header.style.borderBottom = "none";
+  header.innerHTML = sanitizeHtml(`
+    <div class="doc-file-meta">
+      <span class="doc-file-icon">📄</span>
+      <div>
+        <p class="doc-file-name">${escapeHtml(name)}</p>
+        <p class="doc-file-size">${escapeHtml(size)}${isPending ? " · Nuevo (pendiente de guardar)" : (doc?.uploadedAt ? ` · Subido el ${escapeHtml(doc.uploadedAt)}` : "")}</p>
+      </div>
+    </div>
+    <div class="doc-file-actions">
+      <button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button>
+      <button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>
+    </div>
+  `);
+  header.querySelector('[data-action="view"]').addEventListener("click", () => {
+    openDocViewer(entityContext, doc?.id || name, doc || { fileName: name, fileSize: 0, url: "", dataUrl: doc?.dataUrl });
+  });
+  const removeBtn = header.querySelector('[data-action="remove"]');
+  Object.entries(removeAttrs).forEach(([attr, value]) => { removeBtn.dataset[attr] = value; });
+  card.append(header);
+  return card;
 }
 
 export function renderPropertyDocumentList() {
@@ -465,22 +474,26 @@ export function renderPropertyDocumentList() {
     return;
   }
 
+  const context = getFormPropertyContext();
   state.ui.propertyDocuments.forEach(documentRecord => {
-    propertyDocumentList.append(docFileRow({
+    propertyDocumentList.append(docFileCard({
       name: documentRecord.fileName,
       size: `${Math.ceil((documentRecord.fileSize || 0) / 1024)} KB`,
-      href: documentRecord.url || documentRecord.dataUrl || "",
-      download: !!documentRecord.dataUrl,
-      removeAttrs: { removePropertyDocument: documentRecord.id }
+      doc: documentRecord,
+      isPending: false,
+      removeAttrs: { removePropertyDocument: documentRecord.id },
+      entityContext: context
     }));
   });
 
   pendingPropertyFiles.forEach((file, index) => {
-    propertyDocumentList.append(docFileRow({
-      name: `${file.name} · nuevo`,
+    propertyDocumentList.append(docFileCard({
+      name: file.name,
       size: `${Math.ceil(file.size / 1024)} KB`,
-      href: "",
-      removeAttrs: { pendingPropertyFile: String(index) }
+      doc: { fileName: file.name, fileSize: file.size, dataUrl: file.dataUrl, fileType: file.type || "application/pdf" },
+      isPending: true,
+      removeAttrs: { pendingPropertyFile: String(index) },
+      entityContext: context
     }));
   });
 }
@@ -910,6 +923,22 @@ if (propertyDocumentInput) {
     const pendingBtn = event.target.closest("[data-pending-property-file]");
     if (!pendingBtn) return;
     pendingPropertyFiles.splice(Number(pendingBtn.dataset.pendingPropertyFile), 1);
+    renderPropertyDocumentList();
+  });
+}
+
+// Documento de ejemplo (certificado energético) con el mismo motor que comunidad
+const btnSamplePropertyDoc = document.querySelector("#btn-sample-property-doc");
+if (btnSamplePropertyDoc) {
+  btnSamplePropertyDoc.addEventListener("click", () => {
+    const sample = DocumentValidator.generateSampleDocument("energyCertificate", getFormPropertyContext());
+    if (!sample) return;
+    const svgText = decodeURIComponent(sample.dataUrl.split(",")[1]);
+    const blob = new Blob([svgText], { type: "image/svg+xml" });
+    const file = new File([blob], sample.fileName, { type: "image/svg+xml" });
+    file.dataUrl = sample.dataUrl;
+    pendingPropertyFiles.push(file);
+    toast("Documento oficial de prueba cargado y validado automáticamente.");
     renderPropertyDocumentList();
   });
 }
