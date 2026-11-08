@@ -1,6 +1,6 @@
-import { sanitizeHtml, escapeHtml } from "./html.js";
-import { openDocViewer } from "./features/propietarios.js";
-import { state } from "./state.js";
+import { sanitizeHtml, escapeHtml, documentUrl } from "./html.js";
+import { state, refreshState, hasPermission, requirePermission } from "./state.js";
+import { api } from "./api.js";
 import { toast, readFileAsDataUrl } from "./utils.js";
 
 export const editingDocs = { current: {} };
@@ -97,7 +97,14 @@ export function analyzeImageQuality(dataUrl) {
 }
 
 export function checkDocumentCorrespondence(fileName, docType) {
-  const titles = { dni: "Copia de DNI (ambas caras)", bankReceipt: "Recibo bancario o certificado de titularidad", propertyDeed: "Copia de escritura", contract: "Contrato de arrendamiento" };
+  const titles = {
+    dni: "Copia de DNI (ambas caras)",
+    bankReceipt: "Recibo bancario o certificado de titularidad",
+    propertyDeed: "Copia de escritura",
+    contract: "Contrato de arrendamiento",
+    communityMinute: "Acta de Junta de la Comunidad",
+    energyCertificate: "Certificado de Eficiencia Energética"
+  };
   return titles[docType] ? { isValid: true, title: titles[docType], typeVerified: "Pendiente de revisión administrativa", checks: [] } : { isValid: false, error: "Tipo de documento no reconocido." };
 }
 
@@ -207,6 +214,102 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       fileName: `Escritura_Propiedad_${plot.replace(/\s+/g, "_")}.pdf`,
       fileType: "application/pdf",
       fileSize: 1250300,
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+    };
+  }
+
+  if (docType === "contract") {
+    const property = ownerContext.plot || plot;
+    const landlord = ownerContext.landlord || "Propietario Arrendador";
+    const rent = ownerContext.monthlyRent || "750";
+    const deposit = ownerContext.deposit || "1500";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520">
+      <rect x="20" y="20" width="760" height="480" rx="8" fill="#fcfcfd" stroke="#cbd5e1" stroke-width="2"/>
+      <rect x="20" y="20" width="760" height="48" fill="#1e293b"/>
+      <text x="40" y="50" fill="#ffffff" font-family="sans-serif" font-size="16" font-weight="bold">CONTRATO DE ARRENDAMIENTO DE VIVIENDA URBANA (L.A.U.)</text>
+      <text x="40" y="105" fill="#0f172a" font-family="sans-serif" font-size="15" font-weight="bold">DOCUMENTO PRIVADO DE ARRENDAMIENTO CON PLENA EFICACIA JURÍDICA</text>
+      <text x="40" y="135" fill="#475569" font-family="sans-serif" font-size="13">En la fecha actual comparecen libremente ambas partes y convienen:</text>
+      <rect x="40" y="155" width="720" height="150" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+      <text x="60" y="185" fill="#64748b" font-family="sans-serif" font-size="12">PARTE ARRENDATARIA (INQUILINO):</text>
+      <text x="60" y="205" fill="#0f172a" font-family="sans-serif" font-size="14" font-weight="bold">${name} · DNI/NIE ${dni}</text>
+      <text x="420" y="185" fill="#64748b" font-family="sans-serif" font-size="12">PARTE ARRENDADORA (PROPIETARIO):</text>
+      <text x="420" y="205" fill="#0f172a" font-family="sans-serif" font-size="14" font-weight="bold">${landlord.toUpperCase()}</text>
+      <text x="60" y="240" fill="#64748b" font-family="sans-serif" font-size="12">INMUEBLE ARRENDADO:</text>
+      <text x="60" y="260" fill="#0369a1" font-family="sans-serif" font-size="14" font-weight="bold">${property} (${comm})</text>
+      <text x="420" y="240" fill="#64748b" font-family="sans-serif" font-size="12">CONDICIONES ECONÓMICAS:</text>
+      <text x="420" y="260" fill="#0f172a" font-family="sans-serif" font-size="14" font-weight="bold">Renta: ${rent} €/mes · Fianza: ${deposit} €</text>
+      <text x="60" y="290" fill="#64748b" font-family="sans-serif" font-size="12">VIGENCIA: Conforme a lo establecido en la Ley de Arrendamientos Urbanos vigente.</text>
+      <rect x="40" y="325" width="720" height="155" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+      <text x="60" y="360" fill="#166534" font-family="sans-serif" font-size="15" font-weight="bold">VERIFICACIÓN AUTOMÁTICA DEL CONTRATO DE ARRENDAMIENTO</text>
+      <text x="60" y="390" fill="#15803d" font-family="sans-serif" font-size="13">✓ Contrato firmado electrónicamente por ambas partes intervinientes.</text>
+      <text x="60" y="420" fill="#15803d" font-family="sans-serif" font-size="13">✓ Puntuación de legibilidad: 97% (Óptima, texto nítido y formato íntegro).</text>
+      <text x="60" y="450" fill="#15803d" font-family="sans-serif" font-size="13">✓ Coincidencia acreditada con el inquilino ${name}.</text>
+    </svg>`;
+    return {
+      fileName: `Contrato_Arrendamiento_${dni}.pdf`,
+      fileType: "application/pdf",
+      fileSize: 642100,
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+    };
+  }
+
+  if (docType === "communityMinute") {
+    const cName = ownerContext.communityName || comm;
+    const nif = ownerContext.nif || "H12345678";
+    const dateStr = new Date().toLocaleDateString("es-ES");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520">
+      <rect x="20" y="20" width="760" height="480" rx="8" fill="#fffdfa" stroke="#d6c7b2" stroke-width="2"/>
+      <rect x="20" y="20" width="760" height="48" fill="#1e3a5f"/>
+      <text x="40" y="50" fill="#ffffff" font-family="sans-serif" font-size="16" font-weight="bold">COMUNIDAD DE PROPIETARIOS · ACTA DE JUNTA GENERAL ORDINARIA</text>
+      <text x="40" y="105" fill="#0f172a" font-family="sans-serif" font-size="15" font-weight="bold">${cName.toUpperCase()} · NIF: ${nif}</text>
+      <text x="40" y="135" fill="#475569" font-family="sans-serif" font-size="13">Celebrada el ${dateStr} con la asistencia del quórum reglamentario (LPH art. 16 y 17).</text>
+      <rect x="40" y="155" width="720" height="150" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+      <text x="60" y="185" fill="#1e3a5f" font-family="sans-serif" font-size="13" font-weight="bold">ORDEN DEL DÍA Y ACUERDOS APROBADOS:</text>
+      <text x="60" y="210" fill="#334155" font-family="sans-serif" font-size="12">1. Examen y aprobación de cuentas correspondientes al ejercicio vencido (Aprobado por unanimidad).</text>
+      <text x="60" y="235" fill="#334155" font-family="sans-serif" font-size="12">2. Renovación de los cargos de Presidente y Secretario-Administrador de la Comunidad.</text>
+      <text x="60" y="260" fill="#334155" font-family="sans-serif" font-size="12">3. Aprobación del presupuesto ordinario y dotación del fondo de reserva legal (art. 9 LPH).</text>
+      <text x="60" y="285" fill="#334155" font-family="sans-serif" font-size="12">4. Turno de ruegos y preguntas de los copropietarios asistentes.</text>
+      <rect x="40" y="325" width="720" height="155" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+      <text x="60" y="360" fill="#166534" font-family="sans-serif" font-size="15" font-weight="bold">DILIGENCIA DE CIERRE Y FIRMA DEL ACTA</text>
+      <text x="60" y="390" fill="#15803d" font-family="sans-serif" font-size="13">✓ Acta redactada conforme a los requisitos del art. 19 de la Ley de Propiedad Horizontal.</text>
+      <text x="60" y="420" fill="#15803d" font-family="sans-serif" font-size="13">✓ Firmada por el Presidente y el Secretario-Administrador colegiado.</text>
+      <text x="60" y="450" fill="#15803d" font-family="sans-serif" font-size="13">✓ Notificada reglamentariamente a todos los propietarios.</text>
+    </svg>`;
+    return {
+      fileName: `Acta_Junta_General_${cName.replace(/\s+/g, "_")}.pdf`,
+      fileType: "application/pdf",
+      fileSize: 524300,
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+    };
+  }
+
+  if (docType === "energyCertificate") {
+    const plotName = ownerContext.plot || plot;
+    const cadastral = ownerContext.cadastralRef || "9872023VH5797S0001WX";
+    const address = ownerContext.address || "Calle Principal 14";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520">
+      <rect x="20" y="20" width="760" height="480" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+      <rect x="20" y="20" width="760" height="48" fill="#047857"/>
+      <text x="40" y="50" fill="#ffffff" font-family="sans-serif" font-size="16" font-weight="bold">CERTIFICADO DE EFICIENCIA ENERGÉTICA DE EDIFICIO EXISTENTE</text>
+      <text x="40" y="105" fill="#0f172a" font-family="sans-serif" font-size="15" font-weight="bold">${plotName.toUpperCase()} · ${address.toUpperCase()}</text>
+      <text x="40" y="130" fill="#64748b" font-family="sans-serif" font-size="12">REFERENCIA CATASTRAL: ${cadastral} · COMUNIDAD: ${comm}</text>
+      <rect x="40" y="150" width="720" height="155" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+      <rect x="60" y="170" width="70" height="34" rx="4" fill="#059669"/>
+      <text x="95" y="193" fill="#ffffff" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle">A</text>
+      <text x="145" y="185" fill="#047857" font-family="sans-serif" font-size="14" font-weight="bold">CALIFICACIÓN ENERGÉTICA: CLASE A (MÁXIMA EFICIENCIA)</text>
+      <text x="145" y="205" fill="#475569" font-family="sans-serif" font-size="12">Consumo de energía primaria no renovable: 42.5 kWh/m² año</text>
+      <text x="145" y="225" fill="#475569" font-family="sans-serif" font-size="12">Emisiones de dióxido de carbono: 8.2 kg CO₂/m² año</text>
+      <text x="60" y="265" fill="#64748b" font-family="sans-serif" font-size="12">Técnico certificador colegiado competente · Procedimiento homologado reconocido oficial.</text>
+      <rect x="40" y="325" width="720" height="155" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+      <text x="60" y="360" fill="#166534" font-family="sans-serif" font-size="15" font-weight="bold">REGISTRO OFICIAL DE CERTIFICADOS DE EFICIENCIA ENERGÉTICA</text>
+      <text x="60" y="390" fill="#15803d" font-family="sans-serif" font-size="13">✓ Inscrito favorablemente en el registro oficial autonómico de la administración pública.</text>
+      <text x="60" y="420" fill="#15803d" font-family="sans-serif" font-size="13">✓ Etiqueta de eficiencia energética expedida con validez de 10 años.</text>
+      <text x="60" y="450" fill="#15803d" font-family="sans-serif" font-size="13">✓ Cumple con el Real Decreto 390/2021 de certificación energética de edificios.</text>
+    </svg>`;
+    return {
+      fileName: `Certificado_Eficiencia_Energetica_${plotName.replace(/\s+/g, "_")}.pdf`,
+      fileType: "application/pdf",
+      fileSize: 789400,
       dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
     };
   }
@@ -537,4 +640,138 @@ setupDropzone(dropzoneDeed, "propertyDeed");
 btnSampleDni.addEventListener("click", () => handleDocSampleLoad("dni"));
 btnSampleBank.addEventListener("click", () => handleDocSampleLoad("bankReceipt"));
 btnSampleDeed.addEventListener("click", () => handleDocSampleLoad("propertyDeed"));
+
+export function openDocViewer(entity, docKey, docObj = null) {
+  const doc = docObj || (entity?.documents && entity.documents[docKey]);
+  if (!doc) return;
+
+  const docViewerDialog = document.querySelector("#doc-viewer-dialog");
+  const docViewerEyebrow = document.querySelector("#doc-viewer-eyebrow");
+  const docViewerTitle = document.querySelector("#doc-viewer-title");
+  const docViewerOwner = document.querySelector("#doc-viewer-owner");
+  const docViewerFilename = document.querySelector("#doc-viewer-filename");
+  const docViewerDate = document.querySelector("#doc-viewer-date");
+  const docViewerScoreBar = document.querySelector("#doc-viewer-score-bar");
+  const docViewerScoreText = document.querySelector("#doc-viewer-score-text");
+  const checksListEl = document.querySelector("#doc-viewer-checks-list");
+  const approvalBox = document.querySelector("#doc-viewer-approval-status");
+  const previewPane = document.querySelector("#doc-viewer-preview-pane");
+  const docViewerQuickApproveBtn = document.querySelector("#doc-viewer-quick-approve-btn");
+
+  let eyebrow = "EXPEDIENTE DOCUMENTAL";
+  let titular = "";
+  if (entity) {
+    if (entity.nif && entity.name) {
+      eyebrow = `COMUNIDAD: ${entity.name}`;
+      titular = `${entity.name} (${entity.nif})`;
+    } else if (entity.plot) {
+      eyebrow = `INMUEBLE: ${entity.plot}`;
+      titular = `${entity.plot} · ${entity.communityName || "Inmueble"}`;
+    } else if (entity.documentId || entity.contractStart) {
+      eyebrow = `INQUILINO: ${entity.name} ${entity.surname}`;
+      titular = `${entity.name} ${entity.surname} (${entity.documentId || entity.dni || "Inquilino"})`;
+    } else if (entity.name) {
+      eyebrow = `EXPEDIENTE: ${entity.communityName || "ASOCIACIÓN"}`;
+      titular = `${entity.name} ${entity.surname || ""} ${entity.dni ? `(${entity.dni})` : ""}`.trim();
+    }
+  }
+
+  if (docViewerEyebrow) docViewerEyebrow.textContent = eyebrow;
+  if (docViewerTitle) docViewerTitle.textContent = doc.title || doc.fileName || "Documento";
+  if (docViewerOwner) docViewerOwner.textContent = titular || "Expediente general";
+  if (docViewerFilename) docViewerFilename.textContent = `${doc.fileName} (${Math.round((doc.fileSize || 0) / 1024)} KB)`;
+  if (docViewerDate) docViewerDate.textContent = doc.uploadedAt || new Date().toLocaleString("es-ES");
+
+  const score = doc.autoValidation?.legibilityScore ?? (doc.isSample ? 98 : null);
+  if (docViewerScoreBar) {
+    docViewerScoreBar.style.width = score !== null ? `${score}%` : "0%";
+  }
+  if (docViewerScoreText) {
+    docViewerScoreText.textContent = doc.autoValidation?.legibilityStatus || (score !== null ? `${score}% (Óptima)` : "Revisión manual pendiente");
+  }
+
+  if (checksListEl) {
+    checksListEl.replaceChildren();
+    const note = document.createElement("li");
+    note.textContent = "El sistema verifica el formato y legibilidad del archivo. La validación legal requiere revisión administrativa.";
+    checksListEl.append(note);
+  }
+
+  if (approvalBox) {
+    const isApproved = doc.adminApproval?.status === "approved";
+    const isRejected = doc.adminApproval?.status === "rejected";
+    approvalBox.innerHTML = sanitizeHtml(`
+      <span class="status-badge ${isApproved ? "doc-approved" : (isRejected ? "doc-rejected" : "doc-pending-admin")}">
+        ${isApproved ? "✓ Aprobado por Administrador" : (isRejected ? "✗ Rechazado" : "⏳ Pendiente de resolución administrativa")}
+      </span>
+    `);
+  }
+
+  if (previewPane) {
+    previewPane.replaceChildren();
+    const previewUrl = documentUrl(doc.dataUrl || doc.url);
+    if (previewUrl) {
+      const isPdf = doc.fileType === "application/pdf" || (doc.fileName && doc.fileName.toLowerCase().endsWith(".pdf"));
+      const el = document.createElement(isPdf ? "iframe" : "img");
+      if (el.tagName === "IFRAME") {
+        el.setAttribute("sandbox", "");
+        el.title = "Vista previa del documento";
+        el.style.width = "100%";
+        el.style.height = "400px";
+      }
+      el.src = previewUrl;
+      el.alt = doc.title || doc.fileName;
+      el.style.maxWidth = "100%";
+      el.style.maxHeight = "400px";
+      el.style.borderRadius = "6px";
+      previewPane.append(el);
+      const download = document.createElement("a");
+      download.href = previewUrl;
+      download.download = doc.fileName;
+      download.textContent = "Descargar archivo";
+      previewPane.append(download);
+    } else {
+      previewPane.textContent = "Este registro no contiene un archivo disponible en este momento.";
+    }
+  }
+
+  if (docViewerQuickApproveBtn) {
+    const canApprove = entity?.id && entity?.dni && hasPermission("document:approve", entity?.id) && !doc.isSample;
+    docViewerQuickApproveBtn.hidden = !canApprove;
+    if (canApprove) {
+      docViewerQuickApproveBtn.onclick = async () => {
+        if (!requirePermission("document:approve")) return;
+        doc.adminApproval = {
+          status: "approved",
+          reviewedAt: new Date().toLocaleString("es-ES"),
+          reviewedBy: "Administrador",
+          notes: "Aprobación individual desde visor."
+        };
+        const savedOwner = state.owners.find(o => o.id === entity.id);
+        if (savedOwner) {
+          try {
+            await api.updateOwner(entity.id, { ...savedOwner, documents: { ...savedOwner.documents, [docKey]: doc } });
+            await refreshState();
+          } catch (error) {
+            toast(error.message);
+            return;
+          }
+          if (docViewerDialog) docViewerDialog.close();
+          toast(`Documento "${doc.title}" aprobado.`);
+          if (ownerForm && ownerForm.closest("dialog")?.open) renderOwnerDialogDocs();
+        }
+      };
+    }
+  }
+
+  if (docViewerDialog && !docViewerDialog.open) {
+    docViewerDialog.showModal();
+  }
+}
+
+const closeDocViewerDialogBtn = document.querySelector("#close-doc-viewer-dialog");
+const closeDocViewerBtn = document.querySelector("#close-doc-viewer-btn");
+if (closeDocViewerDialogBtn) closeDocViewerDialogBtn.addEventListener("click", () => document.querySelector("#doc-viewer-dialog")?.close());
+if (closeDocViewerBtn) closeDocViewerBtn.addEventListener("click", () => document.querySelector("#doc-viewer-dialog")?.close());
+
 

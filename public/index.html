@@ -117,10 +117,10 @@
         <p class="login-sub">Tu cuenta se crea con el rol más básico. Un administrador puede asignarte más permisos
           después.</p>
         <form id="login-signup-form" novalidate>
-          <label>Nombre
+          <label>Nombre (opcional)
             <input name="nombre" maxlength="60" autocomplete="given-name" />
           </label>
-          <label>Apellidos
+          <label>Apellidos (opcional)
             <input name="apellido" maxlength="80" autocomplete="family-name" />
           </label>
           <label>Usuario *
@@ -559,14 +559,14 @@
             <label>Email de contacto *
               <input name="emailContacto" type="email" maxlength="120" required />
             </label>
-            <label>Teléfono de contacto
+            <label>Teléfono de contacto (opcional)
               <input name="telefonoContacto" maxlength="20" inputmode="tel" />
             </label>
             <p class="form-section-title full">Verificación de contacto (OTP)</p>
-            <label>Expiración del código (minutos)
+            <label>Expiración del código (minutos) (opcional)
               <input name="otpExpiraMinutos" type="number" min="1" max="60" inputmode="numeric" />
             </label>
-            <label>Reenvío permitido cada (segundos)
+            <label>Reenvío permitido cada (segundos) (opcional)
               <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
             </label>
             <label class="full checkbox-line">
@@ -574,10 +574,10 @@
               Enviar notificaciones por correo electrónico
             </label>
             <p class="form-section-title full">Documentos</p>
-            <label>Tamaño máximo por documento (MB)
+            <label>Tamaño máximo por documento (MB) (opcional)
               <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
             </label>
-            <label>Moneda por defecto
+            <label>Moneda por defecto (opcional)
               <select name="monedaPorDefecto">
                 <option value="EUR">Euro (EUR)</option>
                 <option value="USD">Dólar estadounidense (USD)</option>
@@ -586,17 +586,17 @@
               </select>
             </label>
             <p class="form-section-title full">Contratos y vencimientos</p>
-            <label>Aviso de vencimiento de contrato (días antes)
+            <label>Aviso de vencimiento de contrato (días antes) (opcional)
               <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
             </label>
             <p class="form-section-title full">Marca (white-label)</p>
             <label class="full">Nombre visible de la plataforma *
               <input name="marcaNombre" maxlength="120" required />
             </label>
-            <label>Color principal
+            <label>Color principal (opcional)
               <input name="marcaColorPrimario" type="color" />
             </label>
-            <label>Color de acento
+            <label>Color de acento (opcional)
               <input name="marcaColorAcento" type="color" />
             </label>
             <label class="full">Logo (PNG, JPG, SVG o WebP, máx. 225 KB)
@@ -608,7 +608,7 @@
               Quitar logo actual
             </label>
             <p class="form-section-title full">Sistema</p>
-            <label>Filas por página en las tablas
+            <label>Filas por página en las tablas (opcional)
               <select name="filasPorPagina">
                 <option value="5">5</option>
                 <option value="10">10</option>
@@ -724,7 +724,7 @@
           <label class="full">Observaciones (opcional)
             <textarea name="notes" rows="3" maxlength="500"></textarea>
           </label>
-          <label class="full">Administrador de Comunidad (usuario del sistema)
+          <label class="full">Administrador de Comunidad (usuario del sistema) (opcional)
             <select name="adminUserId" id="community-admin-select">
               <option value="">Sin asignar (se completa manualmente en Presidente/Administrador)</option>
             </select>
@@ -806,7 +806,7 @@
           </div>
         </div>
         <div class="community-edit-link-panel" id="community-edit-link-panel" hidden>
-          <label>Inmueble
+          <label>Inmueble (opcional)
             <select id="community-edit-link-property-select"></select>
           </label>
           <button class="icon-action-btn btn-save" id="btn-community-edit-confirm-link" type="button"
@@ -848,6 +848,9 @@
             <p><strong>Arrastrá archivos acá</strong> o hacé clic para seleccionar</p>
             <span>PDF, JPG, PNG o WEBP · máximo 15 MB por archivo · se guardan al pulsar Guardar</span>
           </div>
+        </div>
+        <div class="doc-sample-bar">
+          <button class="sample-doc-btn" type="button" id="btn-sample-community-doc">✨ Cargar acta de ejemplo (sin validez)</button>
         </div>
         <div class="doc-file-list" id="community-document-list"></div>
       </section>
@@ -1129,13 +1132,13 @@
               <option value="false">No (Propietario no asociado)</option>
             </select>
           </label>
-          <label>Comunidad
+          <label>Comunidad (opcional)
             <select name="communityId">
               <option value="">Selecciona una comunidad…</option>
             </select>
           </label>
           <p class="form-section-title full">Notificaciones (LPH)</p>
-          <label>Derecho de voto en Junta (LPH)
+          <label>Derecho de voto en Junta (LPH) (opcional)
             <select name="votingRights">
               <option value="active" selected>Con derecho a voto (al corriente)</option>
               <option value="suspended">Voto suspendido por morosidad (art. 15.2 LPH)</option>
@@ -1144,7 +1147,7 @@
           <label>Representante legal / Apoderado
             <input name="legalRepresentative" maxlength="100" placeholder="Nombre y DNI del apoderado (opcional)" />
           </label>
-          <label class="full">Canal preferente de notificaciones (LPH art. 9)
+          <label class="full">Canal preferente de notificaciones (LPH art. 9) (opcional)
             <select name="notificationPreference">
               <option value="email" selected>Correo electrónico</option>
               <option value="postal">Domicilio postal</option>
@@ -1183,7 +1186,7 @@
           </div>
         </div>
         <div class="community-edit-link-panel" id="owner-property-link-panel" hidden>
-          <label>Inmueble
+          <label>Inmueble (opcional)
             <select id="owner-property-link-select"></select>
           </label>
           <button class="icon-action-btn btn-save" id="btn-owner-confirm-property" type="button"
@@ -1218,7 +1221,7 @@
             <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de
               verificación</span>
           </label>
-          <label>Teléfono Secundario
+          <label>Teléfono Secundario (opcional)
             <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
           </label>
           <label class="full" id="label-email">Email *
@@ -1255,7 +1258,7 @@
       <!-- PESTAÑA: DOMICILIACIÓN -->
       <section class="community-editor-pane" id="owner-tab-banking" data-owner-pane="banking" hidden>
         <div class="form-grid">
-          <label class="full">IBAN
+          <label class="full">IBAN (opcional)
             <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
               autocomplete="off" />
           </label>
@@ -1749,7 +1752,7 @@
             <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de
               verificación</span>
           </label>
-          <label>Teléfono Secundario
+          <label>Teléfono Secundario (opcional)
             <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
           </label>
           <label class="full" id="tenant-label-email">Email *
@@ -1775,7 +1778,7 @@
             <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de
               la unidad</label>
           </fieldset>
-          <label class="full">Canal preferente de notificaciones (LPH art. 9)
+          <label class="full">Canal preferente de notificaciones (LPH art. 9) (opcional)
             <select name="notificationPreference">
               <option value="email" selected>Correo electrónico</option>
               <option value="postal">Domicilio postal</option>
@@ -1789,7 +1792,7 @@
 
       <section class="community-editor-pane" id="tenant-tab-contract" data-tenant-pane="contract" hidden>
         <div class="form-grid">
-          <label>Tipo de contrato (LAU)
+          <label>Tipo de contrato (LAU) (opcional)
             <select name="contractType">
               <option value="vivienda_habitual" selected>Arrendamiento vivienda habitual</option>
               <option value="temporada">Arrendamiento de temporada</option>
@@ -1797,7 +1800,7 @@
               <option value="cesion">Cesión o comodato</option>
             </select>
           </label>
-          <label>Moneda
+          <label>Moneda (opcional)
             <select name="currency">
               <option value="EUR" selected>Euro (EUR)</option>
               <option value="USD">Dólar estadounidense (USD)</option>
@@ -1805,10 +1808,10 @@
               <option value="CHF">Franco suizo (CHF)</option>
             </select>
           </label>
-          <label>Renta mensual (€)
+          <label>Renta mensual (€) (opcional)
             <input name="monthlyRent" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
           </label>
-          <label>Fianza legal (€)
+          <label>Fianza legal (€) (opcional)
             <input name="deposit" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
           </label>
           <p class="field-hint full">Si el monto de la fianza es cero o nulo, se entenderá que no se entregó fianza.</p>
@@ -1839,7 +1842,7 @@
           </div>
         </div>
         <div class="community-edit-link-panel" id="tenant-property-link-panel" hidden>
-          <label>Inmueble
+          <label>Inmueble (opcional)
             <select id="tenant-property-link-select"></select>
           </label>
           <button class="icon-action-btn btn-save" id="btn-tenant-confirm-property" type="button"
@@ -2207,7 +2210,7 @@
               <option value="trastero">Trastero</option>
             </select>
           </label>
-          <label>Referencia Catastral
+          <label>Referencia Catastral (opcional)
             <input name="cadastralRef" maxlength="20" />
           </label>
           <label class="full">Observaciones
@@ -2235,7 +2238,7 @@
               <option value="">Cargando provincias…</option>
             </select>
           </label>
-          <label>Certificado Energético
+          <label>Certificado Energético (opcional)
             <select name="energyCertificate">
               <option value="">Sin especificar</option>
               <option value="A">A (Muy eficiente)</option>
@@ -2248,22 +2251,22 @@
               <option value="exento">Exento</option>
             </select>
           </label>
-          <label>Superficie (m²)
+          <label>Superficie (m²) (opcional)
             <input name="areaM2" inputmode="numeric" maxlength="10" placeholder="Ej: 95" />
           </label>
-          <label>Planta
+          <label>Planta (opcional)
             <input name="floor" maxlength="10" />
           </label>
-          <label>Finca registral
+          <label>Finca registral (opcional)
             <input name="registryNumber" maxlength="20" />
           </label>
-          <label>Puerta
+          <label>Puerta (opcional)
             <input name="door" maxlength="10" />
           </label>
-          <label>Bloque / Escalera / Portal
+          <label>Bloque / Escalera / Portal (opcional)
             <input name="staircase" maxlength="20" placeholder="Ej: Bloque 2, Esc. A" />
           </label>
-          <label>Uso
+          <label>Uso (opcional)
             <select name="propertyUse">
               <option value="">Sin especificar</option>
               <option value="residencial">Residencial</option>
@@ -2277,7 +2280,7 @@
       </section>
       <section class="property-editor-pane" data-property-pane="finance" hidden>
         <div class="form-grid">
-          <label>Cuota de Comunidad
+          <label>Cuota de Comunidad (opcional)
             <input name="communityFee" inputmode="decimal" maxlength="10" placeholder="Ej: 65.50" />
           </label>
           <label>Moneda (opcional)
@@ -2285,7 +2288,7 @@
               <option value="">Cargando monedas…</option>
             </select>
           </label>
-          <label>Coeficiente de participación (%)
+          <label>Coeficiente de participación (%) (opcional)
             <input name="participationCoef" inputmode="decimal" maxlength="10" />
           </label>
           <label>Estado de recibos *
@@ -2324,7 +2327,7 @@
           </div>
         </div>
         <div class="community-edit-link-panel" id="property-owner-link-panel" hidden>
-          <label>Propietario
+          <label>Propietario (opcional)
             <select id="property-owner-link-select"></select>
           </label>
           <button class="icon-action-btn btn-save" id="btn-property-confirm-owner" type="button"
@@ -2372,7 +2375,7 @@
           </div>
         </div>
         <div class="community-edit-link-panel" id="property-tenant-link-panel" hidden>
-          <label>Inquilino
+          <label>Inquilino (opcional)
             <select id="property-tenant-link-select"></select>
           </label>
           <button class="icon-action-btn btn-save" id="btn-property-confirm-tenant" type="button"
@@ -2590,22 +2593,22 @@
           </svg></button>
       </div>
       <div class="form-grid">
-        <label>Nombre
+        <label>Nombre (opcional)
           <input name="nombre" maxlength="60" autocomplete="given-name" />
         </label>
-        <label>Apellidos
+        <label>Apellidos (opcional)
           <input name="apellido" maxlength="80" autocomplete="family-name" />
         </label>
         <label>Usuario *
           <input name="usuario" maxlength="40" required autocomplete="username" />
         </label>
-        <label>Email
+        <label>Email (opcional)
           <input name="email" type="email" maxlength="120" autocomplete="email" />
         </label>
         <label>Contraseña (obligatoria al crear; vacía para conservarla)
           <input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" />
         </label>
-        <label>Repetir contraseña
+        <label>Repetir contraseña (opcional)
           <input name="password2" type="password" minlength="8" maxlength="128" autocomplete="new-password" />
         </label>
         <label>Rol *
@@ -2617,11 +2620,11 @@
         </label>
         <p class="form-section-title full">Perfiles vinculados</p>
         <div class="admin-link-section" id="user-link-section">
-          <label>Perfil Propietario
+          <label>Perfil Propietario (opcional)
             <select name="linkedOwnerId" id="user-linked-owner"></select>
             <span class="field-hint">Vinculá el registro de propietario existente (por DNI, nombre o inmueble).</span>
           </label>
-          <label>Perfil Inquilino
+          <label>Perfil Inquilino (opcional)
             <select name="linkedTenantId" id="user-linked-tenant"></select>
             <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
           </label>
@@ -2671,7 +2674,7 @@
         <label class="full">Nombre del rol *
           <input name="nombre" maxlength="40" required placeholder="Ej: contador" />
         </label>
-        <label class="full">Descripción
+        <label class="full">Descripción (opcional)
           <input name="descripcion" maxlength="200" />
         </label>
         <fieldset class="full role-permissions">

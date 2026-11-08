@@ -5,6 +5,7 @@ import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInp
 import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor, updatePropertyPeopleSelectors } from "./inmuebles.js";
+import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
 let editingCommunityId = null;
 let deletingCommunityId = null;
@@ -417,47 +418,75 @@ const communityDocumentList = document.querySelector("#community-document-list")
 
 const ICON_FILE_DOC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
 
-function docFileRow({ name, size, href, removeAttrs }) {
-  const row = document.createElement("div");
-  row.className = "doc-file-row";
-  const icon = document.createElement("span");
-  icon.className = "doc-file-icon";
-  icon.innerHTML = sanitizeHtml(ICON_FILE_DOC);
-  const info = document.createElement("div");
-  info.className = "doc-file-info";
-  if (href) {
-    const link = document.createElement("a");
-    link.className = "doc-file-name";
-    link.textContent = name;
-    link.href = href;
-    link.target = "_blank";
-    link.rel = "noopener";
-    info.append(link);
-  } else {
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "doc-file-name";
-    nameSpan.textContent = name;
-    info.append(nameSpan);
-  }
-  const sizeSpan = document.createElement("span");
-  sizeSpan.className = "doc-file-size";
-  sizeSpan.textContent = size;
-  info.append(sizeSpan);
-  const removeButton = iconBtn("btn-delete", "Quitar archivo", `Quitar ${name}`, ICON_UNLINK);
-  Object.entries(removeAttrs).forEach(([attr, value]) => { removeButton.dataset[attr] = value; });
-  row.append(icon, info, removeButton);
-  return row;
+function getFormCommunityContext() {
+  return {
+    id: editingCommunityId,
+    name: communityForm.elements.name.value.trim() || "Comunidad de Propietarios",
+    nif: communityForm.elements.nif.value.trim() || "H12345678",
+    communityName: communityForm.elements.name.value.trim() || "Comunidad de Propietarios"
+  };
+}
+
+function docFileCard({ name, size, doc, isPending, removeAttrs, entityContext }) {
+  const card = document.createElement("div");
+  card.className = "doc-upload-card is-valid";
+  const header = document.createElement("div");
+  header.className = "doc-validation-header";
+  header.style.marginBottom = "0";
+  header.style.paddingBottom = "0";
+  header.style.borderBottom = "none";
+  header.innerHTML = sanitizeHtml(`
+    <div class="doc-file-meta">
+      <span class="doc-file-icon">📄</span>
+      <div>
+        <p class="doc-file-name">${escapeHtml(name)}</p>
+        <p class="doc-file-size">${escapeHtml(size)}${isPending ? " · Nuevo (pendiente de guardar)" : (doc?.uploadedAt ? ` · Subido el ${escapeHtml(doc.uploadedAt)}` : "")}</p>
+      </div>
+    </div>
+    <div class="doc-file-actions">
+      <button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button>
+      <button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>
+    </div>
+  `);
+
+  header.querySelector('[data-action="view"]').addEventListener("click", () => {
+    openDocViewer(entityContext, doc?.id || name, doc || { fileName: name, fileSize: 0, url: "", dataUrl: doc?.dataUrl });
+  });
+
+  const removeBtn = header.querySelector('[data-action="remove"]');
+  Object.entries(removeAttrs).forEach(([attr, value]) => { removeBtn.dataset[attr] = value; });
+
+  card.append(header);
+  return card;
 }
 
 function renderCommunityDocumentList(c) {
   if (!communityDocumentList) return;
   const community = c || state.communities.find(item => item.id === editingCommunityId);
   const existing = community ? community.documents || [] : [];
+  const totalCount = existing.length + pendingCommunityFiles.length;
   const countEl = document.querySelector("#community-doc-count");
-  if (countEl) countEl.textContent = String(existing.length + pendingCommunityFiles.length);
+  if (countEl) countEl.textContent = String(totalCount);
+
+  const statusEl = document.querySelector("#community-docs-summary-status");
+  const subtextEl = document.querySelector("#community-docs-summary-subtext");
+  const summaryBar = document.querySelector("#community-docs-summary-bar");
+  if (statusEl) statusEl.textContent = `${totalCount} ${totalCount === 1 ? "documento adjunto" : "documentos adjuntos"}`;
+  if (summaryBar) {
+    if (totalCount > 0) {
+      if (subtextEl) subtextEl.textContent = "Archivos listos. Al pulsar Guardar se sincronizarán con el servidor.";
+      summaryBar.style.background = "#f0fdf4";
+      summaryBar.style.borderColor = "#86efac";
+    } else {
+      if (subtextEl) subtextEl.textContent = "Adjunta la documentación oficial para archivar en el expediente de la comunidad.";
+      summaryBar.style.background = "#f1f5f9";
+      summaryBar.style.borderColor = "#e2e8f0";
+    }
+  }
+
   communityDocumentList.replaceChildren();
 
-  if (existing.length === 0 && pendingCommunityFiles.length === 0) {
+  if (totalCount === 0) {
     const empty = document.createElement("p");
     empty.className = "form-intro";
     empty.textContent = "No hay documentos cargados para esta comunidad.";
@@ -465,22 +494,49 @@ function renderCommunityDocumentList(c) {
     return;
   }
 
+  const context = getFormCommunityContext();
+
   existing.forEach(doc => {
-    communityDocumentList.append(docFileRow({
+    communityDocumentList.append(docFileCard({
       name: doc.fileName,
       size: `${Math.ceil((doc.fileSize || 0) / 1024)} KB`,
-      href: doc.url,
-      removeAttrs: { communityDocumentId: doc.id }
+      doc,
+      isPending: false,
+      removeAttrs: { communityDocumentId: doc.id },
+      entityContext: context
     }));
   });
 
   pendingCommunityFiles.forEach((file, index) => {
-    communityDocumentList.append(docFileRow({
-      name: `${file.name} · nuevo`,
+    communityDocumentList.append(docFileCard({
+      name: file.name,
       size: `${Math.ceil(file.size / 1024)} KB`,
-      href: "",
-      removeAttrs: { pendingCommunityFile: String(index) }
+      doc: {
+        fileName: file.name,
+        fileSize: file.size,
+        dataUrl: file.dataUrl,
+        fileType: file.type || "application/pdf"
+      },
+      isPending: true,
+      removeAttrs: { pendingCommunityFile: String(index) },
+      entityContext: context
     }));
+  });
+}
+
+const btnSampleCommunityDoc = document.querySelector("#btn-sample-community-doc");
+if (btnSampleCommunityDoc) {
+  btnSampleCommunityDoc.addEventListener("click", () => {
+    const context = getFormCommunityContext();
+    const sample = DocumentValidator.generateSampleDocument("communityMinute", context);
+    if (!sample) return;
+    const svgText = decodeURIComponent(sample.dataUrl.split(",")[1]);
+    const blob = new Blob([svgText], { type: "image/svg+xml" });
+    const file = new File([blob], sample.fileName, { type: "image/svg+xml" });
+    file.dataUrl = sample.dataUrl;
+    pendingCommunityFiles.push(file);
+    toast("Documento oficial de prueba cargado y validado automáticamente.");
+    renderCommunityDocumentList();
   });
 }
 

@@ -6,7 +6,7 @@ import { createDataTable } from "../table.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor, closeOwnerDetail } from "./propietarios.js";
 import { openCommunityDetail } from "./comunidades.js";
-import { DocumentValidator, checkDocumentCorrespondence } from "../docs-engine.js";
+import { DocumentValidator, checkDocumentCorrespondence, openDocViewer } from "../docs-engine.js";
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
@@ -312,8 +312,21 @@ function renderTenantPropertyTab() {
   list.append(card);
 }
 
+function getFormTenantContext() {
+  const property = state.properties.find(p => p.id === editingTenantPropertyId);
+  return {
+    id: state.ui.editingTenantId,
+    name: tenantForm.elements.name.value.trim() || "Inquilino",
+    surname: tenantForm.elements.surname.value.trim() || "",
+    dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A",
+    documentId: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A",
+    communityName: property?.communityName || "Comunidad",
+    plot: property?.plot || "Inmueble"
+  };
+}
+
 function renderTenantDocCard(key, ids) {
-  const { cardId, badgeId, dropzoneId, resultId, inputId } = ids;
+  const { cardId, badgeId, dropzoneId, resultId } = ids;
   const card = document.querySelector(cardId);
   const badge = document.querySelector(badgeId);
   const dropzone = document.querySelector(dropzoneId);
@@ -321,34 +334,58 @@ function renderTenantDocCard(key, ids) {
   const doc = tenantEditingDocs[key];
   if (doc) {
     card.classList.add("is-valid");
-    badge.className = "status-badge doc-approved";
-    badge.textContent = "Pendiente de revisión";
+    const isApproved = doc.adminApproval?.status === "approved";
+    const isRejected = doc.adminApproval?.status === "rejected";
+    if (isApproved) {
+      badge.className = "status-badge doc-approved";
+      badge.textContent = "Aprobado por Admin";
+    } else if (isRejected) {
+      badge.className = "status-badge doc-rejected";
+      badge.textContent = "Rechazado";
+    } else {
+      badge.className = "status-badge doc-approved";
+      badge.textContent = "Pendiente de revisión";
+    }
     if (result) {
       result.hidden = false;
       result.replaceChildren();
       const header = document.createElement("div");
       header.className = "doc-validation-header";
-      header.innerHTML = sanitizeHtml(`<div class="doc-file-meta"><span class="doc-file-icon">📄</span><div><p class="doc-file-name">${escapeHtml(doc.fileName)}</p><p class="doc-file-size">${Math.round(doc.fileSize/1024)} KB · Subido el ${escapeHtml(doc.uploadedAt)}</p></div></div><div class="doc-file-actions"><button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button><button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button></div>`);
-      result.append(header);
+      header.innerHTML = sanitizeHtml(`
+        <div class="doc-file-meta">
+          <span class="doc-file-icon">📄</span>
+          <div>
+            <p class="doc-file-name">${escapeHtml(doc.fileName)}</p>
+            <p class="doc-file-size">${Math.round(doc.fileSize / 1024)} KB · Subido el ${escapeHtml(doc.uploadedAt)}</p>
+          </div>
+        </div>
+        <div class="doc-file-actions">
+          <button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button>
+          <button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>
+        </div>
+      `);
+      const reviewNote = document.createElement("p");
+      reviewNote.className = "form-intro";
+      reviewNote.textContent = "La identidad, titularidad y legibilidad requieren revisión administrativa.";
+      result.append(header, reviewNote);
+
       header.querySelector('[data-action="view"]').addEventListener("click", () => {
-        const url = documentUrl(doc.dataUrl || doc.url);
-        if (!url) return toast("El archivo no está disponible.");
-        const viewer = window.open("about:blank", "_blank");
-        if (!viewer) return toast("Permití la ventana de vista previa en el navegador.");
-        viewer.opener = null;
-        const frame = viewer.document.createElement(doc.fileType === "application/pdf" ? "iframe" : "img");
-        if (frame.tagName === "IFRAME") frame.setAttribute("sandbox", "");
-        frame.src = url; frame.style.width = "100%"; frame.style.height = "90vh";
-        viewer.document.body.append(frame);
+        openDocViewer(getFormTenantContext(), key, doc);
       });
-      header.querySelector('[data-action="remove"]').addEventListener("click", () => { delete tenantEditingDocs[key]; renderTenantDialogDocs(); });
+      header.querySelector('[data-action="remove"]').addEventListener("click", () => {
+        delete tenantEditingDocs[key];
+        renderTenantDialogDocs();
+      });
     }
     if (dropzone) dropzone.style.display = "none";
   } else {
     card.classList.remove("is-valid");
-    badge.className = "status-badge doc-pending";
+    badge.className = "status-badge doc-none";
     badge.textContent = "Pendiente";
-    if (result) { result.hidden = true; result.replaceChildren(); }
+    if (result) {
+      result.hidden = true;
+      result.replaceChildren();
+    }
     if (dropzone) dropzone.style.display = "block";
   }
 }
@@ -358,9 +395,22 @@ function renderTenantDialogDocs() {
   renderTenantDocCard("contract", { cardId: "#tenant-card-doc-contract", badgeId: "#tenant-badge-doc-contract", dropzoneId: "#tenant-dropzone-contract", resultId: "#tenant-result-doc-contract", inputId: "#tenant-input-doc-contract" });
   const count = (tenantEditingDocs["dni"] ? 1 : 0) + (tenantEditingDocs["contract"] ? 1 : 0);
   const statusEl = document.querySelector("#tenant-docs-summary-status");
-  if (statusEl) statusEl.textContent = count + " de 2 documentos subidos";
+  if (statusEl) statusEl.textContent = `${count} de 2 documentos recibidos`;
+  const subtextEl = document.querySelector("#tenant-docs-summary-subtext");
+  const summaryBar = document.querySelector("#tenant-docs-summary-bar");
+  if (summaryBar) {
+    if (count === 2) {
+      if (subtextEl) subtextEl.textContent = "Archivos recibidos. Al guardar se remitirá un aviso al administrador para su revisión.";
+      summaryBar.style.background = "#f0fdf4";
+      summaryBar.style.borderColor = "#86efac";
+    } else {
+      if (subtextEl) subtextEl.textContent = "Sube la copia del DNI y el contrato de arrendamiento para completar el expediente.";
+      summaryBar.style.background = "#f1f5f9";
+      summaryBar.style.borderColor = "#e2e8f0";
+    }
+  }
   const badgeTab = document.querySelector("#tenant-tab-docs-badge");
-  if (badgeTab) badgeTab.textContent = count + "/2";
+  if (badgeTab) badgeTab.textContent = `${count}/2`;
 }
 
 async function handleTenantDocUpload(file, docType) {
@@ -600,38 +650,65 @@ if (tenantDropzoneContract) {
 }
 const tenantBtnSampleDni = document.querySelector("#tenant-btn-sample-dni");
 if (tenantBtnSampleDni) tenantBtnSampleDni.addEventListener("click", () => {
-  const context = { name: tenantForm.elements.name.value.trim() || "Inquilino", surname: tenantForm.elements.surname.value.trim() || "", dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A" };
+  const context = getFormTenantContext();
   const sample = DocumentValidator.generateSampleDocument("dni", context);
   if (!sample) return;
   const badge = document.querySelector("#tenant-badge-doc-dni");
-  badge.className = "status-badge doc-pending-admin";
-  badge.textContent = "⚡ Analizando...";
+  if (badge) {
+    badge.className = "status-badge doc-pending-admin";
+    badge.textContent = "⚡ Analizando...";
+  }
   window.setTimeout(() => {
     tenantEditingDocs["dni"] = {
-      isSample: true, key: "dni", title: "Copia de DNI / NIE / CIF", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
-      autoValidation: { status: "passed", legibilityScore: 98, legibilityStatus: "Óptima", typeVerified: "Documento de identidad", checks: [], verifiedAt: new Date().toISOString() },
+      isSample: true,
+      key: "dni",
+      title: "Copia de DNI / NIE / CIF",
+      fileName: sample.fileName,
+      fileType: sample.fileType,
+      fileSize: sample.fileSize,
+      uploadedAt: new Date().toLocaleString("es-ES"),
+      dataUrl: sample.dataUrl,
+      autoValidation: { status: "passed", legibilityScore: 98, legibilityStatus: "Óptima (alta resolución y contraste adecuado)", typeVerified: "Documento de identidad", checks: [], verifiedAt: new Date().toISOString() },
       adminApproval: { status: "pending", reviewedAt: null, reviewedBy: null, notes: "" }
     };
-    toast("Documento de prueba cargado y validado automáticamente.");
+    toast("Documento oficial de prueba cargado y validado automáticamente.");
     renderTenantDialogDocs();
   }, 350);
 });
 
 const tenantBtnSampleContract = document.querySelector("#tenant-btn-sample-contract");
 if (tenantBtnSampleContract) tenantBtnSampleContract.addEventListener("click", () => {
-  const context = { name: tenantForm.elements.name.value.trim() || "Inquilino", surname: tenantForm.elements.surname.value.trim() || "", dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A" };
-  const sample = DocumentValidator.generateSampleDocument("propertyDeed", context);
+  const owner = state.owners.find(o => o.id === tenantOwnerSelect.value);
+  const prop = state.properties.find(p => p.id === editingTenantPropertyId);
+  const context = {
+    ...getFormTenantContext(),
+    landlord: owner ? `${owner.name} ${owner.surname}` : "Propietario Arrendador",
+    plot: prop?.plot || "Vivienda 2.º B",
+    communityName: prop?.communityName || "Residencial Peñarrubia",
+    monthlyRent: tenantForm.elements.monthlyRent.value.trim() || "750",
+    deposit: tenantForm.elements.deposit.value.trim() || "1500"
+  };
+  const sample = DocumentValidator.generateSampleDocument("contract", context);
   if (!sample) return;
   const badge = document.querySelector("#tenant-badge-doc-contract");
-  badge.className = "status-badge doc-pending-admin";
-  badge.textContent = "⚡ Analizando...";
+  if (badge) {
+    badge.className = "status-badge doc-pending-admin";
+    badge.textContent = "⚡ Analizando...";
+  }
   window.setTimeout(() => {
     tenantEditingDocs["contract"] = {
-      isSample: true, key: "contract", title: "Contrato de arrendamiento", fileName: sample.fileName, fileType: sample.fileType, fileSize: sample.fileSize, uploadedAt: new Date().toLocaleString("es-ES"), dataUrl: sample.dataUrl,
-      autoValidation: { status: "passed", legibilityScore: 97, legibilityStatus: "Óptima", typeVerified: "Contrato de arrendamiento", checks: [], verifiedAt: new Date().toISOString() },
+      isSample: true,
+      key: "contract",
+      title: "Contrato de arrendamiento",
+      fileName: sample.fileName,
+      fileType: sample.fileType,
+      fileSize: sample.fileSize,
+      uploadedAt: new Date().toLocaleString("es-ES"),
+      dataUrl: sample.dataUrl,
+      autoValidation: { status: "passed", legibilityScore: 97, legibilityStatus: "Óptima (alta resolución y contraste adecuado)", typeVerified: "Contrato de arrendamiento", checks: [], verifiedAt: new Date().toISOString() },
       adminApproval: { status: "pending", reviewedAt: null, reviewedBy: null, notes: "" }
     };
-    toast("Documento de prueba cargado y validado automáticamente.");
+    toast("Documento oficial de prueba cargado y validado automáticamente.");
     renderTenantDialogDocs();
   }, 350);
 });
@@ -767,6 +844,51 @@ export function openTenantDetail(ownerId, tenantId) {
   if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
   labels.forEach(label => { const item = document.createElement("li"); item.textContent = label; authorizations.append(item); });
   document.querySelector("#tenant-detail-authorization-notes").textContent = tenant.authorizationNotes || "Sin observaciones.";
+  const docsListEl = document.querySelector("#tenant-detail-docs-list");
+  if (docsListEl) {
+    docsListEl.replaceChildren();
+    const docKeys = [
+      { key: "dni", label: "Copia de DNI / NIE / CIF" },
+      { key: "contract", label: "Contrato de arrendamiento" }
+    ];
+    docKeys.forEach(({ key, label }) => {
+      const doc = tenant.documents?.[key];
+      const card = document.createElement("div");
+      card.className = `doc-upload-card ${doc ? "is-valid" : ""}`;
+      const isApproved = doc?.adminApproval?.status === "approved";
+      const isRejected = doc?.adminApproval?.status === "rejected";
+      const badgeText = doc ? (isApproved ? "Aprobado por Admin" : (isRejected ? "Rechazado" : "Pendiente de revisión")) : "No subido";
+      const badgeClass = doc ? (isApproved ? "doc-approved" : (isRejected ? "doc-rejected" : "doc-approved")) : "doc-none";
+
+      card.innerHTML = sanitizeHtml(`
+        <div class="doc-card-header" style="margin-bottom:0;">
+          <div class="doc-card-title-wrap">
+            <span class="doc-card-num">${key === "dni" ? "1" : "2"}</span>
+            <div>
+              <h3 class="doc-card-title">${escapeHtml(label)}</h3>
+              <p class="doc-card-desc">${doc ? `${escapeHtml(doc.fileName)} (${Math.round(doc.fileSize / 1024)} KB · Subido el ${escapeHtml(doc.uploadedAt)})` : "Documento pendiente de aportar por el inquilino."}</p>
+            </div>
+          </div>
+          <span class="status-badge ${badgeClass}">${badgeText}</span>
+        </div>
+      `);
+      if (doc) {
+        const actions = document.createElement("div");
+        actions.className = "doc-file-actions";
+        actions.style.marginTop = "10px";
+        const viewBtn = document.createElement("button");
+        viewBtn.className = "btn-doc-action";
+        viewBtn.type = "button";
+        viewBtn.textContent = "👁️ Ver";
+        viewBtn.onclick = () => {
+          openDocViewer(tenant, key, doc);
+        };
+        actions.append(viewBtn);
+        card.append(actions);
+      }
+      docsListEl.append(card);
+    });
+  }
   const viewPropertyButton = document.querySelector("#tenant-detail-view-property");
   viewPropertyButton.hidden = !property;
   viewPropertyButton.onclick = () => { if (property) openPropertyDetail(property.id); };

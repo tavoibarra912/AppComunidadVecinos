@@ -5,7 +5,7 @@ import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTe
 import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
-import { editingDocs, renderOwnerDialogDocs, getFormOwnerContext, DocumentValidator } from "../docs-engine.js";
+import { editingDocs, renderOwnerDialogDocs, getFormOwnerContext, DocumentValidator, openDocViewer as engineOpenDocViewer } from "../docs-engine.js";
 import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, getOwnerOverallDocStatus, addOwnerNotification, sendAdminEmailNotification, openAdminEmail, updateInboxBadge, updateOwnerInboxBadge, renderOwnerInbox, openOwnerInbox, openAdminInbox } from "./notificaciones.js";
 import { openTenantEditor, openTenantDetail, closeTenantEditor, closeTenantDetail, openTenantDelete } from "./inquilinos.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
@@ -1185,78 +1185,10 @@ export function openDocRejectDialog(ownerId) {
 }
 
 export function openDocViewer(owner, docKey, docObj = null) {
-  if (!requirePermission("owner:read", owner?.id || "")) return;
-  const doc = docObj || (owner.documents && owner.documents[docKey]);
+  const doc = docObj || (owner?.documents && owner.documents[docKey]);
   if (!doc) return;
-
   viewingDocDetails = { owner, docKey, doc };
-
-  document.querySelector("#doc-viewer-eyebrow").textContent = `EXPEDIENTE: ${owner.communityName || "ASOCIACIÓN PEÑARRUBIA"}`;
-  document.querySelector("#doc-viewer-title").textContent = doc.title;
-  document.querySelector("#doc-viewer-owner").textContent = `${owner.name} ${owner.surname} (${owner.dni})`;
-  document.querySelector("#doc-viewer-filename").textContent = `${doc.fileName} (${Math.round(doc.fileSize / 1024)} KB)`;
-  document.querySelector("#doc-viewer-date").textContent = doc.uploadedAt;
-
-  document.querySelector("#doc-viewer-score-bar").style.width = "0%";
-  document.querySelector("#doc-viewer-score-text").textContent = "Revisión manual pendiente";
-  const checksListEl = document.querySelector("#doc-viewer-checks-list");
-  checksListEl.replaceChildren();
-  const note = document.createElement("li");
-  note.textContent = "El sistema no certifica automáticamente la identidad ni el contenido del documento.";
-  checksListEl.append(note);
-
-  // Estado de aprobación
-  const approvalBox = document.querySelector("#doc-viewer-approval-status");
-  const isApproved = doc.adminApproval?.status === "approved";
-  approvalBox.innerHTML = sanitizeHtml(`
-    <span class="status-badge ${isApproved ? "doc-approved" : "doc-pending-admin"}">
-      ${isApproved ? "✓ Aprobado por Administrador" : "⏳ Pendiente de resolución administrativa"}
-    </span>
-  `);
-
-  // Renderizar preview en pane
-  const previewPane = document.querySelector("#doc-viewer-preview-pane");
-  previewPane.replaceChildren();
-
-  let previewUrl = documentUrl(doc.dataUrl || doc.url);
-
-  if (previewUrl) {
-    const img = document.createElement(doc.fileType === "application/pdf" ? "iframe" : "img");
-    if (img.tagName === "IFRAME") { img.setAttribute("sandbox", ""); img.title = "Vista previa del PDF"; img.style.width = "100%"; img.style.height = "400px"; }
-    img.src = previewUrl;
-    img.alt = doc.title;
-    img.style.maxWidth = "100%";
-    img.style.maxHeight = "400px";
-    img.style.borderRadius = "6px";
-    previewPane.append(img);
-    const download = document.createElement("a"); download.href = previewUrl; download.download = doc.fileName; download.textContent = "Descargar archivo"; previewPane.append(download);
-  } else {
-    previewPane.textContent = "Este registro no contiene un archivo disponible. Adjuntá el documento real para poder revisarlo.";
-  }
-
-  // Botón rápido de aprobación individual (sólo disponible para Administrador)
-  if (docViewerQuickApproveBtn) {
-    docViewerQuickApproveBtn.hidden = !documentUrl(doc.dataUrl || doc.url) || !!doc.isSample || !hasPermission("document:approve", owner.id);
-    docViewerQuickApproveBtn.onclick = async () => {
-      if (!requirePermission("document:approve")) return;
-      doc.adminApproval = {
-        status: "approved",
-        reviewedAt: new Date().toLocaleString("es-ES"),
-        reviewedBy: "Administrador",
-        notes: "Aprobación individual desde visor."
-      };
-      const savedOwner = state.owners.find(o => o.id === owner.id);
-      if (!savedOwner) return;
-      try { await api.updateOwner(owner.id, { ...savedOwner, documents: { ...savedOwner.documents, [docKey]: doc } }); await refreshState(); } catch (error) { toast(error.message); return; }
-      renderOwners();
-      if (ownerDetailDialog.open && state.ui.viewingOwnerId) openOwnerDetail(state.ui.viewingOwnerId);
-      if (ownerDialog.open) renderOwnerDialogDocs();
-      docViewerDialog.close();
-      toast(`Documento "${doc.title}" aprobado.`);
-    };
-  }
-
-  docViewerDialog.showModal();
+  engineOpenDocViewer(owner, docKey, doc);
 }
 
 export function closeOwnerDetail() {

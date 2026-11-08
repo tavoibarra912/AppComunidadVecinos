@@ -285,7 +285,9 @@ document.addEventListener("keydown", (e) => {
 });
 
 function input(name, label, value = "", type = "text", extra = "") {
-  return `<label>${h(label)}<input name="${name}" type="${type}" value="${h(value)}" ${extra}></label>`;
+  // Los campos sin «required» se anuncian como opcionales.
+  const marcado = /\brequired\b/.test(extra) ? label : `${label} (opcional)`;
+  return `<label>${h(marcado)}<input name="${name}" type="${type}" value="${h(value)}" ${extra}></label>`;
 }
 function check(name, label, value = false) {
   return `<label class="comm-check"><input name="${name}" type="checkbox" ${value ? "checked" : ""}>${h(label)}</label>`;
