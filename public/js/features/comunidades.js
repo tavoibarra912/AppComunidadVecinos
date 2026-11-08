@@ -1,7 +1,7 @@
 import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
-import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor, updatePropertyPeopleSelectors } from "./inmuebles.js";
@@ -816,7 +816,7 @@ async function persistCommunityDraft() {
   const messages = [];
   [...communityForm.elements].forEach(element => {
     if (element.willValidate && !element.checkValidity()) {
-      messages.push(`${fieldLabel(element)}: ${element.validationMessage}`);
+      messages.push(`${fieldLabel(element)}: ${mensajeDeValidez(element)}.`);
     }
   });
   if (!selectedLocation) {

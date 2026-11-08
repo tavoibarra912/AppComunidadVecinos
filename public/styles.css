@@ -3730,6 +3730,10 @@ th.th-drag-over {
   flex-shrink: 0;
 }
 
+.validation-modal-icon svg {
+  display: block;
+}
+
 .validation-error-list {
   margin: 12px 0 4px;
   padding: 0 0 0 4px;

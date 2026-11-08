@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { state, hasPermission } from "../state.js";
 import { escapeHtml as h } from "../html.js";
-import { toast } from "../utils.js";
+import { toast, fieldLabel, mensajeDeValidez } from "../utils.js";
 
 const request = api.communication;
 const $ = (selector) => document.querySelector(selector);
@@ -475,9 +475,12 @@ function validateEditorStep() {
   const controls = dialog
     .querySelector(`[data-editor-step="${editorStep}"]`)
     .querySelectorAll("input,textarea,select");
-  for (const el of controls)
-    if (!el.disabled && el.offsetParent !== null && !el.reportValidity())
-      return false;
+  for (const el of controls) {
+    if (el.disabled || el.offsetParent === null || el.checkValidity()) continue;
+    const campo = document.querySelector("#comm-error");
+    if (campo) campo.textContent = `${fieldLabel(el)}: ${mensajeDeValidez(el)}.`;
+    return false;
+  }
   return true;
 }
 function editorData() {

@@ -57,6 +57,23 @@ export function fieldLabel(el) {
   return host.childNodes[0].textContent.replace("*", "").trim();
 }
 
+const MENSAJES_DE_VALIDEZ = {
+  valueMissing: "completá este campo",
+  typeMismatch: "el formato no es válido",
+  patternMismatch: "no cumple el formato pedido",
+  tooShort: "es demasiado corto",
+  tooLong: "es demasiado largo",
+  rangeUnderflow: "es menor que el mínimo permitido",
+  rangeOverflow: "es mayor que el máximo permitido",
+  stepMismatch: "no cumple el incremento permitido"
+};
+
+/** Traduce al español la razón de invalidez nativa del navegador. */
+export function mensajeDeValidez(element) {
+  const razon = Object.keys(MENSAJES_DE_VALIDEZ).find(clave => element.validity?.[clave]);
+  return razon ? MENSAJES_DE_VALIDEZ[razon] : "tiene un valor no válido";
+}
+
 export function getLocalDateInputValue(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
