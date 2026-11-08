@@ -1,5 +1,6 @@
 import { documentUrl, sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
+import { crearVerificadorContacto } from "../verificacion-contacto.js";
 import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, propertyLabel, propertyOwnerIds, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, isValidEmail, isValidDateInput, formatContractDate, getLocalDateInputValue, makeSelectSearchable, readFileAsDataUrl, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { createDataTable } from "../table.js";
@@ -443,103 +444,22 @@ function tenantTabForField(name) {
   return pane ? pane.dataset.tenantPane : "general";
 }
 
-// Verification dialog logic (tenant)
-function tenantSetVerificationError(message) {
-  if (tenantVerificationError) tenantVerificationError.textContent = message || "";
-}
-
-async function tenantSendVerificationCode() {
-  const config = tenantVerificationKind === "phone"
-    ? { value: () => (tenantForm.elements.phone.value || "").replace(/\D/g, "").slice(0,9), isValid: v => /^[6-9]\d{8}$/.test(v), send: v => api.contact.sendPhoneCode(v) }
-    : { value: () => (tenantForm.elements.email.value || "").trim().toLowerCase(), isValid: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), send: v => api.contact.sendEmailCode(v) };
-  const value = config.value();
-  if (!config.isValid(value)) {
-    const msg = `Introduce un ${tenantVerificationKind === "phone" ? "teléfono" : "email"} válido antes de solicitar el código.`;
-    tenantSetVerificationError(msg);
-    tenantSetVerifyStatus(tenantVerificationKind, "error", msg);
-    return false;
-  }
-  tenantSetVerificationError("");
-  tenantVerificationResendBtn.disabled = true;
-  try {
-    const res = await config.send(value);
-    if (!res.challengeId) throw new Error("El servicio de verificación no devolvió el identificador del reto.");
-    Object.assign(tenantContactVerify[tenantVerificationKind], { pending: true, value, challengeId: res.challengeId, verified: false, verifiedAt: "" });
-    tenantSetVerifyStatus(tenantVerificationKind, "pending", `Código enviado${res.maskedDestination ? ` a ${res.maskedDestination}` : ""}.`);
-    if (res.devCode && tenantVerificationDemo && tenantVerificationDemoCode) {
-      tenantVerificationDemo.hidden = false;
-      tenantVerificationDemoCode.textContent = res.devCode;
-    }
-    return true;
-  } catch (error) {
-    tenantContactVerify[tenantVerificationKind].challengeId = "";
-    const msg = error instanceof Error ? error.message : String(error);
-    tenantSetVerificationError(msg);
-    tenantSetVerifyStatus(tenantVerificationKind, "error", msg);
-    return false;
-  } finally {
-    tenantVerificationResendBtn.disabled = false;
-  }
-}
-
-function tenantOpenVerificationDialog(kind) {
-  if (!tenantVerificationDialog) return;
-  tenantVerificationKind = kind;
-  const value = kind === "phone" ? (tenantForm.elements.phone.value || "").replace(/\D/g, "").slice(0,9) : (tenantForm.elements.email.value || "").trim().toLowerCase();
-  const isValid = kind === "phone" ? /^[6-9]\d{8}$/.test(value) : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  if (!isValid) {
-    tenantSetVerifyStatus(kind, "error", `Introduce un ${kind === "phone" ? "teléfono" : "email"} válido antes de verificar.`);
-    return;
-  }
-  tenantVerificationTitle.textContent = kind === "phone" ? "Verificar teléfono" : "Verificar email";
-  tenantVerificationDesc.textContent = kind === "phone"
-    ? "Enviaremos un código de 6 dígitos por SMS al número indicado."
-    : "Enviaremos un código de 6 dígitos por correo electrónico a la dirección indicada.";
-  tenantVerificationTarget.textContent = `${kind === "phone" ? "Teléfono" : "Email"}: ${value}`;
-  tenantVerificationDemo.hidden = true;
-  tenantVerificationCodeInput.value = "";
-  tenantSetVerificationError("");
-  tenantVerificationDialog.showModal();
-  tenantSendVerificationCode().then(sent => { if (sent) tenantVerificationCodeInput.focus(); });
-}
-
-if (tenantVerificationResendBtn) tenantVerificationResendBtn.addEventListener("click", async () => { await tenantSendVerificationCode(); tenantVerificationCodeInput.focus(); });
-if (tenantVerificationConfirmBtn) tenantVerificationConfirmBtn.addEventListener("click", async () => {
-  const code = tenantVerificationCodeInput.value.trim();
-  if (!/^\d{6}$/.test(code)) { tenantSetVerificationError("Introduce el código de 6 dígitos recibido."); return; }
-  if (!tenantContactVerify[tenantVerificationKind].pending || !tenantContactVerify[tenantVerificationKind].challengeId ||
-      tenantContactVerify[tenantVerificationKind].value !== (tenantVerificationKind === "phone" ? (tenantForm.elements.phone.value || "").replace(/\D/g,"").slice(0,9) : (tenantForm.elements.email.value || "").trim().toLowerCase())) {
-    tenantSetVerificationError("Solicita un código nuevo para el valor actual.");
-    return;
-  }
-  tenantVerificationConfirmBtn.disabled = true;
-  try {
-    const res = tenantVerificationKind === "phone"
-      ? await api.contact.confirmPhone(tenantContactVerify[tenantVerificationKind].challengeId, code)
-      : await api.contact.confirmEmail(tenantContactVerify[tenantVerificationKind].challengeId, code);
-    if (res.verified !== true || !res.verifiedAt) throw new Error("El código de verificación no es válido.");
-    tenantContactVerify[tenantVerificationKind].verified = true;
-    tenantContactVerify[tenantVerificationKind].pending = false;
-    tenantContactVerify[tenantVerificationKind].verifiedAt = res.verifiedAt;
+// Verificación de contacto vía el diálogo compartido (verificacion-contacto.js)
+const verificadorTenant = crearVerificadorContacto({
+  alEstado: (kind, estado, msg) => tenantSetVerifyStatus(kind, estado, msg),
+  alVerificado: (kind, verifiedAt) => {
+    tenantContactVerify[kind].verified = true;
+    tenantContactVerify[kind].pending = false;
+    tenantContactVerify[kind].verifiedAt = verifiedAt;
     tenantUpdateCanalOptions();
-    tenantSetVerifyStatus(tenantVerificationKind, "verified", tenantVerificationKind === "phone" ? "✓ Teléfono verificado por SMS" : "✓ Correo electrónico verificado");
-    toast(tenantVerificationKind === "phone" ? "Teléfono verificado correctamente." : "Correo electrónico verificado con éxito.");
-    tenantVerificationDialog.close();
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    tenantSetVerificationError(msg);
-    tenantSetVerifyStatus(tenantVerificationKind, "error", msg);
-  } finally {
-    tenantVerificationConfirmBtn.disabled = false;
+    tenantSetVerifyStatus(kind, "verified", kind === "phone" ? "✓ Teléfono verificado por SMS" : "✓ Correo electrónico verificado");
   }
 });
-if (closeTenantVerificationDialogBtn) closeTenantVerificationDialogBtn.addEventListener("click", () => tenantVerificationDialog.close());
-if (cancelTenantVerificationBtn) cancelTenantVerificationBtn.addEventListener("click", () => tenantVerificationDialog.close());
 
 const tenantBtnVerifyPhone = document.querySelector("#tenant-btn-verify-phone");
-if (tenantBtnVerifyPhone) tenantBtnVerifyPhone.addEventListener("click", () => tenantOpenVerificationDialog("phone"));
+if (tenantBtnVerifyPhone) tenantBtnVerifyPhone.addEventListener("click", () => verificadorTenant.abrir("phone", () => tenantForm.elements.phone.value));
 const tenantBtnVerifyEmail = document.querySelector("#tenant-btn-verify-email");
-if (tenantBtnVerifyEmail) tenantBtnVerifyEmail.addEventListener("click", () => tenantOpenVerificationDialog("email"));
+if (tenantBtnVerifyEmail) tenantBtnVerifyEmail.addEventListener("click", () => verificadorTenant.abrir("email", () => tenantForm.elements.email.value));
 
 // reset verification on input change
 const tenantPhoneInput = tenantForm.elements.phone;

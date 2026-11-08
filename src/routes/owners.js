@@ -1,7 +1,7 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, ownerFromRow } from "../db.js";
-import { applyOwnerPropertyLink, syncOwnerProperties } from "../domain.js";
+import { applyOwnerPropertyLink, syncOwnerProperties, rebuildOwnersPropertyIds } from "../domain.js";
 import { contactError } from "../validation.js";
 
 const router = Router();
@@ -114,18 +114,43 @@ router.put("/:id", (req, res) => {
 router.delete("/:id", (req, res) => {
   const existing = findOwner(req.params.id);
   if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
+  // Inmuebles del propietario que tienen inquilino asociado: no se puede eliminar.
+  const conInquilino = db
+    .prepare(
+      `SELECT p.plot FROM properties p
+       WHERE p.ownerIds LIKE ?
+         AND EXISTS (SELECT 1 FROM tenants t WHERE t.propertyId = p.id)`,
+    )
+    .all(`%"${existing.id}"%`);
+  if (conInquilino.length > 0) {
+    return res.status(409).json({
+      error: `No se puede eliminar el propietario: el inmueble «${conInquilino[0].plot}» tiene un inquilino asociado. Desvinculá primero al inquilino.`,
+    });
+  }
   const properties = db.prepare("SELECT COUNT(*) AS total FROM properties WHERE ownerIds LIKE ?")
     .get(`%"${existing.id}"%`).total;
-  if (properties > 0) {
-    return res.status(409).json({ error: "Reasigna los inmuebles antes de eliminar a este propietario." });
-  }
   const tenants = db.prepare("SELECT COUNT(*) AS total FROM tenants WHERE ownerId = ?").get(existing.id).total;
   if (tenants > 0) {
     return res.status(409).json({ error: "Elimina los inquilinos asociados antes de eliminar a este propietario." });
   }
-  db.prepare("DELETE FROM owner_notifications WHERE ownerId = ?").run(existing.id);
-  db.prepare("DELETE FROM admin_emails WHERE ownerId = ?").run(existing.id);
-  db.prepare("DELETE FROM owners WHERE id = ?").run(existing.id);
+  // Inmuebles sin inquilino: se desvincula al propietario (no se borran los inmuebles).
+  const vinculados = db.prepare("SELECT id, ownerIds FROM properties WHERE ownerIds LIKE ?").all(`%"${existing.id}"%`);
+  db.exec("BEGIN");
+  try {
+    const update = db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?");
+    for (const p of vinculados) {
+      const restantes = JSON.parse(p.ownerIds || "[]").filter(id => id !== existing.id);
+      update.run(JSON.stringify(restantes), p.id);
+    }
+    rebuildOwnersPropertyIds();
+    db.prepare("DELETE FROM owner_notifications WHERE ownerId = ?").run(existing.id);
+    db.prepare("DELETE FROM admin_emails WHERE ownerId = ?").run(existing.id);
+    db.prepare("DELETE FROM owners WHERE id = ?").run(existing.id);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
   res.json({ ok: true });
 });
 

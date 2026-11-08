@@ -1219,6 +1219,11 @@ export function openOwnerDelete(id) {
   if (!requirePermission("owner:delete", id)) return;
   const o = state.owners.find(item => item.id === id);
   if (!o) return;
+  const conInquilino = ownerProperties(o).filter(property => tenantsForProperty(property.id).length > 0);
+  if (conInquilino.length > 0) {
+    toast(`No se puede eliminar a “${o.name} ${o.surname}”: el inmueble “${conInquilino[0].plot}” tiene un inquilino asociado. Desvinculá primero al inquilino.`);
+    return;
+  }
   state.ui.deletingOwnerId = id;
   document.querySelector("#owner-delete-message").textContent = `Vas a eliminar a “${o.name} ${o.surname}”. Esta acción no se puede deshacer.`;
   ownerDeleteDialog.showModal();

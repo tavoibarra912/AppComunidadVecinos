@@ -547,92 +547,94 @@
 
       <section class="admin-pane" data-admin-pane="settings" hidden>
         <nav class="community-editor-tabs" id="settings-subtabs" role="tablist" aria-label="Secciones de configuración">
-          <button type="button" class="community-editor-tab active" data-settings-tab="general" aria-selected="true">General</button>
-          <button type="button" class="community-editor-tab" data-settings-tab="proveedores" aria-selected="false" hidden>Proveedores de comunicación</button>
+          <button type="button" class="community-editor-tab active" data-settings-tab="general"
+            aria-selected="true">General</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="proveedores" aria-selected="false"
+            hidden>Proveedores de comunicación</button>
         </nav>
         <div id="settings-general-panel">
-        <form id="settings-form" novalidate>
-          <div class="form-grid">
-            <label class="full">Nombre de la asociación *
-              <input name="nombreAsociacion" maxlength="120" required />
-            </label>
-            <label>Email de contacto *
-              <input name="emailContacto" type="email" maxlength="120" required />
-            </label>
-            <label>Teléfono de contacto (opcional)
-              <input name="telefonoContacto" maxlength="20" inputmode="tel" />
-            </label>
-            <p class="form-section-title full">Verificación de contacto (OTP)</p>
-            <label>Expiración del código (minutos) (opcional)
-              <input name="otpExpiraMinutos" type="number" min="1" max="60" inputmode="numeric" />
-            </label>
-            <label>Reenvío permitido cada (segundos) (opcional)
-              <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
-            </label>
-            <label class="full checkbox-line">
-              <input type="checkbox" name="notificacionesEmail" />
-              Enviar notificaciones por correo electrónico
-            </label>
-            <p class="form-section-title full">Documentos</p>
-            <label>Tamaño máximo por documento (MB) (opcional)
-              <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
-            </label>
-            <label>Moneda por defecto (opcional)
-              <select name="monedaPorDefecto">
-                <option value="EUR">Euro (EUR)</option>
-                <option value="USD">Dólar estadounidense (USD)</option>
-                <option value="GBP">Libra esterlina (GBP)</option>
-                <option value="CHF">Franco suizo (CHF)</option>
-              </select>
-            </label>
-            <p class="form-section-title full">Contratos y vencimientos</p>
-            <label>Aviso de vencimiento de contrato (días antes) (opcional)
-              <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
-            </label>
-            <p class="form-section-title full">Marca (white-label)</p>
-            <label class="full">Nombre visible de la plataforma *
-              <input name="marcaNombre" maxlength="120" required />
-            </label>
-            <label>Color principal (opcional)
-              <input name="marcaColorPrimario" type="color" />
-            </label>
-            <label>Color de acento (opcional)
-              <input name="marcaColorAcento" type="color" />
-            </label>
-            <label class="full">Logo (PNG, JPG, SVG o WebP, máx. 225 KB)
-              <input name="marcaLogo" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
-            </label>
-            <img id="marca-logo-preview" class="marca-logo-preview" alt="Vista previa del logo" hidden />
-            <label class="full checkbox-line">
-              <input type="checkbox" name="marcaQuitarLogo" />
-              Quitar logo actual
-            </label>
-            <p class="form-section-title full">Sistema</p>
-            <label>Filas por página en las tablas (opcional)
-              <select name="filasPorPagina">
-                <option value="5">5</option>
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-              </select>
-            </label>
-            <label class="full checkbox-line">
-              <input type="checkbox" name="mantenimiento" />
-              Modo mantenimiento (bloquea el acceso a usuarios no administradores)
-            </label>
-          </div>
-          <div class="dialog-actions">
-            <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar configuración"
-              aria-label="Guardar configuración">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-              </svg>
-            </button>
-          </div>
-        </form>
+          <form id="settings-form" novalidate>
+            <div class="form-grid">
+              <label class="full">Nombre de la asociación *
+                <input name="nombreAsociacion" maxlength="120" required />
+              </label>
+              <label>Email de contacto *
+                <input name="emailContacto" type="email" maxlength="120" required />
+              </label>
+              <label>Teléfono de contacto (opcional)
+                <input name="telefonoContacto" maxlength="20" inputmode="tel" />
+              </label>
+              <p class="form-section-title full">Verificación de contacto (OTP)</p>
+              <label>Expiración del código (minutos) (opcional)
+                <input name="otpExpiraMinutos" type="number" min="1" max="60" inputmode="numeric" />
+              </label>
+              <label>Reenvío permitido cada (segundos) (opcional)
+                <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
+              </label>
+              <label class="full checkbox-line">
+                <input type="checkbox" name="notificacionesEmail" />
+                Enviar notificaciones por correo electrónico
+              </label>
+              <p class="form-section-title full">Documentos</p>
+              <label>Tamaño máximo por documento (MB) (opcional)
+                <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
+              </label>
+              <label>Moneda por defecto (opcional)
+                <select name="monedaPorDefecto">
+                  <option value="EUR">Euro (EUR)</option>
+                  <option value="USD">Dólar estadounidense (USD)</option>
+                  <option value="GBP">Libra esterlina (GBP)</option>
+                  <option value="CHF">Franco suizo (CHF)</option>
+                </select>
+              </label>
+              <p class="form-section-title full">Contratos y vencimientos</p>
+              <label>Aviso de vencimiento de contrato (días antes) (opcional)
+                <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
+              </label>
+              <p class="form-section-title full">Marca (white-label)</p>
+              <label class="full">Nombre visible de la plataforma *
+                <input name="marcaNombre" maxlength="120" required />
+              </label>
+              <label>Color principal (opcional)
+                <input name="marcaColorPrimario" type="color" />
+              </label>
+              <label>Color de acento (opcional)
+                <input name="marcaColorAcento" type="color" />
+              </label>
+              <label class="full">Logo (PNG, JPG, SVG o WebP, máx. 225 KB)
+                <input name="marcaLogo" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+              </label>
+              <img id="marca-logo-preview" class="marca-logo-preview" alt="Vista previa del logo" hidden />
+              <label class="full checkbox-line">
+                <input type="checkbox" name="marcaQuitarLogo" />
+                Quitar logo actual
+              </label>
+              <p class="form-section-title full">Sistema</p>
+              <label>Filas por página en las tablas (opcional)
+                <select name="filasPorPagina">
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+              </label>
+              <label class="full checkbox-line">
+                <input type="checkbox" name="mantenimiento" />
+                Modo mantenimiento (bloquea el acceso a usuarios no administradores)
+              </label>
+            </div>
+            <div class="dialog-actions">
+              <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar configuración"
+                aria-label="Guardar configuración">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+              </button>
+            </div>
+          </form>
         </div>
         <div id="settings-proveedores-panel" hidden></div>
       </section>
@@ -683,9 +685,9 @@
           <p class="eyebrow">COMUNIDADES</p>
           <h2 id="dialog-title">Nueva Comunidad</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-dialog" aria-label="Cerrar"><svg width="20" height="20"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -736,13 +738,23 @@
       <section class="community-editor-pane" id="community-tab-contact" data-community-pane="contact" hidden>
         <div class="form-grid">
           <label>Teléfono Principal *
-            <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+            <div class="verify-row">
+              <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+              <button class="secondary-button verify-btn" type="button" id="community-btn-verify-phone">Verificar</button>
+            </div>
+            <span class="verify-status" id="community-phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label>Teléfono Secundario (opcional)
             <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
           </label>
           <label>Email *
-            <input name="email" type="email" required maxlength="120" placeholder="contacto@Comunidad.es" />
+            <div class="verify-row">
+              <input name="email" type="email" required maxlength="120" placeholder="contacto@Comunidad.es" />
+              <button class="secondary-button verify-btn" type="button" id="community-btn-verify-email">Verificar</button>
+            </div>
+            <span class="verify-status" id="community-email-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label class="full">Dirección *
             <input name="address" maxlength="140" required />
@@ -850,7 +862,8 @@
           </div>
         </div>
         <div class="doc-sample-bar">
-          <button class="sample-doc-btn" type="button" id="btn-sample-community-doc">✨ Cargar acta de ejemplo (sin validez)</button>
+          <button class="sample-doc-btn" type="button" id="btn-sample-community-doc">✨ Cargar acta de ejemplo (sin
+            validez)</button>
         </div>
         <div class="doc-file-list" id="community-document-list"></div>
       </section>
@@ -885,9 +898,9 @@
           <p class="eyebrow">COMUNIDADES</p>
           <h2 id="detail-dialog-title">Información de la comunidad</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-detail-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -1060,9 +1073,9 @@
           <p class="eyebrow">PROPIETARIOS</p>
           <h2 id="owner-dialog-title">Nuevo propietario</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -1464,9 +1477,9 @@
           <p class="eyebrow">PROPIETARIOS</p>
           <h2 id="owner-detail-title">Ficha del propietario</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-detail-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -1685,9 +1698,9 @@
           <p class="eyebrow">INQUILINOS</p>
           <h2 id="tenant-dialog-title">Nuevo inquilino</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -1965,9 +1978,9 @@
           <p class="eyebrow">VERIFICACIÓN DE CONTACTO</p>
           <h2 id="tenant-verification-title">Verificar teléfono</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-verification-dialog" aria-label="Cerrar"><svg
-            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-verification-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2005,9 +2018,9 @@
           <p class="eyebrow">INQUILINOS</p>
           <h2 id="tenant-detail-title">Ficha del inquilino</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-detail-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2126,9 +2139,9 @@
           <p class="eyebrow">VERIFICACIÓN DE CONTACTO</p>
           <h2 id="verification-title">Verificar teléfono</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-verification-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-verification-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2169,11 +2182,12 @@
           <p class="eyebrow">INMUEBLES</p>
           <h2 id="property-dialog-title">Nuevo Inmueble</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-dialog" aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="18" x2="18" y2="6"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+
           </svg></button>
       </div>
       <p class="form-intro">La Comunidad, al menos un propietario y la dirección son obligatorios. Los inquilinos y
@@ -2419,7 +2433,8 @@
           </div>
         </div>
         <div class="doc-sample-bar">
-          <button class="sample-doc-btn" type="button" id="btn-sample-property-doc">✨ Cargar certificado energético de ejemplo (sin validez)</button>
+          <button class="sample-doc-btn" type="button" id="btn-sample-property-doc">✨ Cargar certificado energético de
+            ejemplo (sin validez)</button>
         </div>
         <div class="doc-file-list" id="property-document-list"></div>
       </section>
@@ -2453,9 +2468,9 @@
           <p class="eyebrow">INMUEBLES</p>
           <h2 id="property-detail-title">Ficha del inmueble</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2588,9 +2603,9 @@
           <p class="eyebrow">ADMINISTRACIÓN</p>
           <h2 id="user-dialog-title">Nuevo usuario</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-user-dialog" aria-label="Cerrar"><svg width="20" height="20"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-user-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2666,9 +2681,9 @@
           <p class="eyebrow">ADMINISTRACIÓN</p>
           <h2 id="role-dialog-title">Nuevo rol</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-role-dialog" aria-label="Cerrar"><svg width="20" height="20"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-role-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2715,9 +2730,9 @@
           <p class="eyebrow">CAMBIOS SIN GUARDAR</p>
           <h2>¿Cerrar sin guardar?</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-confirm-close-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-confirm-close-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2825,9 +2840,9 @@
           <p class="eyebrow">NOTIFICACIÓN POR CORREO ELECTRÓNICO</p>
           <h2 id="admin-email-title">Email recibido por el Administrador</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-admin-email-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-admin-email-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2913,9 +2928,9 @@
           <p class="eyebrow">BUZÓN ADMINISTRATIVO</p>
           <h2 id="admin-inbox-title">Buzón de avisos y notificaciones</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-admin-inbox-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-admin-inbox-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2939,9 +2954,9 @@
           <p class="eyebrow" id="doc-viewer-eyebrow">DOCUMENTACIÓN DE PROPIETARIO</p>
           <h2 id="doc-viewer-title">Visor de Documento</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-doc-viewer-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-doc-viewer-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -2997,9 +3012,9 @@
           <p class="eyebrow">ADMINISTRACIÓN</p>
           <h2 id="doc-reject-title">Rechazar / Solicitar subsanación</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-doc-reject-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-doc-reject-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -3058,9 +3073,9 @@
           <p class="eyebrow">MI ÁREA PERSONAL</p>
           <h2 id="owner-inbox-title">Mis Avisos y Notificaciones</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-inbox-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-inbox-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -3086,9 +3101,9 @@
           <p class="eyebrow">VALIDACIÓN</p>
           <h2 id="owner-validation-title">Revisa los datos del propietario</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-validation-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-validation-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>
@@ -3104,14 +3119,19 @@
   <dialog id="validation-dialog" class="dialog-sm" aria-labelledby="validation-title">
     <div class="dialog-content">
       <div class="validation-modal-header">
-        <span class="validation-modal-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span>
+        <span class="validation-modal-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg></span>
         <div>
           <p class="eyebrow">VALIDACIÓN</p>
           <h2 id="validation-title">Revisá los siguientes datos</h2>
         </div>
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-validation-dialog" aria-label="Cerrar"><svg width="20"
-            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" aria-hidden="true">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-validation-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="18" x2="18" y2="6"></line>
           </svg></button>

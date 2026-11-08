@@ -416,6 +416,23 @@ test("proveedores de comunicación: visible sólo con el permiso admin:providers
   assert.equal((await sin("/communications/providers", "PUT", {})).status, 403);
 });
 
+test("propietario con inmueble con inquilino no se puede eliminar", async () => {
+  const owners = (await admin("/owners")).data;
+  const properties = (await admin("/properties")).data;
+  const tenants = (await admin("/tenants")).data || [];
+  const conInquilino = owners.find(o => properties.some(p => (p.ownerIds || []).includes(o.id) && tenants.some(t => t.propertyId === p.id)));
+  if (conInquilino) {
+    const res = await admin("/owners/" + conInquilino.id, "DELETE");
+    assert.equal(res.status, 409);
+    assert.match(res.data.error, /inquilino/i);
+  }
+  const sinVinculos = owners.find(o => !properties.some(p => (p.ownerIds || []).includes(o.id)) && !tenants.some(t => t.ownerId === o.id));
+  if (sinVinculos) {
+    const res = await admin("/owners/" + sinVinculos.id, "DELETE");
+    assert.equal(res.status, 200);
+  }
+});
+
 test("logout invalida la sesión en el servidor", async () => {
   const request = client();
   await request("/auth/signin", "POST", {

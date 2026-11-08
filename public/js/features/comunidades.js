@@ -6,6 +6,7 @@ import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isVali
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor, updatePropertyPeopleSelectors } from "./inmuebles.js";
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
+import { crearVerificadorContacto } from "../verificacion-contacto.js";
 
 let editingCommunityId = null;
 let deletingCommunityId = null;
@@ -200,6 +201,10 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   communityForm.reset();
   communityError.textContent = "";
   pendingCommunityFiles = [];
+  communityContactVerify.phone.verified = false;
+  communityContactVerify.email.verified = false;
+  communitySetVerifyStatus("phone", "pending", "Pendiente de verificación");
+  communitySetVerifyStatus("email", "pending", "Pendiente de verificación");
   const c = state.communities.find(item => item.id === id);
   document.querySelector("#dialog-title").textContent = c ? (readonly ? "Ver comunidad" : "Editar comunidad") : "Nueva comunidad";
 
@@ -423,6 +428,36 @@ if (btnEditCancelLink) {
 }
 
 // --- Tab Documentación de la comunidad ---
+// Verificación de contacto de la comunidad (mismo diálogo compartido que inquilinos)
+const communityContactVerify = { phone: { value: "", verified: false }, email: { value: "", verified: false } };
+
+function communitySetVerifyStatus(kind, estado, msg) {
+  const span = document.querySelector(kind === "phone" ? "#community-phone-verify-status" : "#community-email-verify-status");
+  if (!span) return;
+  span.textContent = msg || "Pendiente de verificación";
+  span.dataset.estado = estado;
+  span.style.color = estado === "verified" ? "#15803d" : estado === "error" ? "#b91c1c" : "";
+}
+
+const verificadorCommunity = crearVerificadorContacto({
+  alEstado: (kind, estado, msg) => communitySetVerifyStatus(kind, estado, msg),
+  alVerificado: kind => {
+    communityContactVerify[kind].verified = true;
+    communitySetVerifyStatus(kind, "verified", kind === "phone" ? "✓ Teléfono verificado por SMS" : "✓ Correo electrónico verificado");
+  }
+});
+
+document.querySelector("#community-btn-verify-phone")?.addEventListener("click", () => verificadorCommunity.abrir("phone", () => communityForm.elements.phone.value));
+document.querySelector("#community-btn-verify-email")?.addEventListener("click", () => verificadorCommunity.abrir("email", () => communityForm.elements.email.value));
+communityForm.elements.phone?.addEventListener("input", e => {
+  communityContactVerify.phone.verified = false;
+  verificadorCommunity.cambiarValor("phone", e.target.value);
+});
+communityForm.elements.email?.addEventListener("input", e => {
+  communityContactVerify.email.verified = false;
+  verificadorCommunity.cambiarValor("email", e.target.value);
+});
+
 const communityDocumentInput = document.querySelector("#community-document-input");
 const communityDocumentList = document.querySelector("#community-document-list");
 
