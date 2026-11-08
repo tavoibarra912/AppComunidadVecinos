@@ -268,15 +268,32 @@ function seedPassword(usuario) {
   return salt + ":" + crypto.createHash("sha256").update(`${salt}:${usuario}`).digest("hex");
 }
 
+// Migración: la cuenta de Super Admin ahora se llama "super_admin" (antes "admin").
+const legacyAdmin = db.prepare("SELECT id, usuario, passwordHash FROM users WHERE id = 'user-admin' AND usuario = 'admin'").get();
+if (legacyAdmin && !db.prepare("SELECT 1 AS existe FROM users WHERE usuario = 'super_admin'").get()) {
+  db.prepare("UPDATE users SET usuario = 'super_admin' WHERE id = 'user-admin'").run();
+  if (!process.env.APP_ADMIN_PASSWORD) {
+    const [scheme, salt, hex] = String(legacyAdmin.passwordHash).split(":");
+    if (scheme === "scrypt" && hex && hex.length === 128) {
+      try {
+        if (crypto.timingSafeEqual(Buffer.from(hex, "hex"), crypto.scryptSync("admin", salt, 64))) {
+          const resetSalt = crypto.randomBytes(16).toString("hex");
+          db.prepare("UPDATE users SET passwordHash = ? WHERE id = 'user-admin'").run(`scrypt:${resetSalt}:${crypto.scryptSync("super_admin", resetSalt, 64).toString("hex")}`);
+        }
+      } catch { /* hash con formato desconocido: se conserva la contraseña */ }
+    }
+  }
+}
+
 if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   if (process.env.NODE_ENV === "production" && (!process.env.APP_ADMIN_PASSWORD || process.env.APP_ADMIN_PASSWORD.length < 12)) {
     throw new Error("Para inicializar producción, configurá APP_ADMIN_PASSWORD con al menos 12 caracteres.");
   }
   const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)");
-  const initialAdminPassword = process.env.APP_ADMIN_PASSWORD || "admin";
+  const initialAdminPassword = process.env.APP_ADMIN_PASSWORD || "super_admin";
   const adminSalt = crypto.randomBytes(16).toString("hex");
   const adminHash = `scrypt:${adminSalt}:${crypto.scryptSync(initialAdminPassword, adminSalt, 64).toString("hex")}`;
-  insertUser.run("user-admin", "Administrador", "del sistema", "admin", "admin@penarrubia.es", "super_admin", adminHash);
+  insertUser.run("user-admin", "Administrador", "del sistema", "super_admin", "admin@penarrubia.es", "super_admin", adminHash);
   if (process.env.NODE_ENV !== "production") insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user", seedPassword("recepcion"));
 }
 

@@ -259,6 +259,22 @@ const ICON_USER_SAVE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="no
 userForm?.addEventListener("submit", async event => {
   event.preventDefault();
   if (!requirePermission("admin:users")) return;
+  if (!data.usuario) {
+    userError.textContent = "El nombre de usuario es obligatorio.";
+    return;
+  }
+  const password = userForm.elements.password.value;
+  const password2 = userForm.elements.password2.value;
+  if (password || password2) {
+    if (password !== password2) {
+      userError.textContent = "Las contraseñas no coinciden.";
+      return;
+    }
+    if (password.length < 8) {
+      userError.textContent = "La contraseña debe tener al menos 8 caracteres.";
+      return;
+    }
+  }
   const data = {
     nombre: userForm.elements.nombre.value.trim(),
     apellido: userForm.elements.apellido.value.trim(),
@@ -266,12 +282,8 @@ userForm?.addEventListener("submit", async event => {
     email: userForm.elements.email.value.trim(),
     rol: userForm.elements.rol.value,
     activo: userForm.elements.activo.checked,
-    ...(userForm.elements.password.value ? { password: userForm.elements.password.value } : {})
+    ...(password ? { password } : {})
   };
-  if (!data.usuario) {
-    userError.textContent = "El nombre de usuario es obligatorio.";
-    return;
-  }
   try {
     let savedUser;
     if (editingUserId) {

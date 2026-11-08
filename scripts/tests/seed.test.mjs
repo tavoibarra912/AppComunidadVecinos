@@ -19,7 +19,7 @@ test("arranque desde cero: siembra sin duplicar roles y crea perfiles con contra
   assert.equal(seedIfEmpty(), true);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM roles").get().n, 4);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM communities").get().n, 7);
-  for (const usuario of ["admin", "recepcion", "carlos", "laura", "gestor.olivos"]) {
+  for (const usuario of ["super_admin", "recepcion", "carlos", "laura", "gestor.olivos"]) {
     const user = db.prepare("SELECT * FROM users WHERE usuario = ?").get(usuario);
     assert.ok(user, `falta la cuenta ${usuario}`);
     assert.ok(verifyPassword(usuario, user.passwordHash), `contraseña demo inválida: ${usuario}`);
@@ -32,8 +32,8 @@ test("arranque desde cero: siembra sin duplicar roles y crea perfiles con contra
 
 test("reinicio: preserva los datos y las contraseñas existentes", () => {
   db.prepare("UPDATE communities SET name = 'Nombre editado' WHERE id = 'com-seed-1'").run();
-  const hash = db.prepare("SELECT passwordHash FROM users WHERE usuario = 'admin'").get().passwordHash;
+  const hash = db.prepare("SELECT passwordHash FROM users WHERE usuario = 'super_admin'").get().passwordHash;
   assert.equal(seedIfEmpty(), false);
   assert.equal(db.prepare("SELECT name FROM communities WHERE id = 'com-seed-1'").get().name, "Nombre editado");
-  assert.equal(db.prepare("SELECT passwordHash FROM users WHERE usuario = 'admin'").get().passwordHash, hash);
+  assert.equal(db.prepare("SELECT passwordHash FROM users WHERE usuario = 'super_admin'").get().passwordHash, hash);
 });

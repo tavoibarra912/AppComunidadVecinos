@@ -57,7 +57,7 @@ before(async () => {
   owner = client();
   tenant = client();
   for (const [request, usuario] of [
-    [admin, "admin"],
+    [admin, "super_admin"],
     [owner, "carlos"],
     [tenant, "laura"],
   ]) {
@@ -88,15 +88,15 @@ test("login: cookie HttpOnly, contraseña incorrecta y origen ajeno", async () =
   assert.equal(
     (
       await request("/auth/signin", "POST", {
-        usuario: "admin",
+        usuario: "super_admin",
         password: "incorrecta",
       })
     ).status,
     401,
   );
   const login = await request("/auth/signin", "POST", {
-    usuario: "admin",
-    password: "admin",
+    usuario: "super_admin",
+    password: "super_admin",
   });
   assert.match(login.cookie, /HttpOnly/i);
   assert.match(login.cookie, /SameSite=Strict/i);
@@ -391,8 +391,8 @@ test("SSO y recuperación sin configurar no autentican ni filtran tokens", async
 test("logout invalida la sesión en el servidor", async () => {
   const request = client();
   await request("/auth/signin", "POST", {
-    usuario: "admin",
-    password: "admin",
+    usuario: "super_admin",
+    password: "super_admin",
   });
   assert.equal((await request("/auth/logout", "POST")).status, 200);
   assert.equal((await request("/bootstrap")).status, 401);

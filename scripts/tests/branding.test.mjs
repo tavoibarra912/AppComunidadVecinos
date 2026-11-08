@@ -42,7 +42,7 @@ function request(url, method = "GET", body, cookie = "") {
     app.handle(req, res, error => reject(error || new Error("Ruta sin respuesta")));
   });
 }
-const login = () => request("/auth/signin", "POST", { usuario: "admin", password: "admin" }).then(r => { assert.equal(r.status, 200); return r.cookie; });
+const login = () => request("/auth/signin", "POST", { usuario: "super_admin", password: "super_admin" }).then(r => { assert.equal(r.status, 200); return r.cookie; });
 const sampleLogo = `data:image/png;base64,${Buffer.from("fake-png-bytes").toString("base64")}`;
 after(() => { db.close(); rmSync(directory, { recursive: true, force: true }); });
 

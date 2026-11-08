@@ -20,7 +20,7 @@ npm run restart  # Windows: libera el puerto de la app y vuelve a arrancar
 Abrí **http://localhost:3000/** en Firefox (o el puerto configurado con `PORT`).
 El frontend y la API deben salir del mismo servidor Node; Live Server de VS Code
 no sirve la API. Para los usuarios demo iniciales, el usuario y la contraseña
-coinciden (por ejemplo, `admin` / `admin`), salvo que hayas cambiado la contraseña.
+coinciden (por ejemplo, `super_admin` / `super_admin`), salvo que hayas cambiado la contraseña.
 
 La base de datos se crea en `data/penarrubia.db` y los archivos subidos en `uploads/` (ambos ignorados por git).
 

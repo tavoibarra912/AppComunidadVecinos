@@ -103,7 +103,7 @@ before(async () => {
   stranger = client();
   scoped = client();
   for (const [c, name] of [
-    [admin, "admin"],
+    [admin, "super_admin"],
     [owner, "carlos"],
     [tenant, "laura"],
   ])

@@ -3923,10 +3923,22 @@ dialog .toast {
   z-index: 100000;
 }
 
+/* Botón de cierre de diálogos: icono SVG centrado como el resto */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button svg {
+  display: block;
+}
+
 /* Checkbox alineado con los controles del formulario */
+.form-grid label.checkbox-line,
 .checkbox-line {
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   justify-content: flex-start;
   align-items: center;
   gap: 10px;
@@ -3943,17 +3955,35 @@ dialog .toast {
 .checkbox-line input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  margin: 0 0 0 auto;
+  margin: 0;
   accent-color: var(--brand);
   cursor: pointer;
-  order: 2;
 }
 
 /* Perfiles vinculados en horizontal (2 columnas) */
 .admin-link-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.admin-link-section label {
+  min-width: 0;
+}
+
+.admin-link-section select,
+.admin-link-section .combo-box,
+.admin-link-section .combo-box-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Controles del editor de usuario con altura uniforme */
+#user-dialog select,
+#user-dialog input:not([type="checkbox"]),
+#user-dialog .combo-box-input {
+  min-height: 42px;
+  box-sizing: border-box;
 }
 
 /* ==========================================

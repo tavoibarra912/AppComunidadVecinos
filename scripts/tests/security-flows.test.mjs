@@ -60,8 +60,8 @@ function pendingToken() {
 after(() => { db.close(); rmSync(directory, { recursive: true, force: true }); });
 
 test("auditoría: login, denegaciones, cambios de usuarios y roles sin secretos", async () => {
-  assert.equal((await request("/auth/signin", "POST", { usuario: "admin", password: "secret-wrong-password" })).status, 401);
-  const admin = await login("admin");
+  assert.equal((await request("/auth/signin", "POST", { usuario: "super_admin", password: "secret-wrong-password" })).status, 401);
+  const admin = await login("super_admin");
   assert.equal(admin.status, 200);
   assert.equal((await request("/audit")).status, 401);
   const owner = await login("carlos");
@@ -158,7 +158,7 @@ test("recuperación: fallos e interrupciones no reenvían ni exponen secretos", 
   assert.equal(db.prepare("SELECT COUNT(*) n FROM password_recovery_mail").get().n, 0);
 });
 test("recuperación: cambiar email invalida un enlace ya enviado", async () => {
-  const admin = await login("admin");
+  const admin = await login("super_admin");
   clearRequests(); requestRecovery(user().email);
   const { token } = pendingToken();
   await processRecoveryMail(async () => {});

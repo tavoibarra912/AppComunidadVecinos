@@ -70,7 +70,7 @@ test("migración de roles: los roles viejos fueron eliminados", () => {
 // ---------- Usuarios: semilla ----------
 test("semilla de usuarios: admin y recepción existen", () => {
   const usuarios = db.prepare("SELECT usuario, rol FROM users").all();
-  assert.ok(usuarios.some(u => u.usuario === "admin" && u.rol === "super_admin"));
+  assert.ok(usuarios.some(u => u.usuario === "super_admin" && u.rol === "super_admin"));
   assert.ok(usuarios.some(u => u.usuario === "recepcion"));
 });
 
