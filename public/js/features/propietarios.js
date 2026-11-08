@@ -9,7 +9,7 @@ import { editingDocs, renderOwnerDialogDocs, getFormOwnerContext, DocumentValida
 import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, getOwnerOverallDocStatus, addOwnerNotification, sendAdminEmailNotification, openAdminEmail, updateInboxBadge, updateOwnerInboxBadge, renderOwnerInbox, openOwnerInbox, openAdminInbox } from "./notificaciones.js";
 import { openTenantEditor, openTenantDetail, closeTenantEditor, closeTenantDetail, openTenantDelete } from "./inquilinos.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
-import { openCommunityDetail } from "./comunidades.js";
+import { openCommunityDetail, openCommunityEditor } from "./comunidades.js";
 
 let ownerTable = null;
 let viewingDocDetails = null;
@@ -176,7 +176,7 @@ export function renderOwners() {
               link.type = "button";
               link.className = "text-link-button";
               link.textContent = name;
-              link.addEventListener("click", () => openCommunityDetail(community.id));
+              link.addEventListener("click", () => openCommunityEditor(community.id, "details", true));
               cell.append(link);
             });
             return cell;
@@ -200,7 +200,7 @@ export function renderOwners() {
               link.type = "button";
               link.className = "text-link-button";
               link.textContent = property.plot || "Inmueble";
-              link.addEventListener("click", () => openPropertyDetail(property.id));
+              link.addEventListener("click", () => openPropertyEditor(property.id, "general", true));
               cell.append(link);
             });
             return cell;
@@ -256,7 +256,7 @@ export function renderOwners() {
               link.type = "button";
               link.className = "text-link-button";
               link.textContent = property.plot || "Inmueble";
-              link.addEventListener("click", () => openPropertyDetail(property.id));
+              link.addEventListener("click", () => openPropertyEditor(property.id, "general", true));
               cell.append(link);
             });
             return cell;

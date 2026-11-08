@@ -198,6 +198,11 @@ router.put("/:id", (req, res) => {
 router.delete("/:id", (req, res) => {
   const existing = findProperty(req.params.id);
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
+  const inquilinos = db.prepare("SELECT COUNT(*) AS n FROM tenants WHERE propertyId = ?").get(existing.id).n;
+  if (inquilinos > 0)
+    return res.status(409).json({
+      error: `No se puede eliminar el inmueble: tiene ${inquilinos === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvinculá primero al inquilino.`,
+    });
   db.exec("BEGIN");
   try {
     db.prepare("UPDATE tenants SET propertyId = '' WHERE propertyId = ?").run(existing.id);

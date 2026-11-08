@@ -3986,6 +3986,22 @@ dialog .toast {
   box-sizing: border-box;
 }
 
+/* Modo vista: sin acciones de edición ni vinculación */
+form.is-readonly .community-edit-link-panel,
+dialog.is-readonly .community-edit-link-panel,
+form.is-readonly .heading-actions .btn-add,
+dialog.is-readonly .heading-actions .btn-add,
+form.is-readonly .heading-actions .btn-info,
+dialog.is-readonly .heading-actions .btn-info,
+form.is-readonly .community-property-actions .btn-delete,
+dialog.is-readonly .community-property-actions .btn-delete,
+form.is-readonly .doc-sample-bar,
+dialog.is-readonly .doc-sample-bar,
+form.is-readonly .doc-file-actions .btn-doc-action.danger,
+dialog.is-readonly .doc-file-actions .btn-doc-action.danger {
+  display: none !important;
+}
+
 /* Permisos del editor de roles: checkbox y texto alineados */
 .form-grid label.role-permission-item,
 .role-permission-item {

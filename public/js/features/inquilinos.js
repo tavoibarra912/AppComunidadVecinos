@@ -144,7 +144,7 @@ export function renderTenants() {
         { key: "name", label: "Inquilino", value: ({ tenant }) => `${tenant.name} ${tenant.surname} ${tenant.documentId || ""}`, defaultVisible: true,
           render: ({ tenant }) => { const cell=document.createElement("div"); const name=document.createElement("span"); name.className="community-name"; name.textContent=`${tenant.name} ${tenant.surname}`; cell.append(name); return cell; } },
         { key: "owner", label: "Propietario", value: ({ owner }) => `${owner.name} ${owner.surname}`, defaultVisible: true,
-          render: ({ owner }) => { const link=document.createElement("button"); link.type="button"; link.className="text-link-button"; link.textContent=`${owner.name} ${owner.surname}`; link.addEventListener("click",()=>openOwnerDetail(owner.id)); return link; } },
+          render: ({ owner }) => { const link=document.createElement("button"); link.type="button"; link.className="text-link-button"; link.textContent=`${owner.name} ${owner.surname}`; link.addEventListener("click",()=>openOwnerEditor(owner.id, "general", { readOnly: true })); return link; } },
         { key: "property", label: "Unidad", value: ({ property }) => property ? property.plot : "", defaultVisible: true,
           render: ({ property }) => { const span=document.createElement("span"); span.textContent = property ? `${property.plot} · ${property.communityName || ""}` : "—"; return span; } },
         { key: "contract", label: "Contrato", value: ({ tenant }) => `${tenant.contractStart} ${tenant.contractEnd}`, defaultVisible: true,

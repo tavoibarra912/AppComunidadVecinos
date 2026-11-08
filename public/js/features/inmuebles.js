@@ -7,7 +7,7 @@ import { selectLocationInForm, getLocationById, isValidPostalCode, syncPostalCod
 import { createDataTable } from "../table.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
-import { openCommunityDetail, refreshCommunityEditorAfterPropertySave } from "./comunidades.js";
+import { openCommunityDetail, openCommunityEditor, refreshCommunityEditorAfterPropertySave } from "./comunidades.js";
 
 const contactVerify = {
   phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
@@ -574,7 +574,7 @@ export function renderProperties() {
             link.type = "button";
             link.className = "text-link-button";
             link.textContent = label;
-            link.addEventListener("click", () => openCommunityDetail(community.id));
+            link.addEventListener("click", () => openCommunityEditor(community.id, "details", true));
             return link;
           }
         },
@@ -618,7 +618,7 @@ export function renderProperties() {
               ownerButton.type = "button";
               ownerButton.className = "text-link-button";
               ownerButton.textContent = `${owner.name} ${owner.surname}`;
-              ownerButton.addEventListener("click", () => openOwnerDetail(owner.id));
+              ownerButton.addEventListener("click", () => openOwnerEditor(owner.id, "general", { readOnly: true }));
               cell.append(ownerButton);
             });
             return cell;
@@ -642,7 +642,7 @@ export function renderProperties() {
               tenantButton.className = "text-link-button";
               tenantButton.textContent = `${propertyTenant.name} ${propertyTenant.surname}`;
               tenantButton.addEventListener("click", () =>
-                openTenantDetail(propertyTenant.ownerId, propertyTenant.id)
+                openTenantEditor(propertyTenant.id, propertyTenant.ownerId, true)
               );
               cell.append(tenantButton);
             });
@@ -830,6 +830,11 @@ export function openPropertyDelete(id) {
   if (!requirePermission("property:delete")) return;
   const p = state.properties.find(item => item.id === id);
   if (!p) return;
+  const inquilinos = tenantsForProperty(id);
+  if (inquilinos.length > 0) {
+    toast(`No se puede eliminar “${p.plot}”: tiene ${inquilinos.length === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvinculá primero al inquilino.`);
+    return;
+  }
   state.ui.deletingPropertyId = id;
   document.querySelector("#property-delete-message").textContent =
     `Vas a eliminar el inmueble “${p.plot}” (${p.address}). Esta acción no se puede deshacer.`;
