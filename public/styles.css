@@ -3986,6 +3986,31 @@ dialog .toast {
   box-sizing: border-box;
 }
 
+/* Permisos del editor de roles: checkbox y texto alineados */
+.form-grid label.role-permission-item,
+.role-permission-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #e3e9f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.role-permission-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--brand);
+  flex: 0 0 auto;
+}
+
 /* ==========================================
    PANTALLA DE LOGIN SIMULADO
    ========================================== */

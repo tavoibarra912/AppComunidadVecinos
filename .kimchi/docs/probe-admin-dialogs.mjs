@@ -74,6 +74,16 @@ try {
   shot = await send("Page.captureScreenshot", { format: "png" });
   fs.writeFileSync(".kimchi/docs/probe-role-dialog.png", Buffer.from(shot.result.data, "base64"));
 
+  // Alineación checkbox/texto en la lista de permisos
+  out(await ev(`(() => {
+    const items = [...document.querySelectorAll('.role-permission-item')].slice(0, 4).map(item => {
+      const cb = item.querySelector('input[type=checkbox]');
+      const cbRect = cb.getBoundingClientRect(), itRect = item.getBoundingClientRect();
+      return { display: getComputedStyle(item).display, desfase: Math.round(Math.abs((cbRect.top + cbRect.height / 2) - (itRect.top + itRect.height / 2)) * 10) / 10, altura: Math.round(itRect.height) };
+    });
+    return JSON.stringify(items);
+  })()`));
+
   out("CSP_VIOLATIONS:", consoleMsgs.length ? JSON.stringify(consoleMsgs) : "(ninguna)");
 } finally {
   edge.kill();
