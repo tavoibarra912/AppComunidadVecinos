@@ -117,6 +117,12 @@ export function saveProviders(input) {
       throw problem("Completá la configuración de los tres canales.");
     const out = result[channel];
     out.enabled = s.enabled === true;
+    out.provider =
+      channel === "smtp"
+        ? (s.provider === "brevo" ? "brevo" : "smtp")
+        : s.provider === "brevo"
+          ? "brevo"
+          : "twilio";
     const fields =
       channel === "smtp"
         ? ["host", "user", "from", "fromName"]
@@ -141,20 +147,32 @@ export function saveProviders(input) {
           ? seal(s[secret])
           : old[channel][secret];
     if (channel === "smtp") {
-      out.port = Number(s.port);
-      out.secure = s.secure === true;
+      if (out.provider === "brevo") {
+        out.port = Number(s.port) || 587;
+        out.host = out.host || "smtp-relay.brevo.com";
+        out.secure = false;
+      } else {
+        out.port = Number(s.port);
+        out.secure = s.secure === true;
+      }
       if (!Number.isInteger(out.port) || out.port < 1 || out.port > 65535)
         throw problem("Puerto SMTP no válido.");
-      if (
-        out.enabled &&
-        (!/^[a-z0-9.:-]+$/i.test(out.host) ||
+      if (out.enabled) {
+        if (out.provider === "brevo") {
+          if (!emailAddress(out.from) || !out.password)
+            throw problem(
+              "Brevo necesita la API key (campo contraseña) y el email remitente.",
+            );
+        } else if (
+          !/^[a-z0-9.:-]+$/i.test(out.host) ||
           !emailAddress(out.from) ||
           !out.user ||
-          !out.password)
-      )
-        throw problem(
-          "SMTP necesita servidor, remitente, usuario y contraseña.",
-        );
+          !out.password
+        )
+          throw problem(
+            "SMTP necesita servidor, remitente, usuario y contraseña.",
+          );
+      }
     } else {
       if (!["twilio", "brevo"].includes(s.provider))
         throw problem("El proveedor de mensajería admitido es Twilio o Brevo.");
@@ -234,6 +252,30 @@ export async function sendMessage(
   if (!s?.enabled) throw problem("El proveedor está desactivado.", 503);
   if (channel === "email") {
     if (!emailAddress(to)) throw problem("El email de destino no es válido.");
+    if ((s.provider || "smtp") === "brevo") {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": s.password,
+          "Content-Type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: s.fromName || "Comunidad", email: s.from },
+          to: [{ email: to }],
+          textContent: message,
+        }),
+        signal: AbortSignal.timeout(15000),
+        redirect: "error",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok)
+        throw problem(
+          `Brevo rechazó el envío${result.message ? `: ${result.message}` : "."}`,
+          502,
+        );
+      return result.messageId || "brevo-accepted";
+    }
     const transport = smtpTransport(s);
     try {
       const result = await transport.sendMail({
