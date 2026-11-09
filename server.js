@@ -20,8 +20,6 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 }
 
 if (process.env.NODE_ENV !== "production") {
-  seedIfEmpty();
-  seedCommunicationsDemo();
   seedDemoComunidades();
 }
 rebuildPropertyTenantReferences();
