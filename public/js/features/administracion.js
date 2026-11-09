@@ -313,10 +313,6 @@ const ICON_USER_SAVE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="no
 userForm?.addEventListener("submit", async event => {
   event.preventDefault();
   if (!requirePermission("admin:users")) return;
-  if (!data.usuario) {
-    userError.textContent = "El nombre de usuario es obligatorio.";
-    return;
-  }
   const password = userForm.elements.password.value;
   const password2 = userForm.elements.password2.value;
   if (password || password2) {
@@ -338,6 +334,10 @@ userForm?.addEventListener("submit", async event => {
     activo: userForm.elements.activo.checked,
     ...(password ? { password } : {})
   };
+  if (!data.usuario) {
+    userError.textContent = "El nombre de usuario es obligatorio.";
+    return;
+  }
   try {
     let savedUser;
     if (editingUserId) {
