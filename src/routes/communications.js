@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import multer from "multer";
 import { db } from "../db.js";
 import { policyData, allowed } from "../security.js";
+import { textosActuales, aplicarPlantilla, nombrePlataforma } from "../textos-envio.js";
 import {
   allPosts,
   postById,
@@ -94,7 +95,7 @@ router.post(
       await sendMessage(
         channel,
         to,
-        "Mensaje de prueba de la configuración de Peñarrubia.",
+        aplicarPlantilla(textosActuales().pruebaTexto, { plataforma: nombrePlataforma() }),
       );
       audit("providers", req.user.id, `test-${channel}-accepted`);
       res.json({

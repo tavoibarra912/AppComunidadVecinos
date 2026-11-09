@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { db } from "./db.js";
+import { textosDe, aplicarPlantilla } from "./textos-envio.js";
 import { setPassword } from "./auth.js";
 import { passwordError, validEmail } from "./validation.js";
 import { providers, seal, unseal, smtpTransport } from "./delivery-providers.js";
@@ -81,9 +82,11 @@ export function resetRecoveredPassword(token, password, req) {
   return { ok: true };
 }
 export function recoveryMessage({ brand = brandOf(getSettings()), url }) {
+  const valores = { plataforma: brand.nombre, enlace: url };
+  const textos = textosDe(getSettings());
   return {
-    subject: `Recuperar tu contraseña de ${brand.nombre}`,
-    text: `Solicitaste recuperar tu contraseña de ${brand.nombre}. Abrí este enlace (válido durante 30 minutos y para un solo uso):\n\n${url}\n\nSi no lo solicitaste, ignorá este correo. Tu contraseña no cambió.`,
+    subject: aplicarPlantilla(textos.emailRecuperacionAsunto, valores),
+    text: aplicarPlantilla(textos.emailRecuperacionTexto, valores),
   };
 }
 export async function sendRecoveryEmail({ to, url }) {

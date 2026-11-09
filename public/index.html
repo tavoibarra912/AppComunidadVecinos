@@ -549,15 +549,15 @@
         <nav class="community-editor-tabs" id="settings-subtabs" role="tablist" aria-label="Secciones de configuración">
           <button type="button" class="community-editor-tab active" data-settings-tab="general"
             aria-selected="true">General</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="estilo" aria-selected="false">Estilo</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="textos" aria-selected="false">Textos de
+            envío</button>
           <button type="button" class="community-editor-tab" data-settings-tab="proveedores" aria-selected="false"
             hidden>Proveedores de comunicación</button>
         </nav>
-        <div id="settings-general-panel">
           <form id="settings-form" novalidate>
+            <div id="settings-general-panel">
             <div class="form-grid">
-              <label class="full">Nombre de la asociación *
-                <input name="nombreAsociacion" maxlength="120" required />
-              </label>
               <label>Email de contacto *
                 <input name="emailContacto" type="email" maxlength="120" required />
               </label>
@@ -587,20 +587,6 @@
               <label>Aviso de vencimiento de contrato (días antes) (opcional)
                 <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
               </label>
-              <p class="form-section-title full">Marca (white-label)</p>
-              <label class="full">Nombre visible de la plataforma *
-                <input name="marcaNombre" maxlength="120" required />
-              </label>
-              <label>Color principal (opcional)
-                <input name="marcaColorPrimario" type="color" />
-              </label>
-              <label>Color de acento (opcional)
-                <input name="marcaColorAcento" type="color" />
-              </label>
-              <label class="full">Logo (PNG, JPG, SVG o WebP, máx. 225 KB)
-                <input name="marcaLogo" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
-              </label>
-              <img id="marca-logo-preview" class="marca-logo-preview" alt="Vista previa del logo" hidden />
               <p class="form-section-title full">Sistema</p>
               <label>Filas por página en las tablas (opcional)
                 <select name="filasPorPagina">
@@ -614,6 +600,58 @@
                 <input type="checkbox" name="mantenimiento" />
                 Modo mantenimiento (bloquea el acceso a usuarios no administradores)
               </label>
+            </div>
+            <div id="settings-estilo-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Marca de la plataforma</p>
+                <p class="form-intro full">Este nombre y los colores representan a la plataforma completa (se ve en el login, correos y avisos); cada comunidad tiene su propio nombre en su ficha.</p>
+                <label class="full">Nombre visible de la plataforma *
+                  <input name="marcaNombre" maxlength="120" required />
+                </label>
+                <label>Color principal (opcional)
+                  <input name="marcaColorPrimario" type="color" />
+                </label>
+                <label>Color de acento (opcional)
+                  <input name="marcaColorAcento" type="color" />
+                </label>
+                <label class="full">Logo (PNG, JPG, SVG o WebP, máx. 225 KB) (opcional)
+                  <input name="marcaLogo" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+                </label>
+                <img id="marca-logo-preview" class="marca-logo-preview" alt="Vista previa del logo" hidden />
+              </div>
+            </div>
+            <div id="settings-textos-panel" hidden>
+              <p class="form-section-title full">Textos de los envíos</p>
+              <p class="form-intro full">Personalizá los mensajes que envía la plataforma por correo, SMS y WhatsApp. Placeholders disponibles: <strong>{{plataforma}}</strong>, <strong>{{titulo}}</strong>, <strong>{{texto}}</strong>, <strong>{{comunidad}}</strong>, <strong>{{fecha}}</strong> y <strong>{{enlace}}</strong> (solo recuperación de contraseña).</p>
+              <div class="form-grid">
+                <label class="full">Asunto del email de nueva publicación
+                  <input name="texto_emailAvisoAsunto" data-texto="emailAvisoAsunto" maxlength="200" />
+                </label>
+                <label class="full">Cuerpo del email de nueva publicación
+                  <textarea name="texto_emailAvisoCuerpo" data-texto="emailAvisoCuerpo" rows="4" maxlength="5000"></textarea>
+                </label>
+                <label class="full">Texto SMS de nueva publicación
+                  <textarea name="texto_smsAviso" data-texto="smsAviso" rows="2" maxlength="1000"></textarea>
+                </label>
+                <label class="full">Texto WhatsApp de nueva publicación
+                  <textarea name="texto_whatsappAviso" data-texto="whatsappAviso" rows="2" maxlength="1000"></textarea>
+                </label>
+                <label class="full">Asunto del email de recordatorio
+                  <input name="texto_emailRecordatorioAsunto" data-texto="emailRecordatorioAsunto" maxlength="200" />
+                </label>
+                <label class="full">Texto del recordatorio (SMS/WhatsApp/email)
+                  <textarea name="texto_recordatorioTexto" data-texto="recordatorioTexto" rows="2" maxlength="1000"></textarea>
+                </label>
+                <label class="full">Asunto del email de recuperación de contraseña
+                  <input name="texto_emailRecuperacionAsunto" data-texto="emailRecuperacionAsunto" maxlength="200" />
+                </label>
+                <label class="full">Texto del email de recuperación de contraseña
+                  <textarea name="texto_emailRecuperacionTexto" data-texto="emailRecuperacionTexto" rows="4" maxlength="2000"></textarea>
+                </label>
+                <label class="full">Texto del mensaje de prueba
+                  <textarea name="texto_pruebaTexto" data-texto="pruebaTexto" rows="2" maxlength="500"></textarea>
+                </label>
+              </div>
             </div>
             <div class="dialog-actions">
               <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar configuración"

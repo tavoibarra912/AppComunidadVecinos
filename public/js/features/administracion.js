@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { state, refreshState, hasPermission, requirePermission } from "../state.js";
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { createDataTable, aplicarFilasPorPagina } from "../table.js";
+import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
 import { applyBrand } from "../brand.js";
@@ -99,10 +100,14 @@ async function switchSettingsTab(tab) {
     btn.setAttribute("aria-selected", String(active));
   });
   const panelGeneral = document.querySelector("#settings-general-panel");
+  const panelEstilo = document.querySelector("#settings-estilo-panel");
+  const panelTextos = document.querySelector("#settings-textos-panel");
   const panelProveedores = document.querySelector("#settings-proveedores-panel");
   if (panelGeneral) panelGeneral.hidden = tab !== "general";
+  if (panelEstilo) panelEstilo.hidden = tab !== "estilo";
+  if (panelTextos) panelTextos.hidden = tab !== "textos";
   if (panelProveedores) panelProveedores.hidden = tab !== "proveedores";
-  if (tab === "general") renderSettings();
+  if (tab === "general" || tab === "estilo" || tab === "textos") renderSettings();
   if (tab === "proveedores" && panelProveedores) {
     panelProveedores.replaceChildren();
     try { await renderProvidersPanel(panelProveedores); }
@@ -576,7 +581,6 @@ const settingsForm = document.querySelector("#settings-form");
 function renderSettings() {
   if (!settingsForm || !puedeAdministrar()) return;
   const s = state.settings || {};
-  settingsForm.elements.nombreAsociacion.value = s.nombreAsociacion || "";
   settingsForm.elements.emailContacto.value = s.emailContacto || "";
   settingsForm.elements.telefonoContacto.value = s.telefonoContacto || "";
   settingsForm.elements.otpExpiraMinutos.value = s.otpExpiraMinutos ?? 10;
@@ -591,6 +595,8 @@ function renderSettings() {
   settingsForm.elements.marcaColorPrimario.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorPrimario || "") ? marca.colorPrimario : "#11273e";
   settingsForm.elements.marcaColorAcento.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorAcento || "") ? marca.colorAcento : "#198b84";
   settingsForm.elements.marcaLogo.value = "";
+  const textos = textosDe(s);
+  settingsForm.querySelectorAll("[data-texto]").forEach(el => { el.value = textos[el.dataset.texto] ?? ""; });
   const preview = document.querySelector("#marca-logo-preview");
   if (preview) {
     preview.hidden = !marca.logoDataUrl;
@@ -626,11 +632,11 @@ settingsForm?.addEventListener("submit", async event => {
   event.preventDefault();
   if (!requirePermission("admin:settings")) return;
   const data = {
-    nombreAsociacion: settingsForm.elements.nombreAsociacion.value.trim(),
     emailContacto: settingsForm.elements.emailContacto.value.trim(),
     telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
     otpExpiraMinutos: Number(settingsForm.elements.otpExpiraMinutos.value) || 10,
     otpReenvioSegundos: Number(settingsForm.elements.otpReenvioSegundos.value) || 60,
+    textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => { acc[el.dataset.texto] = el.value; return acc; }, {}),
     documentosMaxSizeMb: Number(settingsForm.elements.documentosMaxSizeMb.value) || 15,
     monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
     diasAvisoVencimientoContrato: Number(settingsForm.elements.diasAvisoVencimientoContrato.value) || 30,

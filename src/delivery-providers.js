@@ -247,6 +247,7 @@ export async function sendMessage(
   to,
   message,
   config = providers(false),
+  asunto = "",
 ) {
   const s = config[channel === "email" ? "smtp" : channel];
   if (!s?.enabled) throw problem("El proveedor está desactivado.", 503);
@@ -263,6 +264,7 @@ export async function sendMessage(
         body: JSON.stringify({
           sender: { name: s.fromName || "Comunidad", email: s.from },
           to: [{ email: to }],
+          subject: asunto || "Nueva comunicación de tu comunidad",
           textContent: message,
         }),
         signal: AbortSignal.timeout(15000),
@@ -281,7 +283,7 @@ export async function sendMessage(
       const result = await transport.sendMail({
         from: { name: s.fromName, address: s.from },
         to,
-        subject: "Nueva comunicación de tu comunidad",
+        subject: asunto || "Nueva comunicación de tu comunidad",
         text: message,
       });
       if (!result.accepted?.length)

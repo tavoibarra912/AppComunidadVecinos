@@ -1,4 +1,4 @@
-import { db } from "./db.js";
+import { db, getSettings } from "./db.js";
 import {
   materialize,
   postById,
@@ -7,6 +7,7 @@ import {
 } from "./communication-store.js";
 import { sendMessage, destination } from "./delivery-providers.js";
 import { processRecoveryMail, recoverInterruptedMail } from "./password-recovery.js";
+import { textosActuales, aplicarPlantilla, nombrePlataforma } from "./textos-envio.js";
 
 let running = false;
 export async function processCommunications(send = sendMessage) {
@@ -57,18 +58,32 @@ export async function processCommunications(send = sendMessage) {
           if (!to) error = "El destinatario no habilitó este canal.";
           else {
             // No se incluye contenido privado en SMS/WhatsApp ni enlaces configurables.
-            const labels = {
-              publication: "Nueva publicación",
-              updated: "Publicación actualizada",
-              cancelled: "Publicación cancelada",
-              reminder: "Recordatorio",
-              minutes: "Acta disponible",
+            const textos = textosActuales();
+            const comunidad = db.prepare("SELECT name FROM communities WHERE id=?").get(post.communityId)?.name || "";
+            const valores = {
+              titulo: post.title,
+              texto: post.body,
+              plataforma: nombrePlataforma(),
+              comunidad,
+              fecha: post.startsAt ? new Date(post.startsAt).toLocaleString("es-ES") : "",
             };
-            providerId = await send(
-              item.channel,
-              to,
-              `${labels[item.kind] || "Comunicación"}: ${post.title}. Ingresá en Peñarrubia y abrí Comunicación para consultar los detalles.`,
-            );
+            let texto;
+            let asunto;
+            if (item.kind === "reminder") {
+              texto = aplicarPlantilla(textos.recordatorioTexto, valores);
+              asunto = aplicarPlantilla(textos.emailRecordatorioAsunto, valores);
+            } else if (item.channel === "email") {
+              asunto = aplicarPlantilla(textos.emailAvisoAsunto, valores);
+              texto = aplicarPlantilla(textos.emailAvisoCuerpo, valores);
+            } else if (item.channel === "whatsapp") {
+              texto = aplicarPlantilla(textos.whatsappAviso, valores);
+            } else {
+              texto = aplicarPlantilla(textos.smsAviso, valores);
+            }
+            if (item.kind === "updated") texto = `Actualización. ${texto}`;
+            if (item.kind === "cancelled") texto = `Cancelado. ${texto}`;
+            if (item.kind === "minutes") texto = `Acta disponible. ${texto}`;
+            providerId = await send(item.channel, to, texto, undefined, asunto);
             state = "accepted";
           }
         }
