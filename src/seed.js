@@ -476,7 +476,6 @@ export function seedCommunicationsDemo() {
 export function seedDemoComunidades() {
   if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test") return false;
   if (db.prepare("SELECT COUNT(*) AS total FROM communities WHERE id LIKE 'com-demo-%'").get().total > 0) return false;
-  if (!listCommunities().some(c => c.id === "com-seed-1")) return false;
 
   const HORA = 3600000, DIA = 24 * HORA;
   const ahora = Date.now();
