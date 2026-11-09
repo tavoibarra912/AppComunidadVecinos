@@ -557,3 +557,51 @@
     font-size: 24px;
   }
 }
+
+/* Detalle de publicación: legibilidad y badges por estado */
+.comm-dialog-body {
+  max-height: calc(90dvh - 76px);
+  overflow-y: auto;
+}
+
+.comm-dialog .comm-body-text {
+  font-size: 15px;
+}
+
+.comm-dialog h3 {
+  margin: 24px 0 10px;
+  font-size: 15px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.comm-detail-meta {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.comm-tag-type {
+  background: #e7f4f1;
+  color: var(--brand-dark);
+  border-color: #bfdedb;
+  font-weight: 700;
+}
+
+.comm-tag-comunidad {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comm-tag-phase-active { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.comm-tag-phase-upcoming { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+.comm-tag-phase-scheduled { background: #ede9fe; color: #6d28d9; border-color: #c4b5fd; }
+.comm-tag-phase-finished { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
+.comm-tag-phase-archived { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+.comm-tag-phase-cancelled { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.comm-tag-phase-draft { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+
+.comm-dialog [data-edit-post] {
+  margin-left: auto;
+}

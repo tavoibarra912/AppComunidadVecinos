@@ -4357,3 +4357,32 @@ dialog.is-readonly .doc-file-actions .btn-doc-action.danger {
   background: #ffffff22;
   color: #fff;
 }
+
+/* Buzón «Mis Avisos y Notificaciones» */
+.inbox-modal-content {
+  max-width: 700px;
+}
+
+.inbox-list {
+  max-height: 60vh;
+}
+
+.inbox-vacio {
+  color: var(--muted, #607081);
+  text-align: center;
+  padding: 24px 0;
+}
+
+.notif-card-title {
+  font-size: 14.5px;
+}
+
+.notif-card-date {
+  font-size: 12px;
+  color: var(--muted, #607081);
+}
+
+.notif-card-message {
+  font-size: 13.5px;
+  line-height: 1.55;
+}

@@ -181,8 +181,15 @@ export function renderOwnerInbox() {
   const notifications = state.ownerNotifications.filter(
     (n) => n.ownerId === getCurrentOwnerProfileId(),
   );
+  const sinLeer = notifications.filter((n) => !n.read).length;
+  const titulo = document.querySelector("#owner-inbox-title");
+  if (titulo)
+    titulo.textContent = sinLeer
+      ? `Mis Avisos y Notificaciones (${sinLeer} sin leer)`
+      : "Mis Avisos y Notificaciones";
   if (!notifications.length) {
     const p = document.createElement("p");
+    p.className = "inbox-vacio";
     p.textContent = "No tenés avisos en tu buzón.";
     ownerInboxList.append(p);
     return;
