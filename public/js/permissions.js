@@ -22,6 +22,7 @@ export const PERMISSIONS = [
   "audit:read",
   "admin:users",
   "admin:roles",
+  "comm:participacion",
   "admin:settings",
   "admin:providers",
   "admin_notification:read",
@@ -76,6 +77,8 @@ export function can(user, permission, resourceId = "", data) {
         return resourceId
           ? ownOwners.includes(resourceId)
           : ownOwners.length > 0;
+      case "comm:participacion":
+        return resourceId ? ownCommunities.has(resourceId) : ownCommunities.size > 0;
       case "property:read":
         return resourceId
           ? ownedProperties.some((p) => p.id === resourceId) ||
@@ -148,6 +151,7 @@ const ETIQUETAS_PERMISO = {
   "admin:roles": "administrar roles",
   "admin:settings": "administrar la configuración",
   "admin:providers": "configurar proveedores de comunicación",
+  "comm:participacion": "participar en Comunicación (comentar, votar y confirmar)",
   "admin_notification:read": "ver el buzón del administrador",
   "owner_notification:read": "ver el buzón de avisos",
 };

@@ -267,7 +267,15 @@ router.post(
 );
 router.get(
   "/posts/:id",
-  route((req, res) => res.json(detail(find(req), req.user))),
+  route((req, res) => {
+    const d = detail(find(req), req.user);
+    if (!allowed(req.user, "comm:participacion", d.communityId, policyData())) {
+      // Sin participación: no expone comentarios ni consultas (no red social).
+      d.comments = [];
+      d.poll = null;
+    }
+    res.json(d);
+  }),
 );
 router.put(
   "/posts/:id",
@@ -338,6 +346,8 @@ router.post(
   route((req, res) => {
     const p = find(req);
     mutable(p);
+    if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
+      throw problem("No tenés permiso para participar en Comunicación (comentar).", 403);
     if (!p.commentsEnabled)
       throw problem("Los comentarios están desactivados.", 409);
     const body = req.body?.body;
@@ -387,6 +397,8 @@ router.post(
   "/posts/:id/ballot",
   route((req, res) => {
     const p = find(req);
+    if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
+      throw problem("No tenés permiso para participar en Comunicación (votar).", 403);
     if (!mayVote(req.user, p))
       throw problem("No pertenecés al grupo habilitado para responder.", 403);
     if (!pollOpen(p)) throw problem("La consulta está cerrada.", 409);
@@ -422,6 +434,8 @@ router.post(
   "/posts/:id/rsvp",
   route((req, res) => {
     const p = find(req);
+    if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
+      throw problem("No tenés permiso para participar en Comunicación (confirmar asistencia).", 403);
     mutable(p);
     if (p.type !== "meeting" || Date.now() >= Date.parse(p.endsAt))
       throw problem("La reunión no admite confirmaciones.", 409);

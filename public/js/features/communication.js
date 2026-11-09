@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { state } from "../state.js";
+import { state, hasPermission } from "../state.js";
 import { escapeHtml as h } from "../html.js";
 import { toast, fieldLabel, mensajeDeValidez } from "../utils.js";
 
@@ -761,16 +761,26 @@ function meetingView(p) {
     accepted: "Asistiré",
     declined: "No asistiré",
   };
-  return `<p><strong>Lugar:</strong> ${h(p.meeting.location || "Reunión en línea")}</p>${p.meeting.url ? `<p><a href="${h(p.meeting.url)}" target="_blank" rel="noopener noreferrer">Abrir videollamada</a></p>` : ""}<h3>Orden del día</h3><p class="comm-body-text">${h(p.meeting.agenda)}</p>${p.recipient ? `<div class="comm-callout"><h3>Tu participación: ${rsvp[p.recipient.rsvp]}</h3><div class="comm-actions"><button type="button" class="secondary-button" data-rsvp="accepted">Asistiré</button><button type="button" class="secondary-button" data-rsvp="declined">No asistiré</button><button type="button" class="secondary-button" data-rsvp="pending">Decidir después</button></div></div>` : ""}${p.canManage ? `<h3>Participantes y asistencia real</h3><p class="comm-muted">La invitación y la asistencia registrada se conservan por separado.</p><ul class="comm-participants">${p.recipients.map((r) => `<li><span>${h(r.name)} · ${rsvp[r.rsvp]}</span><label class="comm-check"><input type="checkbox" data-attendance="${h(r.userId)}" ${r.attended ? "checked" : ""}>Asistió</label></li>`).join("") || "<li>No hay cuentas invitadas todavía.</li>"}</ul>` : ""}<h3>Acuerdos y tareas</h3>${p.meeting.tasks.length ? `<ul class="comm-tasks">${p.meeting.tasks.map((t) => `<li><strong>${t.done ? "Realizada" : "Pendiente"} · ${h(t.title)}</strong><span>${h(t.responsible || "Sin responsable")}${t.dueAt ? ` · ${h(date(t.dueAt))}` : ""}</span></li>`).join("")}</ul>` : '<p class="comm-muted">Todavía no se registraron acuerdos o tareas.</p>'}<h3>Actas y versiones</h3>${filesView(p, "minutes")}${p.canManage ? uploadForm("minutes") : ""}`;
+  return `<p><strong>Lugar:</strong> ${h(p.meeting.location || "Reunión en línea")}</p>${p.meeting.url ? `<p><a href="${h(p.meeting.url)}" target="_blank" rel="noopener noreferrer">Abrir videollamada</a></p>` : ""}<h3>Orden del día</h3><p class="comm-body-text">${h(p.meeting.agenda)}</p>${p.recipient && puedeParticipar(p) ? `<div class="comm-callout"><h3>Tu participación: ${rsvp[p.recipient.rsvp]}</h3><div class="comm-actions"><button type="button" class="secondary-button" data-rsvp="accepted">Asistiré</button><button type="button" class="secondary-button" data-rsvp="declined">No asistiré</button><button type="button" class="secondary-button" data-rsvp="pending">Decidir después</button></div></div>` : ""}${p.canManage ? `<h3>Participantes y asistencia real</h3><p class="comm-muted">La invitación y la asistencia registrada se conservan por separado.</p><ul class="comm-participants">${p.recipients.map((r) => `<li><span>${h(r.name)} · ${rsvp[r.rsvp]}</span><label class="comm-check"><input type="checkbox" data-attendance="${h(r.userId)}" ${r.attended ? "checked" : ""}>Asistió</label></li>`).join("") || "<li>No hay cuentas invitadas todavía.</li>"}</ul>` : ""}<h3>Acuerdos y tareas</h3>${p.meeting.tasks.length ? `<ul class="comm-tasks">${p.meeting.tasks.map((t) => `<li><strong>${t.done ? "Realizada" : "Pendiente"} · ${h(t.title)}</strong><span>${h(t.responsible || "Sin responsable")}${t.dueAt ? ` · ${h(date(t.dueAt))}` : ""}</span></li>`).join("")}</ul>` : '<p class="comm-muted">Todavía no se registraron acuerdos o tareas.</p>'}<h3>Actas y versiones</h3>${filesView(p, "minutes")}${p.canManage ? uploadForm("minutes") : ""}`;
 }
+/** La parte social (comentar/votar/confirmar) se controla con
+ * el permiso comm:participacion de cada rol. */
+function puedeParticipar(p) {
+  return hasPermission("comm:participacion", p.communityId);
+}
+
 function participationView(p) {
   const interactive = !["draft", "scheduled", "cancelled", "archived"].includes(
     p.phase,
   );
+  // La parte social (encuestas y comentarios con nombre) se controla con el
+  // permiso comm:participacion; sin él la publicación es solo informativa.
+  const participa = puedeParticipar(p);
   let poll = "";
   if (p.poll) {
     poll = `<section class="comm-poll"><p class="eyebrow">${p.poll.type === "vote" ? "VOTACIÓN" : "ENCUESTA"}</p><h3>${h(p.poll.question)}</h3><p class="comm-muted">Cierre: ${h(date(p.poll.closesAt))} · ${p.poll.electorate === "owners" ? "Propietarios destinatarios" : "Todos los destinatarios"} · Una respuesta por cuenta.</p>${p.ballot.length ? `<p class="comm-callout">Tu respuesta quedó registrada: ${p.ballot.map((i) => h(p.poll.options[i])).join(", ")}.</p>` : p.pollOpen && p.canVote ? `<form id="comm-ballot">${p.poll.options.map((o, i) => `<label class="comm-check"><input type="${p.poll.multiple ? "checkbox" : "radio"}" name="choice" value="${i}">${h(o)}</label>`).join("")}<button class="primary-button" type="submit">Confirmar respuesta</button></form>` : `<p>${p.pollOpen ? "Tu cuenta no pertenece al electorado de esta consulta." : "La consulta no está abierta."}</p>`}${p.pollResults ? `<h4>Resultados · ${p.pollResults.total} respuestas</h4>${p.poll.options.map((o, i) => `<div class="comm-result"><span>${h(o)}</span><progress max="${Math.max(1, p.pollResults.total)}" value="${p.pollResults.counts[i]}"></progress><strong>${p.pollResults.counts[i]}</strong></div>`).join("")}` : '<p class="comm-muted">Los resultados se mostrarán al cerrar la consulta.</p>'}</section>`;
   }
+  if (!participa) return '<p class="comm-muted">La participación (comentarios y consultas) no está habilitada para tu rol.</p>';
   return `${poll}<h3>Comentarios</h3>${p.comments.length ? `<div class="comm-comments">${p.comments.map((c) => `<article><div class="comm-card-meta"><strong>${h(c.author)}</strong><span>${h(date(c.createdAt))}</span>${c.canDelete ? `<button type="button" class="text-link-button" data-delete-comment="${h(c.id)}">Eliminar</button>` : ""}</div><p class="comm-body-text">${h(c.body)}</p></article>`).join("")}</div>` : '<p class="comm-muted">Todavía no hay comentarios.</p>'}${p.commentsEnabled && interactive ? '<form id="comm-comment"><label>Tu comentario<textarea name="comment" rows="3" required maxlength="3000"></textarea></label><button type="submit" class="primary-button">Publicar comentario</button></form>' : `<p class="comm-muted">${p.commentsEnabled ? "Esta publicación no admite nuevas respuestas por su estado." : "Los comentarios están desactivados."}</p>`}`;
 }
 function trackingView(p) {

@@ -318,6 +318,44 @@ test("lectura y confirmación se registran por destinatario y por separado", asy
     "",
   );
 });
+test("comm:participacion: sin el permiso no se comenta ni vota", async () => {
+  // Quitar el permiso al rol user: comentarios y votos pasan a 403.
+  const roles = (await admin("/admin/roles")).data;
+  const rolUser = roles.find((r) => r.nombre === "user");
+  const originales = rolUser.permisos;
+  await admin(`/admin/roles/${rolUser.id}`, "PUT", {
+    nombre: rolUser.nombre,
+    permisos: originales.filter((p) => p !== "comm:participacion"),
+  });
+  const p = await create();
+  assert.equal(
+    (
+      await owner(`/communications/posts/${p.id}/comments`, "POST", {
+        body: "sin permiso",
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await owner(`/communications/posts/${p.id}/ballot`, "POST", { choices: [0] }))
+      .status,
+    403,
+  );
+  // Restaurar el permiso: vuelve a funcionar.
+  await admin(`/admin/roles/${rolUser.id}`, "PUT", {
+    nombre: rolUser.nombre,
+    permisos: originales,
+  });
+  assert.equal(
+    (
+      await owner(`/communications/posts/${p.id}/comments`, "POST", {
+        body: "con permiso restaurado",
+      })
+    ).status,
+    201,
+  );
+});
+
 test("comentarios: texto literal, eliminación propia o moderación y bloqueo por estado", async () => {
   const p = await create();
   assert.equal(

@@ -233,9 +233,9 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
   db.exec("DELETE FROM roles");
   const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
   insertRole.run("rol-super-admin", "super_admin", "Super administrador: acceso total a la plataforma. Además de gestionar comunidades, propietarios, inmuebles, inquilinos y documentación, administra usuarios, roles, la configuración general, los proveedores de envío (email/SMS/WhatsApp) y la auditoría. Es el único rol que puede crear comunidades nuevas.", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:read", "document:approve", "document:delete", "community:delete", "owner:delete", "property:delete", "tenant:delete", "reports:read", "audit:read", "admin:users", "admin:roles", "admin:settings", "admin:providers", "admin_notification:read", "owner_notification:read"]), 1);
-  insertRole.run("rol-admin-general", "administrator", "Administrador general: crea comunidades y administra todo su contenido — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No gestiona usuarios, roles, configuración general ni proveedores de la plataforma.", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "admin_notification:read"]), 1);
-  insertRole.run("rol-admin-comunidad", "community_admin", "Administrador de comunidad: gestiona únicamente la comunidad que tiene asignada — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No puede crear comunidades ni acceder a la configuración de la plataforma.", JSON.stringify(["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve"]), 1);
-  insertRole.run("rol-usuario", "user", "Vecino (propietario o inquilino): solo puede ver y administrar su propio perfil, sus inmuebles, documentos y notificaciones. No accede a datos de otros vecinos ni de otras comunidades.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "owner_notification:read"]), 1);
+  insertRole.run("rol-admin-general", "administrator", "Administrador general: crea comunidades y administra todo su contenido — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No gestiona usuarios, roles, configuración general ni proveedores de la plataforma.", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "owner:delete", "comm:participacion", "admin_notification:read"]), 1);
+  insertRole.run("rol-admin-comunidad", "community_admin", "Administrador de comunidad: gestiona únicamente la comunidad que tiene asignada — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No puede crear comunidades ni acceder a la configuración de la plataforma.", JSON.stringify(["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:approve", "comm:participacion"]), 1);
+  insertRole.run("rol-usuario", "user", "Vecino (propietario o inquilino): solo puede ver y administrar su propio perfil, sus inmuebles, documentos y notificaciones. No accede a datos de otros vecinos ni de otras comunidades.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "comm:participacion", "owner_notification:read"]), 1);
   // Migrar usuarios del set viejo
   db.prepare("UPDATE users SET rol = 'super_admin' WHERE rol IN ('administrador', 'rol-admin')").run();
   db.prepare("UPDATE users SET rol = 'user' WHERE rol NOT IN ('super_admin', 'administrator', 'community_admin', 'user')").run();
@@ -292,6 +292,22 @@ if (superRole) {
   const faltantes = ["audit:read", "admin:providers"].filter(p => !lista.includes(p));
   if (faltantes.length) {
     db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify([...lista, ...faltantes]), superRole.id);
+  }
+}
+
+// Backfill de permisos nuevos para roles del sistema (idempotente).
+const backfillPermisos = {
+  administrator: ["owner:delete", "comm:participacion"],
+  community_admin: ["comm:participacion"],
+  user: ["comm:participacion"],
+};
+for (const [nombre, faltantes] of Object.entries(backfillPermisos)) {
+  const rol = db.prepare("SELECT id, permisos FROM roles WHERE nombre = ?").get(nombre);
+  if (!rol) continue;
+  const lista = JSON.parse(rol.permisos || "[]");
+  const agregar = faltantes.filter(p => !lista.includes(p));
+  if (agregar.length) {
+    db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify([...lista, ...agregar]), rol.id);
   }
 }
 
