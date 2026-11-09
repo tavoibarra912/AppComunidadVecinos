@@ -590,6 +590,7 @@ function renderSettings() {
   settingsForm.elements.diasAvisoVencimientoContrato.value = s.diasAvisoVencimientoContrato ?? 30;
   settingsForm.elements.filasPorPagina.value = s.filasPorPagina ?? 10;
   settingsForm.elements.mantenimiento.checked = !!s.mantenimiento;
+  settingsForm.elements.avisosCambiosEmail.value = s.avisosCambiosEmail || "";
   const marca = s.marca || {};
   settingsForm.elements.marcaNombre.value = marca.nombre || "Peñarrubia";
   settingsForm.elements.marcaColorPrimario.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorPrimario || "") ? marca.colorPrimario : "#11273e";
@@ -637,6 +638,7 @@ settingsForm?.addEventListener("submit", async event => {
     otpExpiraMinutos: Number(settingsForm.elements.otpExpiraMinutos.value) || 10,
     otpReenvioSegundos: Number(settingsForm.elements.otpReenvioSegundos.value) || 60,
     textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => { acc[el.dataset.texto] = el.value; return acc; }, {}),
+    avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
     documentosMaxSizeMb: Number(settingsForm.elements.documentosMaxSizeMb.value) || 15,
     monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
     diasAvisoVencimientoContrato: Number(settingsForm.elements.diasAvisoVencimientoContrato.value) || 30,

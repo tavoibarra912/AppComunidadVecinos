@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { db, ownerFromRow } from "../db.js";
 import { applyOwnerPropertyLink, syncOwnerProperties, rebuildOwnersPropertyIds } from "../domain.js";
 import { contactError } from "../validation.js";
+import { avisarCambioOwner } from "../avisos-cambios.js";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -108,7 +109,13 @@ router.put("/:id", (req, res) => {
     throw error;
   }
 
-  res.json(findOwner(existing.id));
+  const actualizado = findOwner(existing.id);
+  // Aviso por email de los cambios (configurable; no bloquea el guardado).
+  avisarCambioOwner(existing, actualizado, req.user).catch(error =>
+    console.error("[avisos] error notificando cambios de propietario:", error.message),
+  );
+
+  res.json(actualizado);
 });
 
 router.delete("/:id", (req, res) => {

@@ -11,6 +11,8 @@ export const TEXTOS_DEFECTO = {
   emailRecuperacionAsunto: "Recuperar tu contraseña de {{plataforma}}",
   emailRecuperacionTexto: "Solicitaste recuperar tu contraseña de {{plataforma}}. Abrí este enlace (válido durante 30 minutos y para un solo uso):\n\n{{enlace}}\n\nSi no lo solicitaste, ignorá este correo. Tu contraseña no cambió.",
   pruebaTexto: "Mensaje de prueba de la configuración de envíos de {{plataforma}}.",
+  cambioAsunto: "Cambio en {{perfil}} — {{plataforma}}",
+  cambioCuerpo: "El usuario {{usuario}} actualizó el perfil de {{perfil}} ({{comunidad}}) el {{fecha}}.\n\nCambios realizados:\n{{cambios}}\n\n— {{plataforma}}",
 };
 
 export function textosDe(ajustes) {

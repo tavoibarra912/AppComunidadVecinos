@@ -45,6 +45,15 @@ Permisos destacados configurables por rol (Administración → Roles):
   las publicaciones de forma informativa (sin la parte social). `super_admin`
   siempre participa.
 
+**Avisos por email de cambios de perfiles**: en Configuración → General, la
+clave *Email(s) para avisar cambios de perfiles* acepta una o varias
+direcciones separadas por comas (vacío = desactivado). Cada vez que un
+propietario se edita, la plataforma envía un correo con quién lo modificó y
+el detalle campo por campo. El envío usa el correo habilitado en Proveedores
+de comunicación, y los asuntos/cuerpos se personalizan en Textos de envío
+(placeholders `{{perfil}}`, `{{usuario}}`, `{{comunidad}}`, `{{cambios}}`,
+`{{fecha}}`, `{{plataforma}}`).
+
 La base de datos se crea en `data/penarrubia.db` y los archivos subidos en `uploads/` (ambos ignorados por git).
 
 ## Estructura del proyecto

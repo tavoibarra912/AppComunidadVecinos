@@ -666,10 +666,11 @@ export function getSettings() {
     telefonoContacto: "600000000",
     otpExpiraMinutos: 10,
     otpReenvioSegundos: 60,
-    notificacionesEmail: true
+    notificacionesEmail: true,
+    avisosCambiosEmail: ""
   };
   const saved = parseJson(row?.data, null);
-  return saved ? { ...saved, marca: { ...DEFAULT_BRAND, ...(saved.marca || {}) } } : { ...defaults, marca: { ...DEFAULT_BRAND } };
+  return saved ? { ...defaults, ...saved, marca: { ...DEFAULT_BRAND, ...(saved.marca || {}) } } : { ...defaults, marca: { ...DEFAULT_BRAND } };
 }
 
 export function listDocuments(entityType, entityId) {

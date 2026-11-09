@@ -572,7 +572,12 @@
               <label>Reenvío permitido cada (segundos) (opcional)
                 <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
               </label>
-              <p class="form-section-title full">Documentos</p>
+              <p class="form-section-title full">Notificaciones de cambios</p>
+              <label class="full">Email(s) para avisar cambios de perfiles (opcional)
+                <input name="avisosCambiosEmail" maxlength="300" placeholder="asociacionpenarubia@gmail.com, otra@gmail.com" />
+              </label>
+              <p class="form-intro full">Separá varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Requiere tildar «Habilitar correo electrónico».</p>
+              <p class="form-section-title full">Documentos</p><p class="form-section-title full">Documentos</p>
               <label>Tamaño máximo por documento (MB) (opcional)
                 <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
               </label>
@@ -643,6 +648,12 @@
                 </label>
                 <label class="full">Texto del recordatorio (SMS/WhatsApp/email)
                   <textarea name="texto_recordatorioTexto" data-texto="recordatorioTexto" rows="2" maxlength="1000"></textarea>
+                </label>
+                <label class="full">Asunto del email de cambio de perfiles
+                  <input name="texto_cambioAsunto" data-texto="cambioAsunto" maxlength="200" />
+                </label>
+                <label class="full">Cuerpo del email de cambio de perfiles
+                  <textarea name="texto_cambioCuerpo" data-texto="cambioCuerpo" rows="4" maxlength="5000"></textarea>
                 </label>
                 <label class="full">Asunto del email de recuperación de contraseña
                   <input name="texto_emailRecuperacionAsunto" data-texto="emailRecuperacionAsunto" maxlength="200" />
