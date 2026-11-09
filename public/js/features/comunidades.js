@@ -12,6 +12,7 @@ let editingCommunityId = null;
 let deletingCommunityId = null;
 let communityTable = null;
 let pendingCommunityFiles = [];
+let communityReadonly = false;
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
@@ -88,6 +89,27 @@ const communityForm = document.querySelector("#community-form");
 const communityDialog = document.querySelector("#community-dialog");
 const communityDeleteDialog = document.querySelector("#delete-dialog");
 const communityError = document.querySelector("#form-error");
+function applyCommunityReadonly() {
+  if (!communityReadonly) return;
+  communityForm.querySelectorAll("input,select,textarea,button,a,[tabindex],[role=combobox],[role=button]").forEach(element => {
+    const allowed = element.matches("button[data-community-tab],#close-dialog") || (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
+    if (!allowed && "disabled" in element && !element.disabled) { if (element.matches("button")) element.dataset.communityReadonlyDisabled = "true"; element.disabled = true; }
+    if (!allowed && !("disabled" in element)) {
+      if (!element.dataset.communityReadonlyProxy) element.dataset.communityReadonlyProxy = JSON.stringify({ tabindex: element.getAttribute("tabindex"), ariaDisabled: element.getAttribute("aria-disabled"), href: element.getAttribute("href") });
+      element.tabIndex = -1;
+      element.setAttribute("aria-disabled", "true");
+      if (element.matches("a")) element.removeAttribute("href");
+    }
+  });
+}
+new MutationObserver(applyCommunityReadonly).observe(communityForm, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
+communityForm.addEventListener("click", event => {
+  if (!communityReadonly) return;
+  const allowed = event.target.closest('button[data-community-tab],#close-dialog,#community-tab-docs [data-action="view"]');
+  if (!allowed) {
+    event.preventDefault(); event.stopImmediatePropagation();
+  }
+}, true);
 
 const communityDetailDialog = document.querySelector("#detail-dialog");
 const closeDetailDialog = document.querySelector("#close-detail-dialog");
@@ -198,6 +220,16 @@ export function renderCommunities() {
 export function openCommunityEditor(id = null, defaultTab = "details", readonly = false) {
   if (!requirePermission(id ? (readonly ? "community:read" : "community:manage") : "community:create", id || "")) return;
   editingCommunityId = id;
+  communityReadonly = readonly;
+  // Los controles dinámicos de una apertura anterior también recuperan su estado.
+  communityForm.querySelectorAll("button[data-community-readonly-disabled]").forEach(button => { button.disabled = false; delete button.dataset.communityReadonlyDisabled; });
+  communityForm.querySelectorAll("[data-community-readonly-proxy]").forEach(element => {
+    const previous = JSON.parse(element.dataset.communityReadonlyProxy);
+    for (const [key, attr] of [["tabindex", "tabindex"], ["ariaDisabled", "aria-disabled"], ["href", "href"]]) {
+      if (previous[key] === null) element.removeAttribute(attr); else element.setAttribute(attr, previous[key]);
+    }
+    delete element.dataset.communityReadonlyProxy;
+  });
   communityForm.reset();
   communityError.textContent = "";
   pendingCommunityFiles = [];
@@ -206,6 +238,10 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   communitySetVerifyStatus("phone", "pending", "Pendiente de verificación");
   communitySetVerifyStatus("email", "pending", "Pendiente de verificación");
   const c = state.communities.find(item => item.id === id);
+  const yearSelect = communityForm.elements.constitutionYear;
+  yearSelect.replaceChildren(new Option("Sin especificar", ""));
+  for (let year = new Date().getFullYear(); year >= 1000; year--) yearSelect.add(new Option(String(year), String(year)));
+  if (c?.constitutionYear && ![...yearSelect.options].some(o => o.value === String(c.constitutionYear))) yearSelect.add(new Option(`Revisar: ${c.constitutionYear}`, c.constitutionYear));
   document.querySelector("#dialog-title").textContent = c ? (readonly ? "Ver comunidad" : "Editar comunidad") : "Nueva comunidad";
 
   switchCommunityEditorTab(defaultTab);
@@ -232,6 +268,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   renderCommunityDocumentList(c);
   populateCommunityCurrencySelect(c?.currency || "EUR");
   updateCommunityAdminSelect(c?.adminUserId || "");
+  applyCommunityReadonly();
   armarGuardia(communityForm, communityDialog);
   communityDialog.showModal();
   if (!readonly) communityForm.elements.name.focus();
@@ -290,6 +327,8 @@ function renderCommunityEditorProperties(c) {
       .join(", ");
     sub.textContent = `Propietario(s): ${propOwners || "Sin propietario"} · ${prop.address || ""}`;
     info.append(title, sub);
+
+    if (communityReadonly) { card.append(info); listEl.append(card); return; }
 
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
@@ -677,7 +716,7 @@ export function openCommunityDetail(id) {
   if (detailItemPhone) detailItemPhone.style.display = isOwner ? "none" : "";
   if (detailItemOtherPhone) detailItemOtherPhone.style.display = isOwner ? "none" : "";
   if (detailItemEmail) detailItemEmail.style.display = isOwner ? "none" : "";
-  if (detailEditBtn) detailEditBtn.style.display = isOwner ? "none" : "";
+  if (detailEditBtn) detailEditBtn.hidden = true;
 
   communityDetailDialog.showModal();
 }
@@ -772,14 +811,7 @@ export function renderCommunityPropertiesSection(c) {
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
-    const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${prop.plot}`, ICON_VIEW_SM);
-    viewBtn.addEventListener("click", () => {
-      communityDetailDialog.close();
-      openPropertyDetail(prop.id);
-    });
-
-    actions.append(viewBtn);
-    card.append(info, actions);
+    card.append(info);
     propListEl.append(card);
   });
 }
@@ -821,6 +853,8 @@ export function validateCommunityFields() {
   otherPhoneInput.setCustomValidity(!otherPhone || /^\d{9}$/.test(otherPhone) ? "" : "El teléfono secundario debe contener 9 dígitos numéricos.");
   emailInput.setCustomValidity(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "" : "Introduce una dirección de email válida.");
   postalCodeInput.setCustomValidity(/^\d{5}$/.test(postalCode) && isValidPostalCode(postalCode) ? "" : "El código postal debe contener 5 dígitos y corresponder a un código postal de España.");
+  const year = communityForm.elements.constitutionYear;
+  year.setCustomValidity(!year.value || /^\d{4}$/.test(year.value) && Number(year.value) >= 1000 && Number(year.value) <= new Date().getFullYear() ? "" : "Seleccioná un año de constitución válido.");
 }
 
 communityForm.addEventListener("submit", async event => {
@@ -842,6 +876,7 @@ communityForm.addEventListener("submit", async event => {
  * Devuelve el id si tuvo éxito; null si hubo errores de validación.
  */
 async function persistCommunityDraft() {
+  if (communityReadonly) return null;
   validateCommunityFields();
 
   const citySelect = communityForm.elements.city;
@@ -955,9 +990,20 @@ comCitySelect.addEventListener("change", () => {
 communityForm.elements.iban.addEventListener("input", () => {
   maskIbanField(communityForm.elements.iban);
 });
+const reserveFundInput = communityForm.elements.reserveFund;
+reserveFundInput.addEventListener("keydown", event => { if (["e", "E", "+", "-"].includes(event.key)) event.preventDefault(); });
+reserveFundInput.addEventListener("beforeinput", event => { if (event.data && /[^\d.,]/.test(event.data)) event.preventDefault(); });
+reserveFundInput.addEventListener("paste", event => {
+  event.preventDefault();
+  if (communityReadonly) return;
+  const value = event.clipboardData.getData("text").trim();
+  if (!/^\d{1,12}([.,]\d{1,2})?$/.test(value)) { toast("El fondo de reserva solo admite números y hasta dos decimales."); return; }
+  reserveFundInput.value = value.replace(",", ".");
+  reserveFundInput.dispatchEvent(new Event("input", { bubbles: true }));
+});
 
 document.querySelector("#new-community").addEventListener("click", () => openCommunityEditor());
-document.querySelector("#close-dialog").addEventListener("click", () => intentarCerrar(communityForm, communityDialog));
+document.querySelector("#close-dialog").addEventListener("click", () => communityReadonly ? closeCommunityEditor() : intentarCerrar(communityForm, communityDialog));
 document.querySelector("#cancel-dialog").addEventListener("click", () => intentarCerrar(communityForm, communityDialog));
 
 closeDetailDialog.addEventListener("click", closeCommunityDetail);

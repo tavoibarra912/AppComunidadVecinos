@@ -41,6 +41,19 @@ let metadata = null,
   view = "board",
   loading = null,
   session = null;
+let postsLoadedAt = null;
+export function getCommunicationSnapshot() {
+  return session === state.currentUserId && postsLoadedAt
+    ? { posts: [...posts], loadedAt: postsLoadedAt }
+    : null;
+}
+export function openCommunicationPost(id) {
+  return openPost(id);
+}
+export async function openCommunicationComposer() {
+  await refreshCommunication();
+  if (metadata?.communities.some((c) => c.canManage)) openEditor();
+}
 let currentPost = null,
   detailTab = "publication",
   editorPost = null,
@@ -105,6 +118,7 @@ function updateBadge() {
     el.textContent = count;
     el.hidden = count === 0;
   }
+  window.dispatchEvent(new Event("communications:updated"));
 }
 export async function refreshCommunication() {
   if (!state.currentUserId) return;
@@ -116,6 +130,7 @@ export async function refreshCommunication() {
       metadata = meta;
       posts = result;
       session = id;
+      postsLoadedAt = new Date().toISOString();
       updateBadge();
       $("#comm-new").hidden = !meta.communities.some((c) => c.canManage);
       const select = $("#comm-community"),
@@ -133,6 +148,7 @@ export function renderCommunication() {
   if (session !== state.currentUserId) {
     metadata = null;
     posts = [];
+    postsLoadedAt = null;
     session = state.currentUserId;
   }
   if (!metadata) $("#comm-status").textContent = "Cargando publicaciones…";
@@ -477,7 +493,8 @@ function validateEditorStep() {
   for (const el of controls) {
     if (el.disabled || el.offsetParent === null || el.checkValidity()) continue;
     const campo = document.querySelector("#comm-error");
-    if (campo) campo.textContent = `${fieldLabel(el)}: ${mensajeDeValidez(el)}.`;
+    if (campo)
+      campo.textContent = `${fieldLabel(el)}: ${mensajeDeValidez(el)}.`;
     return false;
   }
   return true;
@@ -780,7 +797,8 @@ function participationView(p) {
   if (p.poll) {
     poll = `<section class="comm-poll"><p class="eyebrow">${p.poll.type === "vote" ? "VOTACIÓN" : "ENCUESTA"}</p><h3>${h(p.poll.question)}</h3><p class="comm-muted">Cierre: ${h(date(p.poll.closesAt))} · ${p.poll.electorate === "owners" ? "Propietarios destinatarios" : "Todos los destinatarios"} · Una respuesta por cuenta.</p>${p.ballot.length ? `<p class="comm-callout">Tu respuesta quedó registrada: ${p.ballot.map((i) => h(p.poll.options[i])).join(", ")}.</p>` : p.pollOpen && p.canVote ? `<form id="comm-ballot">${p.poll.options.map((o, i) => `<label class="comm-check"><input type="${p.poll.multiple ? "checkbox" : "radio"}" name="choice" value="${i}">${h(o)}</label>`).join("")}<button class="primary-button" type="submit">Confirmar respuesta</button></form>` : `<p>${p.pollOpen ? "Tu cuenta no pertenece al electorado de esta consulta." : "La consulta no está abierta."}</p>`}${p.pollResults ? `<h4>Resultados · ${p.pollResults.total} respuestas</h4>${p.poll.options.map((o, i) => `<div class="comm-result"><span>${h(o)}</span><progress max="${Math.max(1, p.pollResults.total)}" value="${p.pollResults.counts[i]}"></progress><strong>${p.pollResults.counts[i]}</strong></div>`).join("")}` : '<p class="comm-muted">Los resultados se mostrarán al cerrar la consulta.</p>'}</section>`;
   }
-  if (!participa) return '<p class="comm-muted">La participación (comentarios y consultas) no está habilitada para tu rol.</p>';
+  if (!participa)
+    return '<p class="comm-muted">La participación (comentarios y consultas) no está habilitada para tu rol.</p>';
   return `${poll}<h3>Comentarios</h3>${p.comments.length ? `<div class="comm-comments">${p.comments.map((c) => `<article><div class="comm-card-meta"><strong>${h(c.author)}</strong><span>${h(date(c.createdAt))}</span>${c.canDelete ? `<button type="button" class="text-link-button" data-delete-comment="${h(c.id)}">Eliminar</button>` : ""}</div><p class="comm-body-text">${h(c.body)}</p></article>`).join("")}</div>` : '<p class="comm-muted">Todavía no hay comentarios.</p>'}${p.commentsEnabled && interactive ? '<form id="comm-comment"><label>Tu comentario<textarea name="comment" rows="3" required maxlength="3000"></textarea></label><button type="submit" class="primary-button">Publicar comentario</button></form>' : `<p class="comm-muted">${p.commentsEnabled ? "Esta publicación no admite nuevas respuestas por su estado." : "Los comentarios están desactivados."}</p>`}`;
 }
 function trackingView(p) {
@@ -836,35 +854,47 @@ $("#comm-preferences").addEventListener("click", (e) =>
 );
 export async function renderProvidersPanel(container) {
   const config = await request("/providers");
-    container.classList.add("proveedores-panel");
+  container.classList.add("proveedores-panel");
   container.innerHTML = `<p class="form-intro">Configuración global de envío. Las credenciales guardadas no se muestran; dejá el campo vacío para conservarlas. Si tu proveedor rechaza las llamadas por restricción de IP, autorizá la IP pública del servidor donde corre la app en el panel del proveedor (Brevo → Seguridad → Direcciones IP autorizadas) (en desarrollo, la IP pública de tu conexión; «localhost» no es una IP válida ahí).</p><form id="comm-provider-form" autocomplete="off"><section class="proveedor-card"><h3 class="proveedor-titulo">📧 Correo electrónico</h3><p class="proveedor-desc">Configurá el envío de correos con tu proveedor: por API (solo la API key) o mediante un servidor SMTP propio.</p>${check("smtpEnabled", "Habilitar correo electrónico", config.smtp.enabled)}<label class="proveedor-campo">Modo de envío<select name="smtpProvider"><option value="brevo" ${config.smtp.provider === "brevo" ? "selected" : ""}>API del proveedor (solo API key)</option><option value="smtp" ${config.smtp.provider !== "brevo" ? "selected" : ""}>SMTP propio</option></select></label><div class="form-grid"><div data-smtp-relay>${input("smtpHost", "Servidor SMTP", config.smtp.host)}</div><div data-smtp-relay>${input("smtpPort", "Puerto", config.smtp.port, "number", 'min="1" max="65535" required')}</div><div data-smtp-relay>${input("smtpUser", "Usuario", config.smtp.user)}</div>${input("smtpPassword", config.smtp.hasSecret ? "Credencial (ya guardada)" : "API key o contraseña del proveedor", "", "password", 'autocomplete="new-password" maxlength="1000"')}${input("smtpFrom", "Email remitente", config.smtp.from, "email")}${input("smtpFromName", "Nombre del remitente", config.smtp.fromName)}</div>${check("smtpSecure", "TLS desde el inicio (solo SMTP genérico)", config.smtp.secure)}${check("smtpClear", "Eliminar la contraseña/API key guardada")}</section>${["sms", "whatsapp"].map((channel) => `<section class="proveedor-card"><h3 class="proveedor-titulo">${channel === "sms" ? "💬 SMS" : "🟢 WhatsApp"}</h3><p class="proveedor-desc">${channel === "sms" ? "Envío de mensajes de texto con tu proveedor de mensajería." : "Envío de mensajes de WhatsApp con tu proveedor. Según el proveedor puede requerirse una plantilla aprobada para el primer mensaje."}</p>${check(`${channel}Enabled`, `Habilitar ${channel === "sms" ? "SMS" : "WhatsApp"}`, config[channel].enabled)}<label class="proveedor-campo">Proveedor<select name="${channel}Provider">${channel === "sms" ? '<option value="twilio">Twilio</option><option value="brevo">Brevo</option>' : '<option value="twilio">Twilio</option><option value="brevo">Brevo</option>'}</select></label><div class="form-grid"><div data-twilio-sid>${input(`${channel}Sid`, "Account SID", config[channel].accountSid)}</div>${input(`${channel}Token`, config[channel].hasSecret ? "API key / Auth Token (ya guardado)" : "API key o Auth Token", "", "password", 'autocomplete="new-password" maxlength="1000"')}${input(`${channel}From`, channel === "sms" ? "Número o remitente emisor" : "Número de WhatsApp emisor (con código de país)", config[channel].from, "tel", 'placeholder="+34600111222"')}${channel === "whatsapp" ? input("whatsappContentSid", "Content SID o ID de plantilla", config.whatsapp.contentSid) : ""}</div>${check(`${channel}Clear`, "Eliminar la API key guardada")}</section>`).join("")}<div class="proveedor-acciones"><button type="submit" class="primary-button">Guardar proveedores</button></div></form><section class="proveedor-card"><h3 class="proveedor-titulo">🧪 Enviar un mensaje de prueba</h3><p class="proveedor-desc">Guardá la configuración antes de probar. Este botón envía un mensaje real al destino indicado.</p><form id="comm-provider-test"><div class="form-grid"><label>Canal<select name="channel"><option value="email">Correo electrónico</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option></select></label>${input("to", "Destino de la prueba", "", "text", 'required maxlength="254"')}</div><button type="submit" class="secondary-button">Enviar prueba</button><p id="comm-test-result" role="status"></p></form></section>`;
   // Modo de envío por canal: muestra/oculta campos y Habilitar habilita/deshabilita
   const smtpProviderSelect = container.querySelector('[name="smtpProvider"]');
   const smsProviderSelect = container.querySelector('[name="smsProvider"]');
   function aplicarModoProveedor() {
     const brevoMail = smtpProviderSelect?.value === "brevo";
-    container.querySelectorAll("[data-smtp-relay]").forEach(d => { d.hidden = brevoMail; });
-    container.querySelectorAll("[data-twilio-sid]").forEach(d => { d.hidden = smsProviderSelect?.value === "brevo"; });
-    const passLabel = [...container.querySelectorAll("label")].find(l => l.querySelector('[name="smtpPassword"]'));
+    container.querySelectorAll("[data-smtp-relay]").forEach((d) => {
+      d.hidden = brevoMail;
+    });
+    container.querySelectorAll("[data-twilio-sid]").forEach((d) => {
+      d.hidden = smsProviderSelect?.value === "brevo";
+    });
+    const passLabel = [...container.querySelectorAll("label")].find((l) =>
+      l.querySelector('[name="smtpPassword"]'),
+    );
     if (passLabel && passLabel.childNodes[0]) {
       passLabel.childNodes[0].textContent = brevoMail
-        ? (config.smtp.hasSecret ? "Credencial (ya guardada)" : "API key de Brevo")
-        : (config.smtp.hasSecret ? "Contraseña (ya guardada)" : "Contraseña SMTP");
+        ? config.smtp.hasSecret
+          ? "Credencial (ya guardada)"
+          : "API key de Brevo"
+        : config.smtp.hasSecret
+          ? "Contraseña (ya guardada)"
+          : "Contraseña SMTP";
     }
   }
   smtpProviderSelect?.addEventListener("change", aplicarModoProveedor);
   smsProviderSelect?.addEventListener("change", aplicarModoProveedor);
   function aplicarEstadoCampos() {
-    container.querySelectorAll("section.proveedor-card").forEach(card => {
+    container.querySelectorAll("section.proveedor-card").forEach((card) => {
       const toggle = card.querySelector('input[name$="Enabled"]');
       if (!toggle) return;
-      card.querySelectorAll("input, select").forEach(el => {
+      card.querySelectorAll("input, select").forEach((el) => {
         if (el === toggle) return;
         el.disabled = !toggle.checked;
       });
     });
   }
-  container.querySelectorAll('input[name$="Enabled"]').forEach(chk => chk.addEventListener("change", aplicarEstadoCampos));
+  container
+    .querySelectorAll('input[name$="Enabled"]')
+    .forEach((chk) => chk.addEventListener("change", aplicarEstadoCampos));
   aplicarModoProveedor();
   aplicarEstadoCampos();
   $("#comm-provider-form").addEventListener("submit", (e) => {
@@ -915,4 +945,3 @@ export async function renderProvidersPanel(container) {
     }, e.submitter);
   });
 }
-

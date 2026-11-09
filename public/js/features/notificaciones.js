@@ -214,6 +214,7 @@ export function updateInboxBadge() {
     inboxBadgeCount.hidden = !count;
   }
   if (adminInboxDialog?.open) renderAdminInbox();
+  window.dispatchEvent(new Event("notifications:updated"));
 }
 export function updateOwnerInboxBadge() {
   const count = state.ownerNotifications.filter(
@@ -224,6 +225,7 @@ export function updateOwnerInboxBadge() {
     ownerInboxBadgeCount.hidden = !count;
   }
   if (ownerInboxDialog?.open) renderOwnerInbox();
+  window.dispatchEvent(new Event("notifications:updated"));
 }
 export async function addOwnerNotification({
   ownerId,

@@ -59,6 +59,7 @@ export const state = {
   users: [],
   roles: [],
   settings: {},
+  loadedAt: null,
   currentUserId: null,
   activeRole: "admin",
   // Estado de sesión compartido entre módulos (diálogos en edición/visualización)
@@ -119,6 +120,7 @@ export async function refreshState() {
       state.users = bootstrap.users || [];
       state.roles = bootstrap.roles || [];
       state.settings = bootstrap.settings || {};
+      state.loadedAt = new Date().toISOString();
       if (bootstrap.currentUser) {
         if (!state.users.some(u => u.id === bootstrap.currentUser.id)) state.users.push(bootstrap.currentUser);
         setActiveUser(bootstrap.currentUser.id);

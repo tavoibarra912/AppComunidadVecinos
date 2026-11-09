@@ -21,6 +21,14 @@ export function contactError(data) {
     return "El código postal debe tener 5 dígitos.";
   return null;
 }
+export function communityFinanceError(data, year = new Date().getFullYear()) {
+  for (const key of ["constitutionYear", "reserveFund"]) if (data[key] != null && !["string", "number"].includes(typeof data[key])) return "El año y el fondo de reserva deben ser valores numéricos válidos.";
+  const constitution = String(data.constitutionYear ?? "").trim();
+  if (constitution && (!/^\d{4}$/.test(constitution) || Number(constitution) < 1000 || Number(constitution) > year)) return `El año de constitución debe estar entre 1000 y ${year}.`;
+  const reserve = String(data.reserveFund ?? "").trim();
+  if (reserve && !/^\d{1,12}(\.\d{1,2})?$/.test(reserve)) return "El fondo de reserva debe ser un importe positivo o cero, con hasta dos decimales.";
+  return null;
+}
 export function dateError(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
     return true;

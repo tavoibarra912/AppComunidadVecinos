@@ -376,6 +376,42 @@ test("validaciones de servidor rechazan NIF y contacto inválidos", async () => 
     400,
   );
 });
+test("comunidades: el servidor rechaza importes y años inválidos y conserva el cero", async () => {
+  const original = (await admin("/communities/com-seed-1")).data;
+  for (const patch of [
+    { reserveFund: "letras" },
+    { reserveFund: "1e3" },
+    { reserveFund: "-5" },
+    { reserveFund: "20.123" },
+    { constitutionYear: "texto" },
+    { constitutionYear: String(new Date().getFullYear() + 1) },
+  ]) {
+    assert.equal(
+      (await admin("/communities/com-seed-1", "PUT", { ...original, ...patch }))
+        .status,
+      400,
+    );
+  }
+  const valid = await admin("/communities/com-seed-1", "PUT", {
+    ...original,
+    constitutionYear: "1996",
+    reserveFund: "3500.25",
+  });
+  assert.equal(valid.status, 200);
+  assert.equal(valid.data.reserveFund, "3500.25");
+  assert.equal(valid.data.constitutionYear, "1996");
+  const zero = await admin("/communities/com-seed-1", "PUT", {
+    ...original,
+    reserveFund: 0,
+  });
+  assert.equal(zero.status, 200);
+  assert.equal(zero.data.reserveFund, "0");
+  assert.equal(
+    (await admin("/communities/com-seed-1", "PUT", original)).status,
+    200,
+  );
+});
+
 test("SSO y recuperación sin configurar no autentican ni filtran tokens", async () => {
   const request = client();
   const sso = await request("/auth/sso", "POST", {
