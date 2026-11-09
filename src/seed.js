@@ -468,9 +468,6 @@ export function seedCommunicationsDemo() {
   return true;
 }
 
-
-
-
 // Datos de demostración extendidos: 3 comunidades con todos los campos del
 // formulario, perfiles/inmuebles/inquilinos cubriendo las combinaciones de
 // rol × perfil con las cuentas estándar, documentos y publicaciones demo.
