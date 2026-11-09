@@ -22,6 +22,29 @@ El frontend y la API deben salir del mismo servidor Node; Live Server de VS Code
 no sirve la API. Para los usuarios demo iniciales, el usuario y la contraseña
 coinciden (por ejemplo, `super_admin` / `super_admin`), salvo que hayas cambiado la contraseña.
 
+Cuentas demo estándar (usuario = contraseña = email local = nombre):
+
+| Usuario | Rol | Escenario |
+| --- | --- | --- |
+| `super_admin` | super_admin | Acceso total, sin perfil |
+| `admin` | administrator | Crea y administra todas las comunidades |
+| `comm_admin` | community_admin | Administra la comunidad asignada (Peñarrubia) |
+| `usuario_r_user_s_perfil` | user | Sin perfil vinculado |
+| `usuario_r_user_c_propietario` | user | Con perfil de propietario |
+| `usuario_r_user_c_inquilino` | user | Con perfil de inquilino |
+| `usuario_r_user_c_propietario_c_inquilino` | user | Con perfiles de propietario e inquilino |
+
+Permisos destacados configurables por rol (Administración → Roles):
+
+- **`owner:delete`** — eliminar un socio. Por defecto solo lo tiene `super_admin`;
+  otorgáselo al rol `administrator` si querés que el administrador general pueda
+  hacerlo (el borrado se bloquea si el socio tiene un inmueble con inquilino).
+- **`comm:participacion`** — participar en Comunicación: comentar (con nombre),
+  votar encuestas y confirmar asistencia a reuniones. Activado por defecto para
+  `administrator`, `community_admin` y `user`; desmarcalo en un rol y ese rol ve
+  las publicaciones de forma informativa (sin la parte social). `super_admin`
+  siempre participa.
+
 La base de datos se crea en `data/penarrubia.db` y los archivos subidos en `uploads/` (ambos ignorados por git).
 
 ## Estructura del proyecto
