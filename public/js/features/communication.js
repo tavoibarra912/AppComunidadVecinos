@@ -53,7 +53,7 @@ dialog.className = "comm-dialog";
 dialog.setAttribute("aria-labelledby", "comm-dialog-title");
 document.body.append(dialog);
 function showDialog(title, body) {
-  dialog.innerHTML = `<div class="comm-dialog-header"><h2 id="comm-dialog-title">${h(title)}</h2><button type="button" class="secondary-button" data-comm-close aria-label="Cerrar diálogo">Cerrar</button></div><div class="comm-dialog-body">${body}</div><p class="comm-error" id="comm-error" role="alert"></p>`;
+  dialog.innerHTML = `<div class="comm-dialog-header"><h2 id="comm-dialog-title">${h(title)}</h2><button type="button" class="icon-action-btn btn-cancel btn-lg" data-comm-close aria-label="Cerrar diálogo" title="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="comm-dialog-body">${body}</div><p class="comm-error" id="comm-error" role="alert"></p>`;
   if (!dialog.open) dialog.showModal();
   dialog.querySelector("[data-comm-close]").focus();
 }
