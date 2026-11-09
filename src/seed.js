@@ -479,11 +479,7 @@ export function seedCommunicationsDemo() {
 export function seedDemoComunidades() {
   if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test") return false;
   if (db.prepare("SELECT COUNT(*) AS total FROM communities WHERE id LIKE 'com-demo-%'").get().total > 0) return false;
-  const data = {
-    communities: listCommunities(), owners: listOwners(),
-    properties: listProperties(), tenants: listTenants(), roles: listRoles(),
-  };
-  if (!data.communities.some(c => c.id === "com-seed-1")) return false;
+  if (!listCommunities().some(c => c.id === "com-seed-1")) return false;
 
   const HORA = 3600000, DIA = 24 * HORA;
   const ahora = Date.now();
@@ -770,6 +766,18 @@ export function seedDemoComunidades() {
     for (const t2 of inquilinos) {
       insertTenant.run(t2.id, t2.ownerId, t2.propertyId, t2.name, t2.surname, t2.documentType, t2.documentId, t2.contractType, t2.monthlyRent, t2.deposit, t2.emergencyPhone, t2.phone, t2.email, t2.contractStart, t2.contractEnd, t2.authorizations, t2.authorizationNotes, t2.phoneVerified, t2.phoneVerifiedAt, t2.emailVerified, t2.emailVerifiedAt, t2.notificationPreference, t2.currency, t2.userId);
     }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  // Rebuild data con las comunidades/owners/recién creados para validatePost.
+  const data = {
+    communities: listCommunities(), owners: listOwners(),
+    properties: listProperties(), tenants: listTenants(), roles: listRoles(),
+  };
+  db.exec("BEGIN");
+  try {
     for (const def of publicaciones) {
       const p = validatePost(def, null, data);
       const id = crypto.randomUUID();
