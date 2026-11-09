@@ -74,6 +74,21 @@ function createSeedDocsForMariaLuisa() {
   return docs;
 }
 
+/** Documentos demo (DNI, recibo y escritura) para un propietario. */
+export function createSeedDocsDemo({ dni, nombre = "Titular", plot = "Inmueble", communityName = "la comunidad", aprobadas = false }) {
+  const docs = createSeedDocsForCarlosRuiz();
+  docs.dni.fileName = `DNI_${dni}_ambas_caras.pdf`;
+  docs.dni.autoValidation.checks[3].detail = `DNI ${dni} coincide con el asociado`;
+  docs.bankReceipt.fileName = `Recibo_Bancario_${nombre.replace(/\s+/g, "_")}_${dni}.pdf`;
+  docs.propertyDeed.fileName = `Escritura_${plot.replace(/\s+/g, "_")}.pdf`;
+  docs.propertyDeed.autoValidation.checks[2].detail = `${plot} en ${communityName} acreditada`;
+  if (aprobadas) {
+    for (const d of [docs.dni, docs.bankReceipt, docs.propertyDeed])
+      d.adminApproval = { status: "approved", reviewedAt: "11/10/2026, 11:30", reviewedBy: "Administrador", notes: "Verificado conforme." };
+  }
+  return docs;
+}
+
 const ownerSeeds = [
   { id: "own-seed-1", name: "Carlos", surname: "Ruiz Mendoza", dni: "47895231P", communityId: "com-seed-1", communityName: "Residencial Peñarrubia", plot: "Parcela 14", phone: "612345678", otherPhone: "912345678", email: "carlos.ruiz@email.com", isMember: true, iban: "ES6621000418401234567891", address: "Calle de la Sierra, 14, Parcela 14", city: "Madrid", province: "Madrid", postalCode: "28035", notes: "Vocal de la junta directiva de Peñarrubia.", documents: createSeedDocsForCarlosRuiz() },
   { id: "own-seed-2", name: "María Luisa", surname: "Fernández Soto", dni: "53891244J", communityId: "com-seed-1", communityName: "Residencial Peñarrubia", plot: "Parcela 22", phone: "623456789", otherPhone: "624567890", email: "marialuisa.fernandez@email.com", isMember: true, iban: "ES9100491500051234567892", address: "Calle de la Sierra, 22", city: "Madrid", province: "Madrid", postalCode: "28035", notes: "Solicita comunicaciones preferentes por correo electrónico.", documents: createSeedDocsForMariaLuisa() },
