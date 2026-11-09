@@ -47,6 +47,14 @@ const comunidades = [
     constitutionYear: "2001", reserveFund: "8300", currency: "EUR",
     notes: "Segunda comunidad demo. Administrada también por comm_admin (multi-asignación).", documents: "[]", adminUserId: "user-comm_admin",
   },
+  {
+    id: "com-demo-3", name: "Comunidad Los Pinos", nif: "B55566677",
+    phone: "933000333", otherPhone: "933000334", address: "Camino de los Pinos, 9",
+    city: "Torrelodones", province: "Madrid", postalCode: "28250", email: "los.pinos.demo@comunidad.es",
+    iban: "ES3344556677889900112233", president: "Rocío Pinar", administrator: "Admin Central",
+    constitutionYear: "1996", reserveFund: "15000", currency: "EUR",
+    notes: "Tercera comunidad demo. Administrada por admin (administrator), distinto de comm_admin.", documents: "[]", adminUserId: "user-admin",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -119,6 +127,17 @@ const propietarios = [
     notes: "Perfil propietario de la cuenta admin/administrator (combinación administrator × propietario).",
     documents: createSeedDocsDemo({ dni: "66666666F", nombre: "Federico Luna", plot: "Piso 6-E", communityName: "Comunidad Las Acacias" }),
   },
+  {
+    id: "own-demo-7", userId: "", communityId: "com-demo-3", communityName: "Comunidad Los Pinos",
+    name: "Fernando", surname: "Cabrera Ruiz", documentType: "DNI", dni: "77777777J", isMember: true,
+    plot: "Chalet 3", propertyId: "prop-demo-7", propertyIds: ["prop-demo-7"],
+    phone: "677777707", otherPhone: "917777707", email: "fernando.cabrera@demo.es",
+    phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 1, emailVerifiedAt: stamp,
+    address: "Camino de los Pinos, 9, Chalet 3", province: "Madrid", city: "Torrelodones", postalCode: "28250",
+    iban: "ES7777890123777777777777", currency: "EUR",
+    notes: "Perfil propietario sin cuenta vinculada en la comunidad administrada por admin.",
+    documents: createSeedDocsDemo({ dni: "77777777J", nombre: "Fernando Cabrera", plot: "Chalet 3", communityName: "Comunidad Los Pinos" }),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -179,6 +198,15 @@ const inmuebles = [
     receiptStatus: "current", notes: "Piso propiedad de la cuenta admin/administrator.",
     postalCode: "28223", city: "Pozuelo de Alarcón", province: "Madrid",
   },
+  {
+    id: "prop-demo-7", communityId: "com-demo-3", communityName: "Comunidad Los Pinos",
+    ownerIds: ["own-demo-7"], tenantIds: ["ten-demo-4"], propertyType: "chalet",
+    plot: "Chalet 3", address: "Camino de los Pinos, 9, Chalet 3",
+    cadastralRef: "9872024VH7777S0007WX", registryNumber: "7777", floor: "", door: "",
+    areaM2: "210", participationCoef: "14.0000", propertyUse: "residencial",
+    receiptStatus: "current", notes: "Chalet con jardín, administrado por admin (administrator).",
+    postalCode: "28250", city: "Torrelodones", province: "Madrid",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -214,6 +242,16 @@ const inquilinos = [
     authorizations: "[]", authorizationNotes: "",
     phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 0, emailVerifiedAt: "",
     notificationPreference: "email", currency: "EUR", userId: "",
+  },
+  {
+    id: "ten-demo-4", ownerId: "own-demo-7", propertyId: "prop-demo-7",
+    name: "Julia", surname: "Blanco Serrano", documentType: "NIE", documentId: "Y1111111J",
+    contractType: "vivienda_habitual", monthlyRent: "1400", deposit: "2800",
+    emergencyPhone: "600555666", phone: "611111919", email: "julia.blanco@demo.es",
+    contractStart: "2026-06-15", contractEnd: "2027-05-10",
+    authorizations: JSON.stringify(["email", "sms"]), authorizationNotes: "Prefiere SMS.",
+    phoneVerified: 1, phoneVerifiedAt: "12/10/2026, 09:00", emailVerified: 0, emailVerifiedAt: "",
+    notificationPreference: "sms", currency: "EUR", userId: "",
   },
 ];
 
