@@ -489,11 +489,12 @@ export function seedDemoComunidades() {
   const ahora = Date.now();
   const iso = ms => new Date(ms).toISOString();
   const stamp = new Date(ahora).toISOString();
-  const base = {
+  const base = (communityId) => ({
+    communityId,
     audience: { mode: "all", ownerIds: [], tenantIds: [], propertyIds: [] },
     channels: [], pinned: false, commentsEnabled: true, receiptRequired: false,
     priority: "normal", status: "published", reminderMinutes: 0,
-  };
+  });
 
   const comunidades = [
     {
