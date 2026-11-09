@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import apiRouter from "./src/routes/index.js";
-import { seedCommunicationsDemo, seedIfEmpty } from "./src/seed.js";
+import { seedCommunicationsDemo, seedDemoComunidades, seedIfEmpty } from "./src/seed.js";
 import { rebuildPropertyTenantReferences } from "./src/domain.js";
 import { startCommunicationWorker } from "./src/communication-worker.js";
 import { renderIndex } from "./src/branding.js";
@@ -22,6 +22,7 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 if (process.env.NODE_ENV !== "production") {
   seedIfEmpty();
   seedCommunicationsDemo();
+  seedDemoComunidades();
 }
 rebuildPropertyTenantReferences();
 

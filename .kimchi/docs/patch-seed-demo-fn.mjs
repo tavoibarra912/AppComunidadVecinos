@@ -1,0 +1,327 @@
+import fs from "node:fs";
+
+const archivo = "src/seed.js";
+let t = fs.readFileSync(archivo, "utf8");
+
+// Agregar seedDemoComunidades al final del archivo (exportado + llamado desde server.js)
+const funcion = `
+
+// Datos de demostración extendidos: 3 comunidades con todos los campos del
+// formulario, perfiles/inmuebles/inquilinos cubriendo las combinaciones de
+// rol × perfil con las cuentas estándar, documentos y publicaciones demo.
+// No corre en producción ni en tests.
+
+export function seedDemoComunidades() {
+  if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test") return false;
+  if (db.prepare("SELECT COUNT(*) AS total FROM communities WHERE id LIKE 'com-demo-%'").get().total > 0) return false;
+  const data = {
+    communities: listCommunities(), owners: listOwners(),
+    properties: listProperties(), tenants: listTenants(), roles: listRoles(),
+  };
+  if (!data.communities.some(c => c.id === "com-seed-1")) return false;
+
+  const HORA = 3600000, DIA = 24 * HORA;
+  const ahora = Date.now();
+  const iso = ms => new Date(ms).toISOString();
+  const stamp = new Date(ahora).toISOString();
+  const base = {
+    audience: { mode: "all", ownerIds: [], tenantIds: [], propertyIds: [] },
+    channels: [], pinned: false, commentsEnabled: true, receiptRequired: false,
+    priority: "normal", status: "published", reminderMinutes: 0,
+  };
+
+  const comunidades = [
+    {
+      id: "com-demo-1", name: "Comunidad Peñarrubia", nif: "B12345678",
+      phone: "911000111", otherPhone: "911000112", address: "Avenida de la Constitución, 1",
+      city: "Madrid", province: "Madrid", postalCode: "28001", email: "penarrubia.demo@comunidad.es",
+      iban: "ES9121000418450200051332", president: "María González", administrator: "Fincas del Sol",
+      constitutionYear: "1985", reserveFund: "12500", currency: "EUR",
+      notes: "Comunidad demo con todos los campos completos.", documents: "[]", adminUserId: "user-comm_admin",
+    },
+    {
+      id: "com-demo-2", name: "Comunidad Las Acacias", nif: "B87654321",
+      phone: "922000222", otherPhone: "922000223", address: "Calle de los Álamos, 22",
+      city: "Pozuelo de Alarcón", province: "Madrid", postalCode: "28223", email: "acacias.demo@comunidad.es",
+      iban: "ES7620770024003102575766", president: "Jorge Lasarte", administrator: "Gestión Horizontal",
+      constitutionYear: "2001", reserveFund: "8300", currency: "EUR",
+      notes: "Segunda comunidad demo. Administrada también por comm_admin (multi-asignación).", documents: "[]", adminUserId: "user-comm_admin",
+    },
+    {
+      id: "com-demo-3", name: "Comunidad Los Pinos", nif: "B55566677",
+      phone: "933000333", otherPhone: "933000334", address: "Camino de los Pinos, 9",
+      city: "Torrelodones", province: "Madrid", postalCode: "28250", email: "los.pinos.demo@comunidad.es",
+      iban: "ES3344556677889900112233", president: "Rocío Pinar", administrator: "Admin Central",
+      constitutionYear: "1996", reserveFund: "15000", currency: "EUR",
+      notes: "Tercera comunidad demo. Administrada por admin (administrator), distinto de comm_admin.", documents: "[]", adminUserId: "user-admin",
+    },
+  ];
+
+  const propietarios = [
+    {
+      id: "own-demo-1", userId: "user-usuario_r_user_c_propietario", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      name: "Ana", surname: "Torres Vega", documentType: "DNI", dni: "11111111A", isMember: true,
+      plot: "Vivienda 1-A", propertyId: "prop-demo-1", propertyIds: ["prop-demo-1"],
+      phone: "611111101", otherPhone: "911111101", email: "ana.torres@demo.es",
+      phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 1, emailVerifiedAt: stamp,
+      address: "Avenida de la Constitución, 1, 1-A", province: "Madrid", city: "Madrid", postalCode: "28001",
+      iban: "ES1112345678111111111111", currency: "EUR",
+      notes: "Propietaria residente.",
+      documents: createSeedDocsDemo({ dni: "11111111A", nombre: "Ana Torres", plot: "Vivienda 1-A", communityName: "Comunidad Peñarrubia", aprobadas: true }),
+    },
+    {
+      id: "own-demo-2", userId: "user-usuario_r_user_c_propietario_c_inquilino", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      name: "Bruno", surname: "Salas Molina", documentType: "DNI", dni: "22222222B", isMember: true,
+      plot: "Vivienda 2-B", propertyId: "prop-demo-2", propertyIds: ["prop-demo-2"],
+      phone: "622222202", otherPhone: "", email: "bruno.salas@demo.es",
+      phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 1, emailVerifiedAt: stamp,
+      address: "Avenida de la Constitución, 1, 2-B", province: "Madrid", city: "Madrid", postalCode: "28001",
+      iban: "ES2222345678222222222222", currency: "EUR",
+      notes: "Propietario no residente: además es inquilino en Comunidad Las Acacias.",
+      documents: createSeedDocsDemo({ dni: "22222222B", nombre: "Bruno Salas", plot: "Vivienda 2-B", communityName: "Comunidad Peñarrubia" }),
+    },
+    {
+      id: "own-demo-3", userId: "user-comm_admin", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      name: "Carla", surname: "Núñez Prado", documentType: "DNI", dni: "33333333C", isMember: true,
+      plot: "Departamento 3-C", propertyId: "prop-demo-3", propertyIds: ["prop-demo-3"],
+      phone: "633333303", otherPhone: "", email: "carla.nunez@demo.es",
+      phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 0, emailVerifiedAt: "",
+      address: "Avenida de la Constitución, 1, 3-C", province: "Madrid", city: "Madrid", postalCode: "28001",
+      iban: "ES3333456789333333333333", currency: "EUR",
+      notes: "El administrador de la comunidad también es propietaria vecina.",
+      documents: createSeedDocsDemo({ dni: "33333333C", nombre: "Carla Núñez", plot: "Departamento 3-C", communityName: "Comunidad Peñarrubia", aprobadas: true }),
+    },
+    {
+      id: "own-demo-4", userId: "", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      name: "Damián", surname: "Requena Sol", documentType: "DNI", dni: "44444444D", isMember: false,
+      plot: "Local 4", propertyId: "prop-demo-4", propertyIds: ["prop-demo-4"],
+      phone: "644444404", otherPhone: "", email: "damian.requena@demo.es",
+      phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 0, emailVerifiedAt: "",
+      address: "Avenida de la Constitución, 1, Local 4", province: "Madrid", city: "Madrid", postalCode: "28001",
+      iban: "", currency: "EUR",
+      notes: "Perfil SIN cuenta vinculada: dispara el aviso de perfiles sin cuenta.",
+      documents: createSeedDocsDemo({ dni: "44444444D", nombre: "Damián Requena", plot: "Local 4", communityName: "Comunidad Peñarrubia" }),
+    },
+    {
+      id: "own-demo-5", userId: "user-super_admin", communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
+      name: "Elena", surname: "Vidal Mar", documentType: "DNI", dni: "55555555E", isMember: true,
+      plot: "Ático 5-D", propertyId: "prop-demo-5", propertyIds: ["prop-demo-5"],
+      phone: "655555505", otherPhone: "", email: "elena.vidal@demo.es",
+      phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 1, emailVerifiedAt: stamp,
+      address: "Calle de los Álamos, 22, Ático 5-D", province: "Madrid", city: "Pozuelo de Alarcón", postalCode: "28223",
+      iban: "ES5555678901555555555555", currency: "EUR",
+      notes: "Perfil propietario de la cuenta super_admin.",
+      documents: createSeedDocsDemo({ dni: "55555555E", nombre: "Elena Vidal", plot: "Ático 5-D", communityName: "Comunidad Las Acacias", aprobadas: true }),
+    },
+    {
+      id: "own-demo-6", userId: "user-admin", communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
+      name: "Federico", surname: "Luna Caba", documentType: "DNI", dni: "66666666F", isMember: true,
+      plot: "Piso 6-E", propertyId: "prop-demo-6", propertyIds: ["prop-demo-6"],
+      phone: "666666606", otherPhone: "", email: "federico.luna@demo.es",
+      phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 0, emailVerifiedAt: "",
+      address: "Calle de los Álamos, 22, 6-E", province: "Madrid", city: "Pozuelo de Alarcón", postalCode: "28223",
+      iban: "ES6666789012666666666666", currency: "EUR",
+      notes: "Perfil propietario de la cuenta admin/administrator.",
+      documents: createSeedDocsDemo({ dni: "66666666F", nombre: "Federico Luna", plot: "Piso 6-E", communityName: "Comunidad Las Acacias" }),
+    },
+    {
+      id: "own-demo-7", userId: "", communityId: "com-demo-3", communityName: "Comunidad Los Pinos",
+      name: "Fernando", surname: "Cabrera Ruiz", documentType: "DNI", dni: "77777777J", isMember: true,
+      plot: "Chalet 3", propertyId: "prop-demo-7", propertyIds: ["prop-demo-7"],
+      phone: "677777707", otherPhone: "917777707", email: "fernando.cabrera@demo.es",
+      phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 1, emailVerifiedAt: stamp,
+      address: "Camino de los Pinos, 9, Chalet 3", province: "Madrid", city: "Torrelodones", postalCode: "28250",
+      iban: "ES7777890123777777777777", currency: "EUR",
+      notes: "Perfil propietario sin cuenta vinculada.",
+      documents: createSeedDocsDemo({ dni: "77777777J", nombre: "Fernando Cabrera", plot: "Chalet 3", communityName: "Comunidad Los Pinos" }),
+    },
+  ];
+
+  const inmuebles = [
+    {
+      id: "prop-demo-1", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      ownerIds: ["own-demo-1"], tenantIds: ["ten-demo-1"], propertyType: "vivienda",
+      plot: "Vivienda 1-A", address: "Avenida de la Constitución, 1, 1-A",
+      cadastralRef: "9872023VH1111S0001WX", registryNumber: "1111", floor: "1", door: "A",
+      areaM2: "78", participationCoef: "9.5000", propertyUse: "residencial",
+      receiptStatus: "current", notes: "Vivienda principal.", postalCode: "28001", city: "Madrid", province: "Madrid",
+    },
+    {
+      id: "prop-demo-2", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      ownerIds: ["own-demo-2"], tenantIds: [], propertyType: "vivienda",
+      plot: "Vivienda 2-B", address: "Avenida de la Constitución, 1, 2-B",
+      cadastralRef: "9872023VH2222S0002WX", registryNumber: "2222", floor: "2", door: "B",
+      areaM2: "85", participationCoef: "10.2500", propertyUse: "residencial",
+      receiptStatus: "current", notes: "", postalCode: "28001", city: "Madrid", province: "Madrid",
+    },
+    {
+      id: "prop-demo-3", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      ownerIds: ["own-demo-3"], tenantIds: ["ten-demo-3"], propertyType: "vivienda",
+      plot: "Departamento 3-C", address: "Avenida de la Constitución, 1, 3-C",
+      cadastralRef: "9872023VH3333S0003WX", registryNumber: "3333", floor: "3", door: "C",
+      areaM2: "70", participationCoef: "8.0000", propertyUse: "residencial",
+      receiptStatus: "current", notes: "", postalCode: "28001", city: "Madrid", province: "Madrid",
+    },
+    {
+      id: "prop-demo-4", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+      ownerIds: ["own-demo-4"], tenantIds: [], propertyType: "local",
+      plot: "Local 4", address: "Avenida de la Constitución, 1, Local 4",
+      cadastralRef: "9872023VH4444S0004WX", registryNumber: "4444", floor: "0", door: "L4",
+      areaM2: "55", participationCoef: "5.0000", propertyUse: "comercial",
+      receiptStatus: "current", notes: "Local comercial (perfil sin cuenta).", postalCode: "28001", city: "Madrid", province: "Madrid",
+    },
+    {
+      id: "prop-demo-5", communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
+      ownerIds: ["own-demo-5"], tenantIds: ["ten-demo-2"], propertyType: "atico",
+      plot: "Ático 5-D", address: "Calle de los Álamos, 22, Ático 5-D",
+      cadastralRef: "9872024VH5555S0005WX", registryNumber: "5555", floor: "5", door: "D",
+      areaM2: "96", participationCoef: "12.0000", propertyUse: "residencial",
+      receiptStatus: "current", notes: "Ático propiedad de la cuenta super_admin.", postalCode: "28223", city: "Pozuelo de Alarcón", province: "Madrid",
+    },
+    {
+      id: "prop-demo-6", communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
+      ownerIds: ["own-demo-6"], tenantIds: [], propertyType: "vivienda",
+      plot: "Piso 6-E", address: "Calle de los Álamos, 22, 6-E",
+      cadastralRef: "9872024VH6666S0006WX", registryNumber: "6666", floor: "6", door: "E",
+      areaM2: "88", participationCoef: "10.7500", propertyUse: "residencial",
+      receiptStatus: "current", notes: "", postalCode: "28223", city: "Pozuelo de Alarcón", province: "Madrid",
+    },
+    {
+      id: "prop-demo-7", communityId: "com-demo-3", communityName: "Comunidad Los Pinos",
+      ownerIds: ["own-demo-7"], tenantIds: ["ten-demo-4"], propertyType: "chalet",
+      plot: "Chalet 3", address: "Camino de los Pinos, 9, Chalet 3",
+      cadastralRef: "9872024VH7777S0007WX", registryNumber: "7777", floor: "", door: "",
+      areaM2: "210", participationCoef: "14.0000", propertyUse: "residencial",
+      receiptStatus: "current", notes: "Chalet con jardín.", postalCode: "28250", city: "Torrelodones", province: "Madrid",
+    },
+  ];
+
+  const inquilinos = [
+    {
+      id: "ten-demo-1", ownerId: "own-demo-1", propertyId: "prop-demo-1",
+      name: "Gustavo", surname: "Peña Ríos", documentType: "DNI", documentId: "77777777G",
+      contractType: "vivienda_habitual", monthlyRent: "850", deposit: "1700",
+      emergencyPhone: "600111222", phone: "677777707", email: "gustavo.pena@demo.es",
+      contractStart: iso(ahora - 200 * DIA).slice(0, 10), contractEnd: iso(ahora + 530 * DIA).slice(0, 10),
+      authorizations: JSON.stringify(["email", "whatsapp"]), authorizationNotes: "Acepta avisos por email y WhatsApp.",
+      phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 1, emailVerifiedAt: stamp,
+      notificationPreference: "whatsapp", currency: "EUR", userId: "user-usuario_r_user_c_inquilino",
+    },
+    {
+      id: "ten-demo-2", ownerId: "own-demo-5", propertyId: "prop-demo-5",
+      name: "Hugo", surname: "Miranda Soto", documentType: "DNI", documentId: "88888888H",
+      contractType: "vivienda_habitual", monthlyRent: "1100", deposit: "2200",
+      emergencyPhone: "600333444", phone: "688888808", email: "hugo.miranda@demo.es",
+      contractStart: iso(ahora - 90 * DIA).slice(0, 10), contractEnd: iso(ahora + 275 * DIA).slice(0, 10),
+      authorizations: JSON.stringify(["email"]), authorizationNotes: "Solo avisos por correo.",
+      phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 1, emailVerifiedAt: stamp,
+      notificationPreference: "email", currency: "EUR", userId: "user-usuario_r_user_c_propietario_c_inquilino",
+    },
+    {
+      id: "ten-demo-3", ownerId: "own-demo-3", propertyId: "prop-demo-3",
+      name: "Iván", surname: "Serra Puente", documentType: "NIE", documentId: "X9999999I",
+      contractType: "temporada", monthlyRent: "600", deposit: "600",
+      emergencyPhone: "", phone: "699999909", email: "ivan.serra@demo.es",
+      contractStart: iso(ahora - 20 * DIA).slice(0, 10), contractEnd: iso(ahora + 70 * DIA).slice(0, 10),
+      authorizations: "[]", authorizationNotes: "",
+      phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 0, emailVerifiedAt: "",
+      notificationPreference: "email", currency: "EUR", userId: "",
+    },
+    {
+      id: "ten-demo-4", ownerId: "own-demo-7", propertyId: "prop-demo-7",
+      name: "Julia", surname: "Blanco Serrano", documentType: "NIE", documentId: "Y1111111J",
+      contractType: "vivienda_habitual", monthlyRent: "1400", deposit: "2800",
+      emergencyPhone: "600555666", phone: "611111919", email: "julia.blanco@demo.es",
+      contractStart: iso(ahora - 45 * DIA).slice(0, 10), contractEnd: iso(ahora + 320 * DIA).slice(0, 10),
+      authorizations: JSON.stringify(["email", "sms"]), authorizationNotes: "Prefiere SMS.",
+      phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 0, emailVerifiedAt: "",
+      notificationPreference: "sms", currency: "EUR", userId: "",
+    },
+  ];
+
+  const publicaciones = [
+    { ...base("com-demo-1"), type: "notice", priority: "important", publishAt: iso(ahora - 3 * DIA),
+      title: "Bienvenida a la nueva plataforma de la comunidad",
+      body: "Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación." },
+    { ...base("com-demo-1"), type: "notice", priority: "urgent", pinned: true, publishAt: iso(ahora - 1 * DIA),
+      title: "Reparación urgente en la portería",
+      body: "El cerrajero acudió esta mañana. Queda funcionando; mañana se revisará el motor." },
+    { ...base("com-demo-1"), type: "event", publishAt: iso(ahora - 5 * DIA),
+      startsAt: iso(ahora + 7 * DIA + 18 * HORA), endsAt: iso(ahora + 7 * DIA + 21 * HORA), reminderMinutes: 120,
+      title: "Cena de vecinos en el jardín", body: "Cena de convivencia del sábado en el jardín." },
+    { ...base("com-demo-1"), type: "meeting", publishAt: iso(ahora - 4 * DIA), receiptRequired: true, reminderMinutes: 60,
+      startsAt: iso(ahora + 15 * DIA + 18 * HORA), endsAt: iso(ahora + 15 * DIA + 19 * HORA + 30 * 60000),
+      title: "Junta ordinaria de la comunidad", body: "Convocatoria de junta ordinaria.",
+      meeting: { location: "Salón de actos del centro cívico", url: "", agenda: "1. Aprobación del acta.\\n2. Cuentas.\\n3. Alarmas.\\n4. Ruegos.", tasks: [ { title: "Preparar documentación", responsible: "Administración", dueAt: iso(ahora + 12 * DIA), done: false } ] } },
+    { ...base("com-demo-1"), type: "notice", publishAt: iso(ahora - 2 * DIA),
+      title: "Encuesta: horario de la piscina", body: "Votá el horario de la piscina.",
+      poll: { type: "vote", question: "¿Qué horario preferís?", options: ["9:00 a 21:00", "10:00 a 22:00", "11:00 a 23:00"], electorate: "recipients", multiple: false, resultsLive: true, closesAt: iso(ahora + 10 * DIA), closed: false } },
+    { ...base("com-demo-2"), type: "notice", publishAt: iso(ahora - 6 * DIA),
+      title: "Nueva administradora de la comunidad",
+      body: "Gestión Horizontal asume la administración del edificio." },
+    { ...base("com-demo-2"), type: "event", publishAt: iso(ahora - 1 * DIA),
+      startsAt: iso(ahora + 20 * DIA + 17 * HORA), endsAt: iso(ahora + 20 * DIA + 19 * HORA), reminderMinutes: 60,
+      title: "Taller de reciclaje", body: "Taller práctico de reciclaje doméstico en el hall." },
+  ];
+
+  const insertComunidad = db.prepare(
+    \`INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, currency, notes, documents, adminUserId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?)\`
+  );
+  const insertOwner = db.prepare(
+    \`INSERT INTO owners (id, name, surname, documentType, dni, isMember, communityId, communityName, plot,
+       propertyId, propertyIds, phone, otherPhone, email, phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt,
+       address, province, city, postalCode, iban, currency, notes, documents)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`
+  );
+  const insertProperty = db.prepare(
+    \`INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, cadastralRef,
+       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'current', ?, ?, ?, ?)\`
+  );
+  const insertTenant = db.prepare(
+    \`INSERT INTO tenants (id, ownerId, propertyId, name, surname, documentType, documentId,
+       contractType, monthlyRent, deposit, emergencyPhone, phone, email,
+       contractStart, contractEnd, authorizations, authorizationNotes, phoneVerified, phoneVerifiedAt,
+       emailVerified, emailVerifiedAt, notificationPreference, currency, userId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`
+  );
+  const insertPost = db.prepare(
+    "INSERT INTO communication_posts(id,communityId,data,createdBy,createdAt,updatedAt) VALUES (?,?,?,?,?,?)"
+  );
+
+  db.exec("BEGIN");
+  try {
+    for (const c of comunidades) {
+      insertComunidad.run(c.id, c.name, c.nif, c.phone, c.otherPhone, c.address, c.city, c.province, c.postalCode, c.email, c.iban, c.president, c.administrator, c.constitutionYear, c.reserveFund, c.currency, c.notes, c.adminUserId);
+    }
+    for (const o of propietarios) {
+      insertOwner.run(o.id, o.name, o.surname, o.documentType, o.dni, o.isMember, o.communityId, o.communityName, o.plot, o.propertyId, JSON.stringify(o.propertyIds), o.phone, o.otherPhone, o.email, o.phoneVerified, o.phoneVerifiedAt, o.emailVerified, o.emailVerifiedAt, o.address, o.province, o.city, o.postalCode, o.iban, o.currency, o.notes, JSON.stringify(o.documents));
+    }
+    for (const p of inmuebles) {
+      insertProperty.run(p.id, p.communityId, p.communityName, JSON.stringify(p.ownerIds), JSON.stringify(p.tenantIds), p.propertyType, p.plot, p.address, p.cadastralRef, p.registryNumber, p.floor, p.door, p.areaM2, p.participationCoef, p.propertyUse, p.notes, p.postalCode, p.city, p.province);
+    }
+    for (const t2 of inquilinos) {
+      insertTenant.run(t2.id, t2.ownerId, t2.propertyId, t2.name, t2.surname, t2.documentType, t2.documentId, t2.contractType, t2.monthlyRent, t2.deposit, t2.emergencyPhone, t2.phone, t2.email, t2.contractStart, t2.contractEnd, t2.authorizations, t2.authorizationNotes, t2.phoneVerified, t2.phoneVerifiedAt, t2.emailVerified, t2.emailVerifiedAt, t2.notificationPreference, t2.currency, t2.userId);
+    }
+    for (const def of publicaciones) {
+      const p = validatePost(def, null, data);
+      const id = crypto.randomUUID();
+      insertPost.run(id, p.communityId, JSON.stringify(p), "user-super-admin", p.publishAt, p.publishAt);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  materialize();
+  console.log(\`[seed] Demo extendido cargado: \${comunidades.length} comunidades, \${propietarios.length} propietarios, \${inmuebles.length} inmuebles, \${inquilinos.length} inquilinos, \${publicaciones.length} publicaciones.\`);
+  return true;
+}
+`;
+
+if (!t.includes(funcion)) {
+  t = t + "\n" + funcion;
+  fs.writeFileSync(archivo, t);
+  console.log("seedDemoComunidades agregada a seed.js");
+} else console.log("ya existe");

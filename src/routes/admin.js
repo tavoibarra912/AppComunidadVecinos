@@ -149,8 +149,18 @@ for (const [kind, table] of [
   ["tenant", "tenants"],
 ]) {
   router.put(`/users/:id/link-${kind}`, (req, res) => {
-    if (!db.prepare("SELECT id FROM users WHERE id=?").get(req.params.id))
+    const usuarioVinculo = db.prepare("SELECT id, usuario, rol FROM users WHERE id=?").get(req.params.id);
+    if (!usuarioVinculo)
       return res.status(404).json({ error: "Usuario no encontrado." });
+    // Los roles de administración de la plataforma no llevan perfiles:
+    // administran todo sin ser vecinos de ninguna comunidad.
+    if (["super_admin", "administrator"].includes(usuarioVinculo.rol))
+      return res
+        .status(409)
+        .json({
+          error:
+            "Los roles de administración de la plataforma (super_admin, administrator) no se vinculan a perfiles de propietario o inquilino.",
+        });
     const entityId = req.body?.[`${kind}Id`] || "";
     if (typeof entityId !== "string")
       return res.status(400).json({ error: "Identificador no válido." });
