@@ -1,4 +1,5 @@
-import { can } from "./permissions.js";
+import { can, etiquetaPermiso } from "./permissions.js";
+import { toast } from "./utils.js";
 import { api } from "./api.js";
 
 // ==========================================
@@ -273,12 +274,6 @@ export function clearSession() {
 
 export function requirePermission(permission, resourceId = "") {
   if (hasPermission(permission, resourceId)) return true;
-  const toastEl = document.querySelector("#toast");
-  if (toastEl) {
-    toastEl.textContent = "No tienes permiso para realizar esta acción.";
-    if (typeof toastEl.showPopover === "function" && !toastEl.matches(":popover-open")) toastEl.showPopover();
-    toastEl.classList.add("visible");
-    window.setTimeout(() => toastEl.classList.remove("visible"), 2800);
-  }
+  toast(`No tenés permiso para esta acción (requiere: ${etiquetaPermiso(permission)}).`, "warning");
   return false;
 }

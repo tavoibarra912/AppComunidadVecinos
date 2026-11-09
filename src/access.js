@@ -1,4 +1,5 @@
 import { db } from "./db.js";
+import { etiquetaPermiso } from "../public/js/permissions.js";
 import { allowed, policyData, visibleData } from "./security.js";
 
 const entities = {
@@ -7,10 +8,13 @@ const entities = {
   properties: "property",
   tenants: "tenant",
 };
-const deny = (res) =>
+const deny = (res, motivo) =>
   res
     .status(403)
-    .json({ error: "No tenés acceso a estos datos o a esta operación." });
+    .json({
+      error:
+        motivo || "No tenés acceso a estos datos o a esta operación.",
+    });
 
 function safeDocuments(incoming, existing, approve) {
   const output = {};
@@ -80,7 +84,10 @@ export function resourceAccess(req, res, next) {
     req.method === "PUT" &&
     permits("owner:edit", id);
   if (!permits(permission, id || req.body?.ownerId || "") && !ownEdit)
-    return deny(res);
+    return deny(
+      res,
+      `No tenés permiso para esta operación (requiere: ${etiquetaPermiso(permission)}).`,
+    );
   if (req.method === "DELETE") return next();
   if (!req.body || Array.isArray(req.body) || typeof req.body !== "object")
     return res.status(400).json({ error: "Los datos deben ser un objeto." });

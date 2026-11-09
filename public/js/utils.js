@@ -2,7 +2,7 @@
 // UTILIDADES DE INTERFAZ Y FORMATEO
 // ==========================================
 
-const toastEl = document.querySelector("#toast");
+const toastEl = typeof document !== "undefined" ? document.querySelector("#toast") : null;
 let toastTimer = 0;
 
 const TOAST_ICONOS = {
@@ -32,7 +32,7 @@ export function toast(message, tipo) {
   texto.className = "toast-texto";
   texto.textContent = message;
   toastEl.append(icono, texto);
-  window.clearTimeout(toastTimer);
+  clearTimeout(toastTimer);
   const supportsPopover = typeof toastEl.showPopover === "function";
   // Un diálogo puede reconstruir su contenido y desconectar el aviso anterior.
   // El popover se mantiene en el body y se abre después del modal en el top-layer.
@@ -47,7 +47,7 @@ export function toast(message, tipo) {
   toastEl.classList.remove("visible");
   void toastEl.offsetWidth;
   toastEl.classList.add("visible");
-  toastTimer = window.setTimeout(() => {
+  toastTimer = setTimeout(() => {
     toastEl.classList.remove("visible");
     if (supportsPopover && toastEl.matches(":popover-open")) toastEl.hidePopover();
   }, 5200);
@@ -408,7 +408,7 @@ export function showValidationErrors(messages, title = "Revisá los siguientes d
 const guardias = new WeakMap();
 
 // Puente para que el handler global de Esc (main.js) use el guard
-window.intentarCerrar = intentarCerrar;
+if (typeof window !== "undefined") window.intentarCerrar = intentarCerrar;
 
 function formDataSnapshot(form) {
   if (!form) return "";
@@ -451,7 +451,7 @@ export function intentarCerrar(form, dialog) {
 }
 
 // Botones del diálogo de confirmación de cierre
-(() => {
+if (typeof document !== "undefined") (() => {
   const confirmDialog = document.querySelector("#confirm-close-dialog");
   if (!confirmDialog) return;
   const cerrarObjetivo = () => {

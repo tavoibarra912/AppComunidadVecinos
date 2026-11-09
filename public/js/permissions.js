@@ -121,3 +121,37 @@ export function can(user, permission, resourceId = "", data) {
   else return false;
   return communityIds.some((id) => assigned.includes(id));
 }
+
+// Etiquetas legibles para los mensajes de «permiso insuficiente».
+const ETIQUETAS_PERMISO = {
+  "community:read": "ver comunidades",
+  "community:create": "crear comunidades",
+  "community:manage": "administrar comunidades",
+  "community:delete": "eliminar comunidades",
+  "owner:read": "ver propietarios",
+  "owner:manage": "administrar propietarios",
+  "owner:edit": "editar propietarios",
+  "owner:delete": "eliminar propietarios",
+  "owner:documents:submit": "subir documentación propia",
+  "property:read": "ver inmuebles",
+  "property:manage": "administrar inmuebles",
+  "property:delete": "eliminar inmuebles",
+  "tenant:read": "ver inquilinos",
+  "tenant:manage": "administrar inquilinos",
+  "tenant:delete": "eliminar inquilinos",
+  "document:read": "ver documentos",
+  "document:approve": "aprobar documentos",
+  "document:delete": "eliminar documentos",
+  "reports:read": "ver reportes",
+  "audit:read": "ver la auditoría",
+  "admin:users": "administrar usuarios",
+  "admin:roles": "administrar roles",
+  "admin:settings": "administrar la configuración",
+  "admin:providers": "configurar proveedores de comunicación",
+  "admin_notification:read": "ver el buzón del administrador",
+  "owner_notification:read": "ver el buzón de avisos",
+};
+
+export function etiquetaPermiso(permission) {
+  return ETIQUETAS_PERMISO[permission] || permission;
+}
