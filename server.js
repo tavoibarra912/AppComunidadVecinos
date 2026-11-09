@@ -19,9 +19,11 @@ if (!fs.existsSync(PUBLIC_DIR)) {
   process.exit(1);
 }
 
-if (process.env.NODE_ENV !== "production") {
-  seedDemoComunidades();
-}
+// seedDemoComunidades() pausado — se ejecuta manualmente con
+// node scripts/seed-demo-comunidades.mjs cuando se necesite.
+// if (process.env.NODE_ENV !== "production") {
+//   seedDemoComunidades();
+// }
 rebuildPropertyTenantReferences();
 
 const app = express();
