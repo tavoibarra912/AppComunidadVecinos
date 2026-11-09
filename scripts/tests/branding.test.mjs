@@ -106,6 +106,6 @@ test("API settings: guarda marca validada, la mergea y la expone en bootstrap", 
   const boot = await request("/bootstrap", "GET", undefined, cookie);
   assert.equal(boot.data.settings.marca.nombre, "Vecinos 2");
   // Otros roles no tocan la marca.
-  const carlos = await request("/auth/signin", "POST", { usuario: "carlos", password: "carlos" });
+  const carlos = await request("/auth/signin", "POST", { usuario: "usuario_r_user_c_propietario", password: "usuario_r_user_c_propietario" });
   assert.equal((await request("/admin/settings", "PUT", { marca: { nombre: "Hack" } }, carlos.cookie)).status, 403);
 });

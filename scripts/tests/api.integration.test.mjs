@@ -58,8 +58,8 @@ before(async () => {
   tenant = client();
   for (const [request, usuario] of [
     [admin, "super_admin"],
-    [owner, "carlos"],
-    [tenant, "laura"],
+    [owner, "usuario_r_user_c_propietario"],
+    [tenant, "usuario_r_user_c_inquilino"],
   ]) {
     const login = await request("/auth/signin", "POST", {
       usuario,
@@ -120,7 +120,7 @@ test("bootstrap: propietario e inquilino sólo reciben datos de sus perfiles", a
   );
   assert.deepEqual(
     own.data.users.map((u) => u.id),
-    ["user-carlos"],
+    ["user-usuario_r_user_c_propietario"],
   );
   assert.equal((await owner("/owners/own-seed-2")).status, 403);
   assert.equal((await owner("/admin/users")).status, 403);
@@ -169,11 +169,11 @@ test("inquilinos: varios contratos no se sobrescriben y se conserva userId", asy
   assert.ok(property.tenantIds.includes("api-tenant-2"));
   await admin("/tenants/api-tenant-1", "PUT", {
     ...payload,
-    userId: "user-consulta",
+    userId: "user-usuario_r_user_s_perfil",
   });
   assert.equal(
     (await admin("/tenants/api-tenant-1", "PUT", payload)).data.userId,
-    "user-consulta",
+    "user-usuario_r_user_s_perfil",
   );
   assert.equal((await admin("/tenants/api-tenant-2", "DELETE")).status, 200);
   property = (await admin("/properties/prop-seed-1")).data;
@@ -215,13 +215,14 @@ test("administración: contraseñas explícitas y respuestas sin secretos", asyn
   );
 });
 test("protección del último superadministrador en borrado, baja y cambio de rol", async () => {
-  assert.equal((await admin("/admin/users/user-admin", "DELETE")).status, 409);
+  const superAdmin = (await admin("/admin/users")).data.find(u => u.rol === "super_admin");
+  assert.equal((await admin(`/admin/users/${superAdmin.id}`, "DELETE")).status, 409);
   assert.equal(
-    (await admin("/admin/users/user-admin", "PUT", { activo: false })).status,
+    (await admin(`/admin/users/${superAdmin.id}`, "PUT", { activo: false })).status,
     409,
   );
   assert.equal(
-    (await admin("/admin/users/user-admin", "PUT", { rol: "user" })).status,
+    (await admin(`/admin/users/${superAdmin.id}`, "PUT", { rol: "user" })).status,
     409,
   );
 });
@@ -282,7 +283,7 @@ test("propietario: no puede cambiar perfiles, titularidad ni aprobar sus documen
     },
   });
   assert.equal(changed.status, 200);
-  assert.equal(changed.data.userId, "user-carlos");
+  assert.equal(changed.data.userId, "user-usuario_r_user_c_propietario");
   assert.equal(changed.data.isMember, before.isMember);
   assert.notEqual(changed.data.documents.dni.adminApproval?.status, "approved");
   assert.equal(
@@ -446,8 +447,8 @@ test("logout invalida la sesión en el servidor", async () => {
 test("administrador de comunidad: no puede leer ni mover datos a otra comunidad", async () => {
   const request = client();
   await request("/auth/signin", "POST", {
-    usuario: "gestor.olivos",
-    password: "gestor.olivos",
+    usuario: "comm_admin",
+    password: "comm_admin",
   });
   const visible = await request("/bootstrap");
   assert.deepEqual(

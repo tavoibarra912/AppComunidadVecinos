@@ -68,10 +68,15 @@ test("migración de roles: los roles viejos fueron eliminados", () => {
 });
 
 // ---------- Usuarios: semilla ----------
-test("semilla de usuarios: admin y recepción existen", () => {
+test("semilla de usuarios: cuentas estándar de demostración", () => {
   const usuarios = db.prepare("SELECT usuario, rol FROM users").all();
   assert.ok(usuarios.some(u => u.usuario === "super_admin" && u.rol === "super_admin"));
-  assert.ok(usuarios.some(u => u.usuario === "recepcion"));
+  assert.ok(usuarios.some(u => u.usuario === "admin" && u.rol === "administrator"));
+  assert.ok(usuarios.some(u => u.usuario === "comm_admin" && u.rol === "community_admin"));
+  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_s_perfil" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_c_propietario" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_c_inquilino" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_c_propietario_c_inquilino" && u.rol === "user"));
 });
 
 // ---------- syncOwnerProperties (N:M propietario ↔ inmuebles) ----------

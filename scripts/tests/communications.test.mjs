@@ -104,8 +104,8 @@ before(async () => {
   scoped = client();
   for (const [c, name] of [
     [admin, "super_admin"],
-    [owner, "carlos"],
-    [tenant, "laura"],
+    [owner, "usuario_r_user_c_propietario"],
+    [tenant, "usuario_r_user_c_inquilino"],
   ])
     assert.equal(
       (await c("/auth/signin", "POST", { usuario: name, password: name }))
@@ -169,8 +169,8 @@ test("comunicación: requiere sesión y un usuario nuevo no adopta otra comunida
 });
 test("publicación general llega a propietarios e inquilinos sin filtrar participantes ni contactos", async () => {
   const p = await create();
-  assert.ok(p.recipients.some((r) => r.userId === user("carlos").id));
-  assert.ok(p.recipients.some((r) => r.userId === user("laura").id));
+  assert.ok(p.recipients.some((r) => r.userId === user("usuario_r_user_c_propietario").id));
+  assert.ok(p.recipients.some((r) => r.userId === user("usuario_r_user_c_inquilino").id));
   assert.equal((await stranger(`/communications/posts/${p.id}`)).status, 404);
   for (const c of [owner, tenant]) {
     const r = await c(`/communications/posts/${p.id}`);
@@ -192,7 +192,7 @@ test("destinatarios seleccionados: deduplica cuentas y no avisa a otros resident
     },
   });
   assert.equal(
-    p.recipients.filter((r) => r.userId === user("carlos").id).length,
+    p.recipients.filter((r) => r.userId === user("usuario_r_user_c_propietario").id).length,
     1,
   );
   assert.equal((await owner(`/communications/posts/${p.id}`)).status, 200);
@@ -302,7 +302,7 @@ test("lectura y confirmación se registran por destinatario y por separado", asy
     200,
   );
   let detail = (await admin(`/communications/posts/${p.id}`)).data;
-  const mine = detail.recipients.find((r) => r.userId === user("carlos").id);
+  const mine = detail.recipients.find((r) => r.userId === user("usuario_r_user_c_propietario").id);
   assert.ok(mine.readAt);
   assert.equal(mine.receiptAt, "");
   assert.equal(
@@ -311,10 +311,10 @@ test("lectura y confirmación se registran por destinatario y por separado", asy
   );
   detail = (await admin(`/communications/posts/${p.id}`)).data;
   assert.ok(
-    detail.recipients.find((r) => r.userId === user("carlos").id).receiptAt,
+    detail.recipients.find((r) => r.userId === user("usuario_r_user_c_propietario").id).receiptAt,
   );
   assert.equal(
-    detail.recipients.find((r) => r.userId === user("laura").id).readAt,
+    detail.recipients.find((r) => r.userId === user("usuario_r_user_c_inquilino").id).readAt,
     "",
   );
 });
@@ -491,7 +491,7 @@ test("reuniones conservan invitación, confirmación y asistencia real por separ
   assert.equal(
     (
       await owner(`/communications/posts/${p.id}/attendance`, "POST", {
-        userId: user("laura").id,
+        userId: user("usuario_r_user_c_inquilino").id,
         attended: true,
       })
     ).status,
@@ -500,14 +500,14 @@ test("reuniones conservan invitación, confirmación y asistencia real por separ
   assert.equal(
     (
       await admin(`/communications/posts/${p.id}/attendance`, "POST", {
-        userId: user("carlos").id,
+        userId: user("usuario_r_user_c_propietario").id,
         attended: true,
       })
     ).status,
     200,
   );
   const r = (await admin(`/communications/posts/${p.id}`)).data.recipients.find(
-    (r) => r.userId === user("carlos").id,
+    (r) => r.userId === user("usuario_r_user_c_propietario").id,
   );
   assert.equal(r.rsvp, "accepted");
   assert.equal(r.attended, 1);
@@ -670,7 +670,7 @@ test("proveedores: solo superadmin, secretos cifrados y respuestas enmascaradas"
   assert.equal(JSON.stringify(b).includes("smtp-secret-test"), false);
 });
 test("canales externos requieren consentimiento y validan email y teléfono", async () => {
-  assert.equal(getPreferences(user("carlos")).smsEnabled, false);
+  assert.equal(getPreferences(user("usuario_r_user_c_propietario")).smsEnabled, false);
   assert.equal(
     (
       await owner("/communications/preferences", "PUT", {
@@ -774,7 +774,7 @@ test("desvincular un perfil revoca también documentos y publicaciones históric
     audience: { mode: "owners", ownerIds: [], tenantIds: [], propertyIds: [] },
   });
   assert.equal((await owner(`/communications/posts/${p.id}`)).status, 200);
-  const id = user("carlos").id;
+  const id = user("usuario_r_user_c_propietario").id;
   db.prepare("UPDATE owners SET userId='' WHERE userId=?").run(id);
   assert.equal((await owner(`/communications/posts/${p.id}`)).status, 404);
   db.prepare("UPDATE owners SET userId=? WHERE id='own-seed-1'").run(id);
@@ -801,7 +801,7 @@ test("vistas previas de una actualización conservan el destinatario original", 
 });
 test("el vencimiento del contrato revoca el acceso del inquilino", async () => {
   const p = await create();
-  const id = user("laura").id;
+  const id = user("usuario_r_user_c_inquilino").id;
   db.prepare("UPDATE tenants SET contractEnd='2020-01-01' WHERE userId=?").run(
     id,
   );

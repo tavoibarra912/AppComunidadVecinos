@@ -43,7 +43,12 @@ app.get("/", (_req, res) => {
   res.set("Cache-Control", "no-store");
   res.type("html").send(renderIndex(path.join(PUBLIC_DIR, "index.html"), getSettings()));
 });
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR, {
+  setHeaders: (res, filePath) => {
+    // JS/CSS siempre revalidan: nunca más módulos viejos cacheados.
+    if (/.(js|css)$/.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+  },
+}));
 
 app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);

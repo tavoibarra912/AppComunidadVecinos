@@ -302,6 +302,8 @@ export function seedIfEmpty() {
     tenantSeeds.forEach(t => syncPropertyTenantReferences(t.id));
 
     ensureDemoProfiles();
+    // Repetir tras crear comunidades: asigna adminUserId de la comunidad demo.
+    ensureDemoProfiles();
 
     db.exec("COMMIT");
     console.log(`[seed] Base de datos inicializada con datos de demo (${communitySeeds.length} comunidades, ${ownerSeeds.length} propietarios, ${propertySeeds.length} inmuebles, ${tenantSeeds.length} inquilinos).`);

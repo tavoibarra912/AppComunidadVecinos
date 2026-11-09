@@ -313,34 +313,77 @@ if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   const initialAdminPassword = process.env.APP_ADMIN_PASSWORD || "super_admin";
   const adminSalt = crypto.randomBytes(16).toString("hex");
   const adminHash = `scrypt:${adminSalt}:${crypto.scryptSync(initialAdminPassword, adminSalt, 64).toString("hex")}`;
-  insertUser.run("user-admin", "Administrador", "del sistema", "super_admin", "admin@penarrubia.es", "super_admin", adminHash);
-  if (process.env.NODE_ENV !== "production") insertUser.run("user-consulta", "Recepción", "de la Asociación", "recepcion", "recepcion@penarrubia.es", "user", seedPassword("recepcion"));
+  insertUser.run("user-super-admin", "super_admin", "", "super_admin", "super_admin@super_admin.com", "super_admin", adminHash);
+  if (process.env.NODE_ENV !== "production") {
+    const cuenta = (usuario, rol) => {
+      const salt = crypto.randomBytes(16).toString("hex");
+      insertUser.run(`user-${usuario}`, usuario, "", usuario, `${usuario}@${usuario}.com`, rol, `scrypt:${salt}:${crypto.scryptSync(usuario, salt, 64).toString("hex")}`);
+    };
+    cuenta("admin", "administrator");
+    cuenta("comm_admin", "community_admin");
+    cuenta("usuario_r_user_s_perfil", "user");
+    cuenta("usuario_r_user_c_propietario", "user");
+    cuenta("usuario_r_user_c_inquilino", "user");
+    cuenta("usuario_r_user_c_propietario_c_inquilino", "user");
+  }
 }
 
 export function ensureDemoProfiles() {
-  // Perfil Propietario simulado: cuenta para el propietario sembrado
-  // (Carlos Ruiz) si aún no tiene usuario vinculado.
-  const carlosOwner = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1' AND (userId IS NULL OR userId = '')").get();
-  if (carlosOwner && !db.prepare("SELECT id FROM users WHERE id = 'user-carlos'").get()) {
-    db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)")
-      .run("user-carlos", "Carlos", "Ruiz Mendoza", "carlos", "carlos@penarrubia.es", "user", seedPassword("carlos"));
-    db.prepare("UPDATE owners SET userId = 'user-carlos' WHERE id = 'own-seed-1'").run();
+  // Cuentas estándar de demostración (idempotente): una por rol y cuatro
+  // vecinos con combinaciones de perfiles para probar todos los escenarios.
+  const cuentas = [
+    { id: "user-super-admin", usuario: "super_admin", nombre: "super_admin", email: "super_admin@super_admin.com", rol: "super_admin" },
+    { id: "user-admin", usuario: "admin", nombre: "admin", email: "admin@admin.com", rol: "administrator" },
+    { id: "user-comm_admin", usuario: "comm_admin", nombre: "comm_admin", email: "comm_admin@comm_admin.com", rol: "community_admin" },
+    { id: "user-usuario_r_user_s_perfil", usuario: "usuario_r_user_s_perfil", nombre: "usuario_r_user_s_perfil", email: "usuario_r_user_s_perfil@usuario_r_user_s_perfil.com", rol: "user" },
+    { id: "user-usuario_r_user_c_propietario", usuario: "usuario_r_user_c_propietario", nombre: "usuario_r_user_c_propietario", email: "usuario_r_user_c_propietario@usuario_r_user_c_propietario.com", rol: "user" },
+    { id: "user-usuario_r_user_c_inquilino", usuario: "usuario_r_user_c_inquilino", nombre: "usuario_r_user_c_inquilino", email: "usuario_r_user_c_inquilino@usuario_r_user_c_inquilino.com", rol: "user" },
+    { id: "user-usuario_r_user_c_propietario_c_inquilino", usuario: "usuario_r_user_c_propietario_c_inquilino", nombre: "usuario_r_user_c_propietario_c_inquilino", email: "usuario_r_user_c_propietario_c_inquilino@usuario_r_user_c_propietario_c_inquilino.com", rol: "user" },
+  ];
+  for (const c of cuentas) {
+    if (db.prepare("SELECT id FROM users WHERE id = ? OR usuario = ?").get(c.id, c.usuario)) continue;
+    const salt = crypto.randomBytes(16).toString("hex");
+    db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, '', ?, ?, ?, 1, ?)")
+      .run(c.id, c.nombre, c.usuario, c.email, c.rol, `scrypt:${salt}:${crypto.scryptSync(c.usuario, salt, 64).toString("hex")}`);
   }
-  // Perfil Inquilino simulado: cuenta para el inquilino sembrado
-  // (Laura Martínez) si aún no tiene usuario vinculado.
-  const lauraTenant = db.prepare("SELECT id FROM tenants WHERE id = 'tenant-seed-1' AND (userId IS NULL OR userId = '')").get();
-  if (lauraTenant && !db.prepare("SELECT id FROM users WHERE id = 'user-laura'").get()) {
-    db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)")
-      .run("user-laura", "Laura", "Martínez Reyes", "laura", "laura@penarrubia.es", "user", seedPassword("laura"));
-    db.prepare("UPDATE tenants SET userId = 'user-laura' WHERE id = 'tenant-seed-1'").run();
-  }
-  // Perfil Administrador de Comunidad simulado: admin asignado a la
-  // comunidad sembrada principal.
-  const comPrincipal = db.prepare("SELECT id FROM communities WHERE id = 'com-seed-1' AND (adminUserId IS NULL OR adminUserId = '')").get();
-  if (comPrincipal && db.prepare("SELECT id FROM users WHERE id = 'user-admin-comunidad'").get() === undefined) {
-    db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)")
-      .run("user-admin-comunidad", "Gestor", "de Residencial Peñarrubia", "gestor.olivos", "gestor@penarrubia.es", "community_admin", seedPassword("gestor.olivos"));
-    db.prepare("UPDATE communities SET adminUserId = 'user-admin-comunidad' WHERE id = 'com-seed-1'").run();
+
+  // Vínculo de perfiles de demostración con las cuentas correspondientes.
+  const vincularOwner = (ownerId, userId) => {
+    const o = db.prepare("SELECT userId FROM owners WHERE id = ?").get(ownerId);
+    if (o && (!o.userId || ["user-carlos", "user-laura"].includes(o.userId)))
+      db.prepare("UPDATE owners SET userId = ? WHERE id = ?").run(userId, ownerId);
+  };
+  vincularOwner("own-seed-1", "user-usuario_r_user_c_propietario");
+  vincularOwner("own-seed-3", "user-usuario_r_user_c_propietario_c_inquilino");
+  const vincularTenant = (tenantId, userId) => {
+    const t = db.prepare("SELECT userId FROM tenants WHERE id = ?").get(tenantId);
+    if (t && (!t.userId || ["user-carlos", "user-laura"].includes(t.userId)))
+      db.prepare("UPDATE tenants SET userId = ? WHERE id = ?").run(userId, tenantId);
+  };
+  vincularTenant("tenant-seed-1", "user-usuario_r_user_c_inquilino");
+  vincularTenant("tenant-seed-2", "user-usuario_r_user_c_propietario_c_inquilino"); // inmueble en com-seed-2
+  const superMigrado = db.prepare("SELECT id, nombre FROM users WHERE usuario = 'super_admin'").get();
+  if (superMigrado && superMigrado.nombre !== "super_admin")
+    db.prepare("UPDATE users SET nombre = 'super_admin', apellido = '', email = 'super_admin@super_admin.com' WHERE id = ?").run(superMigrado.id);
+  const comPrincipal = db.prepare("SELECT adminUserId FROM communities WHERE id = 'com-seed-1'").get();
+  if (comPrincipal && (!comPrincipal.adminUserId || comPrincipal.adminUserId === "user-admin-comunidad"))
+    db.prepare("UPDATE communities SET adminUserId = 'user-comm_admin' WHERE id = 'com-seed-1'").run();
+
+  // Limpieza de cuentas de demo viejas que ya no se usan (sin vínculos activos).
+  for (const viejo of ["recepcion", "carlos", "laura", "gestor.olivos"]) {
+    const u = db.prepare("SELECT id FROM users WHERE usuario = ? AND id NOT IN (SELECT id FROM users WHERE usuario IN ('super_admin','admin','comm_admin','usuario_r_user_s_perfil','usuario_r_user_c_propietario','usuario_r_user_c_inquilino','usuario_r_user_c_propietario_c_inquilino'))").get(viejo);
+    if (!u) continue;
+    const usado = db.prepare(
+      `SELECT (SELECT COUNT(*) FROM owners WHERE userId = ?) +
+              (SELECT COUNT(*) FROM tenants WHERE userId = ?) +
+              (SELECT COUNT(*) FROM communities WHERE adminUserId = ?) +
+              (SELECT COUNT(*) FROM communication_recipients WHERE userId = ?) +
+              (SELECT COUNT(*) FROM communication_audit WHERE userId = ?) +
+              (SELECT COUNT(*) FROM communication_preferences WHERE userId = ?) +
+              (SELECT COUNT(*) FROM sessions WHERE userId = ?) AS total`,
+    ).get(u.id, u.id, u.id, u.id, u.id, u.id, u.id).total;
+    if (usado === 0) db.prepare("DELETE FROM users WHERE id = ?").run(u.id);
+    else db.prepare("UPDATE users SET activo = 0 WHERE id = ?").run(u.id);
   }
 }
 

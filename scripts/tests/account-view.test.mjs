@@ -17,7 +17,7 @@ function fixture() {
         id: "demo-user",
         nombre: "Carlos",
         apellido: "Ruiz Mendoza",
-        usuario: "carlos",
+        usuario: "usuario_r_user_c_propietario",
         rol: "user",
       },
     ],
