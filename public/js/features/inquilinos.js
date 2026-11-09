@@ -1,13 +1,13 @@
-import { documentUrl, sanitizeHtml, escapeHtml } from "../html.js";
+import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
-import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, propertyLabel, propertyOwnerIds, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
-import { toast, isValidEmail, isValidDateInput, isValidIdentityDocument, formatContractDate, getLocalDateInputValue, makeSelectSearchable, readFileAsDataUrl, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { toast, isValidEmail, isValidDateInput, isValidIdentityDocument, formatContractDate, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail } from "./inmuebles.js";
-import { openOwnerDetail, openOwnerEditor, closeOwnerDetail } from "./propietarios.js";
-import { openCommunityDetail } from "./comunidades.js";
-import { DocumentValidator, checkDocumentCorrespondence, openDocViewer } from "../docs-engine.js";
+import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
+
+import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
@@ -22,8 +22,6 @@ function iconBtn(className, title, ariaLabel, svg) {
   btn.innerHTML = sanitizeHtml(svg);
   return btn;
 }
-
-const ownerDetailDialog = document.querySelector("#owner-detail-dialog");
 
 const tenantContactVerify = {
   phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
@@ -48,21 +46,6 @@ let editingTenantPropertyId = null;
 
 const tenantPhoneVerifyStatus = document.querySelector("#tenant-phone-verify-status");
 const tenantEmailVerifyStatus = document.querySelector("#tenant-email-verify-status");
-const tenantVerificationDialog = document.querySelector("#tenant-verification-dialog");
-const tenantVerificationTitle = document.querySelector("#tenant-verification-title");
-const tenantVerificationDesc = document.querySelector("#tenant-verification-desc");
-const tenantVerificationTarget = document.querySelector("#tenant-verification-target");
-const tenantVerificationDemo = document.querySelector("#tenant-verification-demo");
-const tenantVerificationDemoCode = document.querySelector("#tenant-verification-demo-code");
-const tenantVerificationCodeInput = document.querySelector("#tenant-verification-code-input");
-const tenantVerificationError = document.querySelector("#tenant-verification-error");
-const tenantVerificationResendBtn = document.querySelector("#tenant-verification-resend-btn");
-const tenantVerificationConfirmBtn = document.querySelector("#tenant-verification-confirm-btn");
-const closeTenantVerificationDialogBtn = document.querySelector("#close-tenant-verification-dialog");
-const cancelTenantVerificationBtn = document.querySelector("#cancel-tenant-verification-btn");
-
-let tenantVerificationKind = "phone";
-
 function tenantSetVerifyStatus(kind, st, message) {
   const el = kind === "phone" ? tenantPhoneVerifyStatus : tenantEmailVerifyStatus;
   if (!el) return;
@@ -436,12 +419,6 @@ async function handleTenantDocUpload(file, docType) {
     alert("Error al procesar el archivo: " + err.message);
     renderTenantDialogDocs();
   }
-}
-
-function tenantTabForField(name) {
-  const field = tenantForm.elements[name];
-  const pane = field ? field.closest("[data-tenant-pane]") : null;
-  return pane ? pane.dataset.tenantPane : "general";
 }
 
 // Verificación de contacto vía el diálogo compartido (verificacion-contacto.js)

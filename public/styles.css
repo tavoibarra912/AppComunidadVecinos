@@ -701,13 +701,15 @@ dialog .dialog-content {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 22px;
 }
 
 .form-grid label {
   display: grid;
+  align-content: start;
+  min-width: 0;
   gap: 7px;
   color: #3f4f61;
   font-weight: 650;
@@ -2789,6 +2791,18 @@ select {
   display: flex;
   gap: 8px;
   align-items: stretch;
+}
+
+.verify-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.verify-actions .verify-status {
+  flex: 1;
+  min-width: 0;
 }
 
 .verify-row input,

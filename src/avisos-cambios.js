@@ -1,4 +1,4 @@
-import { db, getSettings } from "./db.js";
+import { getSettings } from "./db.js";
 import { sendMessage } from "./delivery-providers.js";
 import { textosActuales, aplicarPlantilla, nombrePlataforma } from "./textos-envio.js";
 

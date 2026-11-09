@@ -5,11 +5,6 @@ import { toast, readFileAsDataUrl } from "./utils.js";
 
 export const editingDocs = { current: {} };
 
-const contactVerify = {
-  phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
-  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
-};
-
 // Dropzones e Inputs de Documentos en Formulario
 const inputDocDni = document.querySelector("#input-doc-dni");
 const inputDocBank = document.querySelector("#input-doc-bank");

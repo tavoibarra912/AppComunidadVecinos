@@ -1,5 +1,5 @@
-import { state, onDataChanged, ROLE_LABELS, setActiveUser, getCurrentUser, getCurrentUserRole, hasPermission, requirePermission } from "../state.js";
-import { toast } from "../utils.js";
+import { state, ROLE_LABELS, getCurrentUser, hasPermission } from "../state.js";
+
 import { accountView } from "../account-view.js";
 import { renderCommunities } from "./comunidades.js";
 import { renderOwners } from "./propietarios.js";
@@ -9,7 +9,7 @@ import { renderHomeDashboard } from "./home.js";
 import { renderAdministracion } from "./administracion.js";
 import { renderCommunication } from "./communication.js";
 import "./auth.js";
-import { updateInboxBadge, updateOwnerInboxBadge } from "./notificaciones.js";
+import { updateOwnerInboxBadge } from "./notificaciones.js";
 
 const userAvatar = document.querySelector("#user-avatar");
 const userRoleLabel = document.querySelector("#user-role-label");
@@ -42,20 +42,8 @@ const ownersHeadingEyebrow = document.querySelector("#owners-heading-eyebrow");
 const ownersHeadingTitle = document.querySelector("#owners-heading-title");
 const ownersHeadingSubtitle = document.querySelector("#owners-heading-subtitle");
 const ownersToolbar = document.querySelector("#owners-toolbar");
-const homeGreetingDesc2 = undefined;
-const newPropertyBtn = document.querySelector("#new-property");
-const propertySearch = document.querySelector("#search-properties");
-const propertyResultCount = document.querySelector("#property-result-count");
-const newInquilinoBtn = document.querySelector("#new-tenant");
-const tenantResultCount = document.querySelector("#tenant-result-count");
-const tenantSearch = document.querySelector("#search-tenants");
 const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
 const topbarOwnerInboxBtn = document.querySelector("#topbar-owner-inbox-btn");
-
-const contactVerify = {
-  phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
-  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
-};
 
 // === Elementos de navegación: declarados arriba (bloque consolidado) ===
 

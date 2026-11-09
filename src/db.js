@@ -274,11 +274,6 @@ for (const user of db.prepare("SELECT id, usuario, passwordHash FROM users WHERE
   }
 }
 
-function seedPassword(usuario) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  return salt + ":" + crypto.createHash("sha256").update(`${salt}:${usuario}`).digest("hex");
-}
-
 // Migración: la cuenta de Super Admin ahora se llama "super_admin" (antes "admin").
 const legacyAdmin = db.prepare("SELECT id, usuario, passwordHash FROM users WHERE id = 'user-admin' AND usuario = 'admin'").get();
 if (legacyAdmin && !db.prepare("SELECT 1 AS existe FROM users WHERE usuario = 'super_admin'").get()) {

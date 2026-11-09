@@ -19,18 +19,7 @@ import {
   requirePermission,
 } from "../security.js";
 import { resourceAccess, notificationAccess } from "../access.js";
-import {
-  listCommunities,
-  listOwners,
-  listProperties,
-  listTenants,
-  listAdminEmails,
-  listOwnerNotifications,
-  listDocuments,
-  listUsers,
-  listRoles,
-  getSettings,
-} from "../db.js";
+import { listAdminEmails, listOwnerNotifications, listDocuments, getSettings } from "../db.js";
 
 const router = Router();
 router.use(auditRequests);

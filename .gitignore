@@ -133,3 +133,6 @@ vite.config.ts.timestamp-*
 # Datos locales de la aplicación
 data/
 uploads/
+
+# Scratch local de desarrollo
+.kimchi/

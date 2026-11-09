@@ -54,8 +54,7 @@ export async function openCommunicationComposer() {
   await refreshCommunication();
   if (metadata?.communities.some((c) => c.canManage)) openEditor();
 }
-let currentPost = null,
-  detailTab = "publication",
+let detailTab = "publication",
   editorPost = null,
   editorStep = 0,
   editorSnapshot = "";
@@ -79,7 +78,6 @@ function closeDialog() {
     return;
   editorSnapshot = "";
   editorPost = null;
-  currentPost = null;
   dialog.close();
 }
 dialog.addEventListener("cancel", (e) => {
@@ -258,7 +256,6 @@ $("#comm-inbox-link").addEventListener("click", (e) => {
   action(async () => {
     await refreshCommunication();
     editorSnapshot = "";
-    currentPost = null;
     const notifications = posts
       .filter((p) => p.recipient && !["draft", "scheduled"].includes(p.phase))
       .sort(
@@ -320,7 +317,6 @@ function taskRow(t = {}) {
 }
 function openEditor(post = null) {
   editorPost = post;
-  currentPost = null;
   editorStep = 0;
   editorSnapshot = "";
   const communityId =
@@ -584,7 +580,6 @@ function renderPreview(preview) {
 
 async function openPost(id, tab = "publication") {
   const p = await request(`/posts/${id}`);
-  currentPost = p;
   editorSnapshot = "";
   editorPost = null;
   detailTab = tab;
@@ -830,7 +825,6 @@ $("#comm-preferences").addEventListener("click", (e) =>
   action(async () => {
     const p = await request("/preferences");
     editorSnapshot = "";
-    currentPost = null;
     showDialog(
       "Mis canales de comunicación",
       `<form id="comm-preference-form"><p>Los avisos dentro de la app siempre están disponibles. Elegí si también querés recibirlos por canales externos.</p>${input("email", "Correo electrónico", p.email, "email", 'maxlength="254"')}${input("phone", "Teléfono internacional", p.phone, "tel", 'placeholder="+34600111222" maxlength="16"')}<div class="comm-preference-checks">${check("emailEnabled", "Acepto recibir avisos por correo electrónico", p.emailEnabled)}${check("smsEnabled", "Acepto recibir avisos por SMS", p.smsEnabled)}${check("whatsappEnabled", "Acepto recibir avisos por WhatsApp", p.whatsappEnabled)}</div><p class="comm-muted">Podés desactivarlos en cualquier momento. El administrador debe tener configurado el proveedor correspondiente.</p><button type="submit" class="primary-button">Guardar preferencias</button></form>`,

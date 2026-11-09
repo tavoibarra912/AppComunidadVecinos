@@ -1,5 +1,5 @@
 import { getSettings } from "./db.js";
-import { aplicarPlantilla, textosDe } from "../public/js/textos-envio.js";
+import { textosDe } from "../public/js/textos-envio.js";
 
 export { aplicarPlantilla, textosDe, TEXTOS_DEFECTO } from "../public/js/textos-envio.js";
 

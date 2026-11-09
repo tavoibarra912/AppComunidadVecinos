@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db, tenantFromRow, listDocuments } from "../db.js";
+import { db, tenantFromRow } from "../db.js";
 import { upsertTenant } from "../domain.js";
 import { contactError, dateError, identityDocumentError } from "../validation.js";
 import { removeEntityFiles } from "./documents.js";

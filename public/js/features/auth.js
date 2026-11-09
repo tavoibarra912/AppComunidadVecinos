@@ -2,7 +2,7 @@ import { api } from "../api.js";
 // ==========================================
 // SESIÓN: acceso por usuario y contraseña
 // ==========================================
-import { state, refreshState, clearSession } from "../state.js";
+import { refreshState, clearSession } from "../state.js";
 import { toast, limpiarGuardia } from "../utils.js";
 import { applyRoleUI, handleRouting, renderUserSelector } from "./navigation.js";
 

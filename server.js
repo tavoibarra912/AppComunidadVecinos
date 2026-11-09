@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import apiRouter from "./src/routes/index.js";
-import { seedCommunicationsDemo, seedDemoComunidades, seedIfEmpty } from "./src/seed.js";
+
 import { rebuildPropertyTenantReferences } from "./src/domain.js";
 import { startCommunicationWorker } from "./src/communication-worker.js";
 import { renderIndex } from "./src/branding.js";

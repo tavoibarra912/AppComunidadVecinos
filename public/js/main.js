@@ -1,7 +1,7 @@
 // ==========================================
 // PUNTO DE ENTRADA DE LA APLICACIÓN
 // ==========================================
-import { state, refreshState, onDataChanged, setActiveUser } from "./state.js";
+import { refreshState, onDataChanged } from "./state.js";
 import { loadLocations } from "./territory.js";
 import { api } from "./api.js";
 import { intentarCerrar } from "./utils.js";

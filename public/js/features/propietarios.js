@@ -1,18 +1,17 @@
-import { sanitizeHtml, escapeHtml, documentUrl } from "../html.js";
+import { sanitizeHtml, escapeHtml } from "../html.js";
 
 import { api } from "../api.js";
-import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
-import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
+import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, makeSelectSearchable, showValidationErrors, intentarCerrar } from "../utils.js";
 import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
-import { editingDocs, renderOwnerDialogDocs, getFormOwnerContext, DocumentValidator, openDocViewer as engineOpenDocViewer } from "../docs-engine.js";
-import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, getOwnerOverallDocStatus, addOwnerNotification, sendAdminEmailNotification, openAdminEmail, updateInboxBadge, updateOwnerInboxBadge, renderOwnerInbox, openOwnerInbox, openAdminInbox } from "./notificaciones.js";
-import { openTenantEditor, openTenantDetail, closeTenantEditor, closeTenantDetail, openTenantDelete } from "./inquilinos.js";
+import { editingDocs, renderOwnerDialogDocs, openDocViewer as engineOpenDocViewer } from "../docs-engine.js";
+import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, addOwnerNotification, sendAdminEmailNotification, openAdminEmail } from "./notificaciones.js";
+import { openTenantEditor, openTenantDetail, openTenantDelete } from "./inquilinos.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
-import { openCommunityDetail, openCommunityEditor } from "./comunidades.js";
+import { openCommunityEditor } from "./comunidades.js";
 
 let ownerTable = null;
-let viewingDocDetails = null;
 // Inmuebles asociados en el editor de propietario (modelo N:M) + % de titularidad por inmueble
 let editingOwnerProperties = [];
 let editingOwnerPropertyPercentages = {};
@@ -48,11 +47,6 @@ function populateCurrencySelect(selected) {
 }
 
 // Elementos de Propietarios
-const ownersHeadingEyebrow = document.querySelector("#owners-heading-eyebrow");
-const ownersHeadingTitle = document.querySelector("#owners-heading-title");
-const ownersHeadingSubtitle = document.querySelector("#owners-heading-subtitle");
-const newOwnerBtn = document.querySelector("#new-owner");
-const ownersToolbar = document.querySelector("#owners-toolbar");
 const ownerCount = document.querySelector("#owner-result-count");
 const ownerSearch = document.querySelector("#search-owners");
 const ownerForm = document.querySelector("#owner-form");
@@ -68,7 +62,6 @@ const ownerDetailDialog = document.querySelector("#owner-detail-dialog");
 const closeOwnerDetailDialog = document.querySelector("#close-owner-detail-dialog");
 const closeOwnerDetailBtn = document.querySelector("#close-owner-detail-btn");
 const ownerDetailEditBtn = document.querySelector("#owner-detail-edit-btn");
-const ownerDetailDocBadge = document.querySelector("#owner-detail-doc-badge");
 const ownerDetailDocsGrid = document.querySelector("#owner-detail-docs-grid");
 const ownerDetailApprovalPanel = document.querySelector("#owner-detail-approval-panel");
 const ownerDetailPropertyCommunity = document.querySelector("#owner-detail-property-community");
@@ -95,31 +88,9 @@ const docSuccessDialog = document.querySelector("#doc-success-dialog");
 const closeDocSuccessBtn = document.querySelector("#close-doc-success-btn");
 const btnViewAdminEmail = document.querySelector("#btn-view-admin-email");
 
-const adminEmailDialog = document.querySelector("#admin-email-dialog");
-const closeAdminEmailDialog = document.querySelector("#close-admin-email-dialog");
-const closeAdminEmailBtn = document.querySelector("#close-admin-email-btn");
-const emailGotoApprovalBtn = document.querySelector("#email-goto-approval-btn");
-const emailMailtoLink = document.querySelector("#email-mailto-link");
-
-const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
-const inboxBadgeCount = document.querySelector("#inbox-badge-count");
-const adminInboxDialog = document.querySelector("#admin-inbox-dialog");
-const closeAdminInboxDialog = document.querySelector("#close-admin-inbox-dialog");
-const closeAdminInboxBtn = document.querySelector("#close-admin-inbox-btn");
-const adminInboxList = document.querySelector("#admin-inbox-list");
-
-const topbarOwnerInboxBtn = document.querySelector("#topbar-owner-inbox-btn");
-const ownerInboxBadgeCount = document.querySelector("#owner-inbox-badge-count");
-const ownerInboxDialog = document.querySelector("#owner-inbox-dialog");
-const closeOwnerInboxDialog = document.querySelector("#close-owner-inbox-dialog");
-const closeOwnerInboxBtn = document.querySelector("#close-owner-inbox-btn");
-const markAllOwnerNotifsReadBtn = document.querySelector("#mark-all-owner-notifs-read-btn");
-const ownerInboxList = document.querySelector("#owner-inbox-list");
-
 const docViewerDialog = document.querySelector("#doc-viewer-dialog");
 const closeDocViewerDialog = document.querySelector("#close-doc-viewer-dialog");
 const closeDocViewerBtn = document.querySelector("#close-doc-viewer-btn");
-const docViewerQuickApproveBtn = document.querySelector("#doc-viewer-quick-approve-btn");
 
 const docRejectDialog = document.querySelector("#doc-reject-dialog");
 const docRejectForm = document.querySelector("#doc-reject-form");
@@ -239,29 +210,6 @@ export function renderOwners() {
         },
         { key: "address", label: "Dirección", value: owner => owner.address, defaultVisible: true },
         { key: "city", label: "Municipio", value: owner => owner.city, defaultVisible: true },
-        {
-          key: "properties",
-          label: "Inmueble",
-          value: owner => ownerProperties(owner).map(property => property.plot).join(", ") || "Sin inmuebles",
-          render: owner => {
-            const linkedProperties = ownerProperties(owner);
-            const cell = document.createElement("div");
-            if (linkedProperties.length === 0) {
-              cell.textContent = "Sin inmuebles";
-              return cell;
-            }
-            linkedProperties.forEach((property, idx) => {
-              if (idx > 0) cell.append(", ");
-              const link = document.createElement("button");
-              link.type = "button";
-              link.className = "text-link-button";
-              link.textContent = property.plot || "Inmueble";
-              link.addEventListener("click", () => openPropertyEditor(property.id, "general", true));
-              cell.append(link);
-            });
-            return cell;
-          }
-        },
         {
           key: "member",
           label: "Condición",
@@ -1187,7 +1135,6 @@ export function openDocRejectDialog(ownerId) {
 export function openDocViewer(owner, docKey, docObj = null) {
   const doc = docObj || (owner?.documents && owner.documents[docKey]);
   if (!doc) return;
-  viewingDocDetails = { owner, docKey, doc };
   engineOpenDocViewer(owner, docKey, doc);
 }
 

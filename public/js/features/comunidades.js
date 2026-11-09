@@ -1,10 +1,10 @@
 import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
-import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif } from "../utils.js";
+import { toast, validateDocumentFiles, setupGenericFileDropzone, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif } from "../utils.js";
 import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
-import { openPropertyDetail, openPropertyEditor, updatePropertyPeopleSelectors } from "./inmuebles.js";
+import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
 
@@ -18,8 +18,6 @@ const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" s
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
 const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
-const ICON_UNLINK = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-const ICON_VIEW_SM = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 
 function populateCommunityCurrencySelect(selected) {
   const select = communityForm.elements.currency;
@@ -64,25 +62,8 @@ function iconBtn(className, title, ariaLabel, svg) {
   return btn;
 }
 
-const contactVerify = {
-  phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
-  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
-};
-
-function populateCurrencySelect(selected) {
-  const select = document.querySelector("#owner-form")?.elements.currency;
-  if (!select) return;
-  select.replaceChildren();
-  getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || state.settings?.monedaPorDefecto || "EUR";
-}
-
 // Elementos de Comunidades
-const comHeadingEyebrow = document.querySelector("#comunidades-heading-eyebrow");
-const comHeadingTitle = document.querySelector("#comunidades-heading-title");
-const comHeadingSubtitle = document.querySelector("#comunidades-heading-subtitle");
 const newCommunityBtn = document.querySelector("#new-community");
-const comToolbar = document.querySelector("#comunidades-toolbar");
 const communityCount = document.querySelector("#result-count");
 const communitySearch = document.querySelector("#search");
 const communityForm = document.querySelector("#community-form");
@@ -499,8 +480,6 @@ communityForm.elements.email?.addEventListener("input", e => {
 
 const communityDocumentInput = document.querySelector("#community-document-input");
 const communityDocumentList = document.querySelector("#community-document-list");
-
-const ICON_FILE_DOC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
 
 function getFormCommunityContext() {
   return {

@@ -1,4 +1,4 @@
-import { db, getSettings } from "./db.js";
+import { db } from "./db.js";
 import {
   materialize,
   postById,

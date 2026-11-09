@@ -1,4 +1,4 @@
-import { sanitizeHtml, escapeHtml } from "../html.js";
+import { sanitizeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, hasPermission, requirePermission } from "../state.js";
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
@@ -46,7 +46,6 @@ let userTable = null;
 let adminTabActual = "usuarios";
 let editingUserId = null;
 let editingRoleId = null;
-let dirtySnapshot = "";
 
 function puedeAdministrar() {
   return Object.values(ADMIN_TABS).some(p => hasPermission(p)) || hasPermission("admin:providers");
@@ -307,8 +306,6 @@ function renderUserLinkSelects(user) {
     if (linkedTenantId) userLinkedTenantSelect.value = linkedTenantId;
   }
 }
-
-const ICON_USER_SAVE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path></svg>`;
 
 userForm?.addEventListener("submit", async event => {
   event.preventDefault();

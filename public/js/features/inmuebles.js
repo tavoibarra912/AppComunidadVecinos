@@ -1,26 +1,13 @@
 import { sanitizeHtml, escapeHtml } from "../html.js";
 import { openDocViewer, DocumentValidator } from "../docs-engine.js";
 import { api } from "../api.js";
-import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, propertyLabel, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
-import { toast, renderDocumentRecords, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
+import { toast, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, makeSelectSearchable, showValidationErrors, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { selectLocationInForm, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
-import { openCommunityDetail, openCommunityEditor, refreshCommunityEditorAfterPropertySave } from "./comunidades.js";
-
-const contactVerify = {
-  phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
-  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
-};
-
-function populateCurrencySelect(selected) {
-  const select = document.querySelector("#owner-form")?.elements.currency;
-  if (!select) return;
-  select.replaceChildren();
-  getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
-  select.value = selected || state.settings?.monedaPorDefecto || "EUR";
-}
+import { openCommunityEditor, refreshCommunityEditorAfterPropertySave } from "./comunidades.js";
 
 // Diálogo de eliminación de Inmuebles
 const propertyDeleteDialog = document.querySelector("#property-delete-dialog");
@@ -418,8 +405,6 @@ export function updatePropertyPeopleSelectors(selectedOwnerIds = [], selectedTen
   if (ownerPanel) ownerPanel.hidden = true;
   if (tenantPanel) tenantPanel.hidden = true;
 }
-
-const ICON_FILE_DOC = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
 
 function getFormPropertyContext() {
   const property = state.properties.find(item => item.id === state.ui.editingPropertyId);

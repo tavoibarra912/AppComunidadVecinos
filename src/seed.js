@@ -5,13 +5,13 @@ import { validatePost } from "./communication-validation.js";
 import { materialize } from "./communication-store.js";
 
 const communitySeeds = [
-  { id: "com-seed-1", name: "Residencial Peñarrubia", nif: "H28654321", address: "Calle de la Sierra, 14", city: "Madrid", province: "Madrid", postalCode: "28035", phone: "912345678", otherPhone: "913456789", email: "contacto@penarrubia.es", notes: "" },
+  { id: "com-seed-1", name: "Residencial Peñarrubia", nif: "H28654325", address: "Calle de la Sierra, 14", city: "Madrid", province: "Madrid", postalCode: "28035", phone: "912345678", otherPhone: "913456789", email: "contacto@penarrubia.es", notes: "" },
   { id: "com-seed-2", name: "Edificio Los Olivos", nif: "H19456789", address: "Avenida de Europa, 6", city: "Pozuelo de Alarcón", province: "Madrid", postalCode: "28224", phone: "913456789", otherPhone: "914567890", email: "contacto@penarrubia.es", notes: "Próxima junta ordinaria en octubre." },
-  { id: "com-seed-3", name: "Comunidad Vista Bella", nif: "H03112233", address: "Calle Mayor, 45", city: "Alicante/Alacant", province: "Alicante", postalCode: "03001", phone: "965112233", otherPhone: "965223344", email: "vistabella@comunidad.es", notes: "Revisión técnica de ascensor en curso." },
-  { id: "com-seed-4", name: "Urbanización El Pinar", nif: "H29987654", address: "Camino del Pinar, 8", city: "Málaga", province: "Málaga", postalCode: "29001", phone: "952987654", otherPhone: "952123456", email: "elpinar@comunidad.es", notes: "" },
-  { id: "com-seed-5", name: "Residencial Las Flores", nif: "H41556677", address: "Plaza de las Flores, 12", city: "Sevilla", province: "Sevilla", postalCode: "41001", phone: "954556677", otherPhone: "954667788", email: "lasflores@comunidad.es", notes: "Limpieza y mantenimiento de jardines." },
-  { id: "com-seed-6", name: "Parque San Juan", nif: "H46123456", address: "Gran Vía del Marqués, 78", city: "Valencia", province: "Valencia", postalCode: "46001", phone: "963123456", otherPhone: "963654321", email: "sanjuan@comunidad.es", notes: "" },
-  { id: "com-seed-7", name: "Altos de Peñarrubia", nif: "H50778899", address: "Paseo de la Ribera, 3", city: "Zaragoza", province: "Zaragoza", postalCode: "50001", phone: "976778899", otherPhone: "976889900", email: "altos@penarrubia.es", notes: "Lectura de contadores trimestral." }
+  { id: "com-seed-3", name: "Comunidad Vista Bella", nif: "H03112232", address: "Calle Mayor, 45", city: "Alicante/Alacant", province: "Alicante", postalCode: "03001", phone: "965112233", otherPhone: "965223344", email: "vistabella@comunidad.es", notes: "Revisión técnica de ascensor en curso." },
+  { id: "com-seed-4", name: "Urbanización El Pinar", nif: "H29987658", address: "Camino del Pinar, 8", city: "Málaga", province: "Málaga", postalCode: "29001", phone: "952987654", otherPhone: "952123456", email: "elpinar@comunidad.es", notes: "" },
+  { id: "com-seed-5", name: "Residencial Las Flores", nif: "H41556671", address: "Plaza de las Flores, 12", city: "Sevilla", province: "Sevilla", postalCode: "41001", phone: "954556677", otherPhone: "954667788", email: "lasflores@comunidad.es", notes: "Limpieza y mantenimiento de jardines." },
+  { id: "com-seed-6", name: "Parque San Juan", nif: "H46123451", address: "Gran Vía del Marqués, 78", city: "Valencia", province: "Valencia", postalCode: "46001", phone: "963123456", otherPhone: "963654321", email: "sanjuan@comunidad.es", notes: "" },
+  { id: "com-seed-7", name: "Altos de Peñarrubia", nif: "H50778893", address: "Paseo de la Ribera, 3", city: "Zaragoza", province: "Zaragoza", postalCode: "50001", phone: "976778899", otherPhone: "976889900", email: "altos@penarrubia.es", notes: "Lectura de contadores trimestral." }
 ];
 
 function createSeedDocsForCarlosRuiz() {
@@ -497,7 +497,7 @@ export function seedDemoComunidades() {
 
   const comunidades = [
     {
-      id: "com-demo-1", name: "Comunidad Peñarrubia", nif: "B12345678",
+      id: "com-demo-1", name: "Comunidad Peñarrubia", nif: "B12345674",
       phone: "911000111", otherPhone: "911000112", address: "Avenida de la Constitución, 1",
       city: "Madrid", province: "Madrid", postalCode: "28001", email: "penarrubia.demo@comunidad.es",
       iban: "ES9121000418450200051332", president: "María González", administrator: "Fincas del Sol",
@@ -505,7 +505,7 @@ export function seedDemoComunidades() {
       notes: "Comunidad demo con todos los campos completos.", documents: "[]", adminUserId: "user-comm_admin",
     },
     {
-      id: "com-demo-2", name: "Comunidad Las Acacias", nif: "B87654321",
+      id: "com-demo-2", name: "Comunidad Las Acacias", nif: "B87654323",
       phone: "922000222", otherPhone: "922000223", address: "Calle de los Álamos, 22",
       city: "Pozuelo de Alarcón", province: "Madrid", postalCode: "28223", email: "acacias.demo@comunidad.es",
       iban: "ES7620770024003102575766", president: "Jorge Lasarte", administrator: "Gestión Horizontal",
@@ -513,7 +513,7 @@ export function seedDemoComunidades() {
       notes: "Segunda comunidad demo. Administrada también por comm_admin (multi-asignación).", documents: "[]", adminUserId: "user-comm_admin",
     },
     {
-      id: "com-demo-3", name: "Comunidad Los Pinos", nif: "B55566677",
+      id: "com-demo-3", name: "Comunidad Los Pinos", nif: "B55566673",
       phone: "933000333", otherPhone: "933000334", address: "Camino de los Pinos, 9",
       city: "Torrelodones", province: "Madrid", postalCode: "28250", email: "los.pinos.demo@comunidad.es",
       iban: "ES3344556677889900112233", president: "Rocío Pinar", administrator: "Admin Central",

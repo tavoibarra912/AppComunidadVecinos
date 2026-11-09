@@ -112,23 +112,6 @@ function setOwnerFeedback(message, error = false) {
   el.classList.toggle("is-error", error);
 }
 
-const contactVerify = {
-  phone: {
-    value: "",
-    verified: false,
-    pending: false,
-    challengeId: "",
-    verifiedAt: "",
-  },
-  email: {
-    value: "",
-    verified: false,
-    pending: false,
-    challengeId: "",
-    verifiedAt: "",
-  },
-};
-
 export function getOwnerOverallDocStatus(owner) {
   const status = getOwnerDocStatus(owner);
   const labelMap = {

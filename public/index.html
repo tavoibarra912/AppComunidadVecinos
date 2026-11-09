@@ -644,15 +644,15 @@
       <section class="community-editor-pane" id="community-tab-contact" data-community-pane="contact" hidden>
         <div class="form-grid">
           <label>Teléfono Principal *
-            <div class="verify-row">
-              <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+            <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+            <div class="verify-actions">
+              <span class="verify-status" id="community-phone-verify-status" role="status" aria-live="polite">Pendiente de
+                verificación</span>
               <button class="secondary-button verify-btn" type="button" id="community-btn-verify-phone">Verificar</button>
             </div>
-            <span class="verify-status" id="community-phone-verify-status" role="status" aria-live="polite">Pendiente de
-              verificación</span>
           </label>
           <label>Teléfono Secundario (opcional)
-            <div class="verify-row"><input name="otherPhone" type="tel" maxlength="9" inputmode="numeric" placeholder="600000000" /></div>
+            <input name="otherPhone" type="tel" maxlength="9" inputmode="numeric" placeholder="600000000" />
           </label>
           <label>Email *
             <div class="verify-row">
@@ -772,6 +772,13 @@
             validez)</button>
         </div>
         <div class="doc-file-list" id="community-document-list"></div>
+        <div class="docs-summary-bar" id="community-docs-summary-bar">
+          <div class="docs-summary-text">
+            <span id="community-docs-summary-status">0 documentos adjuntos</span>
+            <span class="docs-summary-subtext" id="community-docs-summary-subtext">Adjunta la documentación oficial para
+              archivar en el expediente de la comunidad.</span>
+          </div>
+        </div>
       </section>
       <p class="form-error" id="form-error" role="alert"></p>
       <div class="dialog-actions">
@@ -1132,16 +1139,16 @@
         <div class="form-grid">
           <p class="form-section-title full">Contacto</p>
           <label id="label-phone">Teléfono principal *
-            <div class="verify-row">
-              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
-                autocomplete="tel" />
+            <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+              autocomplete="tel" />
+            <div class="verify-actions">
+              <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de
+                verificación</span>
               <button class="secondary-button verify-btn" type="button" id="btn-verify-phone">Verificar</button>
             </div>
-            <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de
-              verificación</span>
           </label>
           <label>Teléfono Secundario (opcional)
-            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000" />
           </label>
           <label class="full" id="label-email">Email *
             <div class="verify-row">
@@ -1663,16 +1670,16 @@
         <div class="form-grid">
           <p class="form-section-title full">Contacto</p>
           <label id="tenant-label-phone">Teléfono Principal *
-            <div class="verify-row">
-              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
-                autocomplete="tel" />
+            <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+              autocomplete="tel" />
+            <div class="verify-actions">
+              <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de
+                verificación</span>
               <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-phone">Verificar</button>
             </div>
-            <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de
-              verificación</span>
           </label>
           <label>Teléfono Secundario (opcional)
-            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000 " />
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000" />
           </label>
           <label class="full" id="tenant-label-email">Email *
             <div class="verify-row">
@@ -1849,6 +1856,8 @@
         <div class="docs-summary-bar" id="tenant-docs-summary-bar">
           <div class="docs-summary-text">
             <span id="tenant-docs-summary-status">0 de 2 documentos subidos</span>
+            <span class="docs-summary-subtext" id="tenant-docs-summary-subtext">Sube la copia del DNI y el contrato de
+              arrendamiento para completar el expediente.</span>
           </div>
         </div>
       </section>
@@ -1981,6 +1990,10 @@
         <div class="detail-item full">
           <span class="detail-label">Estado del contrato</span>
           <span class="detail-value" id="tenant-detail-contract-status"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Documentación</span>
+          <div class="doc-file-list" id="tenant-detail-docs-list"></div>
         </div>
         <div class="detail-item full">
           <span class="detail-label">Autorizaciones</span>
