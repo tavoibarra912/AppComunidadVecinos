@@ -357,10 +357,15 @@ export function ensureDemoProfiles() {
     { id: "user-usuario_r_user_c_propietario_c_inquilino", usuario: "usuario_r_user_c_propietario_c_inquilino", nombre: "usuario_r_user_c_propietario_c_inquilino", email: "usuario_r_user_c_propietario_c_inquilino@usuario_r_user_c_propietario_c_inquilino.com", rol: "user" },
   ];
   for (const c of cuentas) {
-    if (db.prepare("SELECT id FROM users WHERE id = ? OR usuario = ?").get(c.id, c.usuario)) continue;
+    // Ya existe la cuenta (por usuario o por id): nada que crear.
+    if (db.prepare("SELECT 1 FROM users WHERE usuario = ?").get(c.usuario)) continue;
+    let id = c.id;
+    // El id puede estar ocupado por una cuenta migrada (p. ej. user-admin
+    // era el super_admin renombrado): usar un id alternativo.
+    if (db.prepare("SELECT 1 FROM users WHERE id = ?").get(id)) id = `user-${c.usuario}-demo`;
     const salt = crypto.randomBytes(16).toString("hex");
     db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, '', ?, ?, ?, 1, ?)")
-      .run(c.id, c.nombre, c.usuario, c.email, c.rol, `scrypt:${salt}:${crypto.scryptSync(c.usuario, salt, 64).toString("hex")}`);
+      .run(id, c.nombre, c.usuario, c.email, c.rol, `scrypt:${salt}:${crypto.scryptSync(c.usuario, salt, 64).toString("hex")}`);
   }
 
   // Vínculo de perfiles de demostración con las cuentas correspondientes.
