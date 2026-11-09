@@ -617,8 +617,8 @@
             <input name="name" maxlength="100" required />
           </label>
           <label>NIF *
-            <input name="nif" maxlength="9" required pattern="H[0-9]{8}" placeholder="H12345678"
-              title="El NIF debe ser H seguido de 8 dígitos." />
+            <input name="nif" maxlength="9" required pattern="H[0-9]{7}[0-9A-J]" placeholder="H12345674"
+              title="CIF de comunidad: H + 7 dígitos + dígito o letra de control." />
           </label>
           <label>Presidente (opcional)
             <input name="president" maxlength="100" placeholder="Nombre y teléfono" />

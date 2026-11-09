@@ -2,13 +2,24 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { db, ownerFromRow } from "../db.js";
 import { applyOwnerPropertyLink, syncOwnerProperties, rebuildOwnersPropertyIds } from "../domain.js";
-import { contactError } from "../validation.js";
+import { contactError, identityDocumentError } from "../validation.js";
 import { avisarCambioOwner } from "../avisos-cambios.js";
 
 const router = Router();
 router.use((req, res, next) => {
-  const error = ["POST", "PUT"].includes(req.method) && contactError(req.body || {});
-  if (error) return res.status(400).json({ error });
+  if (["POST", "PUT"].includes(req.method)) {
+    const data = req.body || {};
+    const error = contactError(data);
+    if (error) return res.status(400).json({ error });
+    if (data.documentType !== undefined) {
+      data.documentType = String(data.documentType || "DNI").trim().toUpperCase();
+    }
+    if (data.dni !== undefined) {
+      data.dni = String(data.dni || "").trim().toUpperCase();
+      const documentError = identityDocumentError(data.dni, data.documentType || "DNI");
+      if (documentError) return res.status(400).json({ error: documentError });
+    }
+  }
   next();
 });
 
@@ -134,16 +145,21 @@ router.delete("/:id", (req, res) => {
       error: `No se puede eliminar el propietario: el inmueble «${conInquilino[0].plot}» tiene un inquilino asociado. Desvinculá primero al inquilino.`,
     });
   }
-  const properties = db.prepare("SELECT COUNT(*) AS total FROM properties WHERE ownerIds LIKE ?")
-    .get(`%"${existing.id}"%`).total;
-  const tenants = db.prepare("SELECT COUNT(*) AS total FROM tenants WHERE ownerId = ?").get(existing.id).total;
-  if (tenants > 0) {
-    return res.status(409).json({ error: "Elimina los inquilinos asociados antes de eliminar a este propietario." });
-  }
   // Inmuebles sin inquilino: se desvincula al propietario (no se borran los inmuebles).
   const vinculados = db.prepare("SELECT id, ownerIds FROM properties WHERE ownerIds LIKE ?").all(`%"${existing.id}"%`);
   db.exec("BEGIN");
   try {
+    // Referencias antiguas: si un inquilino sigue apuntando a este propietario
+    // pero ya no está en un inmueble suyo, se reasigna a otro copropietario o
+    // se deja sin titular. Así una desvinculación previa no bloquea el borrado.
+    const updateTenantOwner = db.prepare("UPDATE tenants SET ownerId = ? WHERE id = ?");
+    for (const tenant of db.prepare("SELECT id, propertyId FROM tenants WHERE ownerId = ?").all(existing.id)) {
+      const property = db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(tenant.propertyId);
+      const restantes = property
+        ? JSON.parse(property.ownerIds || "[]").filter(id => id !== existing.id)
+        : [];
+      updateTenantOwner.run(restantes[0] || "", tenant.id);
+    }
     const update = db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?");
     for (const p of vinculados) {
       const restantes = JSON.parse(p.ownerIds || "[]").filter(id => id !== existing.id);

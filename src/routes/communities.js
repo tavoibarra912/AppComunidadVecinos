@@ -1,14 +1,15 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, communityFromRow, listDocuments } from "../db.js";
-import { contactError, communityFinanceError } from "../validation.js";
+import { contactError, communityFinanceError, communityNifError } from "../validation.js";
 import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
 router.use((req, res, next) => {
   if (["POST", "PUT"].includes(req.method)) {
     const data = req.body || {};
-    const error = contactError(data) || communityFinanceError(data) || (!/^H\d{8}$/.test(data.nif || "") ? "El NIF debe comenzar por H y tener 8 dígitos." : null);
+    data.nif = String(data.nif || "").trim().toUpperCase();
+    const error = contactError(data) || communityFinanceError(data) || communityNifError(data.nif);
     if (error) return res.status(400).json({ error });
     for (const key of ["constitutionYear", "reserveFund"]) if (data[key] !== undefined) data[key] = String(data[key] ?? "").trim();
     if (data.adminUserId) {
@@ -40,7 +41,7 @@ router.post("/", (req, res) => {
   if (!data.name || !data.nif) {
     return res.status(400).json({ error: "El nombre y el NIF de la comunidad son obligatorios." });
   }
-  if (db.prepare("SELECT id FROM communities WHERE nif = ?").get(data.nif)) {
+  if (db.prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?)").get(data.nif)) {
     return res.status(409).json({ error: "Ya existe una comunidad con ese NIF." });
   }
   const id = data.id || crypto.randomUUID();
@@ -66,7 +67,7 @@ router.put("/:id", (req, res) => {
   if (!data.name || !data.nif) {
     return res.status(400).json({ error: "El nombre y el NIF de la comunidad son obligatorios." });
   }
-  const nifOwner = db.prepare("SELECT id FROM communities WHERE nif = ? AND id <> ?").get(data.nif, existing.id);
+  const nifOwner = db.prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?) AND id <> ?").get(data.nif, existing.id);
   if (nifOwner) {
     return res.status(409).json({ error: "Ya existe otra comunidad con ese NIF." });
   }

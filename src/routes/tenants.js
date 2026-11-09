@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { db, tenantFromRow, listDocuments } from "../db.js";
 import { upsertTenant } from "../domain.js";
-import { contactError, dateError } from "../validation.js";
+import { contactError, dateError, identityDocumentError } from "../validation.js";
 import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
@@ -11,6 +11,16 @@ router.use((req, res, next) => {
     const data = req.body || {};
     const error = contactError(data);
     if (error) return res.status(400).json({ error });
+    if (data.documentType !== undefined) {
+      data.documentType = String(data.documentType || "DNI").trim().toUpperCase();
+    }
+    if (data.documentId !== undefined) {
+      data.documentId = String(data.documentId || "").trim().toUpperCase();
+      if (data.documentId) {
+        const documentError = identityDocumentError(data.documentId, data.documentType || "DNI");
+        if (documentError) return res.status(400).json({ error: documentError });
+      }
+    }
     if (dateError(data.contractStart) || data.contractEnd && dateError(data.contractEnd)) return res.status(400).json({ error: "Las fechas del contrato no son válidas." });
     if (data.contractEnd && data.contractEnd < data.contractStart) return res.status(400).json({ error: "El fin de contrato no puede ser anterior al inicio." });
   }

@@ -160,7 +160,9 @@ export function ownerProperties(owner) {
     owner.propertyId
   ].filter(Boolean));
   return state.properties.filter(property =>
-    property.ownerId === owner.id || linkedIds.has(property.id)
+    property.ownerId === owner.id ||
+    linkedIds.has(property.id) ||
+    propertyOwnerIds(property).includes(owner.id)
   );
 }
 

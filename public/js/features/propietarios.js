@@ -1,7 +1,7 @@
 import { sanitizeHtml, escapeHtml, documentUrl } from "../html.js";
 
 import { api } from "../api.js";
-import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, tenantsForProperty, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, propertyLabel, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, isValidCadastralRef, isValidDecimal, fieldLabel, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
@@ -1219,7 +1219,9 @@ export function openOwnerDelete(id) {
   if (!requirePermission("owner:delete", id)) return;
   const o = state.owners.find(item => item.id === id);
   if (!o) return;
-  const conInquilino = ownerProperties(o).filter(property => tenantsForProperty(property.id).length > 0);
+  const conInquilino = ownerProperties(o).filter(property =>
+    state.tenants.some(tenant => tenant.propertyId === property.id)
+  );
   if (conInquilino.length > 0) {
     toast(`No se puede eliminar a “${o.name} ${o.surname}”: el inmueble “${conInquilino[0].plot}” tiene un inquilino asociado. Desvinculá primero al inquilino.`);
     return;
@@ -1551,22 +1553,9 @@ ownerDetailViewPropertyBtn.addEventListener("click", () => {
 });
 
 document.querySelector("#confirm-owner-delete").addEventListener("click", async () => {
-  if (!requirePermission("owner:manage", state.ui.deletingOwnerId || "")) {
+  if (!requirePermission("owner:delete", state.ui.deletingOwnerId || "")) {
     ownerDeleteDialog.close();
     state.ui.deletingOwnerId = null;
-    return;
-  }
-  if (state.properties.some(property => propertyOwnerIds(property).includes(state.ui.deletingOwnerId))) {
-    toast("Desvincula los inmuebles de este propietario antes de eliminarlo.");
-    state.ui.deletingOwnerId = null;
-    ownerDeleteDialog.close();
-    return;
-  }
-  const ownerWithTenants = state.owners.find(owner => owner.id === state.ui.deletingOwnerId);
-  if (ownerTenants(ownerWithTenants).length > 0) {
-    toast("Elimina los inquilinos asociados antes de eliminar a este propietario.");
-    state.ui.deletingOwnerId = null;
-    ownerDeleteDialog.close();
     return;
   }
   try {

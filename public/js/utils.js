@@ -121,36 +121,45 @@ export function formatContractDate(value) {
 // VALIDADORES DE DOMINIO
 // ==========================================
 
-/**
- * Valida un DNI o NIE español mediante cálculo de dígito de control módulo 23
- */
-export function isValidDniNie(value) {
-  if (!value) return false;
-  const str = value.trim().toUpperCase();
-  const letters = "TRWAGMYFPDXBNJZSQVHLCKE";
+const DNI_NIE_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
+const CIF_FIRST_LETTERS = "ABCDEFGHJNPQRSUVW";
+const CIF_LETTER_CONTROL = "PQRSNW";
+const CIF_DIGIT_CONTROL = "ABEH";
+const CIF_CONTROL_LETTERS = "JABCDEFGHI";
 
-  const dniMatch = str.match(/^(\d{8})([A-Z])$/);
-  if (dniMatch) {
-    const num = parseInt(dniMatch[1], 10);
-    const letter = dniMatch[2];
-    return letters[num % 23] === letter;
-  }
-
-  const nieMatch = str.match(/^([XYZ])(\d{7})([A-Z])$/);
-  if (nieMatch) {
-    const prefix = nieMatch[1] === "X" ? "0" : (nieMatch[1] === "Y" ? "1" : "2");
-    const num = parseInt(prefix + nieMatch[2], 10);
-    const letter = nieMatch[3];
-    return letters[num % 23] === letter;
-  }
-
-  return false;
+function normalizeIdentityDocument(value) {
+  return String(value || "").trim().toUpperCase();
 }
 
+/** Valida un DNI español: 8 dígitos + letra de control (módulo 23). */
+export function isValidDni(value) {
+  const str = normalizeIdentityDocument(value);
+  const match = str.match(/^(\d{8})([A-Z])$/);
+  if (!match) return false;
+  return DNI_NIE_LETTERS[Number(match[1]) % 23] === match[2];
+}
+
+/** Valida un NIE español: X/Y/Z + 7 dígitos + letra de control (módulo 23). */
+export function isValidNie(value) {
+  const str = normalizeIdentityDocument(value);
+  const match = str.match(/^([XYZ])(\d{7})([A-Z])$/);
+  if (!match) return false;
+  const prefix = match[1] === "X" ? "0" : (match[1] === "Y" ? "1" : "2");
+  return DNI_NIE_LETTERS[Number(prefix + match[2]) % 23] === match[3];
+}
+
+/** Valida un DNI o NIE español mediante cálculo de dígito de control módulo 23. */
+export function isValidDniNie(value) {
+  return isValidDni(value) || isValidNie(value);
+}
+
+/**
+ * Valida un CIF español (NIF de persona jurídica o entidad):
+ * letra inicial + 7 dígitos + dígito o letra de control.
+ */
 export function isValidCif(value) {
-  if (!value) return false;
-  const str = value.trim().toUpperCase();
-  if (!/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(str)) return false;
+  const str = normalizeIdentityDocument(value);
+  if (!new RegExp(`^[${CIF_FIRST_LETTERS}]\\d{7}[0-9A-J]$`).test(str)) return false;
   const digits = str.slice(1, 8);
   let sumA = 0;
   let sumB = 0;
@@ -159,30 +168,46 @@ export function isValidCif(value) {
     if ((i + 1) % 2 === 0) {
       sumA += n;
     } else {
-      const doubled = (n * 2).toString();
-      sumB += Number(doubled[0]) + (Number(doubled[1]) || 0);
+      const doubled = n * 2;
+      sumB += Math.floor(doubled / 10) + (doubled % 10);
     }
   }
   const control = (10 - ((sumA + sumB) % 10)) % 10;
   const last = str[8];
-  const letterControl = "JABCDEFGHI";
-  if ("PQRSNW".includes(str[0])) return last === letterControl[control];
-  if ("ABEH".includes(str[0])) return last === String(control);
-  return last === String(control) || last === letterControl[control];
+  const expectedLetter = CIF_CONTROL_LETTERS[control];
+  if (CIF_LETTER_CONTROL.includes(str[0])) return last === expectedLetter;
+  if (CIF_DIGIT_CONTROL.includes(str[0])) return last === String(control);
+  return last === String(control) || last === expectedLetter;
+}
+
+/**
+ * Valida un NIF español en cualquiera de sus formas: DNI, NIE o CIF.
+ * (El NIF de una comunidad de propietarios es un CIF que empieza por H.)
+ */
+export function isValidNif(value) {
+  return isValidDni(value) || isValidNie(value) || isValidCif(value);
+}
+
+/** Valida el NIF/CIF de una comunidad de propietarios: H + 7 dígitos + control. */
+export function isValidCommunityNif(value) {
+  const str = normalizeIdentityDocument(value);
+  return str.startsWith("H") && isValidCif(str);
 }
 
 export function detectDocumentType(value) {
-  const str = (value || "").trim().toUpperCase();
-  if (/^[XYZ]/.test(str)) return "NIE";
-  if (/^[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]$/.test(str) && !/^\d{8}[A-Z]$/.test(str)) return "CIF";
+  const str = normalizeIdentityDocument(value);
+  if (/^[XYZ]\d{7}[A-Z]$/.test(str)) return "NIE";
+  if (new RegExp(`^[${CIF_FIRST_LETTERS}]\\d{7}[0-9A-J]$`).test(str)) return "CIF";
   return "DNI";
 }
 
 export function isValidIdentityDocument(value, documentType) {
-  const str = (value || "").trim().toUpperCase();
-  if (documentType === "CIF") return isValidCif(str);
-  if (documentType === "NIE") return /^[XYZ]\d{7}[A-Z]$/.test(str) && isValidDniNie(str);
-  return /^\d{8}[A-Z]$/.test(str) && isValidDniNie(str);
+  const type = String(documentType || "DNI").trim().toUpperCase();
+  const str = normalizeIdentityDocument(value);
+  if (type === "CIF") return isValidCif(str);
+  if (type === "NIE") return isValidNie(str);
+  if (type === "NIF") return isValidNif(str);
+  return isValidDni(str);
 }
 
 export function isValidIban(value) {

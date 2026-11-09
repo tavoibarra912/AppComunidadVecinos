@@ -16,7 +16,7 @@ const { syncOwnerProperties, applyOwnerPropertyLink, rebuildOwnersPropertyIds, u
 function createCommunity(id, name = "Comunidad Test") {
   db.prepare(
     `INSERT INTO communities (id, name, nif, adminUserId, currency) VALUES (?, ?, ?, '', 'EUR')`
-  ).run(id, name, "H12345678");
+  ).run(id, name, "H12345674");
 }
 
 function createOwner(id, name = "Propietario", surname = "Test", userId = "") {

@@ -2,7 +2,7 @@ import { documentUrl, sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
 import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, propertyLabel, propertyOwnerIds, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
-import { toast, isValidEmail, isValidDateInput, formatContractDate, getLocalDateInputValue, makeSelectSearchable, readFileAsDataUrl, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { toast, isValidEmail, isValidDateInput, isValidIdentityDocument, formatContractDate, getLocalDateInputValue, makeSelectSearchable, readFileAsDataUrl, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor, closeOwnerDetail } from "./propietarios.js";
@@ -664,8 +664,11 @@ tenantForm.addEventListener("submit", async event => {
   const messages = [];
   if (!(values.name || "").trim()) messages.push("El nombre es obligatorio.");
   if (!(values.surname || "").trim()) messages.push("Los apellidos son obligatorios.");
-  if (!(values.documentType || "").trim()) messages.push("El tipo de documento es obligatorio.");
-  if (!(values.documentId || "").trim()) messages.push("El DNI / NIE / CIF es obligatorio.");
+  const documentType = (values.documentType || "DNI").trim().toUpperCase();
+  const documentId = (values.documentId || "").trim().toUpperCase();
+  if (!documentType) messages.push("El tipo de documento es obligatorio.");
+  else if (!documentId) messages.push("El DNI / NIE / CIF es obligatorio.");
+  else if (!isValidIdentityDocument(documentId, documentType)) messages.push(`El ${documentType} "${documentId}" no es válido según el algoritmo oficial de España.`);
   if (!/^[6-9]\d{8}$/.test(phone)) messages.push("El teléfono principal debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.");
   if (!isValidEmail(email)) messages.push("Introduce una dirección de email válida.");
   if (!editingTenantPropertyId) messages.push("Selecciona un inmueble asociado a este inquilino.");
@@ -694,8 +697,8 @@ tenantForm.addEventListener("submit", async event => {
     id: tenantId,
     name: values.name.trim(),
     surname: values.surname.trim(),
-    documentType: values.documentType || "DNI",
-    documentId: (values.documentId || "").trim().toUpperCase(),
+    documentType,
+    documentId,
     contractType: values.contractType || "vivienda_habitual",
     monthlyRent: values.monthlyRent ? values.monthlyRent.trim().replace(",", ".") : "",
     deposit: values.deposit ? values.deposit.trim().replace(",", ".") : "",

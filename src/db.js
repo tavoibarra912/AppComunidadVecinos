@@ -254,6 +254,17 @@ if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'scoped-permissions
   }
   db.prepare("INSERT INTO schema_migrations (id) VALUES ('scoped-permissions-v1')").run();
 }
+// Corrige los CIF de demostración que no cumplían el dígito de control.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'demo-community-cif-v1'").get()) {
+  for (const [incorrecto, correcto] of [
+    ["B12345678", "B12345674"],
+    ["B87654321", "B87654323"],
+    ["B55566677", "B55566673"],
+  ]) {
+    db.prepare("UPDATE communities SET nif = ? WHERE nif = ?").run(correcto, incorrecto);
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('demo-community-cif-v1')").run();
+}
 // Retira únicamente las contraseñas de SSO generadas por la antigua migración.
 for (const user of db.prepare("SELECT id, usuario, passwordHash FROM users WHERE ssoProvider <> '' AND passwordHash <> ''").all()) {
   const [salt, hash] = user.passwordHash.split(":");

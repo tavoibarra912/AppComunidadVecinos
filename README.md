@@ -211,7 +211,7 @@ protección de sus copias de seguridad para producción.
 ### Comunidades
 - En **Ver**, solo están habilitados las pestañas, el cierre y la apertura de los adjuntos. No se puede editar, verificar contactos, asociar inmuebles ni abrir sus fichas desde esa vista. La edición se recupera al abrir **Editar**.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
-- CRUD con validaciones estrictas (NIF `H` + 8 dígitos, teléfonos de 9 dígitos, email, CP contra catálogo INE con autocompletado municipio/provincia).
+- CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito o letra de control, teléfonos de 9 dígitos, email, CP contra catálogo INE con autocompletado municipio/provincia).
 - Documentación adjunta con drag & drop multi-archivo y ficha detallada con propietarios censados.
 
 ### Propietarios

@@ -1,7 +1,7 @@
 import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
-import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { toast, validateDocumentFiles, setupGenericFileDropzone, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif } from "../utils.js";
 import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor, updatePropertyPeopleSelectors } from "./inmuebles.js";
@@ -506,7 +506,7 @@ function getFormCommunityContext() {
   return {
     id: editingCommunityId,
     name: communityForm.elements.name.value.trim() || "Comunidad de Propietarios",
-    nif: communityForm.elements.nif.value.trim() || "H12345678",
+    nif: communityForm.elements.nif.value.trim() || "H12345674",
     communityName: communityForm.elements.name.value.trim() || "Comunidad de Propietarios"
   };
 }
@@ -848,7 +848,7 @@ export function validateCommunityFields() {
   otherPhoneInput.value = otherPhone;
   emailInput.value = email;
 
-  nifInput.setCustomValidity(/^H\d{8}$/.test(nif) ? "" : "El NIF debe comenzar por H y contener 8 dígitos numéricos.");
+  nifInput.setCustomValidity(isValidCommunityNif(nif) ? "" : "El NIF debe ser un CIF válido de comunidad: H + 7 dígitos + dígito o letra de control (ejemplo: H12345674).");
   phoneInput.setCustomValidity(/^\d{9}$/.test(phone) ? "" : "El teléfono principal debe contener 9 dígitos numéricos.");
   otherPhoneInput.setCustomValidity(!otherPhone || /^\d{9}$/.test(otherPhone) ? "" : "El teléfono secundario debe contener 9 dígitos numéricos.");
   emailInput.setCustomValidity(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "" : "Introduce una dirección de email válida.");

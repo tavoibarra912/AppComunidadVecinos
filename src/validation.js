@@ -1,7 +1,23 @@
+import { isValidCommunityNif, isValidIdentityDocument } from "../public/js/utils.js";
+
 export const validEmail = (value) =>
   typeof value === "string" &&
   value.length <= 254 &&
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+export function identityDocumentError(value, documentType = "DNI") {
+  if (!value) return "El documento de identidad es obligatorio.";
+  if (!isValidIdentityDocument(value, documentType))
+    return `El ${String(documentType || "DNI").toUpperCase()} no es válido según el formato y el dígito de control oficial de España.`;
+  return null;
+}
+
+export function communityNifError(value) {
+  if (!value) return "El NIF de la comunidad es obligatorio.";
+  if (!isValidCommunityNif(value))
+    return "El NIF de la comunidad debe ser un CIF válido con formato H + 7 dígitos + dígito o letra de control (por ejemplo, H12345674).";
+  return null;
+}
 export function passwordError(value) {
   return typeof value !== "string" || value.length < 8 || value.length > 128
     ? "La contraseña debe tener entre 8 y 128 caracteres."

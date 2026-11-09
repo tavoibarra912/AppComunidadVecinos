@@ -255,7 +255,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
 
   if (docType === "communityMinute") {
     const cName = ownerContext.communityName || comm;
-    const nif = ownerContext.nif || "H12345678";
+    const nif = ownerContext.nif || "H12345674";
     const dateStr = new Date().toLocaleDateString("es-ES");
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520">
       <rect x="20" y="20" width="760" height="480" rx="8" fill="#fffdfa" stroke="#d6c7b2" stroke-width="2"/>

@@ -1,0 +1,1938 @@
+{
+  "users": [
+    {
+      "id": "user-admin",
+      "nombre": "admin",
+      "apellido": "admin",
+      "usuario": "admin",
+      "email": "a@a.com",
+      "rol": "administrator",
+      "activo": 1,
+      "password": "admin"
+    },
+    {
+      "id": "user-comm_admin",
+      "nombre": "ca1",
+      "apellido": "ca1",
+      "usuario": "ca1",
+      "email": "ca1@ca1.com",
+      "rol": "community_admin",
+      "activo": 1,
+      "password": "ca1"
+    },
+    {
+      "id": "33bb9b3a-25cf-4ace-a100-ffe7794568af",
+      "nombre": "ca2",
+      "apellido": "ca2",
+      "usuario": "ca2",
+      "email": "ca2@ca2.com",
+      "rol": "community_admin",
+      "activo": 1,
+      "password": "ca2"
+    },
+    {
+      "id": "user-comm_admin-demo",
+      "nombre": "comm_admin",
+      "apellido": "",
+      "usuario": "comm_admin",
+      "email": "comm_admin@comm_admin.com",
+      "rol": "community_admin",
+      "activo": 1,
+      "password": "comm_admin"
+    },
+    {
+      "id": "user-super-admin",
+      "nombre": "super_admin",
+      "apellido": "",
+      "usuario": "super_admin",
+      "email": "sa@sa.com",
+      "rol": "super_admin",
+      "activo": 1,
+      "password": "super_admin"
+    },
+    {
+      "id": "user-usuario_r_user_c_inquilino",
+      "nombre": "uruci1",
+      "apellido": "uruci1",
+      "usuario": "uruci1",
+      "email": "uruci1@uruci1.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "uruci1"
+    },
+    {
+      "id": "579a6e41-559b-427f-8ecc-60a98b289924",
+      "nombre": "uruci2",
+      "apellido": "uruci2",
+      "usuario": "uruci2",
+      "email": "uruci2@uruci2.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "uruci2"
+    },
+    {
+      "id": "4b11e311-1af7-4e2f-aef1-92e076fbc54e",
+      "nombre": "uruci3",
+      "apellido": "uruci3",
+      "usuario": "uruci3",
+      "email": "uruci3@uruci3.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "uruci3"
+    },
+    {
+      "id": "user-usuario_r_user_c_propietario",
+      "nombre": "urucp1",
+      "apellido": "urucp1",
+      "usuario": "urucp1",
+      "email": "urucp1@urucp1.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "urucp1"
+    },
+    {
+      "id": "9a25b918-8746-468d-bc93-14ccd3f4fa27",
+      "nombre": "urucp2",
+      "apellido": "urucp2",
+      "usuario": "urucp2",
+      "email": "urucp2@urucp2.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "urucp2"
+    },
+    {
+      "id": "d66e22d3-0df3-4ae6-9c00-65019f4cf818",
+      "nombre": "urucp3",
+      "apellido": "urucp3",
+      "usuario": "urucp3",
+      "email": "urucp3@urucp3.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "urucp3"
+    },
+    {
+      "id": "user-usuario_r_user_c_propietario_c_inquilino",
+      "nombre": "urucpci1",
+      "apellido": "urucpci1",
+      "usuario": "urucpci1",
+      "email": "urucpci1@urucpci1.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "urucpci1"
+    },
+    {
+      "id": "651ccbb1-f944-4dd4-931a-e26927ab876c",
+      "nombre": "urucpci2",
+      "apellido": "urucpci2",
+      "usuario": "urucpci2",
+      "email": "urucpci2@urucpci2.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "urucpci2"
+    },
+    {
+      "id": "user-usuario_r_user_s_perfil",
+      "nombre": "urusp1",
+      "apellido": "urusp1",
+      "usuario": "urusp1",
+      "email": "urusp1@urusp1.com",
+      "rol": "user",
+      "activo": 1,
+      "password": "urusp1"
+    }
+  ],
+  "communities": [
+    {
+      "id": "com-demo-1",
+      "name": "Comunidad Peñarrubia",
+      "nif": "B12345674",
+      "phone": "911000111",
+      "otherPhone": "911000112",
+      "address": "Avenida de la Constitución, 1",
+      "city": "Madrid",
+      "province": "Madrid",
+      "postalCode": "28001",
+      "email": "penarrubia.demo@comunidad.es",
+      "iban": "ES9121000418450200051332",
+      "president": "María González",
+      "administrator": "Fincas del Sol",
+      "constitutionYear": "1985",
+      "reserveFund": "12500",
+      "notes": "Comunidad demo con todos los campos completos.",
+      "documents": "[]",
+      "createdAt": "2026-11-09 17:58:12",
+      "currency": "EUR",
+      "adminUserId": "user-comm_admin"
+    },
+    {
+      "id": "com-demo-2",
+      "name": "Comunidad Las Acacias",
+      "nif": "B87654323",
+      "phone": "922000222",
+      "otherPhone": "922000223",
+      "address": "Calle de los Álamos, 22",
+      "city": "Pozuelo de Alarcón",
+      "province": "Madrid",
+      "postalCode": "28223",
+      "email": "acacias.demo@comunidad.es",
+      "iban": "ES7620770024003102575766",
+      "president": "Jorge Lasarte",
+      "administrator": "Gestión Horizontal",
+      "constitutionYear": "2001",
+      "reserveFund": "8300",
+      "notes": "Segunda comunidad demo. Administrada también por comm_admin (multi-asignación).",
+      "documents": "[]",
+      "createdAt": "2026-11-09 17:58:12",
+      "currency": "EUR",
+      "adminUserId": "user-comm_admin"
+    },
+    {
+      "id": "com-demo-3",
+      "name": "Comunidad Los Pinos",
+      "nif": "H90000001",
+      "phone": "933000333",
+      "otherPhone": "933000334",
+      "address": "Camino de los Pinos, 9",
+      "city": "Torrelodones",
+      "province": "Madrid",
+      "postalCode": "28250",
+      "email": "los.pinos.demo@comunidad.es",
+      "iban": "ES3344556677889900112233",
+      "president": "Rocío Pinar",
+      "administrator": "Admin Central",
+      "constitutionYear": "1996",
+      "reserveFund": "15000",
+      "notes": "Tercera comunidad demo. Administrada por admin (administrator), distinto de comm_admin.",
+      "documents": "[]",
+      "createdAt": "2026-11-09 17:58:12",
+      "currency": "EUR",
+      "adminUserId": "33bb9b3a-25cf-4ace-a100-ffe7794568af"
+    }
+  ],
+  "owners": [
+    {
+      "id": "own-demo-1",
+      "name": "urucp1",
+      "surname": "urucp1",
+      "documentType": "DNI",
+      "dni": "00000002W",
+      "isMember": 1,
+      "communityId": "com-demo-1",
+      "communityName": "Comunidad Peñarrubia",
+      "plot": "Vivienda 1-A",
+      "propertyId": "prop-demo-1",
+      "phone": "611111101",
+      "otherPhone": "911111101",
+      "email": "usuario_r_user_c_propietario@usuario_r_user_c_propietario.com",
+      "phoneVerified": 1,
+      "phoneVerifiedAt": "2026-11-09T17:58:12.020Z",
+      "emailVerified": 1,
+      "emailVerifiedAt": "2026-11-09T17:58:12.020Z",
+      "address": "Avenida de la Constitución, 1, 1-A",
+      "province": "Madrid",
+      "city": "Madrid",
+      "postalCode": "28001",
+      "iban": "ES2299990000000000000002",
+      "currency": "EUR",
+      "notes": "Propietaria residente.",
+      "propertyType": "vivienda",
+      "cadastralRef": "9872023VH1111S0001WX",
+      "registryNumber": "1111",
+      "floor": "1",
+      "door": "A",
+      "areaM2": "78",
+      "participationCoef": "9.5000",
+      "propertyUse": "residencial",
+      "createdAt": "2026-11-09 17:58:12",
+      "userId": "user-usuario_r_user_c_propietario",
+      "propertyIds": [
+        "prop-demo-1"
+      ],
+      "documents": {
+        "dni": {
+          "key": "dni",
+          "title": "Copia de DNI (ambas caras)",
+          "fileName": "DNI_11111111A_ambas_caras.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 485200,
+          "uploadedAt": "12/10/2026, 18:20",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 98,
+            "legibilityStatus": "Óptima (alta resolución y contraste adecuado)",
+            "typeVerified": "Documento Nacional de Identidad (España) - Anverso y Reverso",
+            "checks": [
+              {
+                "name": "Legibilidad y resolución",
+                "passed": true,
+                "detail": "Alta resolución y contraste óptimo (98%)"
+              },
+              {
+                "name": "Tipo de documento",
+                "passed": true,
+                "detail": "DNI español oficial verificado"
+              },
+              {
+                "name": "Ambas caras",
+                "passed": true,
+                "detail": "Anverso y reverso comprobados"
+              },
+              {
+                "name": "Coincidencia de DNI",
+                "passed": true,
+                "detail": "DNI 11111111A coincide con el asociado"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "approved",
+            "reviewedAt": "11/10/2026, 11:30",
+            "reviewedBy": "Administrador",
+            "notes": "Verificado conforme."
+          }
+        },
+        "bankReceipt": {
+          "key": "bankReceipt",
+          "title": "Recibo bancario o certificado de titularidad",
+          "fileName": "Recibo_Bancario_Ana_Torres_11111111A.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 312400,
+          "uploadedAt": "12/10/2026, 18:22",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 96,
+            "legibilityStatus": "Óptima (documento bancario legible)",
+            "typeVerified": "Certificado de titularidad bancaria con IBAN español",
+            "checks": [
+              {
+                "name": "Legibilidad y nitidez",
+                "passed": true,
+                "detail": "Texto bancario legible y contrastado (96%)"
+              },
+              {
+                "name": "Entidad bancaria",
+                "passed": true,
+                "detail": "Entidad financiera debidamente identificada"
+              },
+              {
+                "name": "IBAN y titularidad",
+                "passed": true,
+                "detail": "IBAN ES66 2100... y titular Carlos Ruiz acreditados"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "approved",
+            "reviewedAt": "11/10/2026, 11:30",
+            "reviewedBy": "Administrador",
+            "notes": "Verificado conforme."
+          }
+        },
+        "propertyDeed": {
+          "key": "propertyDeed",
+          "title": "Copia de la escritura del inmueble",
+          "fileName": "Escritura_Vivienda_1-A.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 1250300,
+          "uploadedAt": "12/10/2026, 18:25",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 95,
+            "legibilityStatus": "Óptima (escritura pública nítida)",
+            "typeVerified": "Escritura notarial de propiedad y acreditación de finca",
+            "checks": [
+              {
+                "name": "Legibilidad y firmas",
+                "passed": true,
+                "detail": "Documento notarial nítido con firmas identificadas (95%)"
+              },
+              {
+                "name": "Título de propiedad",
+                "passed": true,
+                "detail": "Escritura pública notarial legalizada"
+              },
+              {
+                "name": "Acreditación parcela",
+                "passed": true,
+                "detail": "Vivienda 1-A en Comunidad Peñarrubia acreditada"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "approved",
+            "reviewedAt": "11/10/2026, 11:30",
+            "reviewedBy": "Administrador",
+            "notes": "Verificado conforme."
+          }
+        }
+      }
+    },
+    {
+      "id": "own-demo-2",
+      "name": "urucpci1",
+      "surname": "urucpci1",
+      "documentType": "NIE",
+      "dni": "Y6943305X",
+      "isMember": 1,
+      "communityId": "com-demo-1",
+      "communityName": "Comunidad Peñarrubia",
+      "plot": "Vivienda 2-B",
+      "propertyId": "prop-demo-6",
+      "phone": "622222202",
+      "otherPhone": "",
+      "email": "usuario_r_user_c_propietario_c_inquilino@usuario_r_user_c_propietario_c_inquilino.com",
+      "phoneVerified": 0,
+      "phoneVerifiedAt": "",
+      "emailVerified": 1,
+      "emailVerifiedAt": "2026-11-09T17:58:12.020Z",
+      "address": "Avenida de la Constitución, 1, 2-B",
+      "province": "Madrid",
+      "city": "Madrid",
+      "postalCode": "28001",
+      "iban": "ES9299990000000000000003",
+      "currency": "EUR",
+      "notes": "Propietario, no residente, inquilino en Comunidad Las Acacias.",
+      "propertyType": "vivienda",
+      "cadastralRef": "9872023VH2222S0002WX",
+      "registryNumber": "2222",
+      "floor": "2",
+      "door": "B",
+      "areaM2": "85",
+      "participationCoef": "10.2500",
+      "propertyUse": "residencial",
+      "createdAt": "2026-11-09 17:58:12",
+      "userId": "user-usuario_r_user_c_propietario_c_inquilino",
+      "propertyIds": [
+        "prop-demo-6"
+      ],
+      "documents": {
+        "dni": {
+          "key": "dni",
+          "title": "Copia de DNI (ambas caras)",
+          "fileName": "DNI_22222222B_ambas_caras.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 485200,
+          "uploadedAt": "12/10/2026, 18:20",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 98,
+            "legibilityStatus": "Óptima (alta resolución y contraste adecuado)",
+            "typeVerified": "Documento Nacional de Identidad (España) - Anverso y Reverso",
+            "checks": [
+              {
+                "name": "Legibilidad y resolución",
+                "passed": true,
+                "detail": "Alta resolución y contraste óptimo (98%)"
+              },
+              {
+                "name": "Tipo de documento",
+                "passed": true,
+                "detail": "DNI español oficial verificado"
+              },
+              {
+                "name": "Ambas caras",
+                "passed": true,
+                "detail": "Anverso y reverso comprobados"
+              },
+              {
+                "name": "Coincidencia de DNI",
+                "passed": true,
+                "detail": "DNI 22222222B coincide con el asociado"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        },
+        "bankReceipt": {
+          "key": "bankReceipt",
+          "title": "Recibo bancario o certificado de titularidad",
+          "fileName": "Recibo_Bancario_Bruno_Salas_22222222B.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 312400,
+          "uploadedAt": "12/10/2026, 18:22",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 96,
+            "legibilityStatus": "Óptima (documento bancario legible)",
+            "typeVerified": "Certificado de titularidad bancaria con IBAN español",
+            "checks": [
+              {
+                "name": "Legibilidad y nitidez",
+                "passed": true,
+                "detail": "Texto bancario legible y contrastado (96%)"
+              },
+              {
+                "name": "Entidad bancaria",
+                "passed": true,
+                "detail": "Entidad financiera debidamente identificada"
+              },
+              {
+                "name": "IBAN y titularidad",
+                "passed": true,
+                "detail": "IBAN ES66 2100... y titular Carlos Ruiz acreditados"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        },
+        "propertyDeed": {
+          "key": "propertyDeed",
+          "title": "Copia de la escritura del inmueble",
+          "fileName": "Escritura_Vivienda_2-B.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 1250300,
+          "uploadedAt": "12/10/2026, 18:25",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 95,
+            "legibilityStatus": "Óptima (escritura pública nítida)",
+            "typeVerified": "Escritura notarial de propiedad y acreditación de finca",
+            "checks": [
+              {
+                "name": "Legibilidad y firmas",
+                "passed": true,
+                "detail": "Documento notarial nítido con firmas identificadas (95%)"
+              },
+              {
+                "name": "Título de propiedad",
+                "passed": true,
+                "detail": "Escritura pública notarial legalizada"
+              },
+              {
+                "name": "Acreditación parcela",
+                "passed": true,
+                "detail": "Vivienda 2-B en Comunidad Peñarrubia acreditada"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "own-demo-5",
+      "name": "urucp3",
+      "surname": "urucp3",
+      "documentType": "DNI",
+      "dni": "00000003A",
+      "isMember": 1,
+      "communityId": "com-demo-2",
+      "communityName": "Comunidad Las Acacias",
+      "plot": "Ático 5-D",
+      "propertyId": "prop-demo-5",
+      "phone": "655555505",
+      "otherPhone": "",
+      "email": "super_admin@super_admin.com",
+      "phoneVerified": 1,
+      "phoneVerifiedAt": "2026-11-09T17:58:12.020Z",
+      "emailVerified": 1,
+      "emailVerifiedAt": "2026-11-09T17:58:12.020Z",
+      "address": "Calle de los Álamos, 22, Ático 5-D",
+      "province": "Madrid",
+      "city": "Pozuelo de Alarcón",
+      "postalCode": "28223",
+      "iban": "ES9299990000000000000003",
+      "currency": "EUR",
+      "notes": "Usuario Asociado: urucp3",
+      "propertyType": "atico",
+      "cadastralRef": "9872024VH5555S0005WX",
+      "registryNumber": "5555",
+      "floor": "5",
+      "door": "D",
+      "areaM2": "96",
+      "participationCoef": "12.0000",
+      "propertyUse": "residencial",
+      "createdAt": "2026-11-09 17:58:12",
+      "userId": "d66e22d3-0df3-4ae6-9c00-65019f4cf818",
+      "propertyIds": [
+        "prop-demo-5",
+        "b9575a70-d439-49cc-a94e-8f95207e8686"
+      ],
+      "documents": {
+        "dni": {
+          "key": "dni",
+          "title": "Copia de DNI (ambas caras)",
+          "fileName": "DNI_55555555E_ambas_caras.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 485200,
+          "uploadedAt": "12/10/2026, 18:20",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 98,
+            "legibilityStatus": "Óptima (alta resolución y contraste adecuado)",
+            "typeVerified": "Documento Nacional de Identidad (España) - Anverso y Reverso",
+            "checks": [
+              {
+                "name": "Legibilidad y resolución",
+                "passed": true,
+                "detail": "Alta resolución y contraste óptimo (98%)"
+              },
+              {
+                "name": "Tipo de documento",
+                "passed": true,
+                "detail": "DNI español oficial verificado"
+              },
+              {
+                "name": "Ambas caras",
+                "passed": true,
+                "detail": "Anverso y reverso comprobados"
+              },
+              {
+                "name": "Coincidencia de DNI",
+                "passed": true,
+                "detail": "DNI 55555555E coincide con el asociado"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "approved",
+            "reviewedAt": "11/10/2026, 11:30",
+            "reviewedBy": "Administrador",
+            "notes": "Verificado conforme."
+          }
+        },
+        "bankReceipt": {
+          "key": "bankReceipt",
+          "title": "Recibo bancario o certificado de titularidad",
+          "fileName": "Recibo_Bancario_Elena_Vidal_55555555E.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 312400,
+          "uploadedAt": "12/10/2026, 18:22",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 96,
+            "legibilityStatus": "Óptima (documento bancario legible)",
+            "typeVerified": "Certificado de titularidad bancaria con IBAN español",
+            "checks": [
+              {
+                "name": "Legibilidad y nitidez",
+                "passed": true,
+                "detail": "Texto bancario legible y contrastado (96%)"
+              },
+              {
+                "name": "Entidad bancaria",
+                "passed": true,
+                "detail": "Entidad financiera debidamente identificada"
+              },
+              {
+                "name": "IBAN y titularidad",
+                "passed": true,
+                "detail": "IBAN ES66 2100... y titular Carlos Ruiz acreditados"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "approved",
+            "reviewedAt": "11/10/2026, 11:30",
+            "reviewedBy": "Administrador",
+            "notes": "Verificado conforme."
+          }
+        },
+        "propertyDeed": {
+          "key": "propertyDeed",
+          "title": "Copia de la escritura del inmueble",
+          "fileName": "Escritura_Ático_5-D.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 1250300,
+          "uploadedAt": "12/10/2026, 18:25",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 95,
+            "legibilityStatus": "Óptima (escritura pública nítida)",
+            "typeVerified": "Escritura notarial de propiedad y acreditación de finca",
+            "checks": [
+              {
+                "name": "Legibilidad y firmas",
+                "passed": true,
+                "detail": "Documento notarial nítido con firmas identificadas (95%)"
+              },
+              {
+                "name": "Título de propiedad",
+                "passed": true,
+                "detail": "Escritura pública notarial legalizada"
+              },
+              {
+                "name": "Acreditación parcela",
+                "passed": true,
+                "detail": "Ático 5-D en Comunidad Las Acacias acreditada"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "approved",
+            "reviewedAt": "11/10/2026, 11:30",
+            "reviewedBy": "Administrador",
+            "notes": "Verificado conforme."
+          }
+        }
+      }
+    },
+    {
+      "id": "own-demo-6",
+      "name": "urucp2",
+      "surname": "urucp2",
+      "documentType": "DNI",
+      "dni": "00000001R",
+      "isMember": 1,
+      "communityId": "com-demo-2",
+      "communityName": "Comunidad Las Acacias",
+      "plot": "Piso 6-E",
+      "propertyId": "prop-demo-7",
+      "phone": "666666606",
+      "otherPhone": "",
+      "email": "admin@admin.com",
+      "phoneVerified": 0,
+      "phoneVerifiedAt": "",
+      "emailVerified": 0,
+      "emailVerifiedAt": "",
+      "address": "Calle de los Álamos, 22, 6-E",
+      "province": "Madrid",
+      "city": "Pozuelo de Alarcón",
+      "postalCode": "28223",
+      "iban": "ES4999990000000000000001",
+      "currency": "EUR",
+      "notes": "Usuario Asociado: urucp2",
+      "propertyType": "vivienda",
+      "cadastralRef": "9872024VH6666S0006WX",
+      "registryNumber": "6666",
+      "floor": "6",
+      "door": "E",
+      "areaM2": "88",
+      "participationCoef": "10.7500",
+      "propertyUse": "residencial",
+      "createdAt": "2026-11-09 17:58:12",
+      "userId": "9a25b918-8746-468d-bc93-14ccd3f4fa27",
+      "propertyIds": [
+        "prop-demo-7",
+        "b9575a70-d439-49cc-a94e-8f95207e8686"
+      ],
+      "documents": {
+        "dni": {
+          "key": "dni",
+          "title": "Copia de DNI (ambas caras)",
+          "fileName": "DNI_66666666F_ambas_caras.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 485200,
+          "uploadedAt": "12/10/2026, 18:20",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 98,
+            "legibilityStatus": "Óptima (alta resolución y contraste adecuado)",
+            "typeVerified": "Documento Nacional de Identidad (España) - Anverso y Reverso",
+            "checks": [
+              {
+                "name": "Legibilidad y resolución",
+                "passed": true,
+                "detail": "Alta resolución y contraste óptimo (98%)"
+              },
+              {
+                "name": "Tipo de documento",
+                "passed": true,
+                "detail": "DNI español oficial verificado"
+              },
+              {
+                "name": "Ambas caras",
+                "passed": true,
+                "detail": "Anverso y reverso comprobados"
+              },
+              {
+                "name": "Coincidencia de DNI",
+                "passed": true,
+                "detail": "DNI 66666666F coincide con el asociado"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        },
+        "bankReceipt": {
+          "key": "bankReceipt",
+          "title": "Recibo bancario o certificado de titularidad",
+          "fileName": "Recibo_Bancario_Federico_Luna_66666666F.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 312400,
+          "uploadedAt": "12/10/2026, 18:22",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 96,
+            "legibilityStatus": "Óptima (documento bancario legible)",
+            "typeVerified": "Certificado de titularidad bancaria con IBAN español",
+            "checks": [
+              {
+                "name": "Legibilidad y nitidez",
+                "passed": true,
+                "detail": "Texto bancario legible y contrastado (96%)"
+              },
+              {
+                "name": "Entidad bancaria",
+                "passed": true,
+                "detail": "Entidad financiera debidamente identificada"
+              },
+              {
+                "name": "IBAN y titularidad",
+                "passed": true,
+                "detail": "IBAN ES66 2100... y titular Carlos Ruiz acreditados"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        },
+        "propertyDeed": {
+          "key": "propertyDeed",
+          "title": "Copia de la escritura del inmueble",
+          "fileName": "Escritura_Piso_6-E.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 1250300,
+          "uploadedAt": "12/10/2026, 18:25",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 95,
+            "legibilityStatus": "Óptima (escritura pública nítida)",
+            "typeVerified": "Escritura notarial de propiedad y acreditación de finca",
+            "checks": [
+              {
+                "name": "Legibilidad y firmas",
+                "passed": true,
+                "detail": "Documento notarial nítido con firmas identificadas (95%)"
+              },
+              {
+                "name": "Título de propiedad",
+                "passed": true,
+                "detail": "Escritura pública notarial legalizada"
+              },
+              {
+                "name": "Acreditación parcela",
+                "passed": true,
+                "detail": "Piso 6-E en Comunidad Las Acacias acreditada"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "own-demo-7",
+      "name": "urucpci2",
+      "surname": "urucpci2",
+      "documentType": "DNI",
+      "dni": "00000004G",
+      "isMember": 1,
+      "communityId": "com-demo-3",
+      "communityName": "Comunidad Los Pinos",
+      "plot": "Chalet 3",
+      "propertyId": "prop-demo-2",
+      "phone": "677777707",
+      "otherPhone": "917777707",
+      "email": "perfil_sin_cuenta_2@demo.es",
+      "phoneVerified": 0,
+      "phoneVerifiedAt": "",
+      "emailVerified": 1,
+      "emailVerifiedAt": "2026-11-09T17:58:12.020Z",
+      "address": "Camino de los Pinos, 9, Chalet 3",
+      "province": "Madrid",
+      "city": "Torrelodones",
+      "postalCode": "28250",
+      "iban": "ES6599990000000000000004",
+      "currency": "EUR",
+      "notes": "Propietario e Inquilino",
+      "propertyType": "chalet",
+      "cadastralRef": "9872024VH7777S0007WX",
+      "registryNumber": "7777",
+      "floor": "",
+      "door": "",
+      "areaM2": "210",
+      "participationCoef": "14.0000",
+      "propertyUse": "residencial",
+      "createdAt": "2026-11-09 17:58:12",
+      "userId": "651ccbb1-f944-4dd4-931a-e26927ab876c",
+      "propertyIds": [
+        "prop-demo-2"
+      ],
+      "documents": {
+        "dni": {
+          "key": "dni",
+          "title": "Copia de DNI (ambas caras)",
+          "fileName": "DNI_77777777J_ambas_caras.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 485200,
+          "uploadedAt": "12/10/2026, 18:20",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 98,
+            "legibilityStatus": "Óptima (alta resolución y contraste adecuado)",
+            "typeVerified": "Documento Nacional de Identidad (España) - Anverso y Reverso",
+            "checks": [
+              {
+                "name": "Legibilidad y resolución",
+                "passed": true,
+                "detail": "Alta resolución y contraste óptimo (98%)"
+              },
+              {
+                "name": "Tipo de documento",
+                "passed": true,
+                "detail": "DNI español oficial verificado"
+              },
+              {
+                "name": "Ambas caras",
+                "passed": true,
+                "detail": "Anverso y reverso comprobados"
+              },
+              {
+                "name": "Coincidencia de DNI",
+                "passed": true,
+                "detail": "DNI 77777777J coincide con el asociado"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        },
+        "bankReceipt": {
+          "key": "bankReceipt",
+          "title": "Recibo bancario o certificado de titularidad",
+          "fileName": "Recibo_Bancario_Fernando_Cabrera_77777777J.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 312400,
+          "uploadedAt": "12/10/2026, 18:22",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 96,
+            "legibilityStatus": "Óptima (documento bancario legible)",
+            "typeVerified": "Certificado de titularidad bancaria con IBAN español",
+            "checks": [
+              {
+                "name": "Legibilidad y nitidez",
+                "passed": true,
+                "detail": "Texto bancario legible y contrastado (96%)"
+              },
+              {
+                "name": "Entidad bancaria",
+                "passed": true,
+                "detail": "Entidad financiera debidamente identificada"
+              },
+              {
+                "name": "IBAN y titularidad",
+                "passed": true,
+                "detail": "IBAN ES66 2100... y titular Carlos Ruiz acreditados"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        },
+        "propertyDeed": {
+          "key": "propertyDeed",
+          "title": "Copia de la escritura del inmueble",
+          "fileName": "Escritura_Chalet_3.pdf",
+          "fileType": "application/pdf",
+          "fileSize": 1250300,
+          "uploadedAt": "12/10/2026, 18:25",
+          "dataUrl": null,
+          "autoValidation": {
+            "status": "passed",
+            "legibilityScore": 95,
+            "legibilityStatus": "Óptima (escritura pública nítida)",
+            "typeVerified": "Escritura notarial de propiedad y acreditación de finca",
+            "checks": [
+              {
+                "name": "Legibilidad y firmas",
+                "passed": true,
+                "detail": "Documento notarial nítido con firmas identificadas (95%)"
+              },
+              {
+                "name": "Título de propiedad",
+                "passed": true,
+                "detail": "Escritura pública notarial legalizada"
+              },
+              {
+                "name": "Acreditación parcela",
+                "passed": true,
+                "detail": "Chalet 3 en Comunidad Los Pinos acreditada"
+              }
+            ]
+          },
+          "adminApproval": {
+            "status": "pending",
+            "reviewedAt": null,
+            "reviewedBy": null,
+            "notes": ""
+          }
+        }
+      }
+    }
+  ],
+  "properties": [
+    {
+      "id": "b9575a70-d439-49cc-a94e-8f95207e8686",
+      "communityId": "com-demo-2",
+      "communityName": "Comunidad Las Acacias",
+      "propertyType": "parcela",
+      "plot": "Chalet 2 a",
+      "address": "Test Dirección * 1",
+      "staircase": "Esc. A",
+      "energyCertificate": "B",
+      "communityFee": "300",
+      "cadastralRef": "00000000000000000007",
+      "registryNumber": "1",
+      "floor": "1",
+      "door": "1",
+      "areaM2": "160",
+      "participationCoef": "25",
+      "propertyUse": "residencial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 22:27:49",
+      "notes": "",
+      "postalCode": "28880",
+      "city": "Meco",
+      "province": "Madrid",
+      "currency": "EUR",
+      "ownerIds": [
+        "own-demo-6",
+        "own-demo-5"
+      ],
+      "tenantIds": [
+        "cde1eb7e-2c87-4ee9-978b-63c8fcb0ff98",
+        "d02e04d1-9e44-425c-94db-846d4dd3ad1a"
+      ],
+      "ownerPercentages": {
+        "own-demo-6": 50,
+        "own-demo-5": 50
+      }
+    },
+    {
+      "id": "prop-demo-1",
+      "communityId": "com-demo-1",
+      "communityName": "Comunidad Peñarrubia",
+      "propertyType": "vivienda",
+      "plot": "Vivienda 1-A",
+      "address": "Avenida de la Constitución, 1, 1-A",
+      "staircase": "",
+      "energyCertificate": "",
+      "communityFee": "",
+      "cadastralRef": "9872023VH1111S0001WX",
+      "registryNumber": "1111",
+      "floor": "1",
+      "door": "A",
+      "areaM2": "78",
+      "participationCoef": "9.5000",
+      "propertyUse": "residencial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 17:58:12",
+      "notes": "Vivienda principal.",
+      "postalCode": "28001",
+      "city": "Madrid",
+      "province": "Madrid",
+      "currency": "EUR",
+      "ownerIds": [
+        "own-demo-1"
+      ],
+      "tenantIds": [
+        "ten-demo-1"
+      ],
+      "ownerPercentages": {
+        "own-demo-1": 100
+      }
+    },
+    {
+      "id": "prop-demo-2",
+      "communityId": "com-demo-1",
+      "communityName": "Comunidad Peñarrubia",
+      "propertyType": "vivienda",
+      "plot": "Vivienda 2-B",
+      "address": "Avenida de la Constitución, 1, 2-B",
+      "staircase": "",
+      "energyCertificate": "",
+      "communityFee": "",
+      "cadastralRef": "9872023VH2222S0002WX",
+      "registryNumber": "2222",
+      "floor": "2",
+      "door": "B",
+      "areaM2": "85",
+      "participationCoef": "10.2500",
+      "propertyUse": "residencial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 17:58:12",
+      "notes": "",
+      "postalCode": "28001",
+      "city": "Madrid",
+      "province": "Madrid",
+      "currency": "EUR",
+      "ownerIds": [
+        "own-demo-7"
+      ],
+      "tenantIds": [
+        "eb03d2a9-57c8-44fa-ba8c-95c9cb30c09f"
+      ],
+      "ownerPercentages": {
+        "own-demo-7": 100
+      }
+    },
+    {
+      "id": "prop-demo-3",
+      "communityId": "com-demo-1",
+      "communityName": "Comunidad Peñarrubia",
+      "propertyType": "vivienda",
+      "plot": "Departamento 3-C",
+      "address": "Avenida de la Constitución, 1, 3-C",
+      "staircase": "",
+      "energyCertificate": "",
+      "communityFee": "",
+      "cadastralRef": "9872023VH3333S0003WX",
+      "registryNumber": "3333",
+      "floor": "3",
+      "door": "C",
+      "areaM2": "70",
+      "participationCoef": "8.0000",
+      "propertyUse": "residencial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 17:58:12",
+      "notes": "",
+      "postalCode": "28001",
+      "city": "Madrid",
+      "province": "Madrid",
+      "currency": "",
+      "ownerIds": [],
+      "tenantIds": [],
+      "ownerPercentages": {}
+    },
+    {
+      "id": "prop-demo-4",
+      "communityId": "com-demo-1",
+      "communityName": "Comunidad Peñarrubia",
+      "propertyType": "local",
+      "plot": "Local 4",
+      "address": "Avenida de la Constitución, 1, Local 4",
+      "staircase": "",
+      "energyCertificate": "",
+      "communityFee": "",
+      "cadastralRef": "9872023VH4444S0004WX",
+      "registryNumber": "4444",
+      "floor": "0",
+      "door": "L4",
+      "areaM2": "55",
+      "participationCoef": "5.0000",
+      "propertyUse": "comercial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 17:58:12",
+      "notes": "Local comercial (perfil sin cuenta).",
+      "postalCode": "28001",
+      "city": "Madrid",
+      "province": "Madrid",
+      "currency": "",
+      "ownerIds": [],
+      "tenantIds": [],
+      "ownerPercentages": {}
+    },
+    {
+      "id": "prop-demo-5",
+      "communityId": "com-demo-2",
+      "communityName": "Comunidad Las Acacias",
+      "propertyType": "vivienda",
+      "plot": "Ático 5-D",
+      "address": "Calle de los Álamos, 22, Ático 5-D",
+      "staircase": "",
+      "energyCertificate": "",
+      "communityFee": "",
+      "cadastralRef": "9872024VH5555S0005WX",
+      "registryNumber": "5555",
+      "floor": "5",
+      "door": "D",
+      "areaM2": "96",
+      "participationCoef": "12.0000",
+      "propertyUse": "residencial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 17:58:12",
+      "notes": "Ático propiedad de la cuenta super_admin.",
+      "postalCode": "28223",
+      "city": "Pozuelo de Alarcón",
+      "province": "Madrid",
+      "currency": "EUR",
+      "ownerIds": [
+        "own-demo-5"
+      ],
+      "tenantIds": [],
+      "ownerPercentages": {
+        "own-demo-5": 100
+      }
+    },
+    {
+      "id": "prop-demo-6",
+      "communityId": "com-demo-2",
+      "communityName": "Comunidad Las Acacias",
+      "propertyType": "vivienda",
+      "plot": "Piso 6-E",
+      "address": "Calle de los Álamos, 22, 6-E",
+      "staircase": "",
+      "energyCertificate": "",
+      "communityFee": "",
+      "cadastralRef": "9872024VH6666S0006WX",
+      "registryNumber": "6666",
+      "floor": "6",
+      "door": "E",
+      "areaM2": "88",
+      "participationCoef": "10.7500",
+      "propertyUse": "residencial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 17:58:12",
+      "notes": "",
+      "postalCode": "28223",
+      "city": "Pozuelo de Alarcón",
+      "province": "Madrid",
+      "currency": "EUR",
+      "ownerIds": [
+        "own-demo-2"
+      ],
+      "tenantIds": [
+        "f447826e-5488-406b-a707-262e694aaa0b"
+      ],
+      "ownerPercentages": {
+        "own-demo-2": 100
+      }
+    },
+    {
+      "id": "prop-demo-7",
+      "communityId": "com-demo-3",
+      "communityName": "Comunidad Los Pinos",
+      "propertyType": "parcela",
+      "plot": "Chalet 3",
+      "address": "Camino de los Pinos, 9, Chalet 3",
+      "staircase": "",
+      "energyCertificate": "",
+      "communityFee": "",
+      "cadastralRef": "9872024VH7777S0007WX",
+      "registryNumber": "7777",
+      "floor": "",
+      "door": "",
+      "areaM2": "210",
+      "participationCoef": "14.0000",
+      "propertyUse": "residencial",
+      "receiptStatus": "current",
+      "createdAt": "2026-11-09 17:58:12",
+      "notes": "Chalet con jardín.",
+      "postalCode": "28250",
+      "city": "Torrelodones",
+      "province": "Madrid",
+      "currency": "EUR",
+      "ownerIds": [
+        "own-demo-6"
+      ],
+      "tenantIds": [],
+      "ownerPercentages": {
+        "own-demo-6": 100
+      }
+    }
+  ],
+  "tenants": [
+    {
+      "id": "cde1eb7e-2c87-4ee9-978b-63c8fcb0ff98",
+      "ownerId": "own-demo-6",
+      "propertyId": "b9575a70-d439-49cc-a94e-8f95207e8686",
+      "name": "uruci2",
+      "surname": "uruci2",
+      "documentType": "NIE",
+      "documentId": "H00000034",
+      "contractType": "vivienda_habitual",
+      "monthlyRent": "",
+      "deposit": "",
+      "emergencyPhone": "",
+      "phone": "600000000",
+      "email": "uruci2@uruci2.com",
+      "contractStart": "2026-11-09",
+      "contractEnd": "",
+      "authorizationNotes": "",
+      "phoneVerified": 0,
+      "phoneVerifiedAt": "",
+      "emailVerified": 0,
+      "emailVerifiedAt": "",
+      "notificationPreference": "postal",
+      "currency": "EUR",
+      "createdAt": "2026-11-09 22:33:26",
+      "userId": "579a6e41-559b-427f-8ecc-60a98b289924",
+      "authorizations": [],
+      "documents": {}
+    },
+    {
+      "id": "d02e04d1-9e44-425c-94db-846d4dd3ad1a",
+      "ownerId": "own-demo-6",
+      "propertyId": "b9575a70-d439-49cc-a94e-8f95207e8686",
+      "name": "uruci3",
+      "surname": "uruci3",
+      "documentType": "DNI",
+      "documentId": "00000008P",
+      "contractType": "vivienda_habitual",
+      "monthlyRent": "",
+      "deposit": "",
+      "emergencyPhone": "",
+      "phone": "600000000",
+      "email": "uruci3@uruci3.com",
+      "contractStart": "2026-11-09",
+      "contractEnd": "",
+      "authorizationNotes": "",
+      "phoneVerified": 0,
+      "phoneVerifiedAt": "",
+      "emailVerified": 0,
+      "emailVerifiedAt": "",
+      "notificationPreference": "postal",
+      "currency": "EUR",
+      "createdAt": "2026-11-09 22:40:22",
+      "userId": "4b11e311-1af7-4e2f-aef1-92e076fbc54e",
+      "authorizations": [],
+      "documents": {}
+    },
+    {
+      "id": "eb03d2a9-57c8-44fa-ba8c-95c9cb30c09f",
+      "ownerId": "own-demo-7",
+      "propertyId": "prop-demo-2",
+      "name": "urucpci2",
+      "surname": "urucpci2",
+      "documentType": "DNI",
+      "documentId": "00000010X",
+      "contractType": "vivienda_habitual",
+      "monthlyRent": "",
+      "deposit": "",
+      "emergencyPhone": "",
+      "phone": "600000000",
+      "email": "urucpci2@urucpci2.com",
+      "contractStart": "2026-11-09",
+      "contractEnd": "",
+      "authorizationNotes": "",
+      "phoneVerified": 0,
+      "phoneVerifiedAt": "",
+      "emailVerified": 0,
+      "emailVerifiedAt": "",
+      "notificationPreference": "postal",
+      "currency": "EUR",
+      "createdAt": "2026-11-09 22:42:20",
+      "userId": "651ccbb1-f944-4dd4-931a-e26927ab876c",
+      "authorizations": [],
+      "documents": {}
+    },
+    {
+      "id": "f447826e-5488-406b-a707-262e694aaa0b",
+      "ownerId": "own-demo-2",
+      "propertyId": "prop-demo-6",
+      "name": "urucpci1",
+      "surname": "urucpci1",
+      "documentType": "DNI",
+      "documentId": "00000009D",
+      "contractType": "vivienda_habitual",
+      "monthlyRent": "",
+      "deposit": "",
+      "emergencyPhone": "",
+      "phone": "600000000",
+      "email": "urucpci1@urucpci1.com",
+      "contractStart": "2026-11-09",
+      "contractEnd": "",
+      "authorizationNotes": "",
+      "phoneVerified": 0,
+      "phoneVerifiedAt": "",
+      "emailVerified": 0,
+      "emailVerifiedAt": "",
+      "notificationPreference": "postal",
+      "currency": "EUR",
+      "createdAt": "2026-11-09 22:41:21",
+      "userId": "user-usuario_r_user_c_propietario_c_inquilino",
+      "authorizations": [],
+      "documents": {}
+    },
+    {
+      "id": "ten-demo-1",
+      "ownerId": "own-demo-1",
+      "propertyId": "prop-demo-1",
+      "name": "uruci1",
+      "surname": "uruci1",
+      "documentType": "DNI",
+      "documentId": "77777777G",
+      "contractType": "vivienda_habitual",
+      "monthlyRent": "850",
+      "deposit": "1700",
+      "emergencyPhone": "",
+      "phone": "677777707",
+      "email": "uruci1@uruci1.com",
+      "contractStart": "2026-04-23",
+      "contractEnd": "2028-04-22",
+      "authorizationNotes": "Acepta avisos por email y WhatsApp.",
+      "phoneVerified": 1,
+      "phoneVerifiedAt": "2026-11-09T17:58:12.020Z",
+      "emailVerified": 0,
+      "emailVerifiedAt": "",
+      "notificationPreference": "email",
+      "currency": "EUR",
+      "createdAt": "2026-11-09 17:58:12",
+      "userId": "user-usuario_r_user_c_inquilino",
+      "authorizations": [],
+      "documents": {}
+    }
+  ],
+  "communicationPosts": [
+    {
+      "id": "5367eb4b-7901-40d0-8310-7e9dfcd64ba3",
+      "communityId": "com-demo-2",
+      "data": {
+        "communityId": "com-demo-2",
+        "type": "notice",
+        "title": "Nueva administradora de la comunidad",
+        "body": "Gestión Horizontal asume la administración del edificio.",
+        "status": "published",
+        "publishAt": "2026-11-03T17:58:12.020Z",
+        "startsAt": "",
+        "endsAt": "",
+        "archiveAt": "",
+        "pinned": false,
+        "priority": "normal",
+        "commentsEnabled": true,
+        "receiptRequired": false,
+        "channels": [],
+        "reminderMinutes": 0,
+        "audience": {
+          "mode": "all",
+          "ownerIds": [],
+          "tenantIds": [],
+          "propertyIds": []
+        },
+        "meeting": null,
+        "poll": null
+      },
+      "createdBy": "user-super-admin",
+      "createdAt": "2026-11-03T17:58:12.020Z",
+      "updatedAt": "2026-11-03T17:58:12.020Z",
+      "version": 1
+    },
+    {
+      "id": "d5010bb7-cc52-48df-8930-bead4ade4a95",
+      "communityId": "com-demo-1",
+      "data": {
+        "communityId": "com-demo-1",
+        "type": "event",
+        "title": "Cena de vecinos en el jardín",
+        "body": "Cena de convivencia del sábado en el jardín.",
+        "status": "published",
+        "publishAt": "2026-11-04T17:58:12.020Z",
+        "startsAt": "2026-11-17T11:58:12.020Z",
+        "endsAt": "2026-11-17T14:58:12.020Z",
+        "archiveAt": "",
+        "pinned": false,
+        "priority": "normal",
+        "commentsEnabled": true,
+        "receiptRequired": false,
+        "channels": [],
+        "reminderMinutes": 120,
+        "audience": {
+          "mode": "all",
+          "ownerIds": [],
+          "tenantIds": [],
+          "propertyIds": []
+        },
+        "meeting": null,
+        "poll": null
+      },
+      "createdBy": "user-super-admin",
+      "createdAt": "2026-11-04T17:58:12.020Z",
+      "updatedAt": "2026-11-04T17:58:12.020Z",
+      "version": 1
+    },
+    {
+      "id": "0da6113b-5114-43a3-8131-b90dc6252db9",
+      "communityId": "com-demo-1",
+      "data": {
+        "communityId": "com-demo-1",
+        "type": "meeting",
+        "title": "Junta ordinaria de la comunidad",
+        "body": "Convocatoria de junta ordinaria.",
+        "status": "published",
+        "publishAt": "2026-11-05T17:58:12.020Z",
+        "startsAt": "2026-11-25T11:58:12.020Z",
+        "endsAt": "2026-11-25T13:28:12.020Z",
+        "archiveAt": "",
+        "pinned": false,
+        "priority": "normal",
+        "commentsEnabled": true,
+        "receiptRequired": true,
+        "channels": [],
+        "reminderMinutes": 60,
+        "audience": {
+          "mode": "all",
+          "ownerIds": [],
+          "tenantIds": [],
+          "propertyIds": []
+        },
+        "meeting": {
+          "location": "Salón de actos del centro cívico",
+          "url": "",
+          "agenda": "1. Aprobación del acta.\n2. Cuentas.\n3. Alarmas.\n4. Ruegos.",
+          "tasks": [
+            {
+              "title": "Preparar documentación",
+              "responsible": "Administración",
+              "dueAt": "2026-11-21T17:58:12.020Z",
+              "done": false
+            }
+          ]
+        },
+        "poll": null
+      },
+      "createdBy": "user-super-admin",
+      "createdAt": "2026-11-05T17:58:12.020Z",
+      "updatedAt": "2026-11-05T17:58:12.020Z",
+      "version": 1
+    },
+    {
+      "id": "075e78cf-83e1-4d04-a38c-88158369cb98",
+      "communityId": "com-demo-1",
+      "data": {
+        "communityId": "com-demo-1",
+        "type": "notice",
+        "title": "Bienvenida a la nueva plataforma de la comunidad",
+        "body": "Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación.",
+        "status": "published",
+        "publishAt": "2026-11-06T17:58:12.020Z",
+        "startsAt": "",
+        "endsAt": "",
+        "archiveAt": "",
+        "pinned": false,
+        "priority": "important",
+        "commentsEnabled": true,
+        "receiptRequired": false,
+        "channels": [],
+        "reminderMinutes": 0,
+        "audience": {
+          "mode": "all",
+          "ownerIds": [],
+          "tenantIds": [],
+          "propertyIds": []
+        },
+        "meeting": null,
+        "poll": null
+      },
+      "createdBy": "user-super-admin",
+      "createdAt": "2026-11-06T17:58:12.020Z",
+      "updatedAt": "2026-11-06T17:58:12.020Z",
+      "version": 1
+    },
+    {
+      "id": "8a2b762e-6547-470c-b06f-34d8ebba05f7",
+      "communityId": "com-demo-1",
+      "data": {
+        "communityId": "com-demo-1",
+        "type": "notice",
+        "title": "Encuesta: horario de la piscina",
+        "body": "Votá el horario de la piscina.",
+        "status": "published",
+        "publishAt": "2026-11-07T17:58:12.020Z",
+        "startsAt": "",
+        "endsAt": "",
+        "archiveAt": "",
+        "pinned": false,
+        "priority": "normal",
+        "commentsEnabled": true,
+        "receiptRequired": false,
+        "channels": [],
+        "reminderMinutes": 0,
+        "audience": {
+          "mode": "all",
+          "ownerIds": [],
+          "tenantIds": [],
+          "propertyIds": []
+        },
+        "meeting": null,
+        "poll": {
+          "type": "vote",
+          "question": "¿Qué horario preferís?",
+          "options": [
+            "9:00 a 21:00",
+            "10:00 a 22:00",
+            "11:00 a 23:00"
+          ],
+          "electorate": "recipients",
+          "multiple": false,
+          "resultsLive": true,
+          "closesAt": "2026-11-19T17:58:12.020Z",
+          "closed": false
+        }
+      },
+      "createdBy": "user-super-admin",
+      "createdAt": "2026-11-07T17:58:12.020Z",
+      "updatedAt": "2026-11-07T17:58:12.020Z",
+      "version": 1
+    },
+    {
+      "id": "9a1cb15b-28f6-47ed-85fd-0205e00e30db",
+      "communityId": "com-demo-1",
+      "data": {
+        "communityId": "com-demo-1",
+        "type": "notice",
+        "title": "Reparación urgente en la portería",
+        "body": "El cerrajero acudió esta mañana. Queda funcionando; mañana se revisará el motor.",
+        "status": "published",
+        "publishAt": "2026-11-08T17:58:12.020Z",
+        "startsAt": "",
+        "endsAt": "",
+        "archiveAt": "",
+        "pinned": true,
+        "priority": "urgent",
+        "commentsEnabled": true,
+        "receiptRequired": false,
+        "channels": [],
+        "reminderMinutes": 0,
+        "audience": {
+          "mode": "all",
+          "ownerIds": [],
+          "tenantIds": [],
+          "propertyIds": []
+        },
+        "meeting": null,
+        "poll": null
+      },
+      "createdBy": "user-super-admin",
+      "createdAt": "2026-11-08T17:58:12.020Z",
+      "updatedAt": "2026-11-08T17:58:12.020Z",
+      "version": 1
+    },
+    {
+      "id": "fc28eab1-6cd8-4479-932c-96af4ed9f97b",
+      "communityId": "com-demo-2",
+      "data": {
+        "communityId": "com-demo-2",
+        "type": "event",
+        "title": "Taller de reciclaje",
+        "body": "Taller práctico de reciclaje doméstico en el hall.",
+        "status": "published",
+        "publishAt": "2026-11-08T17:58:12.020Z",
+        "startsAt": "2026-11-30T10:58:12.020Z",
+        "endsAt": "2026-11-30T12:58:12.020Z",
+        "archiveAt": "",
+        "pinned": false,
+        "priority": "normal",
+        "commentsEnabled": true,
+        "receiptRequired": false,
+        "channels": [],
+        "reminderMinutes": 60,
+        "audience": {
+          "mode": "all",
+          "ownerIds": [],
+          "tenantIds": [],
+          "propertyIds": []
+        },
+        "meeting": null,
+        "poll": null
+      },
+      "createdBy": "user-super-admin",
+      "createdAt": "2026-11-08T17:58:12.020Z",
+      "updatedAt": "2026-11-08T17:58:12.020Z",
+      "version": 1
+    }
+  ],
+  "communicationRecipients": [
+    {
+      "postId": "075e78cf-83e1-4d04-a38c-88158369cb98",
+      "userId": "user-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "075e78cf-83e1-4d04-a38c-88158369cb98",
+      "userId": "user-comm_admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "075e78cf-83e1-4d04-a38c-88158369cb98",
+      "userId": "user-super-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "075e78cf-83e1-4d04-a38c-88158369cb98",
+      "userId": "user-usuario_r_user_c_inquilino",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "0da6113b-5114-43a3-8131-b90dc6252db9",
+      "userId": "user-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "0da6113b-5114-43a3-8131-b90dc6252db9",
+      "userId": "user-comm_admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "0da6113b-5114-43a3-8131-b90dc6252db9",
+      "userId": "user-super-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "0da6113b-5114-43a3-8131-b90dc6252db9",
+      "userId": "user-usuario_r_user_c_inquilino",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "5367eb4b-7901-40d0-8310-7e9dfcd64ba3",
+      "userId": "user-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "5367eb4b-7901-40d0-8310-7e9dfcd64ba3",
+      "userId": "user-comm_admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "5367eb4b-7901-40d0-8310-7e9dfcd64ba3",
+      "userId": "user-super-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "5367eb4b-7901-40d0-8310-7e9dfcd64ba3",
+      "userId": "user-usuario_r_user_c_propietario_c_inquilino",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "8a2b762e-6547-470c-b06f-34d8ebba05f7",
+      "userId": "user-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "8a2b762e-6547-470c-b06f-34d8ebba05f7",
+      "userId": "user-comm_admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "8a2b762e-6547-470c-b06f-34d8ebba05f7",
+      "userId": "user-super-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "8a2b762e-6547-470c-b06f-34d8ebba05f7",
+      "userId": "user-usuario_r_user_c_inquilino",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "9a1cb15b-28f6-47ed-85fd-0205e00e30db",
+      "userId": "user-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "9a1cb15b-28f6-47ed-85fd-0205e00e30db",
+      "userId": "user-comm_admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "9a1cb15b-28f6-47ed-85fd-0205e00e30db",
+      "userId": "user-super-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "9a1cb15b-28f6-47ed-85fd-0205e00e30db",
+      "userId": "user-usuario_r_user_c_inquilino",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "d5010bb7-cc52-48df-8930-bead4ade4a95",
+      "userId": "user-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "d5010bb7-cc52-48df-8930-bead4ade4a95",
+      "userId": "user-comm_admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "d5010bb7-cc52-48df-8930-bead4ade4a95",
+      "userId": "user-super-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "d5010bb7-cc52-48df-8930-bead4ade4a95",
+      "userId": "user-usuario_r_user_c_inquilino",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "fc28eab1-6cd8-4479-932c-96af4ed9f97b",
+      "userId": "user-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "fc28eab1-6cd8-4479-932c-96af4ed9f97b",
+      "userId": "user-comm_admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "fc28eab1-6cd8-4479-932c-96af4ed9f97b",
+      "userId": "user-super-admin",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    },
+    {
+      "postId": "fc28eab1-6cd8-4479-932c-96af4ed9f97b",
+      "userId": "user-usuario_r_user_c_propietario_c_inquilino",
+      "readAt": "",
+      "receiptAt": "",
+      "rsvp": "pending",
+      "attended": 0
+    }
+  ],
+  "communicationComments": [],
+  "communicationBallots": [],
+  "roles": [
+    {
+      "id": "rol-admin-general",
+      "nombre": "administrator",
+      "descripcion": "Administrador general: crea comunidades y administra todo su contenido — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No gestiona usuarios, roles, configuración general ni proveedores de la plataforma.",
+      "permisos": "[\"community:read\",\"community:create\",\"community:manage\",\"owner:read\",\"owner:manage\",\"owner:edit\",\"owner:documents:submit\",\"property:read\",\"property:manage\",\"tenant:read\",\"tenant:manage\",\"tenant:delete\",\"document:approve\",\"owner:delete\",\"comm:participacion\",\"admin_notification:read\"]",
+      "sistema": 1
+    },
+    {
+      "id": "rol-admin-comunidad",
+      "nombre": "community_admin",
+      "descripcion": "Administrador de comunidad: gestiona únicamente la comunidad que tiene asignada — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No puede crear comunidades ni acceder a la configuración de la plataforma.",
+      "permisos": "[\"community:read\",\"community:manage\",\"owner:read\",\"owner:manage\",\"owner:edit\",\"owner:documents:submit\",\"property:read\",\"property:manage\",\"tenant:read\",\"tenant:manage\",\"tenant:delete\",\"document:approve\",\"comm:participacion\",\"document:read\"]",
+      "sistema": 1
+    },
+    {
+      "id": "rol-super-admin",
+      "nombre": "super_admin",
+      "descripcion": "Super administrador: acceso total a la plataforma. Además de gestionar comunidades, propietarios, inmuebles, inquilinos y documentación, administra usuarios, roles, la configuración general, los proveedores de envío (email/SMS/WhatsApp) y la auditoría. Es el único rol que puede crear comunidades nuevas.",
+      "permisos": "[\"community:read\",\"community:create\",\"community:manage\",\"owner:read\",\"owner:manage\",\"owner:edit\",\"owner:documents:submit\",\"property:read\",\"property:manage\",\"tenant:read\",\"tenant:manage\",\"document:read\",\"document:approve\",\"document:delete\",\"community:delete\",\"owner:delete\",\"property:delete\",\"tenant:delete\",\"reports:read\",\"audit:read\",\"admin:users\",\"admin:roles\",\"admin:settings\",\"admin:providers\",\"admin_notification:read\",\"owner_notification:read\"]",
+      "sistema": 1
+    },
+    {
+      "id": "rol-usuario",
+      "nombre": "user",
+      "descripcion": "Vecino (propietario o inquilino): solo puede ver y administrar su propio perfil, sus inmuebles, documentos y notificaciones. No accede a datos de otros vecinos ni de otras comunidades.",
+      "permisos": "[\"community:read\",\"owner:read\",\"owner:edit\",\"owner:documents:submit\",\"property:read\",\"tenant:read\",\"comm:participacion\",\"owner_notification:read\",\"tenant:manage\",\"tenant:delete\",\"document:read\"]",
+      "sistema": 1
+    }
+  ],
+  "settings": {},
+  "adminEmails": [],
+  "ownerNotifications": []
+}

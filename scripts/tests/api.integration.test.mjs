@@ -247,7 +247,7 @@ test("roles personalizados: permisos efectivos, sin borrar roles asignados por I
     (
       await request("/communities", "POST", {
         name: "No permitido",
-        nif: "H12345678",
+        nif: "H12345674",
       })
     ).status,
     403,
@@ -264,7 +264,7 @@ test("roles personalizados: permisos efectivos, sin borrar roles asignados por I
     (
       await request("/communities", "POST", {
         name: "Permitido",
-        nif: "H12345678",
+        nif: "H12345674",
       })
     ).status,
     201,
@@ -369,7 +369,7 @@ test("validaciones de servidor rechazan NIF y contacto inválidos", async () => 
     (
       await admin("/communities", "POST", {
         name: "Inválida",
-        nif: "H99999999",
+        nif: "H99999997",
         email: "no-email",
       })
     ).status,
@@ -468,6 +468,22 @@ test("propietario con inmueble con inquilino no se puede eliminar", async () => 
     const res = await admin("/owners/" + sinVinculos.id, "DELETE");
     assert.equal(res.status, 200);
   }
+});
+
+test("propietario sin inmuebles con inquilino antiguo se puede eliminar", async () => {
+  const ownerId = "own-stale-test";
+  const propertyId = "prop-stale-test";
+  const tenantId = "ten-stale-test";
+  db.prepare("INSERT INTO owners (id, name, surname, documentType, dni) VALUES (?, 'Sin', 'Inmuebles', 'DNI', '12345678Z')").run(ownerId);
+  db.prepare("INSERT INTO properties (id, ownerIds, tenantIds) VALUES (?, '[]', '[]')").run(propertyId);
+  db.prepare("INSERT INTO tenants (id, ownerId, propertyId, name, surname) VALUES (?, ?, ?, 'Inquilino', 'Antiguo')").run(tenantId, ownerId, propertyId);
+
+  const res = await admin("/owners/" + ownerId, "DELETE");
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.equal(db.prepare("SELECT ownerId FROM tenants WHERE id = ?").get(tenantId).ownerId, "");
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM owners WHERE id = ?").get(ownerId).n, 0);
+  db.prepare("DELETE FROM tenants WHERE id = ?").run(tenantId);
+  db.prepare("DELETE FROM properties WHERE id = ?").run(propertyId);
 });
 
 test("logout invalida la sesión en el servidor", async () => {

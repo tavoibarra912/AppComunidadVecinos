@@ -43,7 +43,7 @@ function communityFixture() {
       {
         id: "c1",
         name: "Comunidad",
-        nif: "H12345678",
+        nif: "H12345674",
         phone: "612345678",
         otherPhone: "623456789",
         constitutionYear: "1996",

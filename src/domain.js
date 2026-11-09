@@ -79,6 +79,13 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
     const row = db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propId);
     const ids = JSON.parse(row.ownerIds || "[]").filter(x => x !== ownerId);
     db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?").run(JSON.stringify(ids), propId);
+    // Si el propietario desvinculado era el titular del contrato de algún
+    // inquilino, se reasigna a otro copropietario del inmueble (o se deja sin
+    // titular si el inmueble queda sin propietarios) para no dejar referencias
+    // huérfanas que impidan eliminar el perfil.
+    db.prepare(
+      "UPDATE tenants SET ownerId = ? WHERE propertyId = ? AND ownerId = ?"
+    ).run(ids[0] || "", propId, ownerId);
   }
 
   for (const propId of desired) {
@@ -253,6 +260,15 @@ export function rebuildPropertyTenantReferences() {
     const owners = propertyOwnerIds(property);
     if (owners.length === 1) {
       db.prepare("UPDATE tenants SET ownerId = ? WHERE propertyId = ? AND ownerId = ''").run(owners[0], property.id);
+    }
+    // Repara referencias antiguas: un inquilino no puede seguir vinculado a
+    // un propietario que ya no es titular del inmueble donde está alquilado.
+    for (const tenant of linked) {
+      if (tenant.ownerId && !owners.includes(tenant.ownerId)) {
+        const nextOwnerId = owners[0] || "";
+        db.prepare("UPDATE tenants SET ownerId = ? WHERE id = ?").run(nextOwnerId, tenant.id);
+        tenant.ownerId = nextOwnerId;
+      }
     }
     db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?").run(
       JSON.stringify(linked.filter(t => getTenantContractStatus(t) === "Vigente").map(t => t.id)), property.id
