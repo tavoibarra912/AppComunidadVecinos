@@ -10,12 +10,12 @@
     __BRAND_STYLE__
   </style>
   <meta name="description" content="Gestión de comunidades y propietarios de la Asociación Peñarrubia" />
-  <title>Peñarrubia · Comunidades y Propietarios</title>
+  <title>__BRAND_TITLE__</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
   <link rel="stylesheet" href="communication.css?v=2" />
   <link rel="stylesheet" href="notifications.css?v=1" />
-  <link rel="stylesheet" href="dashboard.css?v=1" />
+  <link rel="stylesheet" href="dashboard.css?v=2" />
 </head>
 
 <body>
@@ -644,12 +644,12 @@
       <section class="community-editor-pane" id="community-tab-contact" data-community-pane="contact" hidden>
         <div class="form-grid">
           <label>Teléfono Principal *
-            <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
-            <div class="verify-actions">
-              <span class="verify-status" id="community-phone-verify-status" role="status" aria-live="polite">Pendiente de
-                verificación</span>
+            <div class="verify-row">
               <button class="secondary-button verify-btn" type="button" id="community-btn-verify-phone">Verificar</button>
+              <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
             </div>
+            <span class="verify-status" id="community-phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label>Teléfono Secundario (opcional)
             <input name="otherPhone" type="tel" maxlength="9" inputmode="numeric" placeholder="600000000" />
@@ -1139,13 +1139,13 @@
         <div class="form-grid">
           <p class="form-section-title full">Contacto</p>
           <label id="label-phone">Teléfono principal *
-            <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
-              autocomplete="tel" />
-            <div class="verify-actions">
-              <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de
-                verificación</span>
+            <div class="verify-row">
               <button class="secondary-button verify-btn" type="button" id="btn-verify-phone">Verificar</button>
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+                autocomplete="tel" />
             </div>
+            <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label>Teléfono Secundario (opcional)
             <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000" />
@@ -1670,13 +1670,13 @@
         <div class="form-grid">
           <p class="form-section-title full">Contacto</p>
           <label id="tenant-label-phone">Teléfono Principal *
-            <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
-              autocomplete="tel" />
-            <div class="verify-actions">
-              <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de
-                verificación</span>
+            <div class="verify-row">
               <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-phone">Verificar</button>
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+                autocomplete="tel" />
             </div>
+            <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
           </label>
           <label>Teléfono Secundario (opcional)
             <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000" />
@@ -2566,8 +2566,8 @@
             <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
           </label>
         </div>
-        <p class="field-hint full" id="user-link-superadmin-hint" hidden>El Super Administrador administra todo el
-          sistema: no necesita perfiles vinculados.</p>
+        <p class="field-hint full" id="user-link-superadmin-hint" hidden>Los roles de administración de la plataforma
+          (Super Administrador y Administrador) administran todo el sistema: no llevan perfiles vinculados.</p>
       </div>
       <p class="form-error" id="user-form-error" role="alert"></p>
       <div class="dialog-actions">

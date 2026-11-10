@@ -58,8 +58,8 @@ before(async () => {
   tenant = client();
   for (const [request, usuario] of [
     [admin, "super_admin"],
-    [owner, "usuario_r_user_c_propietario"],
-    [tenant, "usuario_r_user_c_inquilino"],
+    [owner, "urucp1"],
+    [tenant, "uruci1"],
   ]) {
     const login = await request("/auth/signin", "POST", {
       usuario,
@@ -120,7 +120,7 @@ test("bootstrap: propietario e inquilino sólo reciben datos de sus perfiles", a
   );
   assert.deepEqual(
     own.data.users.map((u) => u.id),
-    ["user-usuario_r_user_c_propietario"],
+    ["user-urucp1"],
   );
   assert.equal((await owner("/owners/own-seed-2")).status, 403);
   assert.equal((await owner("/admin/users")).status, 403);
@@ -169,11 +169,11 @@ test("inquilinos: varios contratos no se sobrescriben y se conserva userId", asy
   assert.ok(property.tenantIds.includes("api-tenant-2"));
   await admin("/tenants/api-tenant-1", "PUT", {
     ...payload,
-    userId: "user-usuario_r_user_s_perfil",
+    userId: "user-urusp1",
   });
   assert.equal(
     (await admin("/tenants/api-tenant-1", "PUT", payload)).data.userId,
-    "user-usuario_r_user_s_perfil",
+    "user-urusp1",
   );
   assert.equal((await admin("/tenants/api-tenant-2", "DELETE")).status, 200);
   property = (await admin("/properties/prop-seed-1")).data;
@@ -283,7 +283,7 @@ test("propietario: no puede cambiar perfiles, titularidad ni aprobar sus documen
     },
   });
   assert.equal(changed.status, 200);
-  assert.equal(changed.data.userId, "user-usuario_r_user_c_propietario");
+  assert.equal(changed.data.userId, "user-urucp1");
   assert.equal(changed.data.isMember, before.isMember);
   assert.notEqual(changed.data.documents.dni.adminApproval?.status, "approved");
   assert.equal(
@@ -499,8 +499,8 @@ test("logout invalida la sesión en el servidor", async () => {
 test("administrador de comunidad: no puede leer ni mover datos a otra comunidad", async () => {
   const request = client();
   await request("/auth/signin", "POST", {
-    usuario: "comm_admin",
-    password: "comm_admin",
+    usuario: "ca1",
+    password: "ca1",
   });
   const visible = await request("/bootstrap");
   assert.deepEqual(
@@ -658,4 +658,33 @@ test("cambio de contraseña propio: valida la actual y cierra sólo las sesiones
     ).status,
     200,
   );
+});
+
+test("roles de plataforma: editar super_admin no exige perfiles y desvincular no se bloquea", async () => {
+  const platformAdmin = db.prepare("SELECT id FROM users WHERE usuario = 'super_admin'").get();
+  const ownerRow = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1'").get();
+  // Vincular un perfil a un rol de plataforma sigue rechazado.
+  assert.equal(
+    (await admin(`/admin/users/${platformAdmin.id}/link-owner`, "PUT", { ownerId: ownerRow.id })).status,
+    409,
+  );
+  // Desvincular (aunque no tenga perfil) permite guardar el usuario sin error.
+  assert.equal(
+    (await admin(`/admin/users/${platformAdmin.id}/link-owner`, "PUT", { ownerId: "" })).status,
+    200,
+  );
+  assert.equal(
+    (await admin(`/admin/users/${platformAdmin.id}/link-tenant`, "PUT", { tenantId: "" })).status,
+    200,
+  );
+  const edited = await admin(`/admin/users/${platformAdmin.id}`, "PUT", {
+    nombre: "super_admin",
+    apellido: "",
+    usuario: "super_admin",
+    email: "super_admin@super_admin.com",
+    rol: "super_admin",
+    activo: true,
+  });
+  assert.equal(edited.status, 200, JSON.stringify(edited.data));
+  assert.equal(edited.data.rol, "super_admin");
 });

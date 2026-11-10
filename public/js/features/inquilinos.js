@@ -37,6 +37,7 @@ const tenantFormError = document.querySelector("#tenant-form-error");
 const tenantOwnerSelect = tenantForm.elements.ownerId;
 const tenantPropertySelect = document.querySelector("#tenant-property-link-select");
 makeSelectSearchable(tenantPropertySelect, "Buscar inmueble…");
+makeSelectSearchable(document.querySelector("#tenant-user-select"), "Buscar cuenta de usuario…");
 const tenantDetailDialog = document.querySelector("#tenant-detail-dialog");
 const tenantDeleteDialog = document.querySelector("#tenant-delete-dialog");
 

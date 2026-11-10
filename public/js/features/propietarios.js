@@ -1529,6 +1529,8 @@ ownerTabsRoot.forEach(btn => {
 
 // --- Pestaña Inmueble: asociar existente / crear nuevo ---
 if (ownerPropertyLinkSelect) makeSelectSearchable(ownerPropertyLinkSelect, "Buscar inmueble…");
+makeSelectSearchable(document.querySelector("#owner-user-select"), "Buscar cuenta de usuario…");
+makeSelectSearchable(ownerDetailPropertySelect, "Buscar inmueble…");
 const btnOwnerAddProperty = document.querySelector("#btn-owner-add-property");
 if (btnOwnerAddProperty) {
   btnOwnerAddProperty.addEventListener("click", () => {

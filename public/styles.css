@@ -2793,18 +2793,6 @@ select {
   align-items: stretch;
 }
 
-.verify-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.verify-actions .verify-status {
-  flex: 1;
-  min-width: 0;
-}
-
 .verify-row input,
 .verify-code-row input {
   flex: 1;
@@ -4038,9 +4026,8 @@ th.th-drag-over {
     grid-template-columns: 1fr;
   }
 
-  /* Selectores apilados */
-  .property-selector-row,
-  .verify-row {
+  /* Selectores apilados (el teléfono con Verificar queda siempre en fila) */
+  .property-selector-row {
     flex-direction: column;
     align-items: stretch;
   }

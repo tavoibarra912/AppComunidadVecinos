@@ -59,7 +59,7 @@ test("brand.js: aplica nombre, colores, título, descripción y saludo al boot",
   assert.equal(fx.brandAnchor.childNodes[1].textContent, "Vecinos del Parque");
   assert.equal(fx.loginBrand.childNodes[1].textContent, "Vecinos del Parque");
   assert.equal(fx.brandAnchor.attributes["aria-label"], "Inicio de Vecinos del Parque");
-  assert.equal(fx.document.title, "Vecinos del Parque · Comunidades y Propietarios");
+  assert.equal(fx.document.title, "Vecinos del Parque");
   assert.match(fx.meta.attributes.content, /Asociación Vecinos del Parque/);
   assert.equal(fx.elements.get("home-greeting-title").textContent, "Bienvenido a la gestión de Vecinos del Parque");
   assert.match(fx.elements.get("brand-vars").textContent, /--nav:#0f3057/);

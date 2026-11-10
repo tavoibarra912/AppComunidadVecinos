@@ -91,6 +91,7 @@ communityForm.addEventListener("click", event => {
     event.preventDefault(); event.stopImmediatePropagation();
   }
 }, true);
+makeSelectSearchable(communityForm.elements.adminUserId, "Buscar administrador…");
 
 const communityDetailDialog = document.querySelector("#detail-dialog");
 const closeDetailDialog = document.querySelector("#close-detail-dialog");

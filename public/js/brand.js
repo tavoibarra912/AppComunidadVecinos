@@ -41,7 +41,7 @@ export function applyBrand(brand = readInjectedBrand()) {
   if (style) style.textContent = brandStyle({ ...brand, nombre: name });
   setBrandText(document.querySelector(".brand"), name);
   setBrandText(document.querySelector(".login-brand"), name);
-  document.title = `${name} · Comunidades y Propietarios`;
+  document.title = name;
   document.querySelector('meta[name="description"]')?.setAttribute("content", `Gestión de comunidades y propietarios de la Asociación ${name}`);
   const greet = document.querySelector("#home-greeting-title");
   if (greet) greet.textContent = `Bienvenido a la gestión de ${name}`;

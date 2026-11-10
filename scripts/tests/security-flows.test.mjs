@@ -46,7 +46,7 @@ function request(url, method = "GET", body, cookie = "", headers = {}) {
 }
 const login = name => request("/auth/signin", "POST", { usuario: name, password: name });
 const clearRequests = () => db.prepare("DELETE FROM password_recovery_requests").run();
-const user = () => db.prepare("SELECT * FROM users WHERE id='user-usuario_r_user_c_propietario'").get();
+const user = () => db.prepare("SELECT * FROM users WHERE id='user-urucp1'").get();
 function enableSmtp() {
   const config = providers();
   config.smtp = { ...config.smtp, enabled: true, host: "smtp.example.test", port: 587, user: "test", password: "fake-secret", from: "noreply@example.test" };
@@ -54,7 +54,7 @@ function enableSmtp() {
   saveProviders(config);
 }
 function pendingToken() {
-  const mail = db.prepare("SELECT * FROM password_recovery_mail WHERE userId='user-usuario_r_user_c_propietario'").get();
+  const mail = db.prepare("SELECT * FROM password_recovery_mail WHERE userId='user-urucp1'").get();
   return { mail, token: new URL(JSON.parse(unseal(mail.payload)).url).hash.slice("#reset-password=".length) };
 }
 after(() => { db.close(); rmSync(directory, { recursive: true, force: true }); });
@@ -64,7 +64,7 @@ test("auditoría: login, denegaciones, cambios de usuarios y roles sin secretos"
   const admin = await login("super_admin");
   assert.equal(admin.status, 200);
   assert.equal((await request("/audit")).status, 401);
-  const owner = await login("usuario_r_user_c_propietario");
+  const owner = await login("urucp1");
   assert.equal((await request("/audit", "GET", undefined, owner.cookie)).status, 403);
   const created = await request("/admin/users", "POST", { usuario: "audit-test", email: "audit@example.test", rol: "user", password: "secret-new-password" }, admin.cookie);
   assert.equal(created.status, 201, JSON.stringify(created.data));
@@ -133,7 +133,7 @@ test("recuperación: reemplazo, caducidad, uso único y revocación de sesiones"
   const { token } = pendingToken();
   assert.throws(() => resetRecoveredPassword(old, "valid-password-new"), /no es válido/);
   assert.throws(() => resetRecoveredPassword(token, "short"), /contraseña/i);
-  const cookie = (await login("usuario_r_user_c_propietario")).cookie;
+  const cookie = (await login("urucp1")).cookie;
   const changed = await request("/auth/reset-password", "POST", { token, password: "valid-password-new" });
   assert.equal(changed.status, 200);
   assert.equal(verifyPassword("valid-password-new", user().passwordHash), true);

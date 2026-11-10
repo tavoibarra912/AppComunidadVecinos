@@ -302,7 +302,7 @@ export function setupGenericFileDropzone(dropzoneEl, inputEl) {
  * formularios intacta; los cambios externos de valor se sincronizan).
  */
 export function makeSelectSearchable(select, placeholder = "Escribe para buscar…") {
-  if (!select || select.dataset.combo === "true") return select;
+  if (!select || select.dataset.combo === "true" || select.multiple) return select;
   select.dataset.combo = "true";
 
   const wrapper = document.createElement("div");
@@ -326,22 +326,30 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
   select.classList.add("combo-box-select");
   wrapper.append(select);
 
+  // Un select oculto con required no puede enfocarse para validar: se traslada
+  // la obligatoriedad al buscador (el select conserva el valor real).
+  if (select.required) {
+    input.required = true;
+    select.required = false;
+  }
+
+  /** Texto visible de la opción seleccionada (vacío para "sin selección"). */
   function selectedText() {
     const option = select.selectedOptions[0];
     return option && option.value ? option.textContent : "";
   }
 
-  function openList() {
-    // Auto-sanado: si el texto no corresponde con la selección, sincronizar
-    // (el select puede haber cambiado por fuera del componente)
-    const selected = selectedText();
-    const matchesSelection = [...select.options].some(o => o.value && o.textContent === input.value);
-    if (!matchesSelection) input.value = selected;
+  function syncInput() {
+    if (document.activeElement === input) return;
+    input.value = selectedText();
+    input.disabled = select.disabled;
+  }
 
+  function renderOptions(query = "") {
     list.replaceChildren();
-    const q = input.value.trim().toLocaleLowerCase("es");
-    const options = [...select.options].filter(o => o.value);
-    const matches = options.filter(o => !q || o.textContent.toLocaleLowerCase("es").includes(q));
+    const q = query.trim().toLocaleLowerCase("es");
+    const options = [...select.options].filter(option => !option.hidden && !option.disabled);
+    const matches = options.filter(option => !q || option.textContent.toLocaleLowerCase("es").includes(q));
     if (matches.length === 0) {
       const li = document.createElement("li");
       li.className = "combo-box-empty";
@@ -357,7 +365,7 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
       li.addEventListener("mousedown", event => {
         event.preventDefault();
         select.value = option.value;
-        input.value = option.textContent;
+        input.value = selectedText();
         closeList();
         select.dispatchEvent(new Event("change"));
       });
@@ -373,14 +381,24 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
   }
 
   select.addEventListener("change", () => {
-    input.value = selectedText();
+    if (document.activeElement !== input) input.value = selectedText();
+    if (!list.hidden) renderOptions(input.value);
   });
 
-  input.addEventListener("focus", openList);
-  input.addEventListener("input", openList);
-  input.addEventListener("blur", () => setTimeout(closeList, 150));
+  // Al enfocar se muestran todas las opciones: escribir filtra la lista.
+  input.addEventListener("focus", () => {
+    input.select();
+    renderOptions();
+  });
+  input.addEventListener("input", () => renderOptions(input.value));
+  input.addEventListener("blur", () => setTimeout(() => {
+    closeList();
+    input.value = selectedText();
+  }, 150));
   input.addEventListener("keydown", event => {
     if (event.key === "Escape") {
+      event.preventDefault();
+      input.value = selectedText();
       closeList();
       return;
     }
@@ -389,14 +407,35 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
       if (first) {
         event.preventDefault();
         select.value = first.dataset.value;
-        input.value = first.textContent;
+        input.value = selectedText();
         closeList();
         select.dispatchEvent(new Event("change"));
       }
     }
   });
 
-  input.value = selectedText();
+  // Los formularios reconstruyen las opciones al abrir cada editor: mantener
+  // el buscador al día sin pisar el texto mientras la persona escribe.
+  new MutationObserver(() => {
+    syncInput();
+    if (!list.hidden) renderOptions(input.value);
+  }).observe(select, {
+    childList: true, subtree: true, characterData: true,
+    attributes: true, attributeFilter: ["disabled", "label"],
+  });
+
+  // Sincroniza también las asignaciones programáticas de select.value.
+  const nativeValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  if (nativeValue?.get && nativeValue?.set) {
+    Object.defineProperty(select, "value", {
+      configurable: true,
+      get() { return nativeValue.get.call(select); },
+      set(value) { nativeValue.set.call(select, value); syncInput(); },
+    });
+  }
+  select.form?.addEventListener("reset", () => setTimeout(syncInput, 0));
+
+  syncInput();
   return select;
 }
 

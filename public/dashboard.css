@@ -403,8 +403,8 @@
 }
 #community-tab-contact .verify-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
 }
 #community-tab-contact .verify-row input {
   height: 42px;

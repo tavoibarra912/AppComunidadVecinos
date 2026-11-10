@@ -10,6 +10,12 @@ import { renderAdministracion } from "./administracion.js";
 import { renderCommunication } from "./communication.js";
 import "./auth.js";
 import { updateOwnerInboxBadge } from "./notificaciones.js";
+import { readInjectedBrand } from "../brand.js";
+
+/** Título de la pestaña: siempre el Nombre visible configurado en la plataforma. */
+function brandTitle() {
+  return readInjectedBrand().nombre || "Peñarrubia";
+}
 
 const userAvatar = document.querySelector("#user-avatar");
 const userRoleLabel = document.querySelector("#user-role-label");
@@ -161,7 +167,7 @@ export function handleRouting() {
     communicationSection.hidden = false;
     communicationSection.style.display = "block";
     document.querySelectorAll('[href="#comunicacion"]').forEach(el => el.classList.add("active"));
-    document.title = "Peñarrubia · Comunicación";
+    document.title = brandTitle();
     renderCommunication();
   } else if (hash === "#administracion") {
     if (!["admin:users", "admin:roles", "admin:settings", "audit:read", "admin:providers"].some(p => hasPermission(p))) {
@@ -173,7 +179,7 @@ export function handleRouting() {
       secAdministracion.style.display = "block";
     }
     if (navAdministracion) navAdministracion.classList.add("active");
-    document.title = "Peñarrubia · Administración";
+    document.title = brandTitle();
     renderAdministracion();
   } else if (hash === "#inquilinos") {
     if (secTenants) {
@@ -182,7 +188,7 @@ export function handleRouting() {
     }
     if (navInquilinos) navInquilinos.classList.add("active");
     if (mobileNavInquilinos) mobileNavInquilinos.classList.add("active");
-    document.title = "Peñarrubia · Inquilinos";
+    document.title = brandTitle();
     renderTenants();
   } else if (hash === "#propietarios") {
     if (secPropietarios) {
@@ -191,7 +197,7 @@ export function handleRouting() {
     }
     if (navPropietarios) navPropietarios.classList.add("active");
     if (mobileNavPropietarios) mobileNavPropietarios.classList.add("active");
-    document.title = isOwner ? "Peñarrubia · Mi Perfil" : "Peñarrubia · Propietarios";
+    document.title = brandTitle();
     renderOwners();
   } else if (hash === "#inmuebles") {
     if (secInmuebles) {
@@ -200,7 +206,7 @@ export function handleRouting() {
     }
     if (navInmuebles) navInmuebles.classList.add("active");
     if (mobileNavInmuebles) mobileNavInmuebles.classList.add("active");
-    document.title = "Peñarrubia · Inmuebles";
+    document.title = brandTitle();
     renderProperties();
   } else if (hash === "#comunidades") {
     if (secComunidades) {
@@ -209,7 +215,7 @@ export function handleRouting() {
     }
     if (navComunidades) navComunidades.classList.add("active");
     if (mobileNavComunidades) mobileNavComunidades.classList.add("active");
-    document.title = isOwner ? "Peñarrubia · Mi Comunidad" : "Peñarrubia · Comunidades";
+    document.title = brandTitle();
     renderCommunities();
   } else {
     if (secHome) {
@@ -218,7 +224,7 @@ export function handleRouting() {
     }
     if (navHome) navHome.classList.add("active");
     if (mobileNavHome) mobileNavHome.classList.add("active");
-    document.title = "Peñarrubia · Inicio";
+    document.title = brandTitle();
     renderHomeDashboard();
   }
 }

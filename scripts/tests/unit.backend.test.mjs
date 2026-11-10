@@ -72,11 +72,17 @@ test("semilla de usuarios: cuentas estándar de demostración", () => {
   const usuarios = db.prepare("SELECT usuario, rol FROM users").all();
   assert.ok(usuarios.some(u => u.usuario === "super_admin" && u.rol === "super_admin"));
   assert.ok(usuarios.some(u => u.usuario === "admin" && u.rol === "administrator"));
-  assert.ok(usuarios.some(u => u.usuario === "comm_admin" && u.rol === "community_admin"));
-  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_s_perfil" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_c_propietario" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_c_inquilino" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "usuario_r_user_c_propietario_c_inquilino" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "ca1" && u.rol === "community_admin"));
+  assert.ok(usuarios.some(u => u.usuario === "ca2" && u.rol === "community_admin"));
+  assert.ok(usuarios.some(u => u.usuario === "urusp1" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "urucp1" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "urucp2" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "urucp3" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "uruci1" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "uruci2" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "uruci3" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "urucpci1" && u.rol === "user"));
+  assert.ok(usuarios.some(u => u.usuario === "urucpci2" && u.rol === "user"));
 });
 
 // ---------- syncOwnerProperties (N:M propietario ↔ inmuebles) ----------

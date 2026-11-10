@@ -41,12 +41,21 @@ export function brandStyle(brand) {
  * CSP con script-src 'self' lo acepta) y los colores en un <style> (la CSP ya
  * permite estilos inline).
  */
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export function injectBranding(html, settings) {
   const brand = brandOf(settings);
   const json = JSON.stringify(brand).replace(/<\//g, "<\\/");
   return html
     .replace("__BRAND_JSON__", () => json)
-    .replace("__BRAND_STYLE__", () => brandStyle(brand));
+    .replace("__BRAND_STYLE__", () => brandStyle(brand))
+    .replace("__BRAND_TITLE__", () => escapeHtml(brand.nombre));
 }
 
 export function renderIndex(indexPath, settings) {

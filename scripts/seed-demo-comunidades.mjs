@@ -26,6 +26,7 @@ const HORA = 3600000;
 const DIA = 24 * HORA;
 const iso = ms => new Date(ms).toISOString();
 const stamp = new Date().toISOString();
+const cuentaId = usuario => db.prepare("SELECT id FROM users WHERE usuario = ?").get(usuario)?.id || "";
 
 // ---------------------------------------------------------------------------
 // 1) COMUNIDADES (todos los campos del formulario)
@@ -37,7 +38,7 @@ const comunidades = [
     city: "Madrid", province: "Madrid", postalCode: "28001", email: "penarrubia.demo@comunidad.es",
     iban: "ES9121000418450200051332", president: "María González", administrator: "Fincas del Sol",
     constitutionYear: "1985", reserveFund: "12500", currency: "EUR",
-    notes: "Comunidad demo con todos los campos completos.", documents: "[]", adminUserId: "user-comm_admin",
+    notes: "Comunidad demo con todos los campos completos.", documents: "[]", adminUserId: cuentaId("ca1"),
   },
   {
     id: "com-demo-2", name: "Comunidad Las Acacias", nif: "H87654323",
@@ -45,7 +46,7 @@ const comunidades = [
     city: "Pozuelo de Alarcón", province: "Madrid", postalCode: "28223", email: "acacias.demo@comunidad.es",
     iban: "ES7620770024003102575766", president: "Jorge Lasarte", administrator: "Gestión Horizontal",
     constitutionYear: "2001", reserveFund: "8300", currency: "EUR",
-    notes: "Segunda comunidad demo. Administrada también por comm_admin (multi-asignación).", documents: "[]", adminUserId: "user-comm_admin",
+    notes: "Segunda comunidad demo. Administrada también por ca1 (multi-asignación).", documents: "[]", adminUserId: cuentaId("ca1"),
   },
   {
     id: "com-demo-3", name: "Comunidad Los Pinos", nif: "H55566673",
@@ -53,7 +54,7 @@ const comunidades = [
     city: "Torrelodones", province: "Madrid", postalCode: "28250", email: "los.pinos.demo@comunidad.es",
     iban: "ES8544556677889900112233", president: "Rocío Pinar", administrator: "Admin Central",
     constitutionYear: "1996", reserveFund: "15000", currency: "EUR",
-    notes: "Tercera comunidad demo. Administrada por admin (administrator), distinto de comm_admin.", documents: "[]", adminUserId: "user-admin",
+    notes: "Tercera comunidad demo. Administrada por ca2, distinto de ca1.", documents: "[]", adminUserId: cuentaId("ca2"),
   },
 ];
 
@@ -62,10 +63,10 @@ const comunidades = [
 // ---------------------------------------------------------------------------
 const propietarios = [
   {
-    id: "own-demo-1", userId: "user-usuario_r_user_c_propietario", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
-    name: "usuario_r_user_c_propietario", surname: "", documentType: "DNI", dni: "11111111H", isMember: true,
+    id: "own-demo-1", userId: cuentaId("urucp1"), communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+    name: "urucp1", surname: "", documentType: "DNI", dni: "11111111H", isMember: true,
     plot: "Vivienda 1-A", propertyId: "prop-demo-1", propertyIds: ["prop-demo-1"],
-    phone: "611111101", otherPhone: "911111101", email: "usuario_r_user_c_propietario@usuario_r_user_c_propietario.com",
+    phone: "611111101", otherPhone: "911111101", email: "urucp1@urucp1.com",
     phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 1, emailVerifiedAt: stamp,
     address: "Avenida de la Constitución, 1, 1-A", province: "Madrid", city: "Madrid", postalCode: "28001",
     iban: "ES5612345678111111111111", currency: "EUR",
@@ -73,10 +74,10 @@ const propietarios = [
     documents: createSeedDocsDemo({ dni: "11111111H", nombre: "Ana Torres", plot: "Vivienda 1-A", communityName: "Comunidad Peñarrubia", aprobadas: true }),
   },
   {
-    id: "own-demo-2", userId: "user-usuario_r_user_c_propietario_c_inquilino", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
-    name: "usuario_r_user_c_propietario_c_inquilino", surname: "", documentType: "DNI", dni: "22222222J", isMember: true,
+    id: "own-demo-2", userId: cuentaId("urucpci1"), communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+    name: "urucpci1", surname: "", documentType: "DNI", dni: "22222222J", isMember: true,
     plot: "Vivienda 2-B", propertyId: "prop-demo-2", propertyIds: ["prop-demo-2"],
-    phone: "622222202", otherPhone: "", email: "usuario_r_user_c_propietario_c_inquilino@usuario_r_user_c_propietario_c_inquilino.com",
+    phone: "622222202", otherPhone: "", email: "urucpci1@urucpci1.com",
     phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 1, emailVerifiedAt: stamp,
     address: "Avenida de la Constitución, 1, 2-B", province: "Madrid", city: "Madrid", postalCode: "28001",
     iban: "ES3222345678222222222222", currency: "EUR",
@@ -84,10 +85,10 @@ const propietarios = [
     documents: createSeedDocsDemo({ dni: "22222222J", nombre: "Bruno Salas", plot: "Vivienda 2-B", communityName: "Comunidad Peñarrubia" }),
   },
   {
-    id: "own-demo-3", userId: "user-comm_admin", communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
-    name: "comm_admin", surname: "", documentType: "DNI", dni: "33333333P", isMember: true,
+    id: "own-demo-3", userId: cuentaId("ca1"), communityId: "com-demo-1", communityName: "Comunidad Peñarrubia",
+    name: "ca1", surname: "", documentType: "DNI", dni: "33333333P", isMember: true,
     plot: "Departamento 3-C", propertyId: "prop-demo-3", propertyIds: ["prop-demo-3"],
-    phone: "633333303", otherPhone: "", email: "comm_admin@comm_admin.com",
+    phone: "633333303", otherPhone: "", email: "ca1@ca1.com",
     phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 0, emailVerifiedAt: "",
     address: "Avenida de la Constitución, 1, 3-C", province: "Madrid", city: "Madrid", postalCode: "28001",
     iban: "ES1033456789333333333333", currency: "EUR",
@@ -106,36 +107,36 @@ const propietarios = [
     documents: createSeedDocsDemo({ dni: "44444444A", nombre: "Damián Requena", plot: "Local 4", communityName: "Comunidad Peñarrubia" }),
   },
   {
-    id: "own-demo-5", userId: "user-super_admin", communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
-    name: "super_admin", surname: "", documentType: "DNI", dni: "55555555K", isMember: true,
+    id: "own-demo-5", userId: cuentaId("urucp2"), communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
+    name: "urucp2", surname: "", documentType: "DNI", dni: "55555555K", isMember: true,
     plot: "Ático 5-D", propertyId: "prop-demo-5", propertyIds: ["prop-demo-5"],
-    phone: "655555505", otherPhone: "", email: "super_admin@super_admin.com",
+    phone: "655555505", otherPhone: "", email: "urucp2@urucp2.com",
     phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 1, emailVerifiedAt: stamp,
     address: "Calle de los Álamos, 22, Ático 5-D", province: "Madrid", city: "Pozuelo de Alarcón", postalCode: "28223",
     iban: "ES5655678901555555555555", currency: "EUR",
-    notes: "Perfil propietario de la cuenta super_admin (combinación super_admin × propietario).",
+    notes: "Perfil propietario de la cuenta urucp2.",
     documents: createSeedDocsDemo({ dni: "55555555K", nombre: "Elena Vidal", plot: "Ático 5-D", communityName: "Comunidad Las Acacias", aprobadas: true }),
   },
   {
-    id: "own-demo-6", userId: "user-admin", communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
-    name: "admin", surname: "", documentType: "DNI", dni: "66666666Q", isMember: true,
+    id: "own-demo-6", userId: cuentaId("urucp3"), communityId: "com-demo-2", communityName: "Comunidad Las Acacias",
+    name: "urucp3", surname: "", documentType: "DNI", dni: "66666666Q", isMember: true,
     plot: "Piso 6-E", propertyId: "prop-demo-6", propertyIds: ["prop-demo-6"],
-    phone: "666666606", otherPhone: "", email: "admin@admin.com",
+    phone: "666666606", otherPhone: "", email: "urucp3@urucp3.com",
     phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 0, emailVerifiedAt: "",
     address: "Calle de los Álamos, 22, 6-E", province: "Madrid", city: "Pozuelo de Alarcón", postalCode: "28223",
     iban: "ES8566789012666666666666", currency: "EUR",
-    notes: "Perfil propietario de la cuenta admin/administrator (combinación administrator × propietario).",
+    notes: "Perfil propietario de la cuenta urucp3.",
     documents: createSeedDocsDemo({ dni: "66666666Q", nombre: "Federico Luna", plot: "Piso 6-E", communityName: "Comunidad Las Acacias" }),
   },
   {
-    id: "own-demo-7", userId: "", communityId: "com-demo-3", communityName: "Comunidad Los Pinos",
-    name: "perfil_sin_cuenta_2", surname: "", documentType: "DNI", dni: "77777777B", isMember: true,
+    id: "own-demo-7", userId: cuentaId("urucpci2"), communityId: "com-demo-3", communityName: "Comunidad Los Pinos",
+    name: "urucpci2", surname: "", documentType: "DNI", dni: "77777777B", isMember: true,
     plot: "Chalet 3", propertyId: "prop-demo-7", propertyIds: ["prop-demo-7"],
-    phone: "677777707", otherPhone: "917777707", email: "perfil_sin_cuenta_2@demo.es",
+    phone: "677777707", otherPhone: "917777707", email: "urucpci2@urucpci2.com",
     phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 1, emailVerifiedAt: stamp,
     address: "Camino de los Pinos, 9, Chalet 3", province: "Madrid", city: "Torrelodones", postalCode: "28250",
     iban: "ES8877890123777777777777", currency: "EUR",
-    notes: "Perfil propietario sin cuenta vinculada en la comunidad administrada por admin.",
+    notes: "Perfil propietario de la cuenta urucpci2 en la comunidad administrada por ca2.",
     documents: createSeedDocsDemo({ dni: "77777777B", nombre: "Fernando Cabrera", plot: "Chalet 3", communityName: "Comunidad Los Pinos" }),
   },
 ];
@@ -186,7 +187,7 @@ const inmuebles = [
     plot: "Ático 5-D", address: "Calle de los Álamos, 22, Ático 5-D",
     cadastralRef: "9872024VH5555S0005WX", registryNumber: "5555", floor: "5", door: "D",
     areaM2: "96", participationCoef: "12.0000", propertyUse: "residencial",
-    receiptStatus: "current", notes: "Ático propiedad de la cuenta super_admin.",
+    receiptStatus: "current", notes: "Ático propiedad de la cuenta urucp2.",
     postalCode: "28223", city: "Pozuelo de Alarcón", province: "Madrid",
   },
   {
@@ -195,7 +196,7 @@ const inmuebles = [
     plot: "Piso 6-E", address: "Calle de los Álamos, 22, 6-E",
     cadastralRef: "9872024VH6666S0006WX", registryNumber: "6666", floor: "6", door: "E",
     areaM2: "88", participationCoef: "10.7500", propertyUse: "residencial",
-    receiptStatus: "current", notes: "Piso propiedad de la cuenta admin/administrator.",
+    receiptStatus: "current", notes: "Piso propiedad de la cuenta urucp3.",
     postalCode: "28223", city: "Pozuelo de Alarcón", province: "Madrid",
   },
   {
@@ -204,7 +205,7 @@ const inmuebles = [
     plot: "Chalet 3", address: "Camino de los Pinos, 9, Chalet 3",
     cadastralRef: "9872024VH7777S0007WX", registryNumber: "7777", floor: "", door: "",
     areaM2: "210", participationCoef: "14.0000", propertyUse: "residencial",
-    receiptStatus: "current", notes: "Chalet con jardín, administrado por admin (administrator).",
+    receiptStatus: "current", notes: "Chalet con jardín, administrado por ca2.",
     postalCode: "28250", city: "Torrelodones", province: "Madrid",
   },
 ];
@@ -215,43 +216,43 @@ const inmuebles = [
 const inquilinos = [
   {
     id: "ten-demo-1", ownerId: "own-demo-1", propertyId: "prop-demo-1",
-    name: "usuario_r_user_c_inquilino", surname: "", documentType: "DNI", documentId: "77777777B",
+    name: "uruci1", surname: "", documentType: "DNI", documentId: "77777777B",
     contractType: "vivienda_habitual", monthlyRent: "850", deposit: "1700",
-    emergencyPhone: "600111222", phone: "677777707", email: "usuario_r_user_c_inquilino@usuario_r_user_c_inquilino.com",
+    emergencyPhone: "600111222", phone: "677777707", email: "uruci1@uruci1.com",
     contractStart: iso(Date.now() - 200 * DIA).slice(0, 10), contractEnd: iso(Date.now() + 530 * DIA).slice(0, 10),
     authorizations: JSON.stringify(["email", "whatsapp"]), authorizationNotes: "Acepta avisos por email y WhatsApp.",
     phoneVerified: 1, phoneVerifiedAt: stamp, emailVerified: 1, emailVerifiedAt: stamp,
-    notificationPreference: "whatsapp", currency: "EUR", userId: "user-usuario_r_user_c_inquilino",
+    notificationPreference: "whatsapp", currency: "EUR", userId: cuentaId("uruci1"),
   },
   {
     id: "ten-demo-2", ownerId: "own-demo-5", propertyId: "prop-demo-5",
-    name: "usuario_r_user_c_propietario_c_inquilino", surname: "", documentType: "DNI", documentId: "88888888Y",
+    name: "urucpci1", surname: "", documentType: "DNI", documentId: "88888888Y",
     contractType: "vivienda_habitual", monthlyRent: "1100", deposit: "2200",
-    emergencyPhone: "600333444", phone: "688888808", email: "usuario_r_user_c_propietario_c_inquilino@usuario_r_user_c_propietario_c_inquilino.com",
+    emergencyPhone: "600333444", phone: "688888808", email: "urucpci1@urucpci1.com",
     contractStart: iso(Date.now() - 90 * DIA).slice(0, 10), contractEnd: iso(Date.now() + 275 * DIA).slice(0, 10),
     authorizations: JSON.stringify(["email"]), authorizationNotes: "Solo avisos por correo.",
     phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 1, emailVerifiedAt: stamp,
-    notificationPreference: "email", currency: "EUR", userId: "user-usuario_r_user_c_propietario_c_inquilino",
+    notificationPreference: "email", currency: "EUR", userId: cuentaId("urucpci1"),
   },
   {
     id: "ten-demo-3", ownerId: "own-demo-3", propertyId: "prop-demo-3",
-    name: "perfil_sin_cuenta_3", surname: "", documentType: "NIE", documentId: "X9999999J",
+    name: "uruci2", surname: "", documentType: "NIE", documentId: "X9999999J",
     contractType: "temporada", monthlyRent: "600", deposit: "600",
-    emergencyPhone: "", phone: "699999909", email: "perfil_sin_cuenta_3@demo.es",
+    emergencyPhone: "", phone: "699999909", email: "uruci2@uruci2.com",
     contractStart: iso(Date.now() - 20 * DIA).slice(0, 10), contractEnd: iso(Date.now() + 70 * DIA).slice(0, 10),
     authorizations: "[]", authorizationNotes: "",
     phoneVerified: 0, phoneVerifiedAt: "", emailVerified: 0, emailVerifiedAt: "",
-    notificationPreference: "email", currency: "EUR", userId: "",
+    notificationPreference: "email", currency: "EUR", userId: cuentaId("uruci2"),
   },
   {
     id: "ten-demo-4", ownerId: "own-demo-7", propertyId: "prop-demo-7",
-    name: "Julia", surname: "Blanco Serrano", documentType: "NIE", documentId: "Y1111111H",
+    name: "urucpci2", surname: "", documentType: "NIE", documentId: "Y1111111H",
     contractType: "vivienda_habitual", monthlyRent: "1400", deposit: "2800",
-    emergencyPhone: "600555666", phone: "611111919", email: "julia.blanco@demo.es",
+    emergencyPhone: "600555666", phone: "611111919", email: "urucpci2@urucpci2.com",
     contractStart: "2026-06-15", contractEnd: "2027-05-10",
     authorizations: JSON.stringify(["email", "sms"]), authorizationNotes: "Prefiere SMS.",
     phoneVerified: 1, phoneVerifiedAt: "12/10/2026, 09:00", emailVerified: 0, emailVerifiedAt: "",
-    notificationPreference: "sms", currency: "EUR", userId: "",
+    notificationPreference: "sms", currency: "EUR", userId: cuentaId("urucpci2"),
   },
 ];
 
@@ -374,10 +375,10 @@ materialize();
 
 console.log(`Demo extendido cargado: ${comunidades.length} comunidades, ${propietarios.length} propietarios, ${inmuebles.length} inmuebles, ${inquilinos.length} inquilinos, ${publicaciones.length} publicaciones.`);
 console.log("Cobertura de combinaciones (rol × perfil):");
-console.log("  super_admin        → sin perfil (correcto) + propietario (P5, Las Acacias)");
-console.log("  admin/administrator → propietario (P6) + inquilino de super_admin");
-console.log("  comm_admin          → administrador de 2 comunidades + propietario vecina (P3)");
-console.log("  usuario_r_user_c_propietario       → propietario (2 inmuebles demo)");
-console.log("  usuario_r_user_c_inquilino         → inquilino");
-console.log("  usuario_r_user_c_propietario_c_inquilino → propietario (Acacias) + inquilino (Peñarrubia)");
-console.log("  usuario_r_user_s_perfil            → sin perfil ni comunidad (ve vacío)");
+console.log("  super_admin      → sin perfil (correcto)");
+console.log("  admin            → administrador de plataforma, sin perfiles vinculados");
+console.log("  ca1 / ca2        → administradores de comunidad (ca1: 2 comunidades; ca2: 1)");
+console.log("  urucp1-3         → propietarios (2 inmuebles demo cada uno según comunidad)");
+console.log("  uruci1-3         → inquilinos");
+console.log("  urucpci1-2       → propietario + inquilino");
+console.log("  urusp1           → sin perfil ni comunidad (ve vacío)");

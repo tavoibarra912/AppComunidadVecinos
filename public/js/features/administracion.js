@@ -1,7 +1,7 @@
 import { sanitizeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, hasPermission, requirePermission } from "../state.js";
-import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
+import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, makeSelectSearchable } from "../utils.js";
 import { createDataTable, aplicarFilasPorPagina } from "../table.js";
 import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
@@ -238,6 +238,8 @@ const userForm = document.querySelector("#user-form");
 const userError = document.querySelector("#user-form-error");
 const userLinkedOwnerSelect = document.querySelector("#user-linked-owner");
 const userLinkedTenantSelect = document.querySelector("#user-linked-tenant");
+makeSelectSearchable(userLinkedOwnerSelect, "Buscar propietario…");
+makeSelectSearchable(userLinkedTenantSelect, "Buscar inquilino…");
 
 function openUserEditor(id = null) {
   if (!requirePermission("admin:users")) return;
@@ -269,12 +271,12 @@ function openUserEditor(id = null) {
 
 /** Puebla los selects de vinculación con los registros sin cuenta asignada. */
 function renderUserLinkSelects(user) {
-  const isSuperAdmin = user?.rol === "super_admin";
+  const isPlatformAdmin = ["super_admin", "administrator"].includes(user?.rol);
   const linkSection = document.querySelector("#user-link-section");
   const superHint = document.querySelector("#user-link-superadmin-hint");
-  if (linkSection) linkSection.hidden = isSuperAdmin;
-  if (superHint) superHint.hidden = !isSuperAdmin;
-  if (isSuperAdmin) return;
+  if (linkSection) linkSection.hidden = isPlatformAdmin;
+  if (superHint) superHint.hidden = !isPlatformAdmin;
+  if (isPlatformAdmin) return;
 
   // Vínculos actuales calculados desde los registros (no desde la cuenta)
   const linkedOwnerId = (state.owners.find(o => o.userId === user?.id) || {}).id || "";
@@ -306,6 +308,13 @@ function renderUserLinkSelects(user) {
     if (linkedTenantId) userLinkedTenantSelect.value = linkedTenantId;
   }
 }
+
+// Al cambiar el rol se muestran u ocultan los perfiles vinculados sin reabrir
+// el diálogo (los roles de plataforma no llevan perfiles).
+userForm?.elements.rol?.addEventListener("change", () => {
+  const actual = state.users.find(item => item.id === editingUserId) || { id: "" };
+  renderUserLinkSelects({ ...actual, rol: userForm.elements.rol.value });
+});
 
 userForm?.addEventListener("submit", async event => {
   event.preventDefault();
@@ -347,10 +356,11 @@ userForm?.addEventListener("submit", async event => {
       window.dispatchEvent(new Event("auth:expired")); toast("Volvé a iniciar sesión para continuar."); return;
     }
     // Sincronizar vinculaciones de perfiles (Propietario / Inquilino)
-    // Super Admin no lleva perfiles vinculados: desvincular si los tuviera
-    if (data.rol === "super_admin") {
-      await api.linkOwner(savedUser.id, "");
-      await api.linkTenant(savedUser.id, "");
+    // Los roles de administración no llevan perfiles: solo se desvinculan
+    // los que hubiera (el servidor rechaza intentar vincular uno nuevo).
+    if (["super_admin", "administrator"].includes(data.rol)) {
+      if (state.owners.some(o => o.userId === savedUser.id)) await api.linkOwner(savedUser.id, "");
+      if (state.tenants.some(t => t.userId === savedUser.id)) await api.linkTenant(savedUser.id, "");
     } else {
       const currentLinkedOwnerId = state.owners.find(o => o.userId === savedUser.id)?.id || "";
       const newOwnerId = userLinkedOwnerSelect?.value || "";

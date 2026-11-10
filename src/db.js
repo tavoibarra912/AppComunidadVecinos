@@ -371,69 +371,114 @@ if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   const adminSalt = crypto.randomBytes(16).toString("hex");
   const adminHash = `scrypt:${adminSalt}:${crypto.scryptSync(initialAdminPassword, adminSalt, 64).toString("hex")}`;
   insertUser.run("user-super-admin", "super_admin", "", "super_admin", "super_admin@super_admin.com", "super_admin", adminHash);
-  if (process.env.NODE_ENV !== "production") {
-    const cuenta = (usuario, rol) => {
-      const salt = crypto.randomBytes(16).toString("hex");
-      insertUser.run(`user-${usuario}`, usuario, "", usuario, `${usuario}@${usuario}.com`, rol, `scrypt:${salt}:${crypto.scryptSync(usuario, salt, 64).toString("hex")}`);
-    };
-    cuenta("admin", "administrator");
-    cuenta("comm_admin", "community_admin");
-    cuenta("usuario_r_user_s_perfil", "user");
-    cuenta("usuario_r_user_c_propietario", "user");
-    cuenta("usuario_r_user_c_inquilino", "user");
-    cuenta("usuario_r_user_c_propietario_c_inquilino", "user");
-  }
+  // El resto de las cuentas demo las crea ensureDemoProfiles() de forma
+  // idempotente con el esquema de nombres vigente.
 }
 
 export function ensureDemoProfiles() {
-  // Cuentas estándar de demostración (idempotente): una por rol y cuatro
-  // vecinos con combinaciones de perfiles para probar todos los escenarios.
+  // Cuentas estándar de demostración (idempotente): una por rol y vecinos con
+  // todas las combinaciones de perfiles para probar cada escenario.
+  //   ca*      administradores de comunidad (2)
+  //   urusp*   usuario sin perfil (1)
+  //   urucp*   propietarios (3)
+  //   uruci*   inquilinos (3)
+  //   urucpci* propietario + inquilino (2)
   const cuentas = [
-    { id: "user-super-admin", usuario: "super_admin", nombre: "super_admin", email: "super_admin@super_admin.com", rol: "super_admin" },
-    { id: "user-admin", usuario: "admin", nombre: "admin", email: "admin@admin.com", rol: "administrator" },
-    { id: "user-comm_admin", usuario: "comm_admin", nombre: "comm_admin", email: "comm_admin@comm_admin.com", rol: "community_admin" },
-    { id: "user-usuario_r_user_s_perfil", usuario: "usuario_r_user_s_perfil", nombre: "usuario_r_user_s_perfil", email: "usuario_r_user_s_perfil@usuario_r_user_s_perfil.com", rol: "user" },
-    { id: "user-usuario_r_user_c_propietario", usuario: "usuario_r_user_c_propietario", nombre: "usuario_r_user_c_propietario", email: "usuario_r_user_c_propietario@usuario_r_user_c_propietario.com", rol: "user" },
-    { id: "user-usuario_r_user_c_inquilino", usuario: "usuario_r_user_c_inquilino", nombre: "usuario_r_user_c_inquilino", email: "usuario_r_user_c_inquilino@usuario_r_user_c_inquilino.com", rol: "user" },
-    { id: "user-usuario_r_user_c_propietario_c_inquilino", usuario: "usuario_r_user_c_propietario_c_inquilino", nombre: "usuario_r_user_c_propietario_c_inquilino", email: "usuario_r_user_c_propietario_c_inquilino@usuario_r_user_c_propietario_c_inquilino.com", rol: "user" },
+    { usuario: "super_admin", rol: "super_admin" },
+    { usuario: "admin", rol: "administrator" },
+    { usuario: "ca1", rol: "community_admin" },
+    { usuario: "ca2", rol: "community_admin" },
+    { usuario: "urusp1", rol: "user" },
+    { usuario: "urucp1", rol: "user" },
+    { usuario: "urucp2", rol: "user" },
+    { usuario: "urucp3", rol: "user" },
+    { usuario: "uruci1", rol: "user" },
+    { usuario: "uruci2", rol: "user" },
+    { usuario: "uruci3", rol: "user" },
+    { usuario: "urucpci1", rol: "user" },
+    { usuario: "urucpci2", rol: "user" },
   ];
+
+  // Bases antiguas: renombrar las cuentas demo al esquema vigente cuando el
+  // nombre nuevo todavía no existe (conserva id, perfiles y contraseña).
+  const renombres = [
+    ["usuario_r_user_c_propietario", "urucp1"],
+    ["usuario_r_user_c_inquilino", "uruci1"],
+    ["usuario_r_user_c_propietario_c_inquilino", "urucpci1"],
+    ["usuario_r_user_s_perfil", "urusp1"],
+    ["comm_admin", "ca1"],
+  ];
+  for (const [viejo, nuevo] of renombres) {
+    const cuentaVieja = db.prepare("SELECT id, passwordHash FROM users WHERE usuario = ?").get(viejo);
+    if (!cuentaVieja) continue;
+    if (db.prepare("SELECT 1 FROM users WHERE usuario = ?").get(nuevo)) continue;
+    db.prepare("UPDATE users SET usuario = ?, nombre = ?, apellido = '', email = ? WHERE id = ?")
+      .run(nuevo, nuevo, `${nuevo}@${nuevo}.com`, cuentaVieja.id);
+    // Si la contraseña demo era el usuario anterior, pasa a ser el nuevo.
+    const [scheme, salt, hex] = String(cuentaVieja.passwordHash || "").split(":");
+    if (scheme === "scrypt" && salt && hex?.length === 128) {
+      try {
+        if (crypto.timingSafeEqual(Buffer.from(hex, "hex"), crypto.scryptSync(viejo, salt, 64))) {
+          db.prepare("UPDATE users SET passwordHash = ? WHERE id = ?")
+            .run(`scrypt:${salt}:${crypto.scryptSync(nuevo, salt, 64).toString("hex")}`, cuentaVieja.id);
+        }
+      } catch { /* hash con formato desconocido: se conserva la contraseña */ }
+    }
+  }
+
   for (const c of cuentas) {
-    // Ya existe la cuenta (por usuario o por id): nada que crear.
     if (db.prepare("SELECT 1 FROM users WHERE usuario = ?").get(c.usuario)) continue;
-    let id = c.id;
-    // El id puede estar ocupado por una cuenta migrada (p. ej. user-admin
-    // era el super_admin renombrado): usar un id alternativo.
+    let id = `user-${c.usuario}`;
+    // El id puede estar ocupado por una cuenta migrada: usar uno alternativo.
     if (db.prepare("SELECT 1 FROM users WHERE id = ?").get(id)) id = `user-${c.usuario}-demo`;
     const salt = crypto.randomBytes(16).toString("hex");
     db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, '', ?, ?, ?, 1, ?)")
-      .run(id, c.nombre, c.usuario, c.email, c.rol, `scrypt:${salt}:${crypto.scryptSync(c.usuario, salt, 64).toString("hex")}`);
+      .run(id, c.usuario, c.usuario, `${c.usuario}@${c.usuario}.com`, c.rol, `scrypt:${salt}:${crypto.scryptSync(c.usuario, salt, 64).toString("hex")}`);
   }
 
+  const userId = usuario => db.prepare("SELECT id FROM users WHERE usuario = ?").get(usuario)?.id || "";
+
   // Vínculo de perfiles de demostración con las cuentas correspondientes.
-  const vincularOwner = (ownerId, userId) => {
+  const vincularOwner = (ownerId, usuario) => {
     const o = db.prepare("SELECT userId FROM owners WHERE id = ?").get(ownerId);
-    if (o && (!o.userId || ["user-carlos", "user-laura"].includes(o.userId)))
-      db.prepare("UPDATE owners SET userId = ? WHERE id = ?").run(userId, ownerId);
+    const nuevoId = userId(usuario);
+    if (o && nuevoId && (!o.userId || ["user-carlos", "user-laura"].includes(o.userId)))
+      db.prepare("UPDATE owners SET userId = ? WHERE id = ?").run(nuevoId, ownerId);
   };
-  vincularOwner("own-seed-1", "user-usuario_r_user_c_propietario");
-  vincularOwner("own-seed-3", "user-usuario_r_user_c_propietario_c_inquilino");
-  const vincularTenant = (tenantId, userId) => {
+  vincularOwner("own-seed-1", "urucp1");
+  vincularOwner("own-seed-3", "urucpci1");
+  const vincularTenant = (tenantId, usuario) => {
     const t = db.prepare("SELECT userId FROM tenants WHERE id = ?").get(tenantId);
-    if (t && (!t.userId || ["user-carlos", "user-laura"].includes(t.userId)))
-      db.prepare("UPDATE tenants SET userId = ? WHERE id = ?").run(userId, tenantId);
+    const nuevoId = userId(usuario);
+    if (t && nuevoId && (!t.userId || ["user-carlos", "user-laura"].includes(t.userId)))
+      db.prepare("UPDATE tenants SET userId = ? WHERE id = ?").run(nuevoId, tenantId);
   };
-  vincularTenant("tenant-seed-1", "user-usuario_r_user_c_inquilino");
-  vincularTenant("tenant-seed-2", "user-usuario_r_user_c_propietario_c_inquilino"); // inmueble en com-seed-2
+  vincularTenant("tenant-seed-1", "uruci1");
+  vincularTenant("tenant-seed-2", "urucpci2"); // inmueble en com-seed-2
   const superMigrado = db.prepare("SELECT id, nombre FROM users WHERE usuario = 'super_admin'").get();
   if (superMigrado && superMigrado.nombre !== "super_admin")
     db.prepare("UPDATE users SET nombre = 'super_admin', apellido = '', email = 'super_admin@super_admin.com' WHERE id = ?").run(superMigrado.id);
   const comPrincipal = db.prepare("SELECT adminUserId FROM communities WHERE id = 'com-seed-1'").get();
-  if (comPrincipal && (!comPrincipal.adminUserId || comPrincipal.adminUserId === "user-admin-comunidad"))
-    db.prepare("UPDATE communities SET adminUserId = 'user-comm_admin' WHERE id = 'com-seed-1'").run();
+  const ca1 = userId("ca1");
+  if (comPrincipal && ca1 && (!comPrincipal.adminUserId || comPrincipal.adminUserId === "user-admin-comunidad"))
+    db.prepare("UPDATE communities SET adminUserId = ? WHERE id = 'com-seed-1'").run(ca1);
+
+  // Perfiles demo que aún apunten a una cuenta antigua: reasignarlos a la
+  // cuenta vigente antes de limpiar las cuentas viejas.
+  for (const [viejo, nuevo] of renombres) {
+    const viejoId = db.prepare("SELECT id FROM users WHERE usuario = ?").get(viejo)?.id;
+    const nuevoId = userId(nuevo);
+    if (!viejoId || !nuevoId || viejoId === nuevoId) continue;
+    db.prepare("UPDATE owners SET userId = ? WHERE userId = ?").run(nuevoId, viejoId);
+    db.prepare("UPDATE tenants SET userId = ? WHERE userId = ?").run(nuevoId, viejoId);
+    db.prepare("UPDATE communities SET adminUserId = ? WHERE adminUserId = ?").run(nuevoId, viejoId);
+  }
 
   // Limpieza de cuentas de demo viejas que ya no se usan (sin vínculos activos).
-  for (const viejo of ["recepcion", "carlos", "laura", "gestor.olivos"]) {
-    const u = db.prepare("SELECT id FROM users WHERE usuario = ? AND id NOT IN (SELECT id FROM users WHERE usuario IN ('super_admin','admin','comm_admin','usuario_r_user_s_perfil','usuario_r_user_c_propietario','usuario_r_user_c_inquilino','usuario_r_user_c_propietario_c_inquilino'))").get(viejo);
+  const nombresVigentes = new Set(cuentas.map(c => c.usuario));
+  for (const viejo of ["recepcion", "carlos", "laura", "gestor.olivos", ...renombres.map(([nombre]) => nombre)]) {
+    if (nombresVigentes.has(viejo)) continue;
+    const u = db.prepare("SELECT id FROM users WHERE usuario = ?").get(viejo);
     if (!u) continue;
     const usado = db.prepare(
       `SELECT (SELECT COUNT(*) FROM owners WHERE userId = ?) +

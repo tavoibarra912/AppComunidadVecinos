@@ -153,15 +153,16 @@ for (const [kind, table] of [
     if (!usuarioVinculo)
       return res.status(404).json({ error: "Usuario no encontrado." });
     // Los roles de administración de la plataforma no llevan perfiles:
-    // administran todo sin ser vecinos de ninguna comunidad.
-    if (["super_admin", "administrator"].includes(usuarioVinculo.rol))
+    // administran todo sin ser vecinos de ninguna comunidad. Sí se permite
+    // desvincular (entityId vacío) para poder limpiar vínculos heredados.
+    const entityId = req.body?.[`${kind}Id`] || "";
+    if (entityId && ["super_admin", "administrator"].includes(usuarioVinculo.rol))
       return res
         .status(409)
         .json({
           error:
             "Los roles de administración de la plataforma (super_admin, administrator) no se vinculan a perfiles de propietario o inquilino.",
         });
-    const entityId = req.body?.[`${kind}Id`] || "";
     if (typeof entityId !== "string")
       return res.status(400).json({ error: "Identificador no válido." });
     const row = entityId

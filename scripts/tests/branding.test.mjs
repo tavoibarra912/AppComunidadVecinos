@@ -72,7 +72,7 @@ test("validateBrand: acepta, rechaza y limita como corresponde", () => {
   assert.match(validateBrand({ logoDataUrl: "data:text/html;base64,AA==" }), /logo/i);
 });
 test("injectBranding: reemplaza marca en el HTML y escapa cierres de script", () => {
-  const html = `<script id="brand-json" type="application/json">__BRAND_JSON__</script><style id="brand-vars">__BRAND_STYLE__</style>`;
+  const html = `<title>__BRAND_TITLE__</title><script id="brand-json" type="application/json">__BRAND_JSON__</script><style id="brand-vars">__BRAND_STYLE__</style>`;
   const bad = validateBrand({ nombre: "</script><script>alert(1)</script>" });
   assert.equal(bad, null, "el nombre con HTML no lo rechaza la validación; el escape lo impide injectBranding");
   const out = injectBranding(html, { marca: { nombre: "</script><img src=x onerror=1>", colorPrimario: "#101010", logoDataUrl: sampleLogo } });
@@ -81,6 +81,8 @@ test("injectBranding: reemplaza marca en el HTML y escapa cierres de script", ()
   assert.ok(out.includes("--nav:#101010"));
   assert.ok(out.includes(sampleLogo));
   assert.ok(!out.includes("__BRAND_JSON__") && !out.includes("__BRAND_STYLE__"));
+  assert.ok(!out.includes("__BRAND_TITLE__"), "el título de la pestaña usa el nombre de marca");
+  assert.ok(out.includes("<title>&lt;/script&gt;&lt;img src=x onerror=1&gt;</title>"), "el título escapa HTML");
 });
 test("recoveryMessage (recuperación) usa el nombre de marca configurado", () => {
   const msg = recoveryMessage({ brand: brandOf({ marca: { nombre: "Portal Vecinos" } }), url: "http://localhost/#reset-password=token" });
@@ -106,6 +108,6 @@ test("API settings: guarda marca validada, la mergea y la expone en bootstrap", 
   const boot = await request("/bootstrap", "GET", undefined, cookie);
   assert.equal(boot.data.settings.marca.nombre, "Vecinos 2");
   // Otros roles no tocan la marca.
-  const carlos = await request("/auth/signin", "POST", { usuario: "usuario_r_user_c_propietario", password: "usuario_r_user_c_propietario" });
+  const carlos = await request("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" });
   assert.equal((await request("/admin/settings", "PUT", { marca: { nombre: "Hack" } }, carlos.cookie)).status, 403);
 });
