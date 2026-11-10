@@ -58,7 +58,7 @@ router.post("/:tipo/send", async (req, res) => {
     await sendMessage(conf.canal, destino, texto, undefined, asunto);
   } catch (error) {
     return res.status(503).json({
-      error: "El envío de códigos no está disponible. Podés guardar el contacto sin verificar.",
+      error: ("Envío de código falló: " + (error.message || "error desconocido")),
       challengeId: id,
     });
   }
