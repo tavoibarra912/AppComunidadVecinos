@@ -162,7 +162,7 @@ test("upsertTenant: crea inquilino vinculado a inmueble y propietario", () => {
     name: "Inquilino",
     surname: "Test",
     documentType: "DNI",
-    documentId: "11111111A",
+    documentId: "11111111H",
     contractStart: "2026-01-01",
     phone: "600000000",
     email: "inquilino@test.es"

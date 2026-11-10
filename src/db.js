@@ -265,6 +265,41 @@ if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'demo-community-cif
   }
   db.prepare("INSERT INTO schema_migrations (id) VALUES ('demo-community-cif-v1')").run();
 }
+// Corrige los identificadores de los datos de demostración para que cumplan
+// los formatos oficiales: NIF de comunidad (H + control), DNI/NIE con letra
+// válida e IBAN con dígitos de control correctos.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'demo-identifiers-v1'").get()) {
+  for (const [id, incorrecto, correcto] of [
+    ["com-demo-1", "B12345674", "H12345674"],
+    ["com-demo-2", "B87654323", "H87654323"],
+    ["com-demo-3", "B55566673", "H55566673"],
+  ]) {
+    db.prepare("UPDATE communities SET nif = ? WHERE id = ? AND nif = ?").run(correcto, id, incorrecto);
+  }
+  db.prepare("UPDATE communities SET iban = 'ES8544556677889900112233' WHERE id = 'com-demo-3' AND iban = 'ES3344556677889900112233'").run();
+  for (const [id, incorrecto, correcto] of [
+    ["own-demo-1", "11111111A", "11111111H"],
+    ["own-demo-2", "22222222B", "22222222J"],
+    ["own-demo-3", "33333333C", "33333333P"],
+    ["own-demo-4", "44444444D", "44444444A"],
+    ["own-demo-5", "55555555E", "55555555K"],
+    ["own-demo-6", "66666666F", "66666666Q"],
+    ["own-demo-7", "77777777J", "77777777B"],
+  ]) {
+    db.prepare(
+      "UPDATE owners SET dni = ?, documents = REPLACE(documents, ?, ?) WHERE id = ? AND dni = ?",
+    ).run(correcto, incorrecto, correcto, id, incorrecto);
+  }
+  for (const [id, incorrecto, correcto] of [
+    ["ten-demo-1", "77777777G", "77777777B"],
+    ["ten-demo-2", "88888888H", "88888888Y"],
+    ["ten-demo-3", "X9999999I", "X9999999J"],
+    ["ten-demo-4", "Y1111111J", "Y1111111H"],
+  ]) {
+    db.prepare("UPDATE tenants SET documentId = ? WHERE id = ? AND documentId = ?").run(correcto, id, incorrecto);
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('demo-identifiers-v1')").run();
+}
 // Retira únicamente las contraseñas de SSO generadas por la antigua migración.
 for (const user of db.prepare("SELECT id, usuario, passwordHash FROM users WHERE ssoProvider <> '' AND passwordHash <> ''").all()) {
   const [salt, hash] = user.passwordHash.split(":");

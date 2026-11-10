@@ -302,8 +302,8 @@ function getFormTenantContext() {
     id: state.ui.editingTenantId,
     name: tenantForm.elements.name.value.trim() || "Inquilino",
     surname: tenantForm.elements.surname.value.trim() || "",
-    dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A",
-    documentId: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A",
+    dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000T",
+    documentId: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000T",
     communityName: property?.communityName || "Comunidad",
     plot: property?.plot || "Inmueble"
   };
@@ -403,7 +403,7 @@ async function handleTenantDocUpload(file, docType) {
   badge.className = "status-badge doc-pending-admin";
   badge.textContent = "⚡ Analizando...";
   try {
-    const context = { name: tenantForm.elements.name.value.trim() || "Inquilino", surname: tenantForm.elements.surname.value.trim() || "", dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000A" };
+    const context = { name: tenantForm.elements.name.value.trim() || "Inquilino", surname: tenantForm.elements.surname.value.trim() || "", dni: tenantForm.elements.documentId.value.trim().toUpperCase() || "00000000T" };
     const result = await DocumentValidator.analyzeFile(file, docType === "contract" ? "contract" : "dni", context);
     if (!result.isValid) {
       badge.className = "status-badge doc-rejected";
