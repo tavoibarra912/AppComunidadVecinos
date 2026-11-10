@@ -15,6 +15,25 @@ function propertyPayload(property) {
   return { ...property, documents: listDocuments("property", property.id) };
 }
 
+function normalizeCadastralRef(value) {
+  return String(value || "").replace(/\s+/g, "").toUpperCase();
+}
+
+function normalizeParticipationCoef(value) {
+  return String(value ?? "").trim().replace(",", ".");
+}
+
+/** Comunidades en las que el propietario ya tiene algún inmueble. */
+function ownerCommunityIds(ownerId) {
+  const ids = new Set();
+  const owner = db.prepare("SELECT communityId FROM owners WHERE id = ?").get(ownerId);
+  if (owner?.communityId) ids.add(owner.communityId);
+  db.prepare("SELECT DISTINCT communityId FROM properties WHERE ownerIds LIKE ? AND communityId <> ''")
+    .all(`%"${ownerId}"%`)
+    .forEach(row => ids.add(row.communityId));
+  return ids;
+}
+
 router.get("/", (req, res) => {
   res.json(db.prepare("SELECT * FROM properties ORDER BY plot").all().map(propertyFromRow).map(propertyPayload));
 });
@@ -25,7 +44,7 @@ router.get("/:id", (req, res) => {
   res.json(propertyPayload(property));
 });
 
-function validatePropertyPayload(data, { requireOwners = true } = {}) {
+function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } = {}) {
   if (!data.plot || !data.propertyType) {
     return "Tipo e identificador del inmueble son obligatorios.";
   }
@@ -44,10 +63,51 @@ function validatePropertyPayload(data, { requireOwners = true } = {}) {
     if (!db.prepare("SELECT id FROM owners WHERE id = ?").get(ownerId)) {
       return "Uno de los propietarios seleccionados ya no existe.";
     }
+    if (community) {
+      const knownCommunities = ownerCommunityIds(ownerId);
+      // Los propietarios de alta nueva aún no tienen comunidad: se permiten
+      // para poder crear su primer inmueble.
+      if (knownCommunities.size > 0 && !knownCommunities.has(community.id)) {
+        return "Todos los propietarios deben pertenecer a la comunidad del inmueble.";
+      }
+    }
   }
   for (const tenantId of data.tenantIds || []) {
-    if (!db.prepare("SELECT id FROM tenants WHERE id = ?").get(tenantId)) return "Uno de los inquilinos seleccionados no existe.";
+    const tenant = db.prepare(
+      `SELECT t.id, t.propertyId, p.communityId AS propertyCommunityId
+       FROM tenants t LEFT JOIN properties p ON p.id = t.propertyId
+       WHERE t.id = ?`
+    ).get(tenantId);
+    if (!tenant) return "Uno de los inquilinos seleccionados no existe.";
+    if (community && tenant.propertyId && tenant.propertyCommunityId &&
+        tenant.propertyCommunityId !== community.id) {
+      return "Todos los inquilinos deben pertenecer a la comunidad del inmueble.";
+    }
   }
+
+  const cadastralRef = normalizeCadastralRef(data.cadastralRef);
+  if (cadastralRef) {
+    if (!/^[A-Z0-9]{20}$/.test(cadastralRef)) {
+      return "La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.";
+    }
+    const duplicate = db.prepare(
+      "SELECT id FROM properties WHERE UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) = ? AND id <> ?"
+    ).get(cadastralRef, excludeId);
+    if (duplicate) return "Ya existe otro inmueble con la misma referencia catastral.";
+  }
+
+  const participationCoef = normalizeParticipationCoef(data.participationCoef);
+  if (!participationCoef) {
+    return "El coeficiente de participación es obligatorio.";
+  }
+  if (!/^\d+(?:\.\d{1,4})?$/.test(participationCoef)) {
+    return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
+  }
+  const participationNumber = Number(participationCoef);
+  if (!Number.isFinite(participationNumber) || participationNumber < 0.0001 || participationNumber > 100) {
+    return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
+  }
+
   return normalizeOwnerPercentages(data).error || null;
 }
 
@@ -132,8 +192,8 @@ function storeProperty(id, data, community) {
   ).run(
     id, community ? community.id : "", community ? community.name : "", ownerIds, tenantIds, data.propertyType, data.plot, data.address || "",
     data.staircase || "", data.energyCertificate || "", data.communityFee || "",
-    data.cadastralRef || "", data.registryNumber || "", data.floor || "", data.door || "",
-    data.areaM2 || "", data.participationCoef || "", data.propertyUse || "",
+    normalizeCadastralRef(data.cadastralRef), data.registryNumber || "", data.floor || "", data.door || "",
+    data.areaM2 || "", normalizeParticipationCoef(data.participationCoef), data.propertyUse || "",
     data.receiptStatus === "pending" ? "pending" : "current",
     data.notes || "", data.postalCode || "", data.city || "", data.province || "",
     data.currency || "", ownerPercentages
@@ -154,10 +214,10 @@ function syncTenantsForProperty(propertyId, tenantIds) {
 
 router.post("/", (req, res) => {
   const data = req.body || {};
-  const error = validatePropertyPayload(data);
+  const id = data.id || crypto.randomUUID();
+  const error = validatePropertyPayload(data, { excludeId: id });
   if (error) return res.status(400).json({ error });
   const community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
-  const id = data.id || crypto.randomUUID();
 
   db.exec("BEGIN");
   try {
@@ -177,7 +237,7 @@ router.put("/:id", (req, res) => {
   const existing = findProperty(req.params.id);
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
   const data = req.body || {};
-  const error = validatePropertyPayload(data, { requireOwners: false });
+  const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
   if (error) return res.status(400).json({ error });
   const community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
 

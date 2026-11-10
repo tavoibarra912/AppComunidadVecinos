@@ -180,6 +180,51 @@ test("inquilinos: varios contratos no se sobrescriben y se conserva userId", asy
   assert.ok(!property.tenantIds.includes("api-tenant-2"));
   assert.ok(property.tenantIds.includes("api-tenant-1"));
 });
+test("inmuebles: coeficiente obligatorio y referencia catastral única", async () => {
+  const property = (await admin("/properties/prop-seed-2")).data;
+  const withoutCoef = await admin("/properties/prop-seed-2", "PUT", {
+    ...property,
+    participationCoef: "",
+  });
+  assert.equal(withoutCoef.status, 400);
+  assert.match(withoutCoef.data.error, /coeficiente de participación/i);
+
+  const first = (await admin("/properties/prop-seed-1")).data;
+  const duplicate = await admin("/properties/prop-seed-2", "PUT", {
+    ...property,
+    cadastralRef: ` ${first.cadastralRef.toLowerCase()} `,
+  });
+  assert.equal(duplicate.status, 400);
+  assert.match(duplicate.data.error, /referencia catastral/i);
+});
+test("inmuebles: propietarios e inquilinos deben pertenecer a la comunidad", async () => {
+  const property = (await admin("/properties/prop-seed-3")).data;
+  const crossOwner = await admin("/properties/prop-seed-3", "PUT", {
+    ...property,
+    ownerIds: ["own-seed-3"],
+    ownerPercentages: { "own-seed-3": 100 },
+    tenantIds: [],
+    participationCoef: "1.0000",
+    cadastralRef: "",
+  });
+  assert.equal(crossOwner.status, 400);
+  assert.match(crossOwner.data.error, /comunidad del inmueble/i);
+
+  db.prepare(
+    "INSERT INTO tenants (id, ownerId, propertyId, name, surname) VALUES (?, ?, ?, ?, ?)"
+  ).run("tenant-cross-community", "own-seed-1", "prop-seed-4", "Inquilino", "Otra comunidad");
+  try {
+    const target = (await admin("/properties/prop-seed-1")).data;
+    const crossTenant = await admin("/properties/prop-seed-1", "PUT", {
+      ...target,
+      tenantIds: [...(target.tenantIds || []), "tenant-cross-community"],
+    });
+    assert.equal(crossTenant.status, 400);
+    assert.match(crossTenant.data.error, /inquilinos.*comunidad del inmueble/i);
+  } finally {
+    db.prepare("DELETE FROM tenants WHERE id = ?").run("tenant-cross-community");
+  }
+});
 test("administración: contraseñas explícitas y respuestas sin secretos", async () => {
   assert.equal(
     (

@@ -1,7 +1,7 @@
 import { sanitizeHtml, escapeHtml } from "../html.js";
 import { openDocViewer, DocumentValidator } from "../docs-engine.js";
 import { api } from "../api.js";
-import { state, refreshState, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, ownerProperties, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, makeSelectSearchable, showValidationErrors, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { selectLocationInForm, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
 import { createDataTable } from "../table.js";
@@ -48,6 +48,79 @@ function iconBtn(className, title, ariaLabel, svg) {
 const editingPropertyPeople = { ownerIds: [], tenantIds: [] };
 // % de titularidad por propietario del inmueble en edición
 let editingOwnerPercentages = {};
+// El editor de inmueble se abre en modo lectura desde «Ver inmueble».
+let propertyDialogReadOnly = false;
+
+function selectedPropertyCommunityId() {
+  return propertyForm.elements.communityId?.value || "";
+}
+
+function normalizeCadastralRef(value) {
+  return String(value || "").replace(/\s+/g, "").toUpperCase();
+}
+
+/** Comunidades conocidas de un propietario (principal + inmuebles vinculados). */
+function ownerCommunityIds(owner) {
+  const ids = new Set();
+  if (owner?.communityId) ids.add(owner.communityId);
+  ownerProperties(owner).forEach(property => {
+    if (property.communityId) ids.add(property.communityId);
+  });
+  return ids;
+}
+
+/**
+ * Un propietario pertenece a la comunidad si tiene algún inmueble en ella.
+ * Los propietarios todavía sin comunidad (altas nuevas) se pueden asociar.
+ */
+function ownerBelongsToCommunity(owner, communityId) {
+  if (!communityId || !owner) return false;
+  const ids = ownerCommunityIds(owner);
+  return ids.size === 0 || ids.has(communityId);
+}
+
+/**
+ * Un inquilino pertenece a la comunidad del inmueble donde tiene el contrato.
+ * Si aún no tiene inmueble, podrá vincularse al inmueble seleccionado.
+ */
+function tenantBelongsToCommunity(tenant, communityId) {
+  if (!communityId || !tenant) return false;
+  if (!tenant.propertyId) return true;
+  const property = state.properties.find(item => item.id === tenant.propertyId);
+  return !property || property.communityId === communityId;
+}
+
+/** Quita del editor las personas que dejan de pertenecer a la comunidad. */
+function prunePropertyPeopleForCommunity(communityId) {
+  if (!communityId) return 0;
+  const validOwnerIds = editingPropertyPeople.ownerIds.filter(ownerId => {
+    const owner = state.owners.find(item => item.id === ownerId);
+    return owner && ownerBelongsToCommunity(owner, communityId);
+  });
+  const removedOwners = editingPropertyPeople.ownerIds.length - validOwnerIds.length;
+  editingPropertyPeople.ownerIds = validOwnerIds;
+  Object.keys(editingOwnerPercentages).forEach(ownerId => {
+    if (!validOwnerIds.includes(ownerId)) delete editingOwnerPercentages[ownerId];
+  });
+
+  const validTenantIds = editingPropertyPeople.tenantIds.filter(tenantId => {
+    const owner = state.owners.find(item => ownerTenants(item).some(tenant => tenant.id === tenantId));
+    const tenant = owner ? ownerTenants(owner).find(item => item.id === tenantId) : null;
+    return tenant && validOwnerIds.includes(tenant.ownerId) && tenantBelongsToCommunity(tenant, communityId);
+  });
+  const removedTenants = editingPropertyPeople.tenantIds.length - validTenantIds.length;
+  editingPropertyPeople.tenantIds = validTenantIds;
+  return removedOwners + removedTenants;
+}
+
+function handlePropertyCommunityChange() {
+  const removed = prunePropertyPeopleForCommunity(selectedPropertyCommunityId());
+  renderPropertyOwnersTab();
+  renderPropertyTenantsTab();
+  if (removed > 0) {
+    toast("Se quitaron los propietarios o inquilinos que no pertenecían a la comunidad seleccionada.");
+  }
+}
 
 function populatePropertyCurrencySelect(selected) {
   const select = propertyForm.elements.currency;
@@ -143,6 +216,7 @@ function renderPropertyOwnersTab() {
     pctInput.value = String(editingOwnerPercentages[ownerId] ?? 100);
     pctInput.title = "Porcentaje de titularidad de este propietario sobre el inmueble";
     pctInput.setAttribute("aria-label", `Porcentaje de titularidad de ${owner.name} ${owner.surname}`);
+    pctInput.disabled = propertyDialogReadOnly;
     pctInput.addEventListener("change", () => {
       let value = Number(pctInput.value.replace(",", "."));
       const previous = editingOwnerPercentages[ownerId] ?? 100;
@@ -165,6 +239,12 @@ function renderPropertyOwnersTab() {
     });
     pctWrap.append(pctInput, document.createTextNode("%"));
     info.append(pctWrap);
+
+    if (propertyDialogReadOnly) {
+      card.append(info);
+      listEl.append(card);
+      return;
+    }
 
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
@@ -226,6 +306,12 @@ function renderPropertyTenantsTab() {
     sub.textContent = `Contrato ${getTenantContractStatus(tenant)} · Arrendador: ${owner.name} ${owner.surname}`;
     info.append(title, sub);
 
+    if (propertyDialogReadOnly) {
+      card.append(info);
+      listEl.append(card);
+      return;
+    }
+
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
@@ -251,21 +337,24 @@ function openPropertyOwnerLinkPanel() {
   panel.hidden = !panel.hidden;
   if (!panel.hidden) {
     select.replaceChildren();
+    const selectedCommunityId = selectedPropertyCommunityId();
+    if (!selectedCommunityId) {
+      select.add(new Option("Seleccioná primero la comunidad del inmueble", ""));
+      return;
+    }
     if (propertyOwnerCapacity() <= 0) {
       select.add(new Option("La titularidad del inmueble ya alcanzó el 100%", ""));
       return;
     }
-    const available = state.owners.filter(o => !editingPropertyPeople.ownerIds.includes(o.id));
+    const available = state.owners.filter(owner =>
+      !editingPropertyPeople.ownerIds.includes(owner.id) &&
+      ownerBelongsToCommunity(owner, selectedCommunityId)
+    );
     if (available.length === 0) {
-      select.add(new Option("No hay más propietarios disponibles", ""));
+      select.add(new Option("No hay propietarios disponibles en esta comunidad", ""));
     } else {
       select.add(new Option("Selecciona un propietario…", ""));
-      const selectedCommunityId = propertyForm.elements.communityId?.value || "";
-      [...available].sort((a, b) => {
-        if (a.communityId === selectedCommunityId && b.communityId !== selectedCommunityId) return -1;
-        if (b.communityId === selectedCommunityId && a.communityId !== selectedCommunityId) return 1;
-        return a.name.localeCompare(b.name, "es");
-      }).forEach(owner => {
+      [...available].sort((a, b) => a.name.localeCompare(b.name, "es")).forEach(owner => {
         const comm = state.communities.find(c => c.id === owner.communityId);
         select.add(new Option(`${owner.name} ${owner.surname} (${owner.dni}) · ${comm ? comm.name : "Sin comunidad"}`, owner.id));
       });
@@ -280,15 +369,26 @@ function openPropertyTenantLinkPanel() {
   panel.hidden = !panel.hidden;
   if (!panel.hidden) {
     select.replaceChildren();
+    const selectedCommunityId = selectedPropertyCommunityId();
+    if (!selectedCommunityId) {
+      select.add(new Option("Seleccioná primero la comunidad del inmueble", ""));
+      return;
+    }
     const candidates = state.owners
-      .filter(owner => editingPropertyPeople.ownerIds.includes(owner.id))
+      .filter(owner =>
+        editingPropertyPeople.ownerIds.includes(owner.id) &&
+        ownerBelongsToCommunity(owner, selectedCommunityId)
+      )
       .flatMap(owner => ownerTenants(owner).map(tenant => ({
         ...tenant,
         ownerName: `${owner.name} ${owner.surname}`
       })))
-      .filter(tenant => !editingPropertyPeople.tenantIds.includes(tenant.id));
+      .filter(tenant =>
+        !editingPropertyPeople.tenantIds.includes(tenant.id) &&
+        tenantBelongsToCommunity(tenant, selectedCommunityId)
+      );
     if (candidates.length === 0) {
-      select.add(new Option("No hay inquilinos disponibles de los propietarios asociados", ""));
+      select.add(new Option("No hay inquilinos disponibles en esta comunidad", ""));
     } else {
       select.add(new Option("Selecciona un inquilino…", ""));
       candidates.forEach(tenant => {
@@ -309,6 +409,11 @@ if (btnConfirmOwner) {
     const ownerId = document.querySelector("#property-owner-link-select")?.value;
     if (!ownerId) {
       toast("Selecciona un propietario.");
+      return;
+    }
+    const owner = state.owners.find(item => item.id === ownerId);
+    if (!ownerBelongsToCommunity(owner, selectedPropertyCommunityId())) {
+      toast("El propietario seleccionado no pertenece a la comunidad del inmueble.");
       return;
     }
     const capacity = propertyOwnerCapacity();
@@ -341,6 +446,12 @@ if (btnConfirmTenant) {
     const tenantId = document.querySelector("#property-tenant-link-select")?.value;
     if (!tenantId) {
       toast("Selecciona un inquilino.");
+      return;
+    }
+    const owner = state.owners.find(item => ownerTenants(item).some(tenant => tenant.id === tenantId));
+    const tenant = owner ? ownerTenants(owner).find(item => item.id === tenantId) : null;
+    if (!tenant || !tenantBelongsToCommunity(tenant, selectedPropertyCommunityId())) {
+      toast("El inquilino seleccionado no pertenece a la comunidad del inmueble.");
       return;
     }
     editingPropertyPeople.tenantIds.push(tenantId);
@@ -417,7 +528,7 @@ function getFormPropertyContext() {
 }
 
 /* Misma tarjeta de documento que usan comunidad y el motor de propietarios */
-function docFileCard({ name, size, doc, isPending, removeAttrs, entityContext }) {
+function docFileCard({ name, size, doc, isPending, removeAttrs, entityContext, readOnly = false }) {
   const card = document.createElement("div");
   card.className = "doc-upload-card is-valid";
   const header = document.createElement("div");
@@ -435,14 +546,16 @@ function docFileCard({ name, size, doc, isPending, removeAttrs, entityContext })
     </div>
     <div class="doc-file-actions">
       <button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button>
-      <button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>
+      ${readOnly ? "" : '<button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>'}
     </div>
   `);
   header.querySelector('[data-action="view"]').addEventListener("click", () => {
     openDocViewer(entityContext, doc?.id || name, doc || { fileName: name, fileSize: 0, url: "", dataUrl: doc?.dataUrl });
   });
   const removeBtn = header.querySelector('[data-action="remove"]');
-  Object.entries(removeAttrs).forEach(([attr, value]) => { removeBtn.dataset[attr] = value; });
+  if (removeBtn) {
+    Object.entries(removeAttrs).forEach(([attr, value]) => { removeBtn.dataset[attr] = value; });
+  }
   card.append(header);
   return card;
 }
@@ -467,7 +580,8 @@ export function renderPropertyDocumentList() {
       doc: documentRecord,
       isPending: false,
       removeAttrs: { removePropertyDocument: documentRecord.id },
-      entityContext: context
+      entityContext: context,
+      readOnly: propertyDialogReadOnly
     }));
   });
 
@@ -478,13 +592,31 @@ export function renderPropertyDocumentList() {
       doc: { fileName: file.name, fileSize: file.size, dataUrl: file.dataUrl, fileType: file.type || "application/pdf" },
       isPending: true,
       removeAttrs: { pendingPropertyFile: String(index) },
-      entityContext: context
+      entityContext: context,
+      readOnly: propertyDialogReadOnly
     }));
   });
 }
 
+/** Oculta todo lo que implique modificar o navegar desde el inmueble. */
+function applyPropertyEditorReadOnly(readonly) {
+  ["#btn-property-add-owner", "#btn-property-link-owner", "#btn-property-add-tenant", "#btn-property-link-tenant"].forEach(selector => {
+    const button = document.querySelector(selector);
+    if (button) button.hidden = readonly;
+  });
+  ["#property-owner-link-panel", "#property-tenant-link-panel"].forEach(selector => {
+    const panel = document.querySelector(selector);
+    if (panel) panel.hidden = true;
+  });
+  const dropzone = document.querySelector("#property-doc-dropzone");
+  if (dropzone) dropzone.hidden = readonly;
+  const sampleBar = document.querySelector("#property-dialog .doc-sample-bar");
+  if (sampleBar) sampleBar.hidden = readonly;
+}
+
 export function openPropertyEditor(id = null, defaultTab = "general", readonly = false) {
   if (!requirePermission(readonly ? "property:read" : "property:manage", id || "")) return;
+  propertyDialogReadOnly = readonly;
   state.ui.editingPropertyId = id;
   propertyForm.reset();
   propertyFormError.textContent = "";
@@ -509,6 +641,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   }
   document.querySelector("#property-dialog-title").textContent = property ? (readonly ? `Ver inmueble: ${property.plot}` : "Editar inmueble") : "Nuevo inmueble";
   setFormReadonly(propertyForm, readonly);
+  applyPropertyEditorReadOnly(readonly);
   renderPropertyDocumentList();
   propertyDialog.showModal();
   if (!readonly) {
@@ -518,6 +651,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
 
 export function closePropertyEditor() {
   propertyDialog.close();
+  propertyDialogReadOnly = false;
   state.ui.editingPropertyId = null;
   state.ui.propertyDocuments = [];
 }
@@ -740,17 +874,10 @@ export function openPropertyDetail(id) {
   if (ownersListEl) {
     ownersListEl.replaceChildren();
     linkedOwners.forEach(o => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "secondary-button";
-      btn.style.fontSize = "12px";
-      btn.style.padding = "3px 8px";
-      btn.textContent = `👤 ${o.name} ${o.surname}`;
-      btn.onclick = () => {
-        propertyDetailDialog.close();
-        openOwnerDetail(o.id);
-      };
-      ownersListEl.append(btn);
+      const badge = document.createElement("span");
+      badge.className = "status-badge";
+      badge.textContent = `👤 ${o.name} ${o.surname}`;
+      ownersListEl.append(badge);
     });
   }
 
@@ -759,17 +886,10 @@ export function openPropertyDetail(id) {
   if (tenantsListEl) {
     tenantsListEl.replaceChildren();
     linkedTenants.forEach(t => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "secondary-button";
-      btn.style.fontSize = "12px";
-      btn.style.padding = "3px 8px";
-      btn.textContent = `🔑 ${t.name} ${t.surname}`;
-      btn.onclick = () => {
-        propertyDetailDialog.close();
-        openTenantDetail(t.ownerId, t.id);
-      };
-      tenantsListEl.append(btn);
+      const badge = document.createElement("span");
+      badge.className = "status-badge";
+      badge.textContent = `🔑 ${t.name} ${t.surname}`;
+      tenantsListEl.append(badge);
     });
   }
 
@@ -857,10 +977,7 @@ propertyDocumentList.addEventListener("click", event => {
 // Select de comunidad con buscador integrado
 if (propertyForm.elements.communityId) {
   makeSelectSearchable(propertyForm.elements.communityId, "Buscar comunidad…");
-  propertyForm.elements.communityId.addEventListener("change", () => {
-    renderPropertyOwnersTab();
-    renderPropertyTenantsTab();
-  });
+  propertyForm.elements.communityId.addEventListener("change", handlePropertyCommunityChange);
 }
 // Selects de vinculación de propietarios e inquilinos: mismo combo buscador que comunidad
 makeSelectSearchable(document.querySelector("#property-owner-link-select"), "Buscar propietario…");
@@ -952,6 +1069,8 @@ propertyForm.addEventListener("submit", async event => {
     selectedOwnerIds.push(ownerEditorContextId);
   }
   const selectedTenantIds = [...editingPropertyPeople.tenantIds];
+  const cadastralRef = normalizeCadastralRef(values.cadastralRef);
+  const participationCoef = String(values.participationCoef || "").trim().replace(",", ".");
 
   const messages = [];
   if (!community) messages.push("Selecciona una comunidad existente.");
@@ -962,6 +1081,19 @@ propertyForm.addEventListener("submit", async event => {
   if (linkedTenantRecords.length !== selectedTenantIds.length ||
       linkedTenantRecords.some(tenant => !selectedOwnerIds.includes(tenant.ownerId))) {
     messages.push("Los inquilinos asociados deben pertenecer a uno de los propietarios seleccionados.");
+  }
+  if (community) {
+    const invalidOwnerEntry = selectedOwnerIds
+      .map(ownerId => ({ ownerId, owner: state.owners.find(owner => owner.id === ownerId) }))
+      .find(({ owner }) => !owner || !ownerBelongsToCommunity(owner, community.id));
+    if (invalidOwnerEntry) {
+      messages.push(invalidOwnerEntry.owner
+        ? `El propietario ${invalidOwnerEntry.owner.name} ${invalidOwnerEntry.owner.surname} no pertenece a la comunidad del inmueble.`
+        : "Uno de los propietarios seleccionados ya no existe.");
+    }
+    if (linkedTenantRecords.some(tenant => !tenantBelongsToCommunity(tenant, community.id))) {
+      messages.push("Los inquilinos asociados deben pertenecer a la comunidad del inmueble.");
+    }
   }
   if (!values.address || !values.address.trim()) messages.push("La dirección es obligatoria.");
   if (!values.propertyType) messages.push("Seleccioná el tipo de inmueble.");
@@ -974,13 +1106,25 @@ propertyForm.addEventListener("submit", async event => {
     messages.push("El municipio debe pertenecer a la provincia seleccionada.");
   }
   if (!["current", "pending"].includes(values.receiptStatus)) messages.push("Seleccioná un estado de recibos válido.");
-  if (values.cadastralRef && !isValidCadastralRef(values.cadastralRef)) {
-    messages.push("La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.");
+  if (cadastralRef) {
+    if (!isValidCadastralRef(cadastralRef)) {
+      messages.push("La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.");
+    } else {
+      const duplicate = state.properties.find(property =>
+        property.id !== state.ui.editingPropertyId &&
+        normalizeCadastralRef(property.cadastralRef) === cadastralRef
+      );
+      if (duplicate) {
+        messages.push(`Ya existe el inmueble "${duplicate.plot}" con la misma referencia catastral.`);
+      }
+    }
   }
   if (values.areaM2 && !/^\d+([.,]0+)?$/.test(String(values.areaM2).trim())) {
     messages.push("La superficie debe ser un número entero (sin decimales).");
   }
-  if (values.participationCoef && !isValidDecimal(values.participationCoef, 0.0001, 100)) {
+  if (!participationCoef) {
+    messages.push("El coeficiente de participación es obligatorio.");
+  } else if (!isValidDecimal(participationCoef, 0.0001, 100)) {
     messages.push("El coeficiente debe ser un porcentaje decimal entre 0,0001 y 100.");
   }
 
@@ -1014,12 +1158,12 @@ propertyForm.addEventListener("submit", async event => {
     staircase: (values.staircase || "").trim(),
     energyCertificate: values.energyCertificate || "",
     communityFee: (values.communityFee || "").trim(),
-    cadastralRef: (values.cadastralRef || "").trim().toUpperCase(),
+    cadastralRef,
     registryNumber: (values.registryNumber || "").trim(),
     floor: (values.floor || "").trim(),
     door: (values.door || "").trim(),
     areaM2: (values.areaM2 || "").trim().replace(",", "."),
-    participationCoef: (values.participationCoef || "").trim().replace(",", "."),
+    participationCoef,
     propertyUse: values.propertyUse || "",
     receiptStatus: values.receiptStatus,
     notes: (values.notes || "").trim(),
@@ -1078,13 +1222,5 @@ if (confirmPropertyDeleteBtn) {
 
 if (cancelPropertyDeleteBtn) {
   cancelPropertyDeleteBtn.addEventListener("click", closePropertyDelete);
-}
-
-if (propertyForm.elements.communityId) {
-  propertyForm.elements.communityId.addEventListener("change", () => {
-    // los paneles se recalculan al abrirlos; sólo re-renderizamos los badges
-    renderPropertyOwnersTab();
-    renderPropertyTenantsTab();
-  });
 }
 

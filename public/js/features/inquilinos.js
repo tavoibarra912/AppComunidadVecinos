@@ -44,6 +44,7 @@ const tenantDeleteDialog = document.querySelector("#tenant-delete-dialog");
 let tenantTable = null;
 let tenantEditingDocs = {};
 let editingTenantPropertyId = null;
+let tenantDialogReadOnly = false;
 
 const tenantPhoneVerifyStatus = document.querySelector("#tenant-phone-verify-status");
 const tenantEmailVerifyStatus = document.querySelector("#tenant-email-verify-status");
@@ -99,6 +100,18 @@ function tenantUpdateCanalOptions() {
   }
   if (postalOption) postalOption.style.color = "";
   if (select.selectedOptions[0]?.disabled) select.value = "postal";
+}
+
+/**
+ * El canal preferente sólo está disponible si el inquilino autoriza las
+ * comunicaciones de la comunidad. setFormReadonly() vuelve a habilitar los
+ * controles al abrir el editor, así que este estado debe aplicarse después.
+ */
+function syncTenantNotificationPreference() {
+  const select = tenantForm.elements.notificationPreference;
+  if (!select) return;
+  const checkbox = document.querySelector("#tenant-auth-comm");
+  select.disabled = tenantDialogReadOnly || !(checkbox && checkbox.checked);
 }
 
 function tenantRecords() {
@@ -180,7 +193,10 @@ function switchTenantDialogTab(tab) {
   });
   if (tab === "docs") renderTenantDialogDocs();
   if (tab === "property") renderTenantPropertyTab();
-  if (tab === "community") tenantUpdateCanalOptions();
+  if (tab === "community") {
+    tenantUpdateCanalOptions();
+    syncTenantNotificationPreference();
+  }
 }
 
 export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false) {
@@ -190,6 +206,7 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
   const editingOwner = state.owners.find(item => item.id === (tenant?.ownerId || ownerId));
   if (id && !tenant) return;
   if (tenant && !readonly && !requirePermission("tenant:manage", tenant.id)) return;
+  tenantDialogReadOnly = readonly;
   state.ui.viewingOwnerId = editingOwner?.id || null;
   state.ui.editingTenantId = id;
   tenantForm.reset();
@@ -218,14 +235,12 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
 
   updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
   renderTenantPropertyTab();
-  tenantUpdateCanalOptions();
-  const _commCb = document.querySelector("#tenant-auth-comm");
-  const _chanSel = tenantForm.elements.notificationPreference;
-  if (_chanSel) _chanSel.disabled = !(_commCb && _commCb.checked);
   switchTenantDialogTab("general");
   updateTenantUserSelect(tenant?.userId || "");
   document.querySelector("#tenant-dialog-title").textContent = tenant ? (readonly ? `Ver inquilino: ${tenant.name} ${tenant.surname}` : "Editar inquilino") : "Nuevo inquilino";
   setFormReadonly(tenantForm, readonly);
+  tenantUpdateCanalOptions();
+  syncTenantNotificationPreference();
   if (tenantForm.elements.userId) tenantForm.elements.userId.disabled = readonly || !hasPermission("admin:users");
   armarGuardia(tenantForm, tenantDialog);
   if (!tenantDialog.open) tenantDialog.showModal();
@@ -250,6 +265,7 @@ function updateTenantUserSelect(selectedUserId = "") {
 
 export function closeTenantEditor() {
   tenantDialog.close();
+  tenantDialogReadOnly = false;
   state.ui.editingTenantId = null;
   tenantEditingDocs = {};
   editingTenantPropertyId = null;
@@ -478,10 +494,8 @@ if (tenantEmergencyPhoneInput) tenantEmergencyPhoneInput.addEventListener("input
 const tenantAuthCommCheckbox = document.querySelector("#tenant-auth-comm");
 if (tenantAuthCommCheckbox) {
   tenantAuthCommCheckbox.addEventListener("change", () => {
-    const select = tenantForm.elements.notificationPreference;
-    if (!select) return;
-    select.disabled = !tenantAuthCommCheckbox.checked;
     if (tenantAuthCommCheckbox.checked) tenantUpdateCanalOptions();
+    syncTenantNotificationPreference();
   });
 }
 
@@ -692,7 +706,11 @@ tenantForm.addEventListener("submit", async event => {
     phoneVerifiedAt: tenantContactVerify.phone.verifiedAt,
     emailVerified: tenantContactVerify.email.verified,
     emailVerifiedAt: tenantContactVerify.email.verifiedAt,
-    notificationPreference: values.notificationPreference || "email",
+    // Si el canal está deshabilitado (sin autorización) no se envía en el
+    // formulario: conservamos el valor guardado en lugar de imponer uno.
+    notificationPreference: values.notificationPreference ||
+      state.tenants.find(item => item.id === tenantId)?.notificationPreference ||
+      "email",
     documents: tenantEditingDocs
   };
   const isEditing = !!state.ui.editingTenantId;

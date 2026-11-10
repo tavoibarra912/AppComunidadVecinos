@@ -66,6 +66,23 @@ test("migración de roles: los roles viejos fueron eliminados", () => {
   assert.ok(!roles.includes("administrador"), "rol viejo 'administrador' aún existe");
   assert.ok(!roles.includes("propietario"), "rol viejo 'propietario' aún existe");
 });
+test("migración de inmuebles: referencia catastral normalizada y única", () => {
+  const index = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_properties_cadastral_unique'"
+  ).get();
+  assert.ok(index, "falta el índice único de referencia catastral");
+  db.prepare(
+    `INSERT INTO properties (id, communityId, propertyType, plot, cadastralRef)
+     VALUES ('prop-catastral-1', 'com-1', 'vivienda', 'Catastral 1', '12345678901234567890')`
+  ).run();
+  assert.throws(
+    () => db.prepare(
+      `INSERT INTO properties (id, communityId, propertyType, plot, cadastralRef)
+       VALUES ('prop-catastral-2', 'com-1', 'vivienda', 'Catastral 2', ' 12345678901234567890 ')`
+    ).run(),
+    /UNIQUE/i
+  );
+});
 
 // ---------- Usuarios: semilla ----------
 test("semilla de usuarios: cuentas estándar de demostración", () => {

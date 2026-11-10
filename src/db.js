@@ -226,6 +226,20 @@ ensureColumns("tenants", {
   userId: "TEXT NOT NULL DEFAULT ''"
 });
 
+// Referencias catastrales: se normalizan y, si no hay duplicados heredados,
+// se protege su unicidad también a nivel de base de datos.
+db.exec("UPDATE properties SET cadastralRef = UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) WHERE cadastralRef <> ''");
+const duplicateCadastralRefs = db.prepare(
+  `SELECT UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) AS ref, COUNT(*) AS total
+   FROM properties WHERE TRIM(cadastralRef) <> ''
+   GROUP BY UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) HAVING total > 1`
+).all();
+if (duplicateCadastralRefs.length === 0) {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_properties_cadastral_unique
+           ON properties(UPPER(REPLACE(TRIM(cadastralRef), ' ', '')))
+           WHERE TRIM(cadastralRef) <> ''`);
+}
+
 // Roles del modelo de acceso: Super Admin / Admin General / Admin de
 // Comunidad / Usuario. Migración idempotente: si aún no existe
 // "super_admin" se reemplaza el set viejo y se miguran los usuarios.
