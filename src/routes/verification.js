@@ -32,7 +32,7 @@ const config = {
   },
 };
 
-router.post("/:tipo/send", (req, res) => {
+router.post("/:tipo/send", async (req, res) => {
   const tipo = req.params.tipo;
   const conf = config[tipo];
   if (!conf) return res.status(400).json({ error: "Tipo de verificación no válido." });
@@ -55,7 +55,7 @@ router.post("/:tipo/send", (req, res) => {
   const asunto = tipo === "email" ? `Código de verificación: ${codigo}` : undefined;
 
   try {
-    sendMessage(conf.canal, destino, texto, undefined, asunto);
+    await sendMessage(conf.canal, destino, texto, undefined, asunto);
   } catch (error) {
     return res.status(503).json({
       error: "El envío de códigos no está disponible. Podés guardar el contacto sin verificar.",
@@ -66,7 +66,7 @@ router.post("/:tipo/send", (req, res) => {
   res.json({ challengeId: id });
 });
 
-router.post("/:tipo/confirm", (req, res) => {
+router.post("/:tipo/confirm", async (req, res) => {
   const { challengeId, code } = req.body || {};
   if (!challengeId || !code)
     return res.status(400).json({ error: "Faltan datos para confirmar." });
