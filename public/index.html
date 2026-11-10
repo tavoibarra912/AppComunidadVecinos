@@ -190,7 +190,6 @@
       <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
       <a class="nav-item" href="#comunicacion" id="nav-comunicacion">Comunicación <span id="communication-unread"
           class="comm-count" hidden>0</span></a>
-      <a class="nav-item muted" href="#" id="nav-incidencias" aria-disabled="true">Incidencias</a>
     </aside>
 
     <!-- SECCIÓN: HOME / DASHBOARD -->
@@ -629,9 +628,30 @@
           <label>Año de Constitución (opcional)
             <select name="constitutionYear"><option value="">Sin especificar</option></select>
           </label>
-          <label class="full">Observaciones (opcional)
-            <textarea name="notes" rows="3" maxlength="500"></textarea>
-          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="community-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="community-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="community-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="community-notes-label"
+                data-placeholder="Escribí observaciones sobre la comunidad…" data-maxlength="2000"></div>
+            </div>
+            <textarea name="notes" id="community-notes-input" hidden></textarea>
+          </div>
           <label class="full">Administrador de Comunidad (usuario del sistema) (opcional)
             <select name="adminUserId" id="community-admin-select">
               <option value="">Sin asignar (se completa manualmente en Presidente/Administrador)</option>
@@ -1912,14 +1932,6 @@
       </label>
       <p class="form-error" id="tenant-verification-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-verification-btn"
-          title="Cancelar" aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-             <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
         <button class="secondary-button" type="button" id="tenant-verification-resend-btn">Reenviar código</button>
         <button class="primary-button" type="button" id="tenant-verification-confirm-btn">Confirmar código</button>
       </div>
@@ -2080,14 +2092,6 @@
       </label>
       <p class="form-error" id="verification-error" role="alert"></p>
       <div class="dialog-actions">
-        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-verification-btn" title="Cancelar"
-          aria-label="Cancelar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-             <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
         <button class="secondary-button" type="button" id="verification-resend-btn">Reenviar código</button>
         <button class="primary-button" type="button" id="verification-confirm-btn">Confirmar código</button>
       </div>

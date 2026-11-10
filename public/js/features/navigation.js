@@ -87,7 +87,7 @@ export function applyRoleUI() {
   document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach(link => {
     link.hidden = isOwner;
   });
-  newTenantBtn.hidden = isOwner;
+  newTenantBtn.hidden = isOwner || !hasPermission("tenant:create");
 
   for (const link of [navPropietarios, mobileNavPropietarios]) if (link) link.hidden = !hasPermission("owner:read");
   for (const link of [navInquilinos, mobileNavInquilinos]) if (link) link.hidden = !hasPermission("tenant:read");
@@ -97,7 +97,7 @@ export function applyRoleUI() {
   if (comHeadingSubtitle) comHeadingSubtitle.textContent = isOwner
     ? "Aquí aparecen las comunidades vinculadas a tus perfiles."
     : "Consulta y gestiona las comunidades vinculadas a Peñarrubia.";
-  if (newCommunityBtn) newCommunityBtn.style.display = isOwner ? "none" : "";
+  if (newCommunityBtn) newCommunityBtn.style.display = isOwner || !hasPermission("community:create") ? "none" : "";
   if (comToolbar) comToolbar.style.display = isOwner ? "none" : "";
 
   // 5. Sección Propietarios
@@ -106,7 +106,7 @@ export function applyRoleUI() {
   if (ownersHeadingSubtitle) ownersHeadingSubtitle.textContent = isOwner
     ? "Consulta tu expediente de asociado, adjunta tus documentos requeridos y comprueba su estado de aprobación."
     : "Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.";
-  if (newOwnerBtn) newOwnerBtn.style.display = isOwner ? "none" : "";
+  if (newOwnerBtn) newOwnerBtn.style.display = isOwner || !hasPermission("owner:create") ? "none" : "";
   if (ownersToolbar) ownersToolbar.style.display = isOwner ? "none" : "";
 
   // 6. Banners informativos de modo propietario

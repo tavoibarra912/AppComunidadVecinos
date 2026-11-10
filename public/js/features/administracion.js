@@ -16,30 +16,39 @@ const ADMIN_TABS = { usuarios: "admin:users", roles: "admin:roles", settings: "a
 const PERMISOS_CATALOGO = [
   { key: "community:read", label: "Ver comunidades", grupo: "Comunidades" },
   { key: "community:create", label: "Crear comunidades", grupo: "Comunidades" },
-  { key: "community:manage", label: "Administrar comunidades", grupo: "Comunidades" },
+  { key: "community:edit", label: "Editar comunidades", grupo: "Comunidades", hint: "Modificar los datos de una comunidad existente." },
+  { key: "community:manage", label: "Administrar comunidades", grupo: "Comunidades", hint: "Gestionar la comunidad, sus vínculos y su documentación." },
   { key: "community:delete", label: "Eliminar comunidades", grupo: "Comunidades" },
   { key: "owner:read", label: "Ver propietarios", grupo: "Propietarios" },
-  { key: "owner:manage", label: "Gestionar propietarios", grupo: "Propietarios" },
+  { key: "owner:create", label: "Crear propietarios", grupo: "Propietarios", hint: "Dar de alta nuevos propietarios." },
+  { key: "owner:manage", label: "Gestionar propietarios", grupo: "Propietarios", hint: "Editar propietarios y operar con sus datos." },
   { key: "owner:edit", label: "Editar su propio perfil", grupo: "Propietarios" },
   { key: "owner:delete", label: "Eliminar propietarios", grupo: "Propietarios" },
   { key: "owner:documents:submit", label: "Subir documentación propia", grupo: "Propietarios" },
   { key: "property:read", label: "Ver inmuebles", grupo: "Inmuebles" },
-  { key: "property:manage", label: "Gestionar inmuebles", grupo: "Inmuebles" },
+  { key: "property:create", label: "Crear inmuebles", grupo: "Inmuebles", hint: "Dar de alta nuevos inmuebles." },
+  { key: "property:manage", label: "Gestionar inmuebles", grupo: "Inmuebles", hint: "Editar inmuebles y sus titulares." },
   { key: "property:delete", label: "Eliminar inmuebles", grupo: "Inmuebles" },
   { key: "tenant:read", label: "Ver inquilinos", grupo: "Inquilinos" },
-  { key: "tenant:manage", label: "Gestionar inquilinos", grupo: "Inquilinos" },
+  { key: "tenant:create", label: "Crear inquilinos", grupo: "Inquilinos", hint: "Dar de alta nuevos inquilinos." },
+  { key: "tenant:manage", label: "Gestionar inquilinos", grupo: "Inquilinos", hint: "Editar inquilinos y sus contratos." },
   { key: "tenant:delete", label: "Eliminar inquilinos", grupo: "Inquilinos" },
   { key: "document:read", label: "Ver documentos", grupo: "Documentación" },
+  { key: "document:upload", label: "Subir documentos", grupo: "Documentación", hint: "Adjuntar archivos a comunidades, propietarios, inmuebles e inquilinos." },
   { key: "document:approve", label: "Aprobar documentación", grupo: "Documentación" },
   { key: "document:delete", label: "Eliminar documentos", grupo: "Documentación" },
+  { key: "comm:participacion", label: "Participar en Comunicación", grupo: "Comunicación", hint: "Comentar, votar y confirmar asistencia." },
+  { key: "comm:publicar", label: "Publicar en Comunicación", grupo: "Comunicación", hint: "Crear y editar publicaciones." },
+  { key: "comm:moderar", label: "Moderar Comunicación", grupo: "Comunicación", hint: "Eliminar comentarios ajenos y ver documentos internos." },
+  { key: "admin_notification:read", label: "Ver buzón del administrador", grupo: "Notificaciones" },
+  { key: "owner_notification:read", label: "Ver su buzón de avisos", grupo: "Notificaciones" },
+  { key: "owner_notification:send", label: "Enviar avisos a propietarios", grupo: "Notificaciones", hint: "Responder y enviar avisos desde el buzón de propietarios." },
   { key: "reports:read", label: "Ver reportes", grupo: "Reportes y auditoría" },
   { key: "audit:read", label: "Ver auditoría", grupo: "Reportes y auditoría" },
   { key: "admin:users", label: "Administrar usuarios", grupo: "Sistema" },
   { key: "admin:roles", label: "Administrar roles", grupo: "Sistema" },
   { key: "admin:settings", label: "Administrar configuración", grupo: "Sistema" },
-  { key: "admin:providers", label: "Configurar proveedores de comunicación", grupo: "Sistema" },
-  { key: "admin_notification:read", label: "Ver buzón del administrador", grupo: "Notificaciones" },
-  { key: "owner_notification:read", label: "Ver su buzón de avisos", grupo: "Notificaciones" }
+  { key: "admin:providers", label: "Configurar proveedores de comunicación", grupo: "Sistema" }
 ];
 
 let userTable = null;
@@ -387,6 +396,17 @@ userForm?.addEventListener("submit", async event => {
 
 async function deleteUser(id, usuario) {
   if (!requirePermission("admin:users")) return;
+  const profiles = [
+    state.owners.some(owner => owner.userId === id) ? "propietario" : "",
+    state.tenants.some(tenant => tenant.userId === id) ? "inquilino" : ""
+  ].filter(Boolean);
+  if (profiles.length) {
+    showValidationErrors(
+      [`El usuario tiene un perfil de ${profiles.join(" y ")} asociado. Desvinculá el perfil antes de borrar la cuenta.`],
+      "No se puede eliminar el usuario"
+    );
+    return;
+  }
   if (!confirm(`¿Eliminar el usuario "${usuario}"? Esta acción no se puede deshacer.`)) return;
   try {
     await api.deleteUser(id);
@@ -503,14 +523,25 @@ function renderRolePermissions(selected = []) {
     header.className = "form-section-title full";
     header.textContent = grupo;
     rolePermissionsList.append(header);
-    PERMISOS_CATALOGO.filter(p => p.grupo === grupo).forEach(({ key, label }) => {
+    PERMISOS_CATALOGO.filter(p => p.grupo === grupo).forEach(({ key, label, hint }) => {
       const item = document.createElement("label");
       item.className = "role-permission-item";
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.value = key;
       checkbox.checked = selectedSet.has(key);
-      item.append(checkbox, document.createTextNode(" " + label));
+      const text = document.createElement("span");
+      text.className = "role-permission-text";
+      const name = document.createElement("span");
+      name.textContent = label;
+      text.append(name);
+      if (hint) {
+        const help = document.createElement("span");
+        help.className = "role-permission-hint";
+        help.textContent = hint;
+        text.append(help);
+      }
+      item.append(checkbox, text);
       rolePermissionsList.append(item);
     });
   });

@@ -2,20 +2,25 @@
 export const PERMISSIONS = [
   "community:read",
   "community:create",
+  "community:edit",
   "community:manage",
   "community:delete",
   "owner:read",
+  "owner:create",
   "owner:manage",
   "owner:edit",
   "owner:delete",
   "owner:documents:submit",
   "property:read",
+  "property:create",
   "property:manage",
   "property:delete",
   "tenant:read",
+  "tenant:create",
   "tenant:manage",
   "tenant:delete",
   "document:read",
+  "document:upload",
   "document:approve",
   "document:delete",
   "reports:read",
@@ -23,10 +28,13 @@ export const PERMISSIONS = [
   "admin:users",
   "admin:roles",
   "comm:participacion",
+  "comm:publicar",
+  "comm:moderar",
   "admin:settings",
   "admin:providers",
   "admin_notification:read",
   "owner_notification:read",
+  "owner_notification:send",
 ];
 
 export function can(user, permission, resourceId = "", data) {
@@ -58,7 +66,6 @@ export function can(user, permission, resourceId = "", data) {
       (t) => properties.find((p) => p.id === t.propertyId)?.communityId,
     ),
   ]);
-  const entity = permission.split(":")[0];
   const owner = owners.find((o) => o.id === resourceId);
   const tenant = tenants.find((t) => t.id === resourceId);
   const property = properties.find((p) => p.id === resourceId);
@@ -78,6 +85,8 @@ export function can(user, permission, resourceId = "", data) {
           ? ownOwners.includes(resourceId)
           : ownOwners.length > 0;
       case "comm:participacion":
+      case "comm:publicar":
+      case "comm:moderar":
         return resourceId ? ownCommunities.has(resourceId) : ownCommunities.size > 0;
       case "property:read":
         return resourceId
@@ -98,6 +107,7 @@ export function can(user, permission, resourceId = "", data) {
               (!!tenant && ownOwners.includes(tenant.ownerId))
           : ownOwners.length > 0;
       case "document:read":
+      case "document:upload":
         return ownOwners.length > 0 || ownTenants.length > 0;
       default:
         return false;
@@ -108,18 +118,19 @@ export function can(user, permission, resourceId = "", data) {
   if (role.nombre !== "community_admin") return true;
   if (permission.startsWith("admin:")) return false;
   if (!resourceId) return assigned.length > 0;
+  // El identificador puede ser de una comunidad, un propietario, un inmueble,
+  // un inquilino o una entidad documental. Se resuelve su comunidad para
+  // aplicar el ámbito del administrador de comunidad.
   let communityIds;
-  if (entity === "community" || communities.some((c) => c.id === resourceId))
-    communityIds = [resourceId];
-  else if (entity === "owner" || owner)
+  if (communities.some((c) => c.id === resourceId)) communityIds = [resourceId];
+  else if (owner)
     communityIds = properties
-      .filter((p) => p.ownerIds?.includes(resourceId))
+      .filter((p) => p.ownerIds?.includes(owner.id))
       .map((p) => p.communityId);
-  else if (entity === "property" || property)
-    communityIds = [property?.communityId];
-  else if (entity === "tenant" || tenant)
+  else if (property) communityIds = [property.communityId];
+  else if (tenant)
     communityIds = [
-      properties.find((p) => p.id === tenant?.propertyId)?.communityId,
+      properties.find((p) => p.id === tenant.propertyId)?.communityId,
     ];
   else return false;
   return communityIds.some((id) => assigned.includes(id));
@@ -129,20 +140,25 @@ export function can(user, permission, resourceId = "", data) {
 const ETIQUETAS_PERMISO = {
   "community:read": "ver comunidades",
   "community:create": "crear comunidades",
+  "community:edit": "editar comunidades",
   "community:manage": "administrar comunidades",
   "community:delete": "eliminar comunidades",
   "owner:read": "ver propietarios",
+  "owner:create": "crear propietarios",
   "owner:manage": "administrar propietarios",
   "owner:edit": "editar propietarios",
   "owner:delete": "eliminar propietarios",
   "owner:documents:submit": "subir documentación propia",
   "property:read": "ver inmuebles",
+  "property:create": "crear inmuebles",
   "property:manage": "administrar inmuebles",
   "property:delete": "eliminar inmuebles",
   "tenant:read": "ver inquilinos",
+  "tenant:create": "crear inquilinos",
   "tenant:manage": "administrar inquilinos",
   "tenant:delete": "eliminar inquilinos",
   "document:read": "ver documentos",
+  "document:upload": "subir documentos",
   "document:approve": "aprobar documentos",
   "document:delete": "eliminar documentos",
   "reports:read": "ver reportes",
@@ -152,8 +168,11 @@ const ETIQUETAS_PERMISO = {
   "admin:settings": "administrar la configuración",
   "admin:providers": "configurar proveedores de comunicación",
   "comm:participacion": "participar en Comunicación (comentar, votar y confirmar)",
+  "comm:publicar": "publicar en Comunicación",
+  "comm:moderar": "moderar Comunicación",
   "admin_notification:read": "ver el buzón del administrador",
   "owner_notification:read": "ver el buzón de avisos",
+  "owner_notification:send": "enviar avisos a propietarios",
 };
 
 export function etiquetaPermiso(permission) {

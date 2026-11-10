@@ -240,3 +240,50 @@ test("catálogo de permisos: los permisos de los roles del sistema son válidos"
     }
   }
 });
+test("roles del sistema: incluyen los permisos granulares de creación y edición", () => {
+  const permisosDe = (nombre) =>
+    JSON.parse(db.prepare("SELECT permisos FROM roles WHERE nombre = ?").get(nombre).permisos);
+  const administrator = permisosDe("administrator");
+  for (const permiso of [
+    "community:edit",
+    "owner:create",
+    "property:create",
+    "tenant:create",
+    "document:upload",
+    "document:delete",
+    "comm:publicar",
+    "comm:moderar",
+    "owner_notification:send",
+  ]) {
+    assert.ok(administrator.includes(permiso), `administrator: falta ${permiso}`);
+  }
+  const communityAdmin = permisosDe("community_admin");
+  for (const permiso of ["community:edit", "owner:create", "property:create", "tenant:create", "comm:publicar", "comm:moderar"]) {
+    assert.ok(communityAdmin.includes(permiso), `community_admin: falta ${permiso}`);
+  }
+  assert.ok(!communityAdmin.includes("community:create"));
+});
+test("rich text: conserva el formato permitido y elimina HTML peligroso", async () => {
+  const { sanitizeRichText } = await import("../../src/rich-text.js");
+  assert.equal(
+    sanitizeRichText("<p>Hola <strong>vecinos</strong> y <em>amigos</em></p>"),
+    "<p>Hola <strong>vecinos</strong> y <em>amigos</em></p>",
+  );
+  assert.equal(
+    sanitizeRichText('<a href="https://ejemplo.test" onclick="alert(1)">Enlace</a>'),
+    '<a href="https://ejemplo.test" target="_blank" rel="noopener noreferrer">Enlace</a>',
+  );
+  assert.equal(
+    sanitizeRichText('<a href="javascript:alert(1)">Malicioso</a>'),
+    "Malicioso",
+  );
+  assert.equal(
+    sanitizeRichText("<b><i>Anidado</b></i>"),
+    "<b><i>Anidado</i></b>",
+  );
+  assert.equal(
+    sanitizeRichText("<script>alert(1)</script>"),
+    "alert(1)",
+  );
+  assert.equal(sanitizeRichText("Texto plano"), "Texto plano");
+});

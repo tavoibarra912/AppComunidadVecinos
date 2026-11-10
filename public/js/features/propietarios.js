@@ -112,6 +112,8 @@ function ownerCommunityNames(owner) {
 }
 
 export function renderOwners() {
+  const newOwnerBtn = document.querySelector("#new-owner");
+  if (newOwnerBtn) newOwnerBtn.hidden = state.activeRole === "owner" || !hasPermission("owner:create");
   if (!ownerTable) {
     ownerTable = createDataTable({
       mount: document.querySelector("#propietarios-table"),
@@ -266,12 +268,16 @@ export function renderOwners() {
             wrap.className = "row-actions";
             const btnInfo = iconBtn("btn-info", isOwner ? "Ver mi expediente y documentos" : "Más info y aprobación", `Ficha detallada de ${owner.name} ${owner.surname}`, ICON_INFO);
             btnInfo.addEventListener("click", () => openOwnerDetail(owner.id));
-            const btnDocs = iconBtn("btn-docs", isOwner ? "Gestionar / subir mi documentación" : "Subir y gestionar documentación", `Documentación de ${owner.name} ${owner.surname}`, ICON_DOCS);
-            btnDocs.addEventListener("click", () => openOwnerEditor(owner.id, "docs"));
-            const btnEdit = iconBtn("btn-edit", isOwner ? "Editar mis datos personales" : "Editar datos personales", `Editar ${owner.name} ${owner.surname}`, ICON_EDIT);
-            btnEdit.addEventListener("click", () => openOwnerEditor(owner.id, "general"));
-            wrap.append(btnInfo, btnDocs, btnEdit);
-            if (!isOwner) {
+            wrap.append(btnInfo);
+            const canEdit = hasPermission(isOwner ? "owner:edit" : "owner:manage", owner.id);
+            if (canEdit) {
+              const btnDocs = iconBtn("btn-docs", isOwner ? "Gestionar / subir mi documentación" : "Subir y gestionar documentación", `Documentación de ${owner.name} ${owner.surname}`, ICON_DOCS);
+              btnDocs.addEventListener("click", () => openOwnerEditor(owner.id, "docs"));
+              const btnEdit = iconBtn("btn-edit", isOwner ? "Editar mis datos personales" : "Editar datos personales", `Editar ${owner.name} ${owner.surname}`, ICON_EDIT);
+              btnEdit.addEventListener("click", () => openOwnerEditor(owner.id, "general"));
+              wrap.append(btnDocs, btnEdit);
+            }
+            if (!isOwner && hasPermission("owner:delete", owner.id)) {
               const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${owner.name} ${owner.surname}`, ICON_DELETE);
               btnDelete.addEventListener("click", () => openOwnerDelete(owner.id));
               wrap.append(btnDelete);
@@ -508,7 +514,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   if (isOwner) {
     id = getCurrentOwnerProfileId();
   }
-  const permission = readOnly ? "owner:read" : (isOwner ? "owner:edit" : "owner:manage");
+  const permission = readOnly ? "owner:read" : isOwner ? "owner:edit" : id ? "owner:manage" : "owner:create";
   if (!requirePermission(permission, id || "")) return;
   ownerDialogReadOnly = readOnly;
   state.ui.editingOwnerId = id;
@@ -743,6 +749,7 @@ export function renderOwnerTenants(owner) {
   const tenants = ownerTenants(owner);
   const linkedProperties = ownerProperties(owner);
   const canManageTenants = hasPermission("tenant:manage", owner.id);
+  const canDeleteTenants = hasPermission("tenant:delete", owner.id);
   ownerDetailTenantList.replaceChildren();
   ownerDetailTenantEmpty.hidden = tenants.length > 0;
   ownerDetailTenantEmpty.textContent = linkedProperties.length
@@ -793,6 +800,9 @@ export function renderOwnerTenants(owner) {
           <path d="m15 5 4 4"></path>
         </svg>
       `);
+      actions.append(editButton);
+    }
+    if (canDeleteTenants) {
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.className = "icon-action-btn btn-delete";
@@ -807,7 +817,7 @@ export function renderOwnerTenants(owner) {
           <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
         </svg>
       `);
-      actions.append(editButton, deleteButton);
+      actions.append(deleteButton);
     }
 
     card.append(content, actions);
@@ -1619,7 +1629,6 @@ const verificationError = document.querySelector("#verification-error");
 const verificationResendBtn = document.querySelector("#verification-resend-btn");
 const verificationConfirmBtn = document.querySelector("#verification-confirm-btn");
 const closeVerificationDialogBtn = document.querySelector("#close-verification-dialog");
-const cancelVerificationBtn = document.querySelector("#cancel-verification-btn");
 
 let verificationKind = "phone"; // "phone" | "email"
 
@@ -1754,8 +1763,11 @@ if (verificationConfirmBtn) {
   });
 }
 
-[closeVerificationDialogBtn, cancelVerificationBtn].forEach(button => {
+[closeVerificationDialogBtn].forEach(button => {
   if (button) button.addEventListener("click", () => verificationDialog.close());
+});
+verificationDialog?.addEventListener("click", event => {
+  if (event.target === verificationDialog) verificationDialog.close();
 });
 
 const btnVerifyPhone = document.querySelector("#btn-verify-phone");

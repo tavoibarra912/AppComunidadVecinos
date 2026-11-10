@@ -85,7 +85,8 @@ export function renderHomeDashboard() {
   const now = new Date(),
     brand = readInjectedBrand();
   const canManage = d.communities.some((c) =>
-    hasPermission("community:manage", c.id),
+    hasPermission("community:manage", c.id) ||
+    hasPermission("comm:publicar", c.id),
   );
   const needsAttention =
     d.ownerStates.none + d.ownerStates.incomplete + d.ownerStates.rejected;
@@ -171,7 +172,7 @@ export function renderHomeDashboard() {
   const actions = [];
   if (hasPermission("community:create"))
     actions.push(button("Nueva comunidad", "new-community", "", true));
-  if (hasPermission("owner:manage"))
+  if (hasPermission("owner:create"))
     actions.push(button("Nuevo propietario", "new-owner"));
   if (canManage) actions.push(button("Nueva publicación", "new-post"));
   if (d.personal) {

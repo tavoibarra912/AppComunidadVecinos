@@ -537,9 +537,17 @@ export function setFormReadonly(form, readonly) {
   form.classList.toggle("is-readonly", readonly);
   // Sólo controles de valor: los botones (tabs, cierres) deben seguir
   // siendo operables en modo lectura
-  form.querySelectorAll("input, select, textarea").forEach(element => {
+  form.querySelectorAll("input, select, textarea, [contenteditable]").forEach(element => {
     if (element.type === "submit" || element.closest(".dialog-actions")) return;
+    if (element.hasAttribute("contenteditable")) {
+      element.setAttribute("contenteditable", readonly ? "false" : "true");
+      element.setAttribute("aria-readonly", String(readonly));
+      return;
+    }
     element.disabled = readonly;
+  });
+  form.querySelectorAll(".rich-text-toolbar button").forEach(button => {
+    button.disabled = readonly;
   });
   form.querySelectorAll(".dialog-actions").forEach(actions => {
     actions.hidden = readonly;

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { db, communityFromRow, listDocuments } from "../db.js";
 import { contactError, communityFinanceError, communityNifError } from "../validation.js";
 import { removeEntityFiles } from "./documents.js";
+import { sanitizeRichText } from "../rich-text.js";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -11,6 +12,7 @@ router.use((req, res, next) => {
     data.nif = String(data.nif || "").trim().toUpperCase();
     const error = contactError(data) || communityFinanceError(data) || communityNifError(data.nif);
     if (error) return res.status(400).json({ error });
+    if (data.notes !== undefined) data.notes = sanitizeRichText(data.notes);
     for (const key of ["constitutionYear", "reserveFund"]) if (data[key] !== undefined) data[key] = String(data[key] ?? "").trim();
     if (data.adminUserId) {
       const account = db.prepare("SELECT rol FROM users WHERE id = ? AND activo = 1").get(data.adminUserId);

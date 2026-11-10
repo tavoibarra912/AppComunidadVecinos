@@ -8,7 +8,8 @@ import {
   allPosts,
   postById,
   superAdmin,
-  manages,
+  canPublish,
+  canModerate,
   resolveAudience,
   canRead,
   phase,
@@ -54,7 +55,7 @@ function find(req, manage = false) {
   const post = postById(req.params.id);
   if (
     !post ||
-    !(manage ? manages(req.user, post.communityId) : canRead(req.user, post))
+    !(manage ? canPublish(req.user, post.communityId) : canRead(req.user, post))
   )
     throw problem("Publicación no encontrada o sin acceso.", 404);
   return post;
@@ -145,7 +146,7 @@ router.get(
     const data = policyData();
     const communities = data.communities.filter(
       (c) =>
-        manages(req.user, c.id, data) ||
+        canPublish(req.user, c.id, data) ||
         canAccessCommunity(req.user, c.id, data),
     );
     res.json({
@@ -153,10 +154,10 @@ router.get(
       communities: communities.map((c) => ({
         id: c.id,
         name: c.name,
-        canManage: manages(req.user, c.id, data),
+        canManage: canPublish(req.user, c.id, data),
       })),
       selectors: communities
-        .filter((c) => manages(req.user, c.id, data))
+        .filter((c) => canPublish(req.user, c.id, data))
         .map((c) => {
           const { members } = resolveAudience(c.id, { mode: "all" }, data);
           return {
@@ -197,11 +198,11 @@ router.post(
     const existing = req.body?.id ? postById(req.body.id) : null;
     if (
       req.body?.id &&
-      (!existing || !manages(req.user, existing.communityId, data))
+      (!existing || !canPublish(req.user, existing.communityId, data))
     )
       throw problem("Publicación no encontrada o sin acceso.", 404);
     const p = validatePost(req.body, existing, data);
-    if (!manages(req.user, p.communityId, data))
+    if (!canPublish(req.user, p.communityId, data))
       throw problem("No podés publicar en esta comunidad.", 403);
     let { recipients, unlinked } = resolveAudience(
       p.communityId,
@@ -251,7 +252,7 @@ router.post(
   route((req, res) => {
     const data = policyData(),
       p = validatePost(req.body, null, data);
-    if (!manages(req.user, p.communityId, data))
+    if (!canPublish(req.user, p.communityId, data))
       throw problem("No podés publicar en esta comunidad.", 403);
     const id = crypto.randomUUID(),
       now = new Date().toISOString();
@@ -381,7 +382,7 @@ router.delete(
         .get(req.params.commentId, p.id);
     if (
       !comment ||
-      (comment.userId !== req.user.id && !manages(req.user, p.communityId))
+      (comment.userId !== req.user.id && !canModerate(req.user, p.communityId))
     )
       throw problem("No podés eliminar este comentario.", 403);
     transaction(() => {
@@ -573,7 +574,7 @@ router.get(
         .get(req.params.fileId, p.id);
     if (
       !f ||
-      (f.kind === "minutes" && !f.final && !manages(req.user, p.communityId))
+      (f.kind === "minutes" && !f.final && !canPublish(req.user, p.communityId))
     )
       throw problem("Documento no encontrado.", 404);
     res

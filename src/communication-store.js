@@ -66,6 +66,18 @@ export function superAdmin(user, data = policyData()) {
 export function manages(user, communityId, data = policyData()) {
   return allowed(user, "community:manage", communityId, data);
 }
+export function canPublish(user, communityId, data = policyData()) {
+  return (
+    manages(user, communityId, data) ||
+    allowed(user, "comm:publicar", communityId, data)
+  );
+}
+export function canModerate(user, communityId, data = policyData()) {
+  return (
+    manages(user, communityId, data) ||
+    allowed(user, "comm:moderar", communityId, data)
+  );
+}
 export function postById(id) {
   const row = db
     .prepare("SELECT * FROM communication_posts WHERE id=?")
@@ -137,7 +149,7 @@ export function resolveAudience(communityId, audience, data = policyData()) {
   const users = db.prepare("SELECT * FROM users WHERE activo=1").all();
   if (audience.mode === "all")
     for (const user of users)
-      if (manages(user, communityId, data)) ids.add(user.id);
+      if (canPublish(user, communityId, data)) ids.add(user.id);
   const recipients = users.filter((u) => ids.has(u.id));
   const unlinked = [...owners, ...tenants].filter(
     (p) => !recipients.some((u) => u.id === p.userId),
@@ -154,7 +166,7 @@ export function isMember(user, communityId, data = policyData()) {
 export function canRead(user, post, data = policyData()) {
   if (!post || !data.communities.some((c) => c.id === post.communityId))
     return false;
-  if (manages(user, post.communityId, data)) return true;
+  if (canPublish(user, post.communityId, data)) return true;
   return (
     post.status !== "draft" &&
     new Date(post.publishAt).getTime() <= Date.now() &&
@@ -279,7 +291,7 @@ export function pollOpen(post, now = Date.now()) {
   );
 }
 export function summary(post, user, data = policyData()) {
-  const manager = manages(user, post.communityId, data);
+  const manager = canPublish(user, post.communityId, data);
   const mine = db
     .prepare(
       "SELECT * FROM communication_recipients WHERE postId=? AND userId=?",
@@ -289,6 +301,7 @@ export function summary(post, user, data = policyData()) {
     ...post,
     phase: phase(post),
     canManage: manager,
+    canModerate: canModerate(user, post.communityId, data),
     recipient: mine || null,
     canVote: mayVote(user, post, data),
     pollOpen: pollOpen(post),
@@ -323,7 +336,7 @@ export function detail(post, user) {
       ...c,
       body: c.deleted ? "Comentario eliminado" : c.body,
       author: name(c.userId),
-      canDelete: !c.deleted && (c.userId === user.id || result.canManage),
+      canDelete: !c.deleted && (c.userId === user.id || result.canModerate),
     }));
   result.files = db
     .prepare(

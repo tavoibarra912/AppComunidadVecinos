@@ -12,17 +12,33 @@ const roleFor = (value) =>
   db
     .prepare("SELECT * FROM roles WHERE id = ? OR nombre = ?")
     .get(value, value);
+const ROLE_LABELS = {
+  super_admin: "superadministrador",
+  administrator: "administrador general",
+};
+/** ¿La operación dejaría la plataforma sin ningún usuario activo del rol protegido? */
 function lastAdmin(user, nextRole, active) {
+  if (!user.activo || !ROLE_LABELS[user.rol]) return false;
+  if (nextRole === user.rol && active) return false;
   return (
-    user.rol === "super_admin" &&
-    user.activo &&
-    (nextRole !== "super_admin" || !active) &&
     db
       .prepare(
-        "SELECT COUNT(*) AS n FROM users WHERE rol = 'super_admin' AND activo = 1 AND id <> ?",
+        "SELECT COUNT(*) AS n FROM users WHERE rol = ? AND activo = 1 AND id <> ?",
       )
-      .get(user.id).n === 0
+      .get(user.rol, user.id).n === 0
   );
+}
+function lastAdminMessage(role) {
+  return `Debe quedar al menos un ${ROLE_LABELS[role] || "administrador"} activo.`;
+}
+/** Perfiles de propietario o inquilino vinculados a una cuenta. */
+function linkedProfiles(userId) {
+  const parts = [];
+  if (db.prepare("SELECT 1 FROM owners WHERE userId=? LIMIT 1").get(userId))
+    parts.push("propietario");
+  if (db.prepare("SELECT 1 FROM tenants WHERE userId=? LIMIT 1").get(userId))
+    parts.push("inquilino");
+  return parts;
 }
 function userError(data, id) {
   if (
@@ -96,9 +112,7 @@ router.put("/users/:id", (req, res) => {
       .status(400)
       .json({ error: error || "El rol indicado no existe." });
   if (lastAdmin(existing, role.nombre, !!data.activo))
-    return res
-      .status(409)
-      .json({ error: "Debe quedar al menos un superadministrador activo." });
+    return res.status(409).json({ error: lastAdminMessage(existing.rol) });
   db.prepare(
     "UPDATE users SET nombre=?,apellido=?,usuario=?,email=?,rol=?,activo=? WHERE id=?",
   ).run(
@@ -125,9 +139,14 @@ router.delete("/users/:id", (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
   if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
   if (lastAdmin(user, "", false))
-    return res
-      .status(409)
-      .json({ error: "Debe quedar al menos un superadministrador activo." });
+    return res.status(409).json({ error: lastAdminMessage(user.rol) });
+  // Un perfil de propietario o inquilino no debe quedar huérfano: se exige
+  // desvincularlo antes de eliminar la cuenta.
+  const profiles = linkedProfiles(user.id);
+  if (profiles.length)
+    return res.status(409).json({
+      error: `No se puede eliminar un usuario con perfil de ${profiles.join(" y ")} asociado. Desvinculá el perfil antes de borrar la cuenta.`,
+    });
   db.exec("BEGIN");
   try {
     db.prepare("DELETE FROM sessions WHERE userId=?").run(user.id);

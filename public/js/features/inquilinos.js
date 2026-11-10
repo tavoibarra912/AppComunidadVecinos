@@ -123,6 +123,7 @@ function tenantRecords() {
 }
 
 export function renderTenants() {
+  if (newTenantBtn) newTenantBtn.hidden = state.activeRole === "owner" || !hasPermission("tenant:create");
   if (!hasPermission("tenant:read")) {
     if (tenantResultCount) tenantResultCount.textContent = "0 inquilinos";
     return;
@@ -156,9 +157,12 @@ export function renderTenants() {
             if (hasPermission("tenant:manage", owner.id)) {
               const btnEdit=iconBtn("btn-edit","Editar",`Editar inquilino ${tenant.name} ${tenant.surname}`,ICON_EDIT);
               btnEdit.addEventListener("click",()=>openTenantEditor(tenant.id, owner.id));
+              wrap.append(btnEdit);
+            }
+            if (hasPermission("tenant:delete", owner.id)) {
               const btnDelete=iconBtn("btn-delete","Eliminar",`Eliminar inquilino ${tenant.name} ${tenant.surname}`,ICON_DELETE);
               btnDelete.addEventListener("click",()=>openTenantDelete(tenant.id, owner.id));
-              wrap.append(btnEdit,btnDelete);
+              wrap.append(btnDelete);
             }
             return wrap;
           } }
@@ -200,7 +204,7 @@ function switchTenantDialogTab(tab) {
 }
 
 export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false) {
-  const permission = readonly ? "tenant:read" : "tenant:manage";
+  const permission = readonly ? "tenant:read" : id ? "tenant:manage" : "tenant:create";
   if (!requirePermission(permission, id || ownerId || "")) return;
   const tenant = id ? state.tenants.find(item => item.id === id) : null;
   const editingOwner = state.owners.find(item => item.id === (tenant?.ownerId || ownerId));

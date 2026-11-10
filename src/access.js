@@ -76,9 +76,11 @@ export function resourceAccess(req, res, next) {
   const permission =
     req.method === "DELETE"
       ? `${entity}:delete`
-      : collection === "communities" && req.method === "POST"
-        ? "community:create"
-        : `${entity}:manage`;
+      : req.method === "POST"
+        ? `${entity}:create`
+        : collection === "communities"
+          ? "community:edit"
+          : `${entity}:manage`;
   const ownEdit =
     collection === "owners" &&
     req.method === "PUT" &&
@@ -256,9 +258,7 @@ export function notificationAccess(req, res, next) {
       !(adminInbox
         ? permit("owner:documents:submit", ownerId) ||
           permit("owner:manage", ownerId)
-        : permit("document:approve", ownerId) ||
-          permit("owner:manage", ownerId) ||
-          permit("owner:edit", ownerId))
+        : permit("owner_notification:send", ownerId))
     )
       return deny(res);
     if (!adminInbox && !permit("document:approve", ownerId))

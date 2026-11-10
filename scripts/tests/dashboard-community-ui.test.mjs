@@ -71,6 +71,10 @@ function communityFixture() {
     `(()=>{${source("public/js/utils.js")}\nreturn {setFormReadonly};})()`,
     dom.getInternalVMContext(),
   );
+  const richText = vm.runInContext(
+    `(()=>{${source("public/js/rich-text.js")}\nreturn {createRichText};})()`,
+    dom.getInternalVMContext(),
+  );
   Object.assign(w, {
     state,
     sanitizeHtml: (value) => value,
@@ -104,6 +108,7 @@ function communityFixture() {
     limpiarGuardia: noop,
     intentarCerrar: (_f, dialog) => dialog.close(),
     setFormReadonly: utils.setFormReadonly,
+    createRichText: richText.createRichText,
     syncPostalCode: noop,
     syncCity: noop,
     selectLocationInForm: (form) => {

@@ -1,4 +1,4 @@
-import { sanitizeHtml, escapeHtml } from "../html.js";
+import { sanitizeHtml, escapeHtml, richTextHtml, htmlToText } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif } from "../utils.js";
@@ -7,6 +7,7 @@ import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
+import { createRichText } from "../rich-text.js";
 
 let editingCommunityId = null;
 let deletingCommunityId = null;
@@ -70,11 +71,21 @@ const communityForm = document.querySelector("#community-form");
 const communityDialog = document.querySelector("#community-dialog");
 const communityDeleteDialog = document.querySelector("#delete-dialog");
 const communityError = document.querySelector("#form-error");
+const communityNotes = createRichText({
+  editor: document.querySelector("#community-notes-editor"),
+  input: communityForm.elements.notes,
+  toolbar: document.querySelector("#community-notes-toolbar")
+});
 function applyCommunityReadonly() {
   if (!communityReadonly) return;
-  communityForm.querySelectorAll("input,select,textarea,button,a,[tabindex],[role=combobox],[role=button]").forEach(element => {
+  communityForm.querySelectorAll("input,select,textarea,button,a,[tabindex],[role=combobox],[role=button],[contenteditable]").forEach(element => {
     const allowed = element.matches("button[data-community-tab],#close-dialog") || (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
     if (!allowed && "disabled" in element && !element.disabled) { if (element.matches("button")) element.dataset.communityReadonlyDisabled = "true"; element.disabled = true; }
+    if (!allowed && element.hasAttribute("contenteditable")) {
+      if (!element.dataset.communityReadonlyEditable) element.dataset.communityReadonlyEditable = element.getAttribute("contenteditable") || "true";
+      element.setAttribute("contenteditable", "false");
+      element.setAttribute("aria-readonly", "true");
+    }
     if (!allowed && !("disabled" in element)) {
       if (!element.dataset.communityReadonlyProxy) element.dataset.communityReadonlyProxy = JSON.stringify({ tabindex: element.getAttribute("tabindex"), ariaDisabled: element.getAttribute("aria-disabled"), href: element.getAttribute("href") });
       element.tabIndex = -1;
@@ -135,7 +146,7 @@ export function renderCommunities() {
             if (community.notes) {
               const notes = document.createElement("span");
               notes.className = "community-notes";
-              notes.textContent = community.notes;
+              notes.textContent = htmlToText(community.notes);
               wrap.append(notes);
             }
             return wrap;
@@ -181,13 +192,21 @@ export function renderCommunities() {
             btnInfo.addEventListener("click", () => openCommunityEditor(community.id, "details", true));
             wrap.append(btnInfo);
             if (!isOwner) {
-              const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${community.name}`, ICON_DOCS);
-              btnDocs.addEventListener("click", () => openCommunityEditor(community.id, "docs", !hasPermission("community:manage", community.id)));
-              const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${community.name}`, ICON_EDIT);
-              btnEdit.addEventListener("click", () => openCommunityEditor(community.id));
-              const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${community.name}`, ICON_DELETE);
-              btnDelete.addEventListener("click", () => openCommunityDelete(community.id));
-              wrap.append(btnDocs, btnEdit, btnDelete);
+              if (hasPermission("document:read", community.id)) {
+                const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${community.name}`, ICON_DOCS);
+                btnDocs.addEventListener("click", () => openCommunityEditor(community.id, "docs", !hasPermission("community:edit", community.id)));
+                wrap.append(btnDocs);
+              }
+              if (hasPermission("community:edit", community.id)) {
+                const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${community.name}`, ICON_EDIT);
+                btnEdit.addEventListener("click", () => openCommunityEditor(community.id));
+                wrap.append(btnEdit);
+              }
+              if (hasPermission("community:delete", community.id)) {
+                const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${community.name}`, ICON_DELETE);
+                btnDelete.addEventListener("click", () => openCommunityDelete(community.id));
+                wrap.append(btnDelete);
+              }
             }
             return wrap;
           }
@@ -200,7 +219,7 @@ export function renderCommunities() {
 }
 
 export function openCommunityEditor(id = null, defaultTab = "details", readonly = false) {
-  if (!requirePermission(id ? (readonly ? "community:read" : "community:manage") : "community:create", id || "")) return;
+  if (!requirePermission(id ? (readonly ? "community:read" : "community:edit") : "community:create", id || "")) return;
   editingCommunityId = id;
   communityReadonly = readonly;
   // Los controles dinámicos de una apertura anterior también recuperan su estado.
@@ -211,6 +230,11 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
       if (previous[key] === null) element.removeAttribute(attr); else element.setAttribute(attr, previous[key]);
     }
     delete element.dataset.communityReadonlyProxy;
+  });
+  communityForm.querySelectorAll("[data-community-readonly-editable]").forEach(element => {
+    element.setAttribute("contenteditable", element.dataset.communityReadonlyEditable);
+    element.removeAttribute("aria-readonly");
+    delete element.dataset.communityReadonlyEditable;
   });
   communityForm.reset();
   communityError.textContent = "";
@@ -247,6 +271,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
     const panel = document.querySelector("#community-edit-link-panel");
     if (panel) panel.hidden = true;
   }
+  communityNotes?.setValue(c?.notes || "");
   renderCommunityDocumentList(c);
   populateCommunityCurrencySelect(c?.currency || "EUR");
   updateCommunityAdminSelect(c?.adminUserId || "");
@@ -673,7 +698,9 @@ export function openCommunityDetail(id) {
   document.querySelector("#detail-province").textContent = c.province || "—";
   document.querySelector("#detail-postalCode").textContent = c.postalCode || "—";
   document.querySelector("#detail-email").textContent = c.email || "—";
-  document.querySelector("#detail-notes").textContent = c.notes ? c.notes : "Sin observaciones registradas.";
+  document.querySelector("#detail-notes").innerHTML = c.notes
+    ? richTextHtml(c.notes)
+    : "Sin observaciones registradas.";
   detailOwnersCount.textContent = `${linkedOwners.length} ${linkedOwners.length === 1 ? "propietario" : "propietarios"}`;
 
   // Nuevos campos de comunidad (Requisito 1)
@@ -839,7 +866,7 @@ export function validateCommunityFields() {
 
 communityForm.addEventListener("submit", async event => {
   event.preventDefault();
-  if (!requirePermission("community:manage")) {
+  if (!requirePermission("community:edit")) {
     closeCommunityEditor();
     return;
   }
@@ -883,6 +910,7 @@ async function persistCommunityDraft() {
     return null;
   }
 
+  communityNotes?.sync();
   const data = Object.fromEntries(new FormData(communityForm));
   ["name", "nif", "address", "phone", "otherPhone", "postalCode", "email", "iban", "president", "administrator", "constitutionYear", "reserveFund", "currency", "adminUserId"].forEach(key => {
     data[key] = (data[key] || "").trim();
@@ -995,7 +1023,7 @@ detailEditBtn.addEventListener("click", () => {
 });
 
 document.querySelector("#confirm-delete").addEventListener("click", async () => {
-  if (!requirePermission("community:manage")) {
+  if (!requirePermission("community:delete")) {
     communityDeleteDialog.close();
     deletingCommunityId = null;
     return;

@@ -615,7 +615,7 @@ function applyPropertyEditorReadOnly(readonly) {
 }
 
 export function openPropertyEditor(id = null, defaultTab = "general", readonly = false) {
-  if (!requirePermission(readonly ? "property:read" : "property:manage", id || "")) return;
+  if (!requirePermission(readonly ? "property:read" : id ? "property:manage" : "property:create", id || "")) return;
   propertyDialogReadOnly = readonly;
   state.ui.editingPropertyId = id;
   propertyForm.reset();
@@ -665,6 +665,7 @@ export function visibleProperties() {
 }
 
 export function renderProperties() {
+  if (newPropertyBtn) newPropertyBtn.hidden = !hasPermission("property:create");
   if (!propertyTable) {
     propertyTable = createDataTable({
       mount: document.querySelector("#inmuebles-table"),
@@ -799,14 +800,20 @@ export function renderProperties() {
             const btnInfo = iconBtn("btn-info", "Ver inmueble", `Ver ${property.plot}`, ICON_INFO);
             btnInfo.addEventListener("click", () => openPropertyEditor(property.id, "general", true));
             wrap.append(btnInfo);
-            if (hasPermission("property:manage")) {
+            if (hasPermission("property:read", property.id)) {
               const btnDocs = iconBtn("btn-docs", "Ver documentación", `Documentación de ${property.plot}`, ICON_DOCS);
               btnDocs.addEventListener("click", () => openPropertyEditor(property.id, "docs", !hasPermission("property:manage", property.id)));
+              wrap.append(btnDocs);
+            }
+            if (hasPermission("property:manage", property.id)) {
               const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${property.plot}`, ICON_EDIT);
               btnEdit.addEventListener("click", () => openPropertyEditor(property.id));
+              wrap.append(btnEdit);
+            }
+            if (hasPermission("property:delete", property.id)) {
               const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${property.plot}`, ICON_DELETE);
               btnDelete.addEventListener("click", () => openPropertyDelete(property.id));
-              wrap.append(btnDocs, btnEdit, btnDelete);
+              wrap.append(btnDelete);
             }
             return wrap;
           }

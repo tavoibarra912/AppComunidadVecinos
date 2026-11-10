@@ -259,16 +259,97 @@ test("administración: contraseñas explícitas y respuestas sin secretos", asyn
     200,
   );
 });
-test("protección del último superadministrador en borrado, baja y cambio de rol", async () => {
-  const superAdmin = (await admin("/admin/users")).data.find(u => u.rol === "super_admin");
-  assert.equal((await admin(`/admin/users/${superAdmin.id}`, "DELETE")).status, 409);
+test("protección del último superadministrador y del último administrador general", async () => {
+  const users = (await admin("/admin/users")).data;
+  for (const role of ["super_admin", "administrator"]) {
+    const target = users.find(u => u.rol === role);
+    assert.ok(target, `falta la cuenta ${role}`);
+    assert.equal((await admin(`/admin/users/${target.id}`, "DELETE")).status, 409);
+    assert.equal(
+      (await admin(`/admin/users/${target.id}`, "PUT", { activo: false })).status,
+      409,
+    );
+    assert.equal(
+      (await admin(`/admin/users/${target.id}`, "PUT", { rol: "user" })).status,
+      409,
+    );
+  }
+});
+test("no se puede borrar un usuario con perfil de propietario o inquilino", async () => {
+  const created = await admin("/admin/users", "POST", {
+    usuario: "perfil-vinculado",
+    rol: "user",
+    password: "temporary-password",
+  });
+  assert.equal(created.status, 201);
+  const userId = created.data.id;
+  const owner = db.prepare("SELECT id FROM owners WHERE userId = '' LIMIT 1").get();
+  const property = db.prepare("SELECT id FROM properties LIMIT 1").get();
+  assert.ok(owner);
+  assert.ok(property);
+  db.prepare(
+    "INSERT INTO tenants (id, ownerId, propertyId, name, surname, userId) VALUES (?, ?, ?, ?, ?, '')",
+  ).run("ten-perfil-vinculado", owner.id, property.id, "Inquilino", "Prueba");
   assert.equal(
-    (await admin(`/admin/users/${superAdmin.id}`, "PUT", { activo: false })).status,
-    409,
+    (await admin(`/admin/users/${userId}/link-owner`, "PUT", { ownerId: owner.id })).status,
+    200,
+  );
+  const ownerBlocked = await admin(`/admin/users/${userId}`, "DELETE");
+  assert.equal(ownerBlocked.status, 409);
+  assert.match(ownerBlocked.data.error, /propietario/);
+  await admin(`/admin/users/${userId}/link-owner`, "PUT", { ownerId: "" });
+  assert.equal(
+    (await admin(`/admin/users/${userId}/link-tenant`, "PUT", { tenantId: "ten-perfil-vinculado" })).status,
+    200,
+  );
+  const tenantBlocked = await admin(`/admin/users/${userId}`, "DELETE");
+  assert.equal(tenantBlocked.status, 409);
+  assert.match(tenantBlocked.data.error, /inquilino/);
+  await admin(`/admin/users/${userId}/link-tenant`, "PUT", { tenantId: "" });
+  assert.equal((await admin(`/admin/users/${userId}`, "DELETE")).status, 200);
+  db.prepare("DELETE FROM tenants WHERE id = 'ten-perfil-vinculado'").run();
+});
+test("permisos granulares: community:edit permite editar pero no crear", async () => {
+  const role = await admin("/admin/roles", "POST", {
+    nombre: "Editor de comunidades",
+    permisos: ["community:read", "community:edit"],
+  });
+  assert.equal(role.status, 201);
+  const user = await admin("/admin/users", "POST", {
+    usuario: "editor-comunidad",
+    rol: role.data.id,
+    password: "temporary-password",
+  });
+  assert.equal(user.status, 201);
+  const request = client();
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "editor-comunidad",
+        password: "temporary-password",
+      })
+    ).status,
+    200,
+  );
+  const community = (await request("/communities")).data[0];
+  assert.ok(community);
+  assert.equal(
+    (
+      await request(`/communities/${community.id}`, "PUT", {
+        ...community,
+        name: `${community.name} (editada)`,
+      })
+    ).status,
+    200,
   );
   assert.equal(
-    (await admin(`/admin/users/${superAdmin.id}`, "PUT", { rol: "user" })).status,
-    409,
+    (
+      await request("/communities", "POST", {
+        name: "No permitida",
+        nif: "H12345674",
+      })
+    ).status,
+    403,
   );
 });
 test("roles personalizados: permisos efectivos, sin borrar roles asignados por ID", async () => {
@@ -455,6 +536,28 @@ test("comunidades: el servidor rechaza importes y años inválidos y conserva el
     (await admin("/communities/com-seed-1", "PUT", original)).status,
     200,
   );
+});
+test("observaciones de comunidad: el servidor conserva formato y sanea el HTML", async () => {
+  const original = (await admin("/communities/com-seed-1")).data;
+  try {
+    const formatted = await admin("/communities/com-seed-1", "PUT", {
+      ...original,
+      notes:
+        '<p>Hola <strong>vecinos</strong></p><script>alert(1)</script><a href="javascript:alert(1)">mal</a>',
+    });
+    assert.equal(formatted.status, 200);
+    assert.match(formatted.data.notes, /<strong>vecinos<\/strong>/);
+    assert.ok(!formatted.data.notes.includes("<script"));
+    assert.ok(!formatted.data.notes.includes("javascript:"));
+    const plain = await admin("/communities/com-seed-1", "PUT", {
+      ...original,
+      notes: "Texto plano",
+    });
+    assert.equal(plain.status, 200);
+    assert.equal(plain.data.notes, "Texto plano");
+  } finally {
+    await admin("/communities/com-seed-1", "PUT", original);
+  }
 });
 
 test("SSO y recuperación sin configurar no autentican ni filtran tokens", async () => {

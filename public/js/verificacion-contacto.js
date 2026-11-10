@@ -127,8 +127,9 @@ export function crearVerificadorContacto({ alEstado, alVerificado }) {
       }
     });
     el("close-tenant-verification-dialog").addEventListener("click", () => dialogo().close());
-    const cancelar = el("tenant-verification-cancel-btn");
-    if (cancelar) cancelar.addEventListener("click", () => dialogo().close());
+    dialogo().addEventListener("click", event => {
+      if (event.target === dialogo()) dialogo().close();
+    });
   }
 
   const verificador = {

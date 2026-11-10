@@ -246,10 +246,10 @@ if (duplicateCadastralRefs.length === 0) {
 if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
   db.exec("DELETE FROM roles");
   const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
-  insertRole.run("rol-super-admin", "super_admin", "Super administrador: acceso total a la plataforma. Además de gestionar comunidades, propietarios, inmuebles, inquilinos y documentación, administra usuarios, roles, la configuración general, los proveedores de envío (email/SMS/WhatsApp) y la auditoría. Es el único rol que puede crear comunidades nuevas.", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "document:read", "document:approve", "document:delete", "community:delete", "owner:delete", "property:delete", "tenant:delete", "reports:read", "audit:read", "admin:users", "admin:roles", "admin:settings", "admin:providers", "admin_notification:read", "owner_notification:read"]), 1);
-  insertRole.run("rol-admin-general", "administrator", "Administrador general: crea comunidades y administra todo su contenido — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No gestiona usuarios, roles, configuración general ni proveedores de la plataforma.", JSON.stringify(["community:read", "community:create", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "tenant:delete", "document:approve", "owner:delete", "comm:participacion", "admin_notification:read"]), 1);
-  insertRole.run("rol-admin-comunidad", "community_admin", "Administrador de comunidad: gestiona únicamente la comunidad que tiene asignada — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No puede crear comunidades ni acceder a la configuración de la plataforma.", JSON.stringify(["community:read", "community:manage", "owner:read", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:manage", "tenant:read", "tenant:manage", "tenant:delete", "document:approve", "comm:participacion"]), 1);
-  insertRole.run("rol-usuario", "user", "Vecino (propietario o inquilino): solo puede ver y administrar su propio perfil, sus inmuebles, documentos y notificaciones. No accede a datos de otros vecinos ni de otras comunidades.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "comm:participacion", "owner_notification:read"]), 1);
+  insertRole.run("rol-super-admin", "super_admin", "Super administrador: acceso total a la plataforma. Además de gestionar comunidades, propietarios, inmuebles, inquilinos y documentación, administra usuarios, roles, la configuración general, los proveedores de envío (email/SMS/WhatsApp) y la auditoría. Es el único rol que puede crear comunidades nuevas.", JSON.stringify(["community:read", "community:create", "community:edit", "community:manage", "community:delete", "owner:read", "owner:create", "owner:manage", "owner:edit", "owner:documents:submit", "owner:delete", "property:read", "property:create", "property:manage", "property:delete", "tenant:read", "tenant:create", "tenant:manage", "tenant:delete", "document:read", "document:upload", "document:approve", "document:delete", "reports:read", "audit:read", "admin:users", "admin:roles", "admin:settings", "admin:providers", "comm:participacion", "comm:publicar", "comm:moderar", "admin_notification:read", "owner_notification:read", "owner_notification:send"]), 1);
+  insertRole.run("rol-admin-general", "administrator", "Administrador general: crea comunidades y administra todo su contenido — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No gestiona usuarios, roles, configuración general ni proveedores de la plataforma.", JSON.stringify(["community:read", "community:create", "community:edit", "community:manage", "owner:read", "owner:create", "owner:manage", "owner:edit", "owner:documents:submit", "owner:delete", "property:read", "property:create", "property:manage", "tenant:read", "tenant:create", "tenant:manage", "tenant:delete", "document:approve", "document:upload", "document:delete", "comm:participacion", "comm:publicar", "comm:moderar", "admin_notification:read", "owner_notification:send"]), 1);
+  insertRole.run("rol-admin-comunidad", "community_admin", "Administrador de comunidad: gestiona únicamente la comunidad que tiene asignada — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No puede crear comunidades ni acceder a la configuración de la plataforma.", JSON.stringify(["community:read", "community:edit", "community:manage", "owner:read", "owner:create", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:create", "property:manage", "tenant:read", "tenant:create", "tenant:manage", "tenant:delete", "document:approve", "document:upload", "document:delete", "comm:participacion", "comm:publicar", "comm:moderar", "owner_notification:send"]), 1);
+  insertRole.run("rol-usuario", "user", "Vecino (propietario o inquilino): solo puede ver y administrar su propio perfil, sus inmuebles, documentos y notificaciones. No accede a datos de otros vecinos ni de otras comunidades.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "document:upload", "comm:participacion", "owner_notification:read"]), 1);
   // Migrar usuarios del set viejo
   db.prepare("UPDATE users SET rol = 'super_admin' WHERE rol IN ('administrador', 'rol-admin')").run();
   db.prepare("UPDATE users SET rol = 'user' WHERE rol NOT IN ('super_admin', 'administrator', 'community_admin', 'user')").run();
@@ -267,6 +267,40 @@ if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'scoped-permissions
     if (role) db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify([...new Set([...JSON.parse(role.permisos), ...additions])]), role.id);
   }
   db.prepare("INSERT INTO schema_migrations (id) VALUES ('scoped-permissions-v1')").run();
+}
+// Permisos granulares (v1): las comprobaciones nuevas son más específicas
+// (crear, editar, subir documentos, publicar/moderar…). Los roles que ya
+// existían conservan su comportamiento previo añadiendo los permisos
+// equivalentes a los que tenían. Idempotente y sin duplicados.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'granular-permissions-v1'").get()) {
+  const equivalents = [
+    ["community:manage", ["community:edit", "comm:publicar", "comm:moderar"]],
+    ["owner:manage", ["owner:create", "document:upload"]],
+    ["property:manage", ["property:create", "document:upload"]],
+    ["tenant:manage", ["tenant:create", "document:upload"]],
+    ["community:manage", ["document:upload", "document:delete"]],
+    ["owner:documents:submit", ["document:upload"]],
+    ["owner:manage", ["document:delete"]],
+    ["property:manage", ["document:delete"]],
+    ["tenant:manage", ["document:delete"]],
+    ["document:approve", ["document:delete", "owner_notification:send"]],
+    ["owner:manage", ["owner_notification:send"]],
+    ["owner:edit", ["owner_notification:send"]],
+  ];
+  for (const role of db.prepare("SELECT id, permisos FROM roles").all()) {
+    const permisos = JSON.parse(role.permisos || "[]");
+    const next = [...permisos];
+    for (const [source, additions] of equivalents) {
+      if (!next.includes(source)) continue;
+      for (const permission of additions) {
+        if (!next.includes(permission)) next.push(permission);
+      }
+    }
+    if (next.length !== permisos.length) {
+      db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(JSON.stringify(next), role.id);
+    }
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('granular-permissions-v1')").run();
 }
 // Corrige los CIF de demostración que no cumplían el dígito de control.
 if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'demo-community-cif-v1'").get()) {

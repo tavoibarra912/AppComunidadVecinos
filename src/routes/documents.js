@@ -134,6 +134,12 @@ router.post("/", (req, res, next) =>
           error: "No tenés permiso para adjuntar documentos a este registro.",
         });
       }
+      if (!allowed(req.user, "document:upload", entityId)) {
+        removeFiles(files);
+        return res.status(403).json({
+          error: "No tenés permiso para subir documentos.",
+        });
+      }
       if (
         !files.length ||
         files.some((f) => f.size > maxBytes()) ||
@@ -201,6 +207,10 @@ router.delete("/:id", (req, res) => {
     return res
       .status(403)
       .json({ error: "No tenés permiso para eliminar este documento." });
+  if (!allowed(req.user, "document:delete", row.entityId))
+    return res
+      .status(403)
+      .json({ error: "No tenés permiso para eliminar documentos." });
   try {
     fs.unlinkSync(documentPath(row));
   } catch (e) {
