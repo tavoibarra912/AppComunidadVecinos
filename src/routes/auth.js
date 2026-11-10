@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db } from "../db.js";
+import { db, getSettings } from "../db.js";
 import {
   verifyPassword,
   passwordRecord,
@@ -42,6 +42,10 @@ router.post("/logout", requireSession, (req, res) => {
   res.json({ ok: true });
 });
 router.post("/signup", (req, res) => {
+  if (!getSettings().permitirRegistro)
+    return res
+      .status(403)
+      .json({ error: "El registro de nuevas cuentas está deshabilitado." });
   const {
     nombre = "",
     apellido = "",
@@ -119,10 +123,18 @@ router.post("/sso", (_req, res) =>
     }),
 );
 router.post("/forgot-password", (req, res, next) => {
+  if (!getSettings().permitirRecuperacion)
+    return res
+      .status(403)
+      .json({ error: "La recuperación de contraseña está deshabilitada." });
   try { res.json(requestRecovery(req.body?.email, req)); }
   catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }
 });
 router.post("/reset-password", (req, res, next) => {
+  if (!getSettings().permitirRecuperacion)
+    return res
+      .status(403)
+      .json({ error: "La recuperación de contraseña está deshabilitada." });
   try { res.json(resetRecoveredPassword(req.body?.token, req.body?.password, req)); }
   catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }
 });

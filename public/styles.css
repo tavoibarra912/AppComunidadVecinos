@@ -8,6 +8,9 @@
   --brand: #198b84;
   --brand-dark: #116f6a;
   --danger: #c63838;
+  --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-size-base: 14px;
+  --radius: 5px;
 }
 
 .is-readonly [data-remove-property-document],
@@ -34,8 +37,8 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 14px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
 }
 
 .topbar {
@@ -4468,7 +4471,7 @@ dialog.is-readonly .doc-file-actions .btn-doc-action.danger {
   color: #fff;
 }
 
-/* Buzón «Mis Avisos y Notificaciones» */
+/* Buzón «Mis notificaciones» */
 .inbox-modal-content {
   max-width: 700px;
 }
@@ -4495,4 +4498,99 @@ dialog.is-readonly .doc-file-actions .btn-doc-action.danger {
 .notif-card-message {
   font-size: 13.5px;
   line-height: 1.55;
+}
+
+/* ===== Apariencia configurable (Configuración > Estilo) ===== */
+.settings-checkgroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-checkgroup legend {
+  width: 100%;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.settings-checkgroup .checkbox-line {
+  flex: 0 1 auto;
+}
+
+.login-maintenance {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid #f0c36b;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #8a5a00;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.login-help {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Radio configurable: la base reproduce los radios originales (5-14 px). */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea {
+  border-radius: var(--radius);
+}
+
+.primary-button,
+.secondary-button,
+.danger-button,
+.icon-action-btn {
+  border-radius: calc(var(--radius) + 1px);
+}
+
+.table-wrap,
+.table-card {
+  border-radius: calc(var(--radius) + 4px);
+}
+
+dialog {
+  border-radius: calc(var(--radius) + 5px);
+}
+
+.login-card {
+  border-radius: calc(var(--radius) + 9px);
+}
+
+body[data-density="compacta"] th {
+  padding: 9px 12px;
+}
+
+body[data-density="compacta"] td {
+  padding: 10px 12px;
+}
+
+body[data-density="amplia"] th {
+  padding: 16px 20px;
+}
+
+body[data-density="amplia"] td {
+  padding: 21px 22px;
+}
+
+body[data-density="compacta"] .form-grid {
+  gap: 12px 16px;
+}
+
+body[data-density="amplia"] .form-grid {
+  gap: 22px 20px;
 }

@@ -24,20 +24,38 @@ const maxBytes = () =>
   Math.min(50, Math.max(1, Number(getSettings().documentosMaxSizeMb) || 15)) *
   1024 *
   1024;
+const maxFiles = () =>
+  Math.min(50, Math.max(1, Number(getSettings().documentosMaxArchivos) || 20));
+const allowedExtensions = () =>
+  new Set(
+    getSettings().documentosTiposPermitidos.map(
+      (tipo) => `.${String(tipo).toLowerCase()}`,
+    ),
+  );
+const allowedLabels = () =>
+  [...allowedExtensions()]
+    .map((extension) => extension.slice(1).toUpperCase())
+    .join(", ");
 const upload = (req, res, done) =>
   multer({
     storage,
-    limits: { fileSize: maxBytes(), files: 20, fields: 2, fieldSize: 1024 },
+    limits: {
+      fileSize: maxBytes(),
+      files: maxFiles(),
+      fields: 2,
+      fieldSize: 1024,
+    },
     fileFilter: (_req, file, cb) => {
-      const ok = /\.(pdf|jpe?g|png|webp)$/i.test(file.originalname);
+      const extension = path.extname(file.originalname).toLowerCase();
+      const ok = allowedExtensions().has(extension);
       cb(
         ok
           ? null
-          : new Error("Formato no permitido. Usá PDF, JPG, PNG o WEBP."),
+          : new Error(`Formato no permitido. Usá ${allowedLabels() || "PDF, JPG, JPEG, PNG o WebP"}.`),
         ok,
       );
     },
-  }).array("files", 20)(req, res, done);
+  }).array("files", maxFiles())(req, res, done);
 function removeFiles(files) {
   for (const file of files || [])
     try {

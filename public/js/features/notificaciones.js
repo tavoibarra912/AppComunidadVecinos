@@ -11,24 +11,28 @@ import { openOwnerDetail } from "./propietarios.js";
 
 const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
 const inboxBadgeCount = document.querySelector("#inbox-badge-count");
-const adminInboxDialog = document.querySelector("#admin-inbox-dialog");
+const notificationsDialog = document.querySelector("#notifications-dialog");
+const notificationsTabs = document.querySelector("#notifications-tabs");
+const notificationTabButtons = [
+  ...document.querySelectorAll("[data-notification-tab]"),
+];
+const notificationPanes = [
+  ...document.querySelectorAll("[data-notification-pane]"),
+];
+const adminTabCount = document.querySelector("#admin-tab-count");
+const ownerTabCount = document.querySelector("#owner-tab-count");
 const adminInboxList = document.querySelector("#admin-inbox-list");
 const adminEmailDialog = document.querySelector("#admin-email-dialog");
 const emailGotoApprovalBtn = document.querySelector("#email-goto-approval-btn");
 const emailMailtoLink = document.querySelector("#email-mailto-link");
-const ownerInboxBadgeCount = document.querySelector("#owner-inbox-badge-count");
-const ownerInboxDialog = document.querySelector("#owner-inbox-dialog");
 const ownerInboxList = document.querySelector("#owner-inbox-list");
-const closeAdminInboxDialog = document.querySelector(
-  "#close-admin-inbox-dialog",
-);
-const topbarOwnerInboxBtn = document.querySelector("#topbar-owner-inbox-btn");
-const closeOwnerInboxDialog = document.querySelector(
-  "#close-owner-inbox-dialog",
+const closeNotificationsDialog = document.querySelector(
+  "#close-notifications-dialog",
 );
 const markAllOwnerNotifsReadBtn = document.querySelector(
   "#mark-all-owner-notifs-read-btn",
 );
+let activeInboxTab = "admin";
 const inboxViews = {
   admin: { filter: "all", search: "" },
   owner: { filter: "all", search: "" },
@@ -190,25 +194,73 @@ export function getDocBadgeText(status, owner) {
   }
 }
 
-export function updateInboxBadge() {
-  const count = state.adminEmails.filter((n) => !n.read).length;
-  if (inboxBadgeCount) {
-    inboxBadgeCount.textContent = count;
-    inboxBadgeCount.hidden = !count;
-  }
-  if (adminInboxDialog?.open) renderAdminInbox();
-  window.dispatchEvent(new Event("notifications:updated"));
+function adminUnreadCount() {
+  return state.adminEmails.filter((n) => !n.read).length;
 }
-export function updateOwnerInboxBadge() {
-  const count = state.ownerNotifications.filter(
+function ownerUnreadCount() {
+  return state.ownerNotifications.filter(
     (n) => !n.read && n.ownerId === getCurrentOwnerProfileId(),
   ).length;
-  if (ownerInboxBadgeCount) {
-    ownerInboxBadgeCount.textContent = count;
-    ownerInboxBadgeCount.hidden = !count;
+}
+function canOpenInbox(kind) {
+  return kind === "admin"
+    ? hasPermission("admin_notification:read")
+    : hasPermission("owner_notification:read", getCurrentOwnerProfileId());
+}
+function setTabCount(element, count) {
+  if (!element) return;
+  element.textContent = count > 99 ? "99+" : String(count);
+  element.hidden = !count;
+}
+function syncNotificationTabs() {
+  const available = ["admin", "owner"].filter(canOpenInbox);
+  if (notificationsTabs) notificationsTabs.hidden = available.length < 2;
+  for (const button of notificationTabButtons) {
+    const kind = button.dataset.notificationTab;
+    button.hidden = !available.includes(kind);
+    if (!available.includes(kind) && activeInboxTab === kind)
+      activeInboxTab = available[0] || "admin";
   }
-  if (ownerInboxDialog?.open) renderOwnerInbox();
+  const activeButton = notificationTabButtons.find(
+    (button) => button.dataset.notificationTab === activeInboxTab,
+  );
+  for (const button of notificationTabButtons) {
+    const active = button === activeButton;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+  }
+  for (const pane of notificationPanes)
+    pane.hidden = pane.dataset.notificationPane !== activeInboxTab;
+  return available;
+}
+function setInboxTab(kind) {
+  if (!canOpenInbox(kind)) return;
+  activeInboxTab = kind;
+  syncNotificationTabs();
+  if (kind === "admin") renderAdminInbox();
+  else renderOwnerInbox();
+}
+function updateNotificationBadges() {
+  setTabCount(adminTabCount, adminUnreadCount());
+  setTabCount(ownerTabCount, ownerUnreadCount());
+  const total = adminUnreadCount() + ownerUnreadCount();
+  if (inboxBadgeCount) {
+    inboxBadgeCount.textContent = total > 99 ? "99+" : String(total);
+    inboxBadgeCount.hidden = !total;
+  }
+  if (notificationsDialog?.open) {
+    const available = syncNotificationTabs();
+    if (available.length) setInboxTab(activeInboxTab);
+    else notificationsDialog.close();
+  }
   window.dispatchEvent(new Event("notifications:updated"));
+}
+export function updateInboxBadge() {
+  updateNotificationBadges();
+}
+export function updateOwnerInboxBadge() {
+  updateNotificationBadges();
 }
 export async function addOwnerNotification({
   ownerId,
@@ -233,12 +285,22 @@ export async function addOwnerNotification({
     return null;
   }
 }
+function openNotifications(kind = "") {
+  const available = ["admin", "owner"].filter(canOpenInbox);
+  if (!available.length) return;
+  syncNotificationTabs();
+  const selected =
+    (available.includes(kind) && kind) ||
+    (available.includes(activeInboxTab) && activeInboxTab) ||
+    available[0];
+  setInboxTab(selected);
+  if (!notificationsDialog.open) notificationsDialog.showModal();
+}
 export function openOwnerInbox() {
   if (!requirePermission("owner_notification:read", getCurrentOwnerProfileId()))
     return;
   setOwnerFeedback("");
-  renderOwnerInbox();
-  if (!ownerInboxDialog.open) ownerInboxDialog.showModal();
+  openNotifications("owner");
 }
 export function renderOwnerInbox() {
   if (!ownerInboxList) return;
@@ -309,7 +371,7 @@ async function markOwnerRead(id) {
   } finally {
     ownerReadPending.delete(id);
     updateOwnerInboxBadge();
-    if (ownerInboxDialog.open) {
+    if (notificationsDialog?.open && activeInboxTab === "owner") {
       const card = [...ownerInboxList.children].find(
         (el) => el.dataset.notificationId === id,
       );
@@ -351,8 +413,7 @@ export async function sendAdminEmailNotification(owner, docsMap) {
 }
 export function openAdminInbox() {
   if (!requirePermission("admin_notification:read")) return;
-  renderAdminInbox();
-  if (!adminInboxDialog.open) adminInboxDialog.showModal();
+  openNotifications("admin");
 }
 export function renderAdminInbox() {
   if (!hasPermission("admin_notification:read")) return;
@@ -424,20 +485,48 @@ export async function openAdminEmail(id) {
   emailMailtoLink.href = `mailto:${encodeURIComponent(state.settings.emailContacto || "")}?subject=${encodeURIComponent(email.subject)}`;
   emailGotoApprovalBtn.onclick = () => {
     adminEmailDialog.close();
-    adminInboxDialog.close();
+    notificationsDialog.close();
     openOwnerDetail(email.ownerId);
   };
   if (!adminEmailDialog.open) adminEmailDialog.showModal();
 }
-if (topbarInboxBtn) topbarInboxBtn.addEventListener("click", openAdminInbox);
-if (topbarOwnerInboxBtn)
-  topbarOwnerInboxBtn.addEventListener("click", openOwnerInbox);
-closeAdminInboxDialog?.addEventListener("click", () =>
-  adminInboxDialog.close(),
+if (topbarInboxBtn)
+  topbarInboxBtn.addEventListener("click", () => {
+    const available = ["admin", "owner"].filter(canOpenInbox);
+    if (!available.length) return;
+    openNotifications(
+      available.includes(activeInboxTab) ? activeInboxTab : available[0],
+    );
+  });
+closeNotificationsDialog?.addEventListener("click", () =>
+  notificationsDialog.close(),
 );
-closeOwnerInboxDialog?.addEventListener("click", () =>
-  ownerInboxDialog.close(),
+notificationTabButtons.forEach((button) =>
+  button.addEventListener("click", () =>
+    setInboxTab(button.dataset.notificationTab),
+  ),
 );
+notificationsTabs?.addEventListener("keydown", (event) => {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  const available = notificationTabButtons.filter((button) => !button.hidden);
+  if (available.length < 2) return;
+  event.preventDefault();
+  const current = Math.max(
+    0,
+    available.findIndex(
+      (button) => button.dataset.notificationTab === activeInboxTab,
+    ),
+  );
+  const next =
+    event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? available.length - 1
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + available.length) %
+          available.length;
+  setInboxTab(available[next].dataset.notificationTab);
+  available[next].focus();
+});
 for (const kind of ["admin", "owner"]) {
   const render = kind === "admin" ? renderAdminInbox : renderOwnerInbox;
   document.querySelectorAll(`[data-${kind}-inbox-filter]`).forEach((button) =>
@@ -483,7 +572,11 @@ markAllOwnerNotifsReadBtn?.addEventListener("click", async () => {
   } finally {
     ownerBulkBusy = false;
     updateOwnerInboxBadge();
-    if (ownerInboxDialog.open && markAllOwnerNotifsReadBtn.disabled)
+    if (
+      notificationsDialog?.open &&
+      activeInboxTab === "owner" &&
+      markAllOwnerNotifsReadBtn.disabled
+    )
       document
         .querySelector('[data-owner-inbox-filter][aria-pressed="true"]')
         .focus();

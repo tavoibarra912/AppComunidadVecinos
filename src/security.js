@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import {
   db,
+  getSettings,
   listCommunities,
   listOwners,
   listProperties,
@@ -36,7 +37,11 @@ export function publicUser(user) {
 }
 export function createSession(user, res) {
   const token = crypto.randomBytes(32).toString("hex");
-  const maxAge = 8 * 60 * 60 * 1000;
+  const configuredHours = Number(getSettings().duracionSesionHoras);
+  const hours = Number.isFinite(configuredHours)
+    ? Math.min(720, Math.max(1, configuredHours))
+    : 8;
+  const maxAge = hours * 60 * 60 * 1000;
   db.prepare("DELETE FROM sessions WHERE expiresAt < ?").run(Date.now());
   db.prepare(
     "INSERT INTO sessions (tokenHash, userId, expiresAt) VALUES (?, ?, ?)",

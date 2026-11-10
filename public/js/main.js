@@ -15,11 +15,12 @@ import { renderTenants } from "./features/inquilinos.js";
 import { updateInboxBadge, updateOwnerInboxBadge } from "./features/notificaciones.js";
 import { renderAccountMenu } from "./features/account-menu.js";
 import { refreshCommunication } from "./features/communication.js";
-import { applyBrand } from "./brand.js";
+import { applyBrand, applyPublicSettings } from "./brand.js";
 
 async function boot() {
-  // Marca embebida por el server (nombre, colores, logo) — también en el login.
+  // Marca y ajustes públicos embebidos por el server — también en el login.
   applyBrand();
+  applyPublicSettings();
   // Catálogo territorial del INE (script clásico con window.MUNICIPIOS_INE)
   loadLocations();
 

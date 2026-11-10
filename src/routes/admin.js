@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db, listUsers, listRoles, getSettings } from "../db.js";
+import { db, listUsers, listRoles, getSettings, DOCUMENT_TYPES } from "../db.js";
 import { publicUser } from "../security.js";
 import { passwordRecord, setPassword } from "../auth.js";
 import { passwordError, validEmail } from "../validation.js";
@@ -305,14 +305,74 @@ router.put("/settings", (req, res) => {
       .status(400)
       .json({ error: "El email de contacto no es válido." });
   if (
-    data.documentosMaxSizeMb !== undefined &&
-    (!Number.isFinite(Number(data.documentosMaxSizeMb)) ||
-      Number(data.documentosMaxSizeMb) <= 0 ||
-      Number(data.documentosMaxSizeMb) > 50)
+    data.nombreAsociacion !== undefined &&
+    (typeof data.nombreAsociacion !== "string" ||
+      !data.nombreAsociacion.trim() ||
+      data.nombreAsociacion.trim().length > 120)
   )
     return res
       .status(400)
-      .json({ error: "El límite de archivos debe estar entre 1 y 50 MB." });
+      .json({ error: "El nombre de la asociación debe tener entre 1 y 120 caracteres." });
+  for (const [key, min, max, message] of [
+    ["documentosMaxSizeMb", 1, 50, "El límite de archivos debe estar entre 1 y 50 MB."],
+    ["documentosMaxArchivos", 1, 50, "El máximo de archivos por envío debe estar entre 1 y 50."],
+    ["duracionSesionHoras", 1, 720, "La duración de la sesión debe estar entre 1 y 720 horas."],
+    ["otpExpiraMinutos", 1, 60, "La expiración del código OTP debe estar entre 1 y 60 minutos."],
+    ["otpReenvioSegundos", 10, 600, "El reenvío del código OTP debe estar entre 10 y 600 segundos."],
+    ["diasAvisoVencimientoContrato", 0, 365, "El aviso de vencimiento debe estar entre 0 y 365 días."],
+    ["filasPorPagina", 5, 50, "Las filas por página deben estar entre 5 y 50."],
+  ])
+    if (
+      data[key] !== undefined &&
+      (!Number.isFinite(Number(data[key])) ||
+        Number(data[key]) < min ||
+        Number(data[key]) > max)
+    )
+      return res.status(400).json({ error: message });
+  if (
+    data.filasPorPagina !== undefined &&
+    ![5, 10, 25, 50].includes(Number(data.filasPorPagina))
+  )
+    return res
+      .status(400)
+      .json({ error: "Las filas por página deben ser 5, 10, 25 o 50." });
+  for (const key of [
+    "permitirRegistro",
+    "permitirRecuperacion",
+    "notificacionesEmail",
+    "mantenimiento",
+  ])
+    if (data[key] !== undefined && typeof data[key] !== "boolean")
+      return res.status(400).json({ error: "La configuración booleana no es válida." });
+  if (data.documentosTiposPermitidos !== undefined) {
+    if (!Array.isArray(data.documentosTiposPermitidos))
+      return res
+        .status(400)
+        .json({ error: "Los tipos de archivo permitidos no son válidos." });
+    const tipos = [
+      ...new Set(
+        data.documentosTiposPermitidos.map((value) =>
+          String(value).trim().toLowerCase().replace(/^\./, ""),
+        ),
+      ),
+    ];
+    if (
+      !tipos.length ||
+      tipos.some((tipo) => !DOCUMENT_TYPES.includes(tipo))
+    )
+      return res
+        .status(400)
+        .json({ error: "Elegí al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG o WebP)." });
+    data.documentosTiposPermitidos = tipos;
+  }
+  if (
+    data.mensajeMantenimiento !== undefined &&
+    (typeof data.mensajeMantenimiento !== "string" ||
+      data.mensajeMantenimiento.length > 300)
+  )
+    return res
+      .status(400)
+      .json({ error: "El mensaje de mantenimiento no puede superar los 300 caracteres." });
   const brandError = validateBrand(data.marca);
   if (brandError) return res.status(400).json({ error: brandError });
   const current = getSettings();

@@ -45,6 +45,32 @@
   max-width: 660px;
   color: var(--muted);
 }
+.notification-tabs {
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.notification-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.notification-tab-count[hidden] {
+  display: none;
+}
+.notification-tabs .community-editor-tab.active .notification-tab-count {
+  background: #ffffff2e;
+  color: #fff;
+}
 .notification-inbox-summary {
   display: flex;
   gap: 13px;

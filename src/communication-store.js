@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { db } from "./db.js";
+import { db, getSettings } from "./db.js";
 import { allowed, policyData, publicUser } from "./security.js";
 import { getLocalDateInputValue } from "./domain.js";
 
@@ -212,10 +212,12 @@ export function getPreferences(user) {
 }
 export function queue(post, kind = "publication") {
   const now = new Date().toISOString();
+  const emailEnabled = getSettings().notificacionesEmail !== false;
   for (const r of db
     .prepare("SELECT userId FROM communication_recipients WHERE postId=?")
     .all(post.id)) {
-    for (const channel of post.channels)
+    for (const channel of post.channels) {
+      if (channel === "email" && !emailEnabled) continue;
       db.prepare(
         "INSERT OR IGNORE INTO communication_outbox (id,postId,userId,channel,kind,version,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?)",
       ).run(
@@ -228,6 +230,7 @@ export function queue(post, kind = "publication") {
         now,
         now,
       );
+    }
   }
 }
 export function materialize(now = Date.now()) {

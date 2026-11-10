@@ -6,7 +6,7 @@ import { createDataTable, aplicarFilasPorPagina } from "../table.js";
 import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
-import { applyBrand } from "../brand.js";
+import { applyBrand, applyPublicSettings } from "../brand.js";
 const ADMIN_TABS = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings", auditoria: "audit:read" };
 
 // ==========================================
@@ -615,50 +615,147 @@ document.querySelector("#cancel-role-dialog")?.addEventListener("click", () => i
 
 // ---------- Configuración General ----------
 const settingsForm = document.querySelector("#settings-form");
+const TIPOS_DOCUMENTO = ["pdf", "jpg", "jpeg", "png", "webp"];
+const DENSIDADES = ["compacta", "normal", "amplia"];
+const TIPOGRAFIAS = ["inter", "system", "arial", "verdana", "georgia"];
+const colorValue = (value, fallback) =>
+  /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
+const numericValue = (element, fallback, min, max) => {
+  if (element?.value === "" || element?.value == null) return fallback;
+  const number = Number(element.value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
+};
 
 function renderSettings() {
   if (!settingsForm || !puedeAdministrar()) return;
   const s = state.settings || {};
+  settingsForm.elements.nombreAsociacion.value =
+    s.nombreAsociacion || "Asociación Peñarrubia";
   settingsForm.elements.emailContacto.value = s.emailContacto || "";
   settingsForm.elements.telefonoContacto.value = s.telefonoContacto || "";
+  settingsForm.elements.permitirRegistro.checked = s.permitirRegistro !== false;
+  settingsForm.elements.permitirRecuperacion.checked =
+    s.permitirRecuperacion !== false;
+  settingsForm.elements.duracionSesionHoras.value =
+    s.duracionSesionHoras ?? 8;
   settingsForm.elements.otpExpiraMinutos.value = s.otpExpiraMinutos ?? 10;
   settingsForm.elements.otpReenvioSegundos.value = s.otpReenvioSegundos ?? 60;
+  settingsForm.elements.notificacionesEmail.checked =
+    s.notificacionesEmail !== false;
+  settingsForm.elements.avisosCambiosEmail.value = s.avisosCambiosEmail || "";
   settingsForm.elements.documentosMaxSizeMb.value = s.documentosMaxSizeMb ?? 15;
+  settingsForm.elements.documentosMaxArchivos.value =
+    s.documentosMaxArchivos ?? 20;
+  const tipos = Array.isArray(s.documentosTiposPermitidos)
+    ? s.documentosTiposPermitidos
+    : TIPOS_DOCUMENTO;
+  settingsForm
+    .querySelectorAll('input[name="documentosTiposPermitidos"]')
+    .forEach((checkbox) => {
+      checkbox.checked = tipos.includes(checkbox.value);
+    });
   settingsForm.elements.monedaPorDefecto.value = s.monedaPorDefecto || "EUR";
-  settingsForm.elements.diasAvisoVencimientoContrato.value = s.diasAvisoVencimientoContrato ?? 30;
+  settingsForm.elements.diasAvisoVencimientoContrato.value =
+    s.diasAvisoVencimientoContrato ?? 30;
   settingsForm.elements.filasPorPagina.value = s.filasPorPagina ?? 10;
   settingsForm.elements.mantenimiento.checked = !!s.mantenimiento;
-  settingsForm.elements.avisosCambiosEmail.value = s.avisosCambiosEmail || "";
+  settingsForm.elements.mensajeMantenimiento.value =
+    s.mensajeMantenimiento || "";
   const marca = s.marca || {};
   settingsForm.elements.marcaNombre.value = marca.nombre || "Peñarrubia";
-  settingsForm.elements.marcaColorPrimario.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorPrimario || "") ? marca.colorPrimario : "#11273e";
-  settingsForm.elements.marcaColorAcento.value = /^#[0-9a-fA-F]{6}$/.test(marca.colorAcento || "") ? marca.colorAcento : "#198b84";
+  settingsForm.elements.marcaColorPrimario.value = colorValue(
+    marca.colorPrimario,
+    "#11273e",
+  );
+  settingsForm.elements.marcaColorAcento.value = colorValue(
+    marca.colorAcento,
+    "#198b84",
+  );
+  settingsForm.elements.marcaColorFondo.value = colorValue(
+    marca.colorFondo,
+    "#f7f9fb",
+  );
+  settingsForm.elements.marcaColorSuperficie.value = colorValue(
+    marca.colorSuperficie,
+    "#ffffff",
+  );
+  settingsForm.elements.marcaColorTexto.value = colorValue(
+    marca.colorTexto,
+    "#17212b",
+  );
+  settingsForm.elements.marcaColorTextoSuave.value = colorValue(
+    marca.colorTextoSuave,
+    "#64748b",
+  );
+  settingsForm.elements.marcaColorBorde.value = colorValue(
+    marca.colorBorde,
+    "#e4e9ef",
+  );
+  settingsForm.elements.marcaTipografia.value = TIPOGRAFIAS.includes(
+    marca.tipografia,
+  )
+    ? marca.tipografia
+    : "inter";
+  settingsForm.elements.marcaTamanoBase.value = marca.tamanoBase ?? 14;
+  settingsForm.elements.marcaRadioBordes.value = marca.radioBordes ?? 5;
+  settingsForm.elements.marcaDensidad.value = DENSIDADES.includes(
+    marca.densidad,
+  )
+    ? marca.densidad
+    : "normal";
   settingsForm.elements.marcaLogo.value = "";
   const textos = textosDe(s);
-  settingsForm.querySelectorAll("[data-texto]").forEach(el => { el.value = textos[el.dataset.texto] ?? ""; });
+  settingsForm.querySelectorAll("[data-texto]").forEach((el) => {
+    el.value = textos[el.dataset.texto] ?? "";
+  });
   const preview = document.querySelector("#marca-logo-preview");
   if (preview) {
     preview.hidden = !marca.logoDataUrl;
     if (marca.logoDataUrl) preview.src = marca.logoDataUrl;
     else preview.removeAttribute("src");
   }
-  armarGuardia(settingsForm, settingsForm.closest(".admin-pane") || document.querySelector("#administracion"));
+  armarGuardia(
+    settingsForm,
+    settingsForm.closest(".admin-pane") ||
+      document.querySelector("#administracion"),
+  );
 }
 
 function readMarca() {
   const file = settingsForm.elements.marcaLogo.files?.[0];
   return new Promise((resolve, reject) => {
-    const build = logoDataUrl => {
+    const build = (logoDataUrl) => {
       const marca = {
         nombre: settingsForm.elements.marcaNombre.value.trim(),
         colorPrimario: settingsForm.elements.marcaColorPrimario.value,
-        colorAcento: settingsForm.elements.marcaColorAcento.value
+        colorAcento: settingsForm.elements.marcaColorAcento.value,
+        colorFondo: settingsForm.elements.marcaColorFondo.value,
+        colorSuperficie: settingsForm.elements.marcaColorSuperficie.value,
+        colorTexto: settingsForm.elements.marcaColorTexto.value,
+        colorTextoSuave: settingsForm.elements.marcaColorTextoSuave.value,
+        colorBorde: settingsForm.elements.marcaColorBorde.value,
+        tipografia: settingsForm.elements.marcaTipografia.value,
+        tamanoBase: numericValue(
+          settingsForm.elements.marcaTamanoBase,
+          14,
+          12,
+          18,
+        ),
+        radioBordes: numericValue(
+          settingsForm.elements.marcaRadioBordes,
+          5,
+          0,
+          16,
+        ),
+        densidad: settingsForm.elements.marcaDensidad.value,
       };
       if (logoDataUrl !== undefined) marca.logoDataUrl = logoDataUrl;
       resolve(marca);
     };
     if (file) {
-      if (file.size > 230_400) return reject(new Error("El logo no puede superar los 225 KB."));
+      if (file.size > 230_400)
+        return reject(new Error("El logo no puede superar los 225 KB."));
       const reader = new FileReader();
       reader.onload = () => build(reader.result);
       reader.onerror = () => build(undefined);
@@ -671,22 +768,65 @@ settingsForm?.addEventListener("submit", async event => {
   event.preventDefault();
   if (!requirePermission("admin:settings")) return;
   const data = {
+    nombreAsociacion: settingsForm.elements.nombreAsociacion.value.trim(),
     emailContacto: settingsForm.elements.emailContacto.value.trim(),
     telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
-    otpExpiraMinutos: Number(settingsForm.elements.otpExpiraMinutos.value) || 10,
-    otpReenvioSegundos: Number(settingsForm.elements.otpReenvioSegundos.value) || 60,
+    permitirRegistro: settingsForm.elements.permitirRegistro.checked,
+    permitirRecuperacion: settingsForm.elements.permitirRecuperacion.checked,
+    duracionSesionHoras: numericValue(
+      settingsForm.elements.duracionSesionHoras,
+      8,
+      1,
+      720,
+    ),
+    otpExpiraMinutos: numericValue(
+      settingsForm.elements.otpExpiraMinutos,
+      10,
+      1,
+      60,
+    ),
+    otpReenvioSegundos: numericValue(
+      settingsForm.elements.otpReenvioSegundos,
+      60,
+      10,
+      600,
+    ),
     textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => { acc[el.dataset.texto] = el.value; return acc; }, {}),
+    notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
     avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
-    documentosMaxSizeMb: Number(settingsForm.elements.documentosMaxSizeMb.value) || 15,
+    documentosMaxSizeMb: numericValue(
+      settingsForm.elements.documentosMaxSizeMb,
+      15,
+      1,
+      50,
+    ),
+    documentosMaxArchivos: numericValue(
+      settingsForm.elements.documentosMaxArchivos,
+      20,
+      1,
+      50,
+    ),
+    documentosTiposPermitidos: [
+      ...settingsForm.querySelectorAll(
+        'input[name="documentosTiposPermitidos"]:checked',
+      ),
+    ].map((checkbox) => checkbox.value),
     monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
-    diasAvisoVencimientoContrato: Number(settingsForm.elements.diasAvisoVencimientoContrato.value) || 30,
+    diasAvisoVencimientoContrato: numericValue(
+      settingsForm.elements.diasAvisoVencimientoContrato,
+      30,
+      0,
+      365,
+    ),
     filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
     mantenimiento: settingsForm.elements.mantenimiento.checked,
+    mensajeMantenimiento: settingsForm.elements.mensajeMantenimiento.value.trim(),
     marca: await readMarca()
   };
   try {
     state.settings = await api.updateSettings(data);
     applyBrand(state.settings.marca);
+    applyPublicSettings(state.settings);
     aplicarFilasPorPagina(state.settings.filasPorPagina);
     limpiarGuardia(settingsForm, settingsForm.closest(".admin-pane") || document.querySelector("#administracion"));
     toast("Configuración guardada.");

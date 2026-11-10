@@ -797,19 +797,44 @@ export function listRoles() {
   }));
 }
 
+export const DOCUMENT_TYPES = Object.freeze(["pdf", "jpg", "jpeg", "png", "webp"]);
+
+export function normalizeDocumentTypes(value) {
+  const list = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  const tipos = [...new Set(list.map((item) => String(item).trim().toLowerCase().replace(/^\./, "")).filter((item) => DOCUMENT_TYPES.includes(item)))];
+  return tipos.length ? tipos : [...DOCUMENT_TYPES];
+}
+
 export function getSettings() {
   const row = db.prepare("SELECT data FROM settings WHERE id = 'general'").get();
   const defaults = {
     nombreAsociacion: "Asociación Peñarrubia",
     emailContacto: "admin@penarrubia.es",
     telefonoContacto: "600000000",
+    permitirRegistro: true,
+    permitirRecuperacion: true,
+    duracionSesionHoras: 8,
     otpExpiraMinutos: 10,
     otpReenvioSegundos: 60,
     notificacionesEmail: true,
-    avisosCambiosEmail: ""
+    avisosCambiosEmail: "",
+    documentosMaxSizeMb: 15,
+    documentosMaxArchivos: 20,
+    documentosTiposPermitidos: [...DOCUMENT_TYPES],
+    monedaPorDefecto: "EUR",
+    diasAvisoVencimientoContrato: 30,
+    filasPorPagina: 10,
+    mantenimiento: false,
+    mensajeMantenimiento: "La plataforma está en mantenimiento. Volvé a intentar en unos minutos."
   };
   const saved = parseJson(row?.data, null);
-  return saved ? { ...defaults, ...saved, marca: { ...DEFAULT_BRAND, ...(saved.marca || {}) } } : { ...defaults, marca: { ...DEFAULT_BRAND } };
+  const settings = saved ? { ...defaults, ...saved, marca: { ...DEFAULT_BRAND, ...(saved.marca || {}) } } : { ...defaults, marca: { ...DEFAULT_BRAND } };
+  settings.documentosTiposPermitidos = normalizeDocumentTypes(settings.documentosTiposPermitidos);
+  return settings;
 }
 
 export function listDocuments(entityType, entityId) {

@@ -39,6 +39,25 @@ router.get("/health", (req, res) => {
   });
 });
 router.use(requireSession);
+router.use((req, res, next) => {
+  const settings = getSettings();
+  if (!settings.mantenimiento) return next();
+  const isAdmin = [
+    "admin:settings",
+    "admin:users",
+    "admin:roles",
+    "admin:providers",
+    "audit:read",
+    "community:create",
+  ].some((permission) => allowed(req.user, permission));
+  if (isAdmin) return next();
+  return res.status(503).json({
+    error:
+      settings.mensajeMantenimiento ||
+      "La plataforma está en mantenimiento. Volvé a intentar en unos minutos.",
+    mantenimiento: true,
+  });
+});
 router.get("/audit", requirePermission("audit:read"), (req, res, next) => {
   try { res.json(listAudit(req.query)); }
   catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }

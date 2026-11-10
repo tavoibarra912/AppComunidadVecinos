@@ -31,6 +31,10 @@ try {
 } catch {}
 
 export function showLoginView(view) {
+  if (view === "signup" && document.querySelector("#login-open-signup")?.hidden)
+    view = "signin";
+  if (view === "forgot" && document.querySelector("#login-open-forgot")?.hidden)
+    view = "signin";
   document.querySelector("#login-forgot-form").hidden = false;
   document.querySelector("#login-reset-block").hidden = true;
   recoveryToken = "";

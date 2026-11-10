@@ -808,6 +808,120 @@ test("cambio de contraseña propio: valida la actual y cierra sólo las sesiones
   );
 });
 
+test("configuración: valida rangos y tipos antes de guardar", async () => {
+  for (const [payload, pattern] of [
+    [{ documentosMaxSizeMb: 0 }, /1 y 50 MB/],
+    [{ documentosMaxArchivos: 51 }, /máximo de archivos/],
+    [{ duracionSesionHoras: 0 }, /duración de la sesión/],
+    [{ otpExpiraMinutos: 0 }, /expiración del código OTP/],
+    [{ filasPorPagina: 7 }, /5, 10, 25 o 50/],
+    [{ documentosTiposPermitidos: [] }, /al menos un tipo/],
+    [{ documentosTiposPermitidos: ["exe"] }, /al menos un tipo/],
+    [{ mantenimiento: "si" }, /booleana/],
+    [{ mensajeMantenimiento: "x".repeat(301) }, /300 caracteres/],
+    [{ nombreAsociacion: "   " }, /nombre de la asociación/],
+  ]) {
+    const response = await admin("/admin/settings", "PUT", payload);
+    assert.equal(response.status, 400, JSON.stringify(payload));
+    assert.match(response.data.error, pattern);
+  }
+  const settings = await admin("/admin/settings");
+  assert.equal(settings.data.documentosMaxArchivos, 20);
+  assert.equal(settings.data.duracionSesionHoras, 8);
+  assert.equal(settings.data.nombreAsociacion, "Asociación Peñarrubia");
+});
+test("configuración: registro y recuperación se pueden deshabilitar", async () => {
+  assert.equal((await admin("/admin/settings", "PUT", { permitirRegistro: false, permitirRecuperacion: false })).status, 200);
+  const signup = await client()("/auth/signup", "POST", {
+    nombre: "Nuevo",
+    apellido: "Vecino",
+    usuario: "nuevo-vecino",
+    email: "nuevo@example.test",
+    password: "clave-segura-123",
+  });
+  assert.equal(signup.status, 403);
+  assert.match(signup.data.error, /registro/i);
+  const forgot = await client()("/auth/forgot-password", "POST", { email: "urucp1@example.test" });
+  assert.equal(forgot.status, 403);
+  assert.match(forgot.data.error, /recuperación/i);
+  assert.equal((await admin("/admin/settings", "PUT", { permitirRegistro: true, permitirRecuperacion: true })).status, 200);
+  const reset = await admin("/admin/settings");
+  assert.equal(reset.data.permitirRegistro, true);
+  assert.equal(reset.data.permitirRecuperacion, true);
+});
+test("configuración: la duración de sesión define la caducidad de la cookie", async () => {
+  assert.equal((await admin("/admin/settings", "PUT", { duracionSesionHoras: 2 })).status, 200);
+  const session = await client()("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" });
+  assert.equal(session.status, 200);
+  const maxAge = Number(/Max-Age=(\d+)/i.exec(session.cookie)?.[1]);
+  assert.ok(maxAge >= 7190 && maxAge <= 7200, `Max-Age inesperado: ${session.cookie}`);
+  assert.equal((await admin("/admin/settings", "PUT", { duracionSesionHoras: 8 })).status, 200);
+});
+test("configuración: los tipos y el máximo de archivos se aplican a las subidas", async () => {
+  const before = readdirSync(UPLOADS_DIR).sort();
+  const saved = await admin("/admin/settings", "PUT", {
+    documentosTiposPermitidos: ["pdf"],
+    documentosMaxArchivos: 1,
+  });
+  assert.equal(saved.status, 200, JSON.stringify(saved.data));
+  assert.deepEqual(saved.data.documentosTiposPermitidos, ["pdf"]);
+  const png = new FormData();
+  png.append("entityType", "property");
+  png.append("entityId", "prop-seed-1");
+  png.append(
+    "files",
+    new Blob([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])], { type: "image/png" }),
+    "imagen.png",
+  );
+  const rejected = await admin("/documents", "POST", png);
+  assert.equal(rejected.status, 400);
+  assert.match(rejected.data.error, /Formato no permitido.*PDF/i);
+  const many = new FormData();
+  many.append("entityType", "property");
+  many.append("entityId", "prop-seed-1");
+  for (const name of ["uno.pdf", "dos.pdf"])
+    many.append(
+      "files",
+      new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
+      name,
+    );
+  assert.equal((await admin("/documents", "POST", many)).status, 400);
+  assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
+  const single = new FormData();
+  single.append("entityType", "property");
+  single.append("entityId", "prop-seed-1");
+  single.append(
+    "files",
+    new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
+    "valido.pdf",
+  );
+  const uploaded = await admin("/documents", "POST", single);
+  assert.equal(uploaded.status, 201);
+  assert.equal((await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status, 200);
+  assert.equal((await admin("/admin/settings", "PUT", {
+    documentosTiposPermitidos: ["pdf", "jpg", "jpeg", "png", "webp"],
+    documentosMaxArchivos: 20,
+  })).status, 200);
+  assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
+});
+test("configuración: el modo mantenimiento bloquea vecinos y deja pasar a administración", async () => {
+  const saved = await admin("/admin/settings", "PUT", {
+    mantenimiento: true,
+    mensajeMantenimiento: "Mantenimiento programado para hoy.",
+  });
+  assert.equal(saved.status, 200);
+  const blocked = await owner("/bootstrap");
+  assert.equal(blocked.status, 503);
+  assert.equal(blocked.data.mantenimiento, true);
+  assert.equal(blocked.data.error, "Mantenimiento programado para hoy.");
+  assert.equal((await tenant("/bootstrap")).status, 503);
+  assert.equal((await admin("/bootstrap")).status, 200);
+  assert.equal((await admin("/admin/settings", "PUT", {
+    mantenimiento: false,
+    mensajeMantenimiento: "La plataforma está en mantenimiento. Volvé a intentar en unos minutos.",
+  })).status, 200);
+  assert.equal((await owner("/bootstrap")).status, 200);
+});
 test("roles de plataforma: editar super_admin no exige perfiles y desvincular no se bloquea", async () => {
   const platformAdmin = db.prepare("SELECT id FROM users WHERE usuario = 'super_admin'").get();
   const ownerRow = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1'").get();

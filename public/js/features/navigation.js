@@ -49,7 +49,6 @@ const ownersHeadingTitle = document.querySelector("#owners-heading-title");
 const ownersHeadingSubtitle = document.querySelector("#owners-heading-subtitle");
 const ownersToolbar = document.querySelector("#owners-toolbar");
 const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
-const topbarOwnerInboxBtn = document.querySelector("#topbar-owner-inbox-btn");
 
 // === Elementos de navegación: declarados arriba (bloque consolidado) ===
 
@@ -64,14 +63,14 @@ export function applyRoleUI() {
   if (userAvatar) userAvatar.textContent = displayName.charAt(0).toUpperCase();
   if (userRoleLabel) userRoleLabel.textContent = `${displayName} · ${roleLabel}`;
 
-  // 2. Buzones en topbar
+  // 2. Buzón unificado en topbar: visible con cualquiera de los dos permisos.
+  const canReadAdminInbox = hasPermission("admin_notification:read");
+  const canReadOwnerInbox = hasPermission("owner_notification:read");
   if (topbarInboxBtn) {
-    topbarInboxBtn.style.display = hasPermission("admin_notification:read") ? "" : "none";
+    topbarInboxBtn.style.display =
+      canReadAdminInbox || canReadOwnerInbox ? "" : "none";
   }
-  if (topbarOwnerInboxBtn) {
-    topbarOwnerInboxBtn.style.display = hasPermission("owner_notification:read") ? "" : "none";
-    if (isOwner) updateOwnerInboxBadge();
-  }
+  updateOwnerInboxBadge();
 
   // 3. Etiqueta y opciones en Sidebar / Navegación
   if (sidebarLabel) {
