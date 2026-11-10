@@ -119,10 +119,8 @@ export function saveProviders(input) {
     out.enabled = s.enabled === true;
     out.provider =
       channel === "smtp"
-        ? (s.provider === "brevo" ? "brevo" : "smtp")
-        : s.provider === "brevo"
-          ? "brevo"
-          : "twilio";
+        ? "smtp"
+        : s.provider === "brevo" ? "brevo" : "twilio";
     const fields =
       channel === "smtp"
         ? ["host", "user", "from", "fromName"]
@@ -253,31 +251,7 @@ export async function sendMessage(
   if (!s?.enabled) throw problem("El proveedor está desactivado.", 503);
   if (channel === "email") {
     if (!emailAddress(to)) throw problem("El email de destino no es válido.");
-    if ((s.provider || "smtp") === "brevo") {
-      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-          "api-key": s.password,
-          "Content-Type": "application/json",
-          accept: "application/json",
-        },
-        body: JSON.stringify({
-          sender: { name: s.fromName || "Comunidad", email: s.from },
-          to: [{ email: to }],
-          subject: asunto || "Nueva comunicación de tu comunidad",
-          textContent: message,
-        }),
-        signal: AbortSignal.timeout(15000),
-        redirect: "error",
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok)
-        throw problem(
-          `Brevo rechazó el envío${result.message ? `: ${result.message}` : "."}`,
-          502,
-        );
-      return result.messageId || "brevo-accepted";
-    }
+
     const transport = smtpTransport(s);
     try {
       const result = await transport.sendMail({
