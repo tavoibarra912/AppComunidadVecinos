@@ -19,6 +19,7 @@ import {
   requirePermission,
 } from "../security.js";
 import { resourceAccess, notificationAccess } from "../access.js";
+import { recordAudit } from "../audit.js";
 import { listAdminEmails, listOwnerNotifications, listDocuments, getSettings } from "../db.js";
 
 const router = Router();
@@ -114,5 +115,29 @@ router.use(
   },
   adminRouter,
 );
+
+
+// Auditoría de errores: registra operaciones que terminan en error (4xx/5xx)
+router.use((req, res, next) => {
+  const originalJson = res.json;
+  res.json = function (body) {
+    if (res.statusCode >= 400 && req.user) {
+      try {
+        recordAudit({
+          action: 'error.' + req.method.toLowerCase(),
+          outcome: 'failure',
+          req,
+          details: {
+            ruta: req.path,
+            estado: res.statusCode,
+            mensaje: typeof body === 'object' && body !== null ? body.error || body.message || '' : '',
+          },
+        });
+      } catch { /* no bloquear la respuesta por un error de auditoría */ }
+    }
+    return originalJson.call(this, body);
+  };
+  next();
+});
 
 export default router;

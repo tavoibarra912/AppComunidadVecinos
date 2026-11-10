@@ -306,7 +306,7 @@ export async function sendMessage(
       },
       body: JSON.stringify({
         type: "transactional",
-        to,
+        recipient: to,
         sender: s.from,
         content: message.slice(0, 1200),
       }),
