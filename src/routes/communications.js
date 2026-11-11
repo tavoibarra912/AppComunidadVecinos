@@ -401,7 +401,10 @@ router.post(
     if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
       throw problem("No tenés permiso para participar en Comunicación (votar).", 403);
     if (!mayVote(req.user, p))
-      throw problem("No pertenecés al grupo habilitado para responder.", 403);
+      throw problem(
+        "No tenés derecho a voto en esta consulta: tu perfil no pertenece al electorado o el voto está suspendido.",
+        403,
+      );
     if (!pollOpen(p)) throw problem("La consulta está cerrada.", 409);
     const choices = req.body?.choices;
     if (

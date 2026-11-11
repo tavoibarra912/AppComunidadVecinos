@@ -402,6 +402,9 @@ test("propietario: no puede cambiar perfiles, titularidad ni aprobar sus documen
     ...before,
     userId: "user-admin",
     isMember: false,
+    votingRights: "suspended",
+    legalRepresentative: "Representante no autorizado",
+    notificationPreference: "postal",
     propertyIds: ["prop-seed-2"],
     documents: {
       ...before.documents,
@@ -411,11 +414,43 @@ test("propietario: no puede cambiar perfiles, titularidad ni aprobar sus documen
   assert.equal(changed.status, 200);
   assert.equal(changed.data.userId, "user-urucp1");
   assert.equal(changed.data.isMember, before.isMember);
+  assert.equal(changed.data.votingRights, before.votingRights);
+  assert.equal(changed.data.legalRepresentative, before.legalRepresentative);
+  assert.equal(changed.data.notificationPreference, before.notificationPreference);
   assert.notEqual(changed.data.documents.dni.adminApproval?.status, "approved");
   assert.equal(
     (await owner("/owners/own-seed-1")).data.propertyId,
     before.propertyId,
   );
+});
+test("propietario: la administración persiste los datos LPH en la ficha", async () => {
+  const before = (await admin("/owners/own-seed-2")).data;
+  try {
+    const changed = await admin("/owners/own-seed-2", "PUT", {
+      ...before,
+      votingRights: "suspended",
+      legalRepresentative: "Apoderado de Prueba · 12345678Z",
+      notificationPreference: "postal",
+    });
+    assert.equal(changed.status, 200, JSON.stringify(changed.data));
+    assert.equal(changed.data.votingRights, "suspended");
+    assert.equal(
+      changed.data.legalRepresentative,
+      "Apoderado de Prueba · 12345678Z",
+    );
+    assert.equal(changed.data.notificationPreference, "postal");
+    const saved = (await admin("/owners/own-seed-2")).data;
+    assert.equal(saved.votingRights, "suspended");
+    assert.equal(saved.legalRepresentative, "Apoderado de Prueba · 12345678Z");
+    assert.equal(saved.notificationPreference, "postal");
+  } finally {
+    await admin("/owners/own-seed-2", "PUT", {
+      ...before,
+      votingRights: before.votingRights,
+      legalRepresentative: before.legalRepresentative,
+      notificationPreference: before.notificationPreference,
+    });
+  }
 });
 test("buzones: avisos persisten y sólo el destinatario los puede marcar leídos", async () => {
   const n = await admin("/notifications/owner-notifications", "POST", {

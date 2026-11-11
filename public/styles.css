@@ -2885,6 +2885,15 @@ select {
   font-weight: 500;
 }
 
+.field-locked {
+  opacity: 0.62;
+}
+
+.field-locked select,
+.field-locked input {
+  cursor: not-allowed;
+}
+
 .verify-row,
 .verify-code-row {
   display: flex;

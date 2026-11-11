@@ -579,6 +579,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   if (tabDocsBadge) tabDocsBadge.textContent = `${["dni", "bankReceipt", "propertyDeed"].filter(key => editingDocs.current[key]).length}/3`;
   updateOwnerUserSelect(o ? o.userId || "" : "");
   updateCommunityTabGating();
+  updateOwnerLphFieldAccess();
   updateCanalOptions();
 
   // Si el último inmueble guardado en el editor de inmueble quedó pendiente de vincular
@@ -683,14 +684,25 @@ function updateOwnerCommunitySelect(selectedId = "") {
   if (current) select.value = current;
 }
 
-/** Condición de asociado: habilita/deshabilita los controles LPH del tab Comunidad. */
+/** Condición de asociado: solo el vínculo con la comunidad depende de ser asociado. */
 function updateCommunityTabGating() {
   const isMember = ownerForm.elements.isMember?.value === "true";
+  const community = ownerForm.elements.communityId;
+  if (!community) return;
+  community.disabled = !isMember;
+  community.closest("label")?.classList.toggle("field-locked", !isMember);
+  // Un propietario no asociado no pertenece a la comunidad: se deselecciona.
+  if (!isMember) community.value = "";
+}
+
+/** Los datos LPH los gestiona la administración; el propietario solo consulta los suyos. */
+function updateOwnerLphFieldAccess() {
+  const locked = ownerDialogReadOnly || state.activeRole === "owner";
   ["votingRights", "legalRepresentative", "notificationPreference"].forEach(name => {
     const field = ownerForm.elements[name];
     if (!field) return;
-    field.disabled = !isMember;
-    field.closest("label")?.classList.toggle("field-locked", !isMember);
+    field.disabled = locked;
+    field.closest("label")?.classList.toggle("field-locked", locked);
   });
 }
 

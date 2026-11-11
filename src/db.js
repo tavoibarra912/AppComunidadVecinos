@@ -62,6 +62,9 @@ db.exec(`
     postalCode TEXT NOT NULL DEFAULT '',
     iban TEXT NOT NULL DEFAULT '',
     currency TEXT NOT NULL DEFAULT 'EUR',
+    votingRights TEXT NOT NULL DEFAULT 'active',
+    legalRepresentative TEXT NOT NULL DEFAULT '',
+    notificationPreference TEXT NOT NULL DEFAULT 'email',
     notes TEXT NOT NULL DEFAULT '',
     propertyType TEXT NOT NULL DEFAULT '',
     cadastralRef TEXT NOT NULL DEFAULT '',
@@ -219,7 +222,10 @@ ensureColumns("users", {
 });
 
 ensureColumns("owners", {
-  userId: "TEXT NOT NULL DEFAULT ''"
+  userId: "TEXT NOT NULL DEFAULT ''",
+  votingRights: "TEXT NOT NULL DEFAULT 'active'",
+  legalRepresentative: "TEXT NOT NULL DEFAULT ''",
+  notificationPreference: "TEXT NOT NULL DEFAULT 'email'"
 });
 
 ensureColumns("tenants", {
@@ -631,6 +637,9 @@ export function ownerFromRow(row) {
     postalCode: row.postalCode,
     iban: row.iban,
     currency: row.currency,
+    votingRights: row.votingRights || "active",
+    legalRepresentative: row.legalRepresentative || "",
+    notificationPreference: row.notificationPreference || "email",
     userId: row.userId || "",
     notes: row.notes,
     propertyType: row.propertyType,

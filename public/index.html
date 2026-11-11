@@ -1228,6 +1228,8 @@
             <select name="communityId">
               <option value="">Selecciona una comunidad…</option>
             </select>
+            <span class="field-hint">Solo para asociados. La comunidad del propietario también se toma de los
+              inmuebles vinculados en la pestaña Inmueble.</span>
           </label>
           <p class="form-section-title full">Notificaciones (LPH)</p>
           <label>Derecho de voto en Junta (LPH) (opcional)
@@ -1235,9 +1237,13 @@
               <option value="active" selected>Con derecho a voto (al corriente)</option>
               <option value="suspended">Voto suspendido por morosidad (art. 15.2 LPH)</option>
             </select>
+            <span class="field-hint">Si está suspendido, este propietario no podrá votar en las consultas de su
+              comunidad.</span>
           </label>
           <label>Representante legal / Apoderado
             <input name="legalRepresentative" maxlength="100" placeholder="Nombre y DNI del apoderado (opcional)" />
+            <span class="field-hint">Dato informativo de la ficha. No cambia el titular ni el destinatario de las
+              notificaciones.</span>
           </label>
           <label class="full">Canal preferente de notificaciones (LPH art. 9) (opcional)
             <select name="notificationPreference">
@@ -1247,7 +1253,8 @@
             </select>
           </label>
           <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
-            están verificados en la pestaña Contacto y Domicilio.</p>
+            están verificados en la pestaña Contacto y Domicilio. La preferencia se guarda en la ficha; el envío de
+            avisos usa las preferencias de la cuenta de usuario.</p>
         </div>
       </section>
 

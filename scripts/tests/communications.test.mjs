@@ -463,6 +463,25 @@ test("votaciones: electorado, una respuesta, opciones válidas y resultados rese
   assert.deepEqual(d.ballot, []);
   assert.equal(d.ballots, undefined);
 });
+test("votaciones: un propietario con voto suspendido no puede votar", async () => {
+  db.prepare(
+    "UPDATE owners SET votingRights='suspended' WHERE id='own-seed-1'",
+  ).run();
+  try {
+    const p = await create({ poll: poll() });
+    const denied = await owner(`/communications/posts/${p.id}/ballot`, "POST", {
+      choices: [0],
+    });
+    assert.equal(denied.status, 403, JSON.stringify(denied.data));
+    const d = (await owner(`/communications/posts/${p.id}`)).data;
+    assert.equal(d.canVote, false);
+    assert.equal(d.votingSuspended, true);
+  } finally {
+    db.prepare(
+      "UPDATE owners SET votingRights='active' WHERE id='own-seed-1'",
+    ).run();
+  }
+});
 test("encuestas permiten respuesta múltiple de inquilinos y cierre por fecha", async () => {
   const p = await create({
     poll: poll({

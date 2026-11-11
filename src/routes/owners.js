@@ -28,6 +28,17 @@ function findOwner(id) {
   return row ? ownerFromRow(row) : null;
 }
 
+/** Campos LPH que no dependen del inmueble: se normalizan antes de guardar. */
+function ownerLphFields(data, existing = {}) {
+  const votingRights = data.votingRights ?? existing.votingRights ?? "active";
+  const notificationPreference = data.notificationPreference ?? existing.notificationPreference ?? "email";
+  return {
+    votingRights: votingRights === "suspended" ? "suspended" : "active",
+    legalRepresentative: String(data.legalRepresentative ?? existing.legalRepresentative ?? "").trim().slice(0, 100),
+    notificationPreference: ["email", "postal", "phone"].includes(notificationPreference) ? notificationPreference : "email",
+  };
+}
+
 router.get("/", (req, res) => {
   res.json(db.prepare("SELECT * FROM owners ORDER BY surname, name").all().map(ownerFromRow));
 });
@@ -47,21 +58,22 @@ router.post("/", (req, res) => {
     return res.status(409).json({ error: "Ya existe otro propietario registrado con ese documento." });
   }
   const id = data.id || crypto.randomUUID();
+  const lph = ownerLphFields(data);
 
   db.exec("BEGIN");
   try {
     db.prepare(
       `INSERT INTO owners (id, name, surname, documentType, dni, isMember, phone, otherPhone, email,
          phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt, address, province, city, postalCode,
-         iban, currency, notes, documents, userId)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         iban, currency, votingRights, legalRepresentative, notificationPreference, notes, documents, userId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id, data.name, data.surname, data.documentType || "DNI", String(data.dni).toUpperCase(),
       data.isMember ? 1 : 0, data.phone || "", data.otherPhone || "", data.email || "",
       data.phoneVerified ? 1 : 0, data.phoneVerifiedAt || "", data.emailVerified ? 1 : 0, data.emailVerifiedAt || "",
       data.address || "", data.province || "", data.city || "", data.postalCode || "",
-      data.iban || "", data.currency || "EUR", data.notes || "",
-      JSON.stringify(data.documents || {}),
+      data.iban || "", data.currency || "EUR", lph.votingRights, lph.legalRepresentative, lph.notificationPreference,
+      data.notes || "", JSON.stringify(data.documents || {}),
       data.userId || ""
     );
     const propertyIds = Array.isArray(data.propertyIds)
@@ -89,20 +101,22 @@ router.put("/:id", (req, res) => {
     return res.status(409).json({ error: "Ya existe otro propietario registrado con ese documento." });
   }
 
+  const lph = ownerLphFields(data, existing);
   db.exec("BEGIN");
   try {
     db.prepare(
       `UPDATE owners SET name = ?, surname = ?, documentType = ?, dni = ?, isMember = ?, phone = ?, otherPhone = ?,
          email = ?, phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ?, address = ?,
-         province = ?, city = ?, postalCode = ?, iban = ?, currency = ?, notes = ?, documents = ?, userId = ?
+         province = ?, city = ?, postalCode = ?, iban = ?, currency = ?, votingRights = ?,
+         legalRepresentative = ?, notificationPreference = ?, notes = ?, documents = ?, userId = ?
        WHERE id = ?`
     ).run(
       data.name, data.surname, data.documentType || "DNI", String(data.dni).toUpperCase(),
       data.isMember ? 1 : 0, data.phone || "", data.otherPhone || "", data.email || "",
       data.phoneVerified ? 1 : 0, data.phoneVerifiedAt || "", data.emailVerified ? 1 : 0, data.emailVerifiedAt || "",
       data.address || "", data.province || "", data.city || "", data.postalCode || "",
-      data.iban || "", data.currency || "EUR", data.notes || "",
-      JSON.stringify(data.documents || existing.documents),
+      data.iban || "", data.currency || "EUR", lph.votingRights, lph.legalRepresentative, lph.notificationPreference,
+      data.notes || "", JSON.stringify(data.documents || existing.documents),
       data.userId !== undefined ? data.userId : (existing.userId || ""),
       existing.id
     );

@@ -272,6 +272,11 @@ export function materialize(now = Date.now()) {
       queue(post, "reminder");
   }
 }
+export function votingSuspended(user, communityId, data = policyData()) {
+  return profiles(communityId, data).owners.some(
+    (o) => o.userId === user.id && o.votingRights === "suspended",
+  );
+}
 export function mayVote(user, post, data = policyData()) {
   if (!post.poll || !canRead(user, post, data)) return false;
   const invited = db
@@ -280,9 +285,9 @@ export function mayVote(user, post, data = policyData()) {
     )
     .get(post.id, user.id);
   if (!invited) return false;
-  return (
-    post.poll.electorate !== "owners" ||
-    profiles(post.communityId, data).owners.some((o) => o.userId === user.id)
+  if (post.poll.electorate !== "owners") return true;
+  return profiles(post.communityId, data).owners.some(
+    (o) => o.userId === user.id && o.votingRights !== "suspended",
   );
 }
 export function pollOpen(post, now = Date.now()) {
@@ -307,6 +312,10 @@ export function summary(post, user, data = policyData()) {
     canModerate: canModerate(user, post.communityId, data),
     recipient: mine || null,
     canVote: mayVote(user, post, data),
+    votingSuspended:
+      !!post.poll &&
+      post.poll.electorate === "owners" &&
+      votingSuspended(user, post.communityId, data),
     pollOpen: pollOpen(post),
     communityName:
       data.communities.find((c) => c.id === post.communityId)?.name || "",
