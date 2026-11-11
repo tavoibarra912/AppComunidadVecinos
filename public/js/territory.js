@@ -2,6 +2,17 @@
 // CATÁLOGO TERRITORIAL (INE)
 // provincias → municipios → códigos postales
 // ==========================================
+// Control unificado para todos los formularios (comunidad, propietario e
+// inmueble): los tres usan los mismos combos con buscador y la misma
+// sincronización bidireccional:
+//   · CP completo y válido → llena municipio y provincia.
+//   · Municipio → llena provincia y código postal (el CP actual si sigue
+//     siendo válido para el municipio; si no, el primero).
+//   · Provincia → llena el desplegable de municipios con los de esa provincia
+//     (si hay uno único, lo selecciona junto a su código postal).
+// El orden visual exigido en los formularios es Municipio → Provincia → CP.
+
+import { makeSelectSearchable } from "./utils.js";
 
 export const PROVINCES = {
   "01": "Álava", "02": "Albacete", "03": "Alicante", "04": "Almería", "05": "Ávila",
@@ -17,6 +28,8 @@ export const PROVINCES = {
   "51": "Ceuta", "52": "Melilla"
 };
 
+const PROVINCE_LIST = Object.values(PROVINCES).sort((a, b) => a.localeCompare(b, "es"));
+
 let locations = [];
 let locationsById = new Map();
 let postalIndex = new Map();
@@ -25,20 +38,159 @@ export function isValidPostalCode(value) {
   return /^\d{5}$/.test(value) && postalIndex.has(value);
 }
 
-function addPlaceholder(select, text) {
-  select.replaceChildren(new Option(text, ""));
+export function getLocationById(id) {
+  return locationsById.get(id) || null;
 }
 
-function communityFormEl() {
-  return document.querySelector("#community-form");
+class TerritoryControl {
+  constructor(formEl) {
+    this.form = formEl || null;
+    this.city = this.form?.elements?.city || null;
+    this.province = this.form?.elements?.province || null;
+    this.cp = this.form?.elements?.postalCode || null;
+    this.ready = false;
+    this.filteredProvince = "";
+  }
+
+  hasControls() {
+    return !!(this.form && this.city && this.province && this.cp);
+  }
+
+  /** Puebla los tres controles cuando el catálogo ya está cargado. */
+  rebuild() {
+    if (!this.hasControls() || !locations.length) return;
+    this.ready = true;
+    this.#fillProvinces();
+    this.#fillCityOptions("");
+    this.#fillPostalCodes();
+    this.#wire();
+  }
+
+  #fillProvinces() {
+    this.province.replaceChildren(new Option("Selecciona una provincia", ""));
+    PROVINCE_LIST.forEach(province => this.province.add(new Option(province, province)));
+    this.province.disabled = false;
+  }
+
+  /** Lista de municipios: completa, o filtrada por la provincia elegida. */
+  #fillCityOptions(provinceName) {
+    const selected = provinceName && this.city.value
+      ? locationsById.get(this.city.value) : null;
+    this.city.replaceChildren(new Option("Selecciona un municipio", ""));
+    const base = provinceName ? locations.filter(l => l.province === provinceName) : locations;
+    base.forEach(location => this.city.add(new Option(`${location.name} (${location.province})`, location.id)));
+    this.city.disabled = false;
+    // Conservar la selección si sigue perteneciendo a la provincia filtrada.
+    if (selected && base.includes(selected)) this.city.value = selected.id;
+    this.filteredProvince = provinceName;
+  }
+
+  /** Todos los códigos postales de España, con el municipio como ayuda visual. */
+  #fillPostalCodes() {
+    const namesByCp = new Map();
+    for (const [cp, matches] of postalIndex) {
+      const names = matches.slice(0, 2).map(l => l.name);
+      const extra = matches.length - names.length;
+      namesByCp.set(cp, `${cp} · ${names.join(" / ")}${extra > 0 ? ` (+${extra})` : ""}`);
+    }
+    const options = [...namesByCp.entries()].sort((a, b) => a[0].localeCompare(b[0], "es", { numeric: true }));
+    this.cp.replaceChildren(new Option("Selecciona un código postal", ""));
+    options.forEach(([cp, label]) => this.cp.add(new Option(label, cp)));
+    this.cp.disabled = false;
+  }
+
+  #wire() {
+    if (this.province.dataset.territoryWired) return;
+    this.province.dataset.territoryWired = "1";
+
+    this.province.addEventListener("change", () => {
+      const provinceName = this.province.value;
+      this.#fillCityOptions(provinceName);
+      if (!provinceName) return;
+      const enProvincia = locations.filter(l => l.province === provinceName);
+      if (enProvincia.length === 1) {
+        this.city.value = enProvincia[0].id;
+        this.cp.value = enProvincia[0].postalCodes[0] || "";
+      } else if (this.city.value && locationsById.get(this.city.value)?.province !== provinceName) {
+        this.city.value = "";
+      }
+    });
+
+    this.city.addEventListener("change", () => {
+      const location = locationsById.get(this.city.value);
+      if (!location) return;
+      this.province.value = location.province;
+      // El CP elegido se conserva si sigue siendo válido para el municipio.
+      if (!location.postalCodes.includes(this.cp.value)) {
+        this.cp.value = location.postalCodes[0] || "";
+      }
+    });
+
+    this.cp.addEventListener("change", () => {
+      const matches = postalIndex.get(this.cp.value) || [];
+      if (!matches.length) return;
+      const target = matches.find(l => l.province === this.province.value) || matches[0];
+      this.city.value = target.id;
+      this.province.value = target.province;
+    });
+
+    // Los combos con buscador se aplican aquí para que los tres formularios
+    // compartan exactamente el mismo estilo y funcionamiento. El select sigue
+    // guardando el valor real: la serialización no cambia.
+    if (this.city.dataset.combo !== "true") makeSelectSearchable(this.city, "Buscar municipio…");
+    if (this.cp.dataset.combo !== "true") makeSelectSearchable(this.cp, "Buscar código postal…");
+  }
+
+  /** Hidrata los tres controles a partir de los valores guardados (nombres). */
+  set(cityName, provinceName, cp) {
+    if (!this.ready) return;
+    const match = cityName && (
+      locations.find(l => l.name === cityName && (!provinceName || l.province === provinceName)) ||
+      locations.find(l => l.name === cityName)
+    ) || null;
+    if (!match) {
+      if (this.filteredProvince) this.#fillCityOptions("");
+      this.province.value = provinceName && PROVINCE_LIST.includes(provinceName) ? provinceName : "";
+      this.city.value = "";
+      this.cp.value = "";
+      return;
+    }
+    if (this.filteredProvince) this.#fillCityOptions("");
+    this.province.value = match.province;
+    this.city.value = match.id;
+    this.cp.value = cp && match.postalCodes.includes(cp) ? cp : (match.postalCodes[0] || "");
+  }
+
+  /** Vuelve al estado inicial (placeholders). */
+  reset() {
+    if (!this.ready) return;
+    this.province.value = "";
+    this.#fillCityOptions("");
+    this.city.value = "";
+    this.cp.value = "";
+  }
+
+  /** Municipio seleccionado (o null). */
+  location() {
+    return locationsById.get(this.city?.value) || null;
+  }
 }
 
-function ownerFormEl() {
-  return document.querySelector("#owner-form");
-}
+const controls = new Set();
 
-function propertyFormEl() {
-  return document.querySelector("#property-form");
+/**
+ * Instala el control territorial unificado en un formulario. Idempotente:
+ * llamadas sucesivas devuelven el mismo control.
+ */
+export function setupTerritory(formEl) {
+  if (!formEl) return null;
+  let control = [...controls].find(c => c.form === formEl);
+  if (!control) {
+    control = new TerritoryControl(formEl);
+    controls.add(control);
+  }
+  control.rebuild();
+  return control;
 }
 
 export function populateLocations(data) {
@@ -63,29 +215,7 @@ export function populateLocations(data) {
     });
   });
 
-  const form = communityFormEl();
-  if (form) {
-    populateSelectOptions(form.elements.city, form.elements.province);
-  }
-  const propertyForm = propertyFormEl();
-  if (propertyForm) {
-    populateSelectOptions(propertyForm.elements.city, propertyForm.elements.province);
-  }
-  initOwnerTerritorySelects();
-}
-
-function populateSelectOptions(citySelect, provinceSelect) {
-  addPlaceholder(citySelect, "Selecciona un municipio");
-  locations.forEach(location => {
-    citySelect.add(new Option(`${location.name} (${location.province})`, location.id));
-  });
-  citySelect.disabled = false;
-
-  addPlaceholder(provinceSelect, "Selecciona una provincia");
-  Object.values(PROVINCES).sort((a, b) => a.localeCompare(b, "es")).forEach(province => {
-    provinceSelect.add(new Option(province, province));
-  });
-  provinceSelect.disabled = false;
+  controls.forEach(control => control.rebuild());
 }
 
 export function loadLocations() {
@@ -94,87 +224,4 @@ export function loadLocations() {
     return true;
   }
   return false;
-}
-
-export function syncPostalCode(postalCodeInput, citySelect, provinceSelect) {
-  const postalCode = postalCodeInput.value.trim();
-  const matches = postalIndex.get(postalCode);
-  if (postalCode.length === 5 && matches?.length) {
-    const location = matches[0];
-    citySelect.value = location.id;
-    provinceSelect.value = location.province;
-  }
-}
-
-export function syncCity(citySelect, provinceSelect, postalCodeInput) {
-  const location = locationsById.get(citySelect.value);
-  if (location) {
-    provinceSelect.value = location.province;
-    if (postalCodeInput) {
-      postalCodeInput.value = location.postalCodes[0] || "";
-    }
-  }
-}
-
-export function selectLocationInForm(formEl, city, province) {
-  const citySelect = formEl.elements.city;
-  const match = locations.find(loc => loc.name === city && loc.province === province) ||
-                locations.find(loc => loc.name === city);
-  if (match) citySelect.value = match.id;
-}
-
-export function initOwnerTerritorySelects() {
-  const form = ownerFormEl();
-  if (!form) return;
-  const provinceSelect = form.elements.province;
-  addPlaceholder(provinceSelect, "Selecciona una provincia");
-  Object.values(PROVINCES).sort((a, b) => a.localeCompare(b, "es")).forEach(province => {
-    provinceSelect.add(new Option(province, province));
-  });
-  provinceSelect.disabled = false;
-  fillOwnerMunicipalities("");
-  fillOwnerPostalCodes(null);
-}
-
-export function fillOwnerMunicipalities(provinceName, selectedCityId = "") {
-  const form = ownerFormEl();
-  if (!form) return;
-  const citySelect = form.elements.city;
-  addPlaceholder(citySelect, provinceName ? "Selecciona un municipio" : "Selecciona primero una provincia");
-  if (provinceName) {
-    locations
-      .filter(loc => loc.province === provinceName)
-      .forEach(loc => citySelect.add(new Option(loc.name, loc.id)));
-  }
-  citySelect.disabled = !provinceName;
-  if (selectedCityId) citySelect.value = selectedCityId;
-}
-
-export function fillOwnerPostalCodes(cityId, selectedCp = "") {
-  const form = ownerFormEl();
-  if (!form) return;
-  const cpSelect = form.elements.postalCode;
-  addPlaceholder(cpSelect, cityId ? "Selecciona un código postal" : "Selecciona primero un municipio");
-  const location = locationsById.get(cityId);
-  if (location) {
-    location.postalCodes.forEach(cp => cpSelect.add(new Option(cp, cp)));
-  }
-  cpSelect.disabled = !location;
-  if (selectedCp) cpSelect.value = selectedCp;
-}
-
-export function selectOwnerTerritory(city, province, postalCode) {
-  const form = ownerFormEl();
-  if (!form) return;
-  const provinceSelect = form.elements.province;
-  const match = locations.find(loc => loc.name === city && loc.province === province) ||
-                locations.find(loc => loc.name === city);
-  const provinceName = province || match?.province || "";
-  provinceSelect.value = provinceName;
-  fillOwnerMunicipalities(provinceName, match ? match.id : "");
-  fillOwnerPostalCodes(match ? match.id : "", postalCode || "");
-}
-
-export function getLocationById(id) {
-  return locationsById.get(id) || null;
 }

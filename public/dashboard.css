@@ -403,7 +403,7 @@
 }
 #community-tab-contact .verify-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
 #community-tab-contact .verify-row input {
@@ -411,7 +411,7 @@
   width: 100%;
 }
 #community-tab-contact .verify-row .verify-btn {
-  justify-self: start;
+  justify-self: end;
 }
 @media (max-width: 1100px) {
   .dashboard-metrics {

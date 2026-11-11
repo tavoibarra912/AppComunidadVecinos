@@ -759,10 +759,6 @@
           <label class="full">Dirección *
             <input name="address" maxlength="140" required />
           </label>
-          <label>Código postal *
-            <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}"
-              placeholder="00000" />
-          </label>
           <label>Municipio *
             <select name="city" required disabled>
               <option value="">Cargando municipios…</option>
@@ -771,6 +767,11 @@
           <label>Provincia *
             <select name="province" required disabled>
               <option value="">Cargando provincias…</option>
+            </select>
+          </label>
+          <label>Código postal *
+            <select name="postalCode" required disabled>
+              <option value="">Cargando códigos postales…</option>
             </select>
           </label>
         </div>
@@ -1257,19 +1258,19 @@
             <input name="address" maxlength="140" required placeholder="Calle, número, piso..."
               autocomplete="street-address" />
           </label>
+          <label>Municipio *
+            <select name="city" required disabled>
+              <option value="">Cargando municipios…</option>
+            </select>
+          </label>
           <label>Provincia *
             <select name="province" required disabled>
               <option value="">Cargando provincias…</option>
             </select>
           </label>
-          <label>Municipio *
-            <select name="city" required disabled>
-              <option value="">Selecciona primero una provincia</option>
-            </select>
-          </label>
           <label>Código postal *
             <select name="postalCode" required disabled>
-              <option value="">Selecciona primero un municipio</option>
+              <option value="">Cargando códigos postales…</option>
             </select>
           </label>
         </div>
@@ -2152,8 +2153,8 @@
           </svg></button>
       </div>
       <p class="form-intro" id="verification-desc">
-        Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca a los 10 minutos y puede
-        solicitarse uno nuevo cada 60 segundos. Cada código es de un solo uso.
+        Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca en pocos minutos y es de un
+        solo uso; el botón de reenvío se reactiva cuando corresponda.
       </p>
       <div class="verification-target" id="verification-target"></div>
       <div class="verification-demo" id="verification-demo" hidden>
@@ -2235,10 +2236,6 @@
           <label class="full">Dirección *
             <input name="address" maxlength="140" required autocomplete="street-address" />
           </label>
-          <label>Código postal *
-            <input name="postalCode" maxlength="5" required inputmode="numeric" pattern="[0-9]{5}"
-              placeholder="00000" />
-          </label>
           <label>Municipio *
             <select name="city" required disabled>
               <option value="">Cargando municipios…</option>
@@ -2247,6 +2244,11 @@
           <label>Provincia *
             <select name="province" required disabled>
               <option value="">Cargando provincias…</option>
+            </select>
+          </label>
+          <label>Código postal *
+            <select name="postalCode" required disabled>
+              <option value="">Cargando códigos postales…</option>
             </select>
           </label>
           <label>Certificado Energético (opcional)

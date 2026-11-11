@@ -3,7 +3,7 @@ import { sanitizeHtml, escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, makeSelectSearchable, showValidationErrors, intentarCerrar } from "../utils.js";
-import { selectOwnerTerritory, fillOwnerMunicipalities, fillOwnerPostalCodes, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
+import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { editingDocs, renderOwnerDialogDocs, openDocViewer as engineOpenDocViewer } from "../docs-engine.js";
 import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, addOwnerNotification, sendAdminEmailNotification, openAdminEmail } from "./notificaciones.js";
@@ -55,6 +55,8 @@ const ownerDeleteDialog = document.querySelector("#owner-delete-dialog");
 const ownerError = document.querySelector("#owner-form-error");
 const ownerValidationDialog = document.querySelector("#owner-validation-dialog");
 const ownerValidationList = document.querySelector("#owner-validation-list");
+// Control territorial unificado: municipio → provincia → código postal.
+const ownerTerritory = setupTerritory(ownerForm);
 const phoneVerifyStatus = document.querySelector("#phone-verify-status");
 const emailVerifyStatus = document.querySelector("#email-verify-status");
 
@@ -549,7 +551,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     ownerForm.elements.iban.value = o.iban ? formatIban(o.iban) : "";
     ownerForm.elements.documentType.value = o.documentType || detectDocumentType(o.dni);
     populateCurrencySelect(o.currency || "EUR");
-    selectOwnerTerritory(o.city, o.province, o.postalCode);
+    ownerTerritory?.set(o.city, o.province, o.postalCode);
     editingDocs.current = o.documents ? JSON.parse(JSON.stringify(o.documents)) : {};
     editingOwnerProperties = ownerProperties(o).map(property => property.id);
     editingOwnerPropertyPercentages = {};
@@ -562,7 +564,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     editingOwnerProperties = [];
     editingOwnerPropertyPercentages = {};
     updateOwnerCommunitySelect("");
-    selectOwnerTerritory("", "", "");
+    ownerTerritory?.reset();
   }
 
   if (tabDocsBadge) tabDocsBadge.textContent = `${["dni", "bankReceipt", "propertyDeed"].filter(key => editingDocs.current[key]).length}/3`;
@@ -1422,8 +1424,6 @@ ownerForm.addEventListener("submit", async event => {
 const ownDniInput = ownerForm.elements.dni;
 const ownPhoneInput = ownerForm.elements.phone;
 const ownOtherPhoneInput = ownerForm.elements.otherPhone;
-const ownPostalCodeInput = ownerForm.elements.postalCode;
-const ownCitySelect = ownerForm.elements.city;
 const ownIbanInput = ownerForm.elements.iban;
 
 ownDniInput.addEventListener("input", () => {
@@ -1436,16 +1436,6 @@ ownDniInput.addEventListener("input", () => {
     inp.value = inp.value.replace(/\D/g, "");
     inp.setCustomValidity("");
   });
-});
-
-ownPostalCodeInput.addEventListener("input", () => {
-  ownPostalCodeInput.value = ownPostalCodeInput.value.replace(/\D/g, "").slice(0, 5);
-  ownPostalCodeInput.setCustomValidity("");
-  syncPostalCode(ownPostalCodeInput, ownCitySelect, ownerForm.elements.province);
-});
-
-ownCitySelect.addEventListener("change", () => {
-  syncCity(ownCitySelect, ownerForm.elements.province, ownPostalCodeInput);
 });
 
 ownIbanInput.addEventListener("input", () => {
@@ -1632,10 +1622,33 @@ const closeVerificationDialogBtn = document.querySelector("#close-verification-d
 
 let verificationKind = "phone"; // "phone" | "email"
 
+const RESEND_LABEL = "Reenviar código";
+let reenvioTimer = 0;
+
+/** Restaura el botón de reenvío (sin cuenta atrás). */
+function detenerCuentaAtras() {
+  if (reenvioTimer) { clearInterval(reenvioTimer); reenvioTimer = 0; }
+  if (verificationResendBtn) { verificationResendBtn.disabled = false; verificationResendBtn.textContent = RESEND_LABEL; }
+}
+
+/** Deshabilita el reenvío durante el cooldown informado por el servidor. */
+function iniciarCuentaAtras(segundos) {
+  detenerCuentaAtras();
+  if (!verificationResendBtn || !Number.isFinite(segundos) || segundos <= 0) return;
+  let restante = Math.ceil(segundos);
+  verificationResendBtn.disabled = true;
+  verificationResendBtn.textContent = `${RESEND_LABEL} (${restante}s)`;
+  reenvioTimer = setInterval(() => {
+    restante -= 1;
+    if (restante <= 0) { detenerCuentaAtras(); return; }
+    verificationResendBtn.textContent = `${RESEND_LABEL} (${restante}s)`;
+  }, 1000);
+}
+
 const VERIFICATION_TEXTS = {
   phone: {
     title: "Verificar teléfono",
-    desc: "Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca a los 10 minutos y puede solicitarse uno nuevo cada 60 segundos. Cada código es de un solo uso.",
+    desc: "Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca en pocos minutos y es de un solo uso; el botón de reenvío se reactiva cuando corresponda.",
     label: "Teléfono",
     value: () => digitsOnly(ownPhoneInput?.value || "", 9),
     isValid: value => isValidPhone(value),
@@ -1644,7 +1657,7 @@ const VERIFICATION_TEXTS = {
   },
   email: {
     title: "Verificar email",
-    desc: "Enviaremos un código de 6 dígitos por correo electrónico a la dirección indicada. El código caduca a los 10 minutos y puede solicitarse uno nuevo cada 60 segundos. Cada código es de un solo uso.",
+    desc: "Enviaremos un código de 6 dígitos por correo electrónico a la dirección indicada. El código caduca en pocos minutos y es de un solo uso; el botón de reenvío se reactiva cuando corresponda.",
     label: "Email",
     value: () => (ownerForm.elements.email?.value || "").trim().toLowerCase(),
     isValid: value => isValidEmail(value),
@@ -1685,21 +1698,24 @@ async function sendVerificationCode() {
       verificationDemo.hidden = false;
       verificationDemoCode.textContent = res.devCode;
     }
+    // El cooldown real lo fija el servidor (otpReenvioSegundos).
+    iniciarCuentaAtras(res.reenvioSegundos);
     return true;
   } catch (error) {
     contactVerify[verificationKind].challengeId = "";
     const message = error instanceof Error ? error.message : String(error);
     setVerificationError(message);
     setVerifyStatus(verificationKind, "error", message);
-    return false;
-  } finally {
+    // El envío falló y no se consumió el cooldown: reenvío disponible ya.
     verificationResendBtn.disabled = false;
+    return false;
   }
 }
 
 function openVerificationDialog(kind) {
   if (!verificationDialog) return;
   verificationKind = kind;
+  detenerCuentaAtras();
   const config = VERIFICATION_TEXTS[kind];
   const value = config.value();
   if (!config.isValid(value)) {
@@ -1766,6 +1782,7 @@ if (verificationConfirmBtn) {
 [closeVerificationDialogBtn].forEach(button => {
   if (button) button.addEventListener("click", () => verificationDialog.close());
 });
+verificationDialog?.addEventListener("close", () => detenerCuentaAtras());
 verificationDialog?.addEventListener("click", event => {
   if (event.target === verificationDialog) verificationDialog.close();
 });
@@ -1827,19 +1844,6 @@ if (ownerForm.elements.cadastralRef) {
   });
 }
 
-// 5. Dependencia Provincia -> Municipio -> Código Postal
-if (ownerForm.elements.province) {
-  ownerForm.elements.province.addEventListener("change", () => {
-    const prov = ownerForm.elements.province.value;
-    fillOwnerMunicipalities(prov);
-    fillOwnerPostalCodes(null);
-  });
-}
-
-if (ownerForm.elements.city) {
-  ownerForm.elements.city.addEventListener("change", () => {
-    const cityId = ownerForm.elements.city.value;
-    fillOwnerPostalCodes(cityId);
-  });
-}
+// 5. La dependencia Provincia → Municipio → Código Postal (con búsqueda y
+//    autocompletado bidireccional) la gestiona territory.js (setupTerritory).
 

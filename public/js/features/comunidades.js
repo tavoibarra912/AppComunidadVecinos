@@ -2,7 +2,7 @@ import { sanitizeHtml, escapeHtml, richTextHtml, htmlToText } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif } from "../utils.js";
-import { syncPostalCode, syncCity, selectLocationInForm, getLocationById, isValidPostalCode } from "../territory.js";
+import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
@@ -103,6 +103,9 @@ communityForm.addEventListener("click", event => {
   }
 }, true);
 makeSelectSearchable(communityForm.elements.adminUserId, "Buscar administrador…");
+// Control territorial unificado: municipio → provincia → código postal
+// con sincronización bidireccional, igual en todas las pantallas.
+const communityTerritory = setupTerritory(communityForm);
 
 const communityDetailDialog = document.querySelector("#detail-dialog");
 const closeDetailDialog = document.querySelector("#close-detail-dialog");
@@ -255,11 +258,11 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
 
   if (c) {
     Object.entries(c).forEach(([key, value]) => {
-      if (communityForm.elements[key] && key !== "city") {
+      if (communityForm.elements[key] && key !== "city" && key !== "province" && key !== "postalCode") {
         communityForm.elements[key].value = value ?? "";
       }
     });
-    selectLocationInForm(communityForm, c.city, c.province);
+    communityTerritory?.set(c.city, c.province, c.postalCode);
     renderCommunityEditorProperties(c);
   } else {
     const countEl = document.querySelector("#community-edit-property-count");
@@ -966,8 +969,6 @@ async function ensureCommunitySavedForProperties() {
 const comNifInput = communityForm.elements.nif;
 const comPhoneInput = communityForm.elements.phone;
 const comOtherPhoneInput = communityForm.elements.otherPhone;
-const comPostalCodeInput = communityForm.elements.postalCode;
-const comCitySelect = communityForm.elements.city;
 
 comNifInput.addEventListener("input", () => {
   comNifInput.value = comNifInput.value.toUpperCase();
@@ -985,15 +986,8 @@ communityForm.elements.email.addEventListener("input", () => {
   communityForm.elements.email.setCustomValidity("");
 });
 
-comPostalCodeInput.addEventListener("input", () => {
-  comPostalCodeInput.value = comPostalCodeInput.value.replace(/\D/g, "").slice(0, 5);
-  comPostalCodeInput.setCustomValidity("");
-  syncPostalCode(comPostalCodeInput, comCitySelect, communityForm.elements.province);
-});
-
-comCitySelect.addEventListener("change", () => {
-  syncCity(comCitySelect, communityForm.elements.province, comPostalCodeInput);
-});
+// La sincronización municipio/provincia/código postal la gestiona
+// territory.js (setupTerritory): búsqueda, autocompletado y validación.
 
 communityForm.elements.iban.addEventListener("input", () => {
   maskIbanField(communityForm.elements.iban);

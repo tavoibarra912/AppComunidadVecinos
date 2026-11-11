@@ -3,7 +3,7 @@ import { openDocViewer, DocumentValidator } from "../docs-engine.js";
 import { api } from "../api.js";
 import { state, refreshState, ownerProperties, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, makeSelectSearchable, showValidationErrors, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
-import { selectLocationInForm, getLocationById, isValidPostalCode, syncPostalCode, syncCity } from "../territory.js";
+import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
@@ -20,6 +20,8 @@ const propertySearch = document.querySelector("#search-properties");
 const propertyResultCount = document.querySelector("#property-result-count");
 const propertyDialog = document.querySelector("#property-dialog");
 const propertyForm = document.querySelector("#property-form");
+// Control territorial unificado: municipio → provincia → código postal.
+const propertyTerritory = setupTerritory(propertyForm);
 const propertyFormError = document.querySelector("#property-form-error");
 const propertyDocumentInput = document.querySelector("#property-document-input");
 let pendingPropertyFiles = [];
@@ -631,13 +633,13 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
   propertyForm.elements.propertyType.value = property?.propertyType || "";
   if (property) {
-    ["communityId", "plot", "address", "cadastralRef", "registryNumber", "floor", "door", "staircase", "areaM2", "participationCoef", "propertyUse", "energyCertificate", "communityFee", "notes", "postalCode", "city", "province"]
+    ["communityId", "plot", "address", "cadastralRef", "registryNumber", "floor", "door", "staircase", "areaM2", "participationCoef", "propertyUse", "energyCertificate", "communityFee", "notes"]
       .forEach(key => {
         if (propertyForm.elements[key]) {
           propertyForm.elements[key].value = property[key] || "";
         }
       });
-    selectLocationInForm(propertyForm, property.city, property.province);
+    propertyTerritory?.set(property.city, property.province, property.postalCode);
   }
   document.querySelector("#property-dialog-title").textContent = property ? (readonly ? `Ver inmueble: ${property.plot}` : "Editar inmueble") : "Nuevo inmueble";
   setFormReadonly(propertyForm, readonly);
@@ -1006,19 +1008,8 @@ if (propertyAreaInput) {
   });
 }
 
-const propertyPostalInput = propertyForm.elements.postalCode;
-const propertyCitySelect = propertyForm.elements.city;
-if (propertyPostalInput) {
-  propertyPostalInput.addEventListener("input", () => {
-    propertyPostalInput.value = propertyPostalInput.value.replace(/\D/g, "").slice(0, 5);
-    syncPostalCode(propertyPostalInput, propertyCitySelect, propertyForm.elements.province);
-  });
-}
-if (propertyCitySelect) {
-  propertyCitySelect.addEventListener("change", () => {
-    syncCity(propertyCitySelect, propertyForm.elements.province, propertyPostalInput);
-  });
-}
+// La sincronización municipio/provincia/código postal la gestiona
+// territory.js (setupTerritory): búsqueda, autocompletado y validación.
 
 // Archivos pendientes del tab Documentación
 if (propertyDocumentInput) {

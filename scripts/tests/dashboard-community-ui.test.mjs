@@ -109,15 +109,19 @@ function communityFixture() {
     intentarCerrar: (_f, dialog) => dialog.close(),
     setFormReadonly: utils.setFormReadonly,
     createRichText: richText.createRichText,
-    syncPostalCode: noop,
-    syncCity: noop,
-    selectLocationInForm: (form) => {
-      for (const name of ["city", "province"]) {
-        form.elements[name].replaceChildren(new w.Option("Madrid", "Madrid"));
-        form.elements[name].value = "Madrid";
-        form.elements[name].disabled = false;
-      }
-    },
+    setupTerritory: (form) => ({
+      set: (city, province, cp) => {
+        form.elements.city.value = city ? "madrid-id" : "";
+        form.elements.province.value = city ? "Madrid" : "";
+        form.elements.postalCode.value = city ? (cp || "28001") : "";
+      },
+      reset: () => {
+        form.elements.city.value = "";
+        form.elements.province.value = "";
+        form.elements.postalCode.value = "";
+      },
+      location: () => ({ name: "Madrid", province: "Madrid", postalCodes: ["28001"] }),
+    }),
     getLocationById: () => ({ name: "Madrid", province: "Madrid" }),
     isValidPostalCode: () => true,
     createDataTable: () => ({ refresh: noop }),

@@ -35,6 +35,31 @@ const el = id => document.querySelector("#" + id);
 const dialogo = () => el("tenant-verification-dialog");
 let activo = null;
 
+const RESEND_LABEL = "Reenviar código";
+let reenvioTimer = 0;
+
+/** Restaura el botón de reenvío (sin cuenta atrás). */
+function detenerCuentaAtras() {
+  if (reenvioTimer) { clearInterval(reenvioTimer); reenvioTimer = 0; }
+  const btn = el("tenant-verification-resend-btn");
+  if (btn) { btn.disabled = false; btn.textContent = RESEND_LABEL; }
+}
+
+/** Deshabilita el reenvío durante el cooldown informado por el servidor. */
+function iniciarCuentaAtras(segundos) {
+  detenerCuentaAtras();
+  const btn = el("tenant-verification-resend-btn");
+  if (!btn || !Number.isFinite(segundos) || segundos <= 0) return;
+  let restante = Math.ceil(segundos);
+  btn.disabled = true;
+  btn.textContent = `${RESEND_LABEL} (${restante}s)`;
+  reenvioTimer = setInterval(() => {
+    restante -= 1;
+    if (restante <= 0) { detenerCuentaAtras(); return; }
+    btn.textContent = `${RESEND_LABEL} (${restante}s)`;
+  }, 1000);
+}
+
 export function crearVerificadorContacto({ alEstado, alVerificado }) {
   // alEstado(kind, estado: "pending"|"verified"|"error", mensaje)
   // alVerificado(kind, verifiedAt)
@@ -55,7 +80,8 @@ export function crearVerificadorContacto({ alEstado, alVerificado }) {
       setError(msg); alEstado(kind, "error", msg); return false;
     }
     setError("");
-    el("tenant-verification-resend-btn").disabled = true;
+    const btn = el("tenant-verification-resend-btn");
+    if (btn) btn.disabled = true;
     try {
       const res = await conf.enviar(value);
       if (!res.challengeId) throw new Error("El servicio de verificación no devolvió el identificador del reto.");
@@ -63,14 +89,16 @@ export function crearVerificadorContacto({ alEstado, alVerificado }) {
       alEstado(kind, "pending", `Código enviado${res.maskedDestination ? ` a ${res.maskedDestination}` : ""}.`);
       const demo = el("tenant-verification-demo"), demoCode = el("tenant-verification-demo-code");
       if (res.devCode && demo && demoCode) { demo.hidden = false; demoCode.textContent = res.devCode; }
+      // El cooldown real lo fija el servidor (otpReenvioSegundos).
+      iniciarCuentaAtras(res.reenvioSegundos);
       return true;
     } catch (error) {
       retos[kind].challengeId = "";
       const msg = error instanceof Error ? error.message : String(error);
       setError(msg); alEstado(kind, "error", msg);
+      // El envío falló y no se consumió el cooldown: reenvío disponible ya.
+      if (btn) btn.disabled = false;
       return false;
-    } finally {
-      el("tenant-verification-resend-btn").disabled = false;
     }
   }
 
@@ -81,6 +109,7 @@ export function crearVerificadorContacto({ alEstado, alVerificado }) {
       alEstado(kind, "error", `Introduce un ${conf.nombre} válido antes de verificar.`);
       return;
     }
+    detenerCuentaAtras();
     el("tenant-verification-title").textContent = conf.titulo;
     el("tenant-verification-desc").textContent = conf.desc;
     el("tenant-verification-target").textContent = `${conf.etiqueta}: ${value}`;
@@ -127,6 +156,7 @@ export function crearVerificadorContacto({ alEstado, alVerificado }) {
       }
     });
     el("close-tenant-verification-dialog").addEventListener("click", () => dialogo().close());
+    dialogo().addEventListener("close", () => detenerCuentaAtras());
     dialogo().addEventListener("click", event => {
       if (event.target === dialogo()) dialogo().close();
     });
