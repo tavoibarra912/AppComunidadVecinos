@@ -13,6 +13,7 @@ import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
 
 function iconBtn(className, title, ariaLabel, svg) {
   const btn = document.createElement("button");
@@ -161,6 +162,10 @@ export function renderTenants() {
             const btnInfo=iconBtn("btn-info","Más info",`Ver información de ${tenant.name} ${tenant.surname}`,ICON_INFO);
             btnInfo.addEventListener("click",()=>openTenantEditor(tenant.id, owner.id, true));
             wrap.append(btnInfo);
+            const canManage = hasPermission("tenant:manage", tenant.id);
+            const btnDocs = iconBtn("btn-docs", canManage ? "Subir y gestionar documentación" : "Ver documentación", `Documentación de ${tenant.name} ${tenant.surname}`, ICON_DOCS);
+            btnDocs.addEventListener("click", () => openTenantEditor(tenant.id, owner.id, !canManage, "docs"));
+            wrap.append(btnDocs);
             if (hasPermission("tenant:manage", owner.id)) {
               const btnEdit=iconBtn("btn-edit","Editar",`Editar inquilino ${tenant.name} ${tenant.surname}`,ICON_EDIT);
               btnEdit.addEventListener("click",()=>openTenantEditor(tenant.id, owner.id));
@@ -210,7 +215,7 @@ function switchTenantDialogTab(tab) {
   }
 }
 
-export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false) {
+export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false, initialTab = "general") {
   const permission = readonly ? "tenant:read" : id ? "tenant:manage" : "tenant:create";
   if (!requirePermission(permission, id || ownerId || "")) return;
   const tenant = id ? state.tenants.find(item => item.id === id) : null;
@@ -247,7 +252,7 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
 
   updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
   renderTenantPropertyTab();
-  switchTenantDialogTab("general");
+  switchTenantDialogTab(initialTab);
   updateTenantUserSelect(tenant?.userId || "");
   document.querySelector("#tenant-dialog-title").textContent = tenant ? (readonly ? `Ver inquilino: ${tenant.name} ${tenant.surname}` : "Editar inquilino") : "Nuevo inquilino";
   setFormReadonly(tenantForm, readonly);
@@ -386,9 +391,11 @@ function renderTenantDocCard(key, ids) {
         openDocViewer(getFormTenantContext(), key, doc);
       });
       header.querySelector('[data-action="remove"]').addEventListener("click", () => {
+        if (tenantDialogReadOnly) return;
         delete tenantEditingDocs[key];
         renderTenantDialogDocs();
       });
+      header.querySelector('[data-action="remove"]').hidden = tenantDialogReadOnly;
     }
     if (dropzone) dropzone.style.display = "none";
   } else {
@@ -399,11 +406,14 @@ function renderTenantDocCard(key, ids) {
       result.hidden = true;
       result.replaceChildren();
     }
-    if (dropzone) dropzone.style.display = "block";
+    if (dropzone) dropzone.style.display = tenantDialogReadOnly ? "none" : "block";
   }
 }
 
 function renderTenantDialogDocs() {
+  document.querySelectorAll("#tenant-tab-docs .sample-doc-btn").forEach(button => {
+    button.hidden = tenantDialogReadOnly;
+  });
   renderTenantDocCard("dni", { cardId: "#tenant-card-doc-dni", badgeId: "#tenant-badge-doc-dni", dropzoneId: "#tenant-dropzone-dni", resultId: "#tenant-result-doc-dni", inputId: "#tenant-input-doc-dni" });
   renderTenantDocCard("contract", { cardId: "#tenant-card-doc-contract", badgeId: "#tenant-badge-doc-contract", dropzoneId: "#tenant-dropzone-contract", resultId: "#tenant-result-doc-contract", inputId: "#tenant-input-doc-contract" });
   const count = (tenantEditingDocs["dni"] ? 1 : 0) + (tenantEditingDocs["contract"] ? 1 : 0);

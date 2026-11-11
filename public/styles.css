@@ -453,6 +453,11 @@ td {
   color: var(--muted);
 }
 
+.table-engine-group > span {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .table-columns-wrap {
   position: relative;
   margin-left: auto;
