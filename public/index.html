@@ -1,0 +1,3335 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <script id="brand-json" type="application/json">__BRAND_JSON__</script>
+  <script id="public-settings-json" type="application/json">__PUBLIC_SETTINGS_JSON__</script>
+  <style id="brand-vars">
+    __BRAND_STYLE__
+  </style>
+  <meta name="description" content="Gestión de comunidades y propietarios de la Asociación Peñarrubia" />
+  <title>__BRAND_TITLE__</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="communication.css?v=2" />
+  <link rel="stylesheet" href="notifications.css?v=1" />
+  <link rel="stylesheet" href="fees.css?v=1" />
+  <link rel="stylesheet" href="dashboard.css?v=2" />
+</head>
+
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="Inicio de Peñarrubia"><img id="topbar-brand-logo" class="brand-logo"
+        alt="" hidden />peñarrubia<span>·</span></a>
+    <div class="topbar-actions">
+      <a class="topbar-btn-inbox" id="comm-inbox-link" href="#comunicacion"
+        aria-label="Mis comunicaciones de la comunidad" title="Buzón de comunicaciones de mi comunidad"><svg width="18"
+          height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+          <path d="M10 21h4"></path>
+        </svg><span class="comm-inbox-label">Notificaciones Comunidad</span><span class="comm-count" data-comm-unread
+          hidden>0</span></a>
+      <button class="topbar-btn-inbox" id="topbar-inbox-btn" type="button"
+        aria-label="Mis notificaciones" title="Mis notificaciones" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+        </svg>
+        <span class="topbar-btn-label">Mis Notificaciones</span>
+        <span class="badge-counter" id="inbox-badge-count" hidden>0</span>
+      </button>
+      <div class="role-selector-wrap" hidden>
+        <label for="active-role-select" class="sr-only">Usuario conectado</label>
+        <select id="active-role-select" class="role-select" data-no-combo title="Cambiar usuario (login simulado)"></select>
+      </div>
+      <div class="account-menu-wrap" id="user-account-badge">
+        <button type="button" class="account account-toggle" id="user-menu-toggle" aria-label="Abrir menú de usuario"
+          aria-haspopup="menu" aria-expanded="false" aria-controls="user-menu">
+          <span class="avatar" id="user-avatar">?</span><span id="user-role-label">Mi cuenta</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+        <div class="account-menu" id="user-menu" role="menu" aria-label="Opciones de mi cuenta" hidden>
+          <div class="account-menu-heading" role="presentation"><strong id="user-menu-name"></strong><span
+              id="user-menu-email"></span></div>
+          <button class="account-menu-item" id="account-menu-profile" type="button" role="menuitem" tabindex="-1">Mi
+            perfil</button>
+          <button class="account-menu-item" id="account-menu-password" type="button" role="menuitem"
+            tabindex="-1">Cambiar contraseña</button>
+          <button class="account-menu-item" id="account-menu-community" type="button" role="menuitem" tabindex="-1">Mi
+            comunidad</button>
+          <div class="account-menu-separator" role="separator"></div>
+          <button class="account-menu-item account-menu-danger" id="user-logout-btn" type="button" role="menuitem"
+            tabindex="-1">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <nav class="mobile-nav" aria-label="Navegación móvil">
+    <a class="mobile-nav-item active" href="#home" id="mobile-nav-home">Inicio</a>
+    <a class="mobile-nav-item" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
+    <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
+    <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
+    <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
+    <a class="mobile-nav-item" href="#cuotas" id="mobile-nav-cuotas" hidden>Cuotas</a>
+    <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion">Comunicación</a>
+  </nav>
+  <!-- PANTALLA DE LOGIN SIMULADO -->
+  <div id="login-screen" class="login-screen" hidden>
+    <div class="login-card">
+      <div class="login-brand"><img id="login-brand-logo" class="login-brand-logo" alt=""
+          hidden />peñarrubia<span>·</span></div>
+      <p class="login-maintenance" id="login-maintenance-notice" role="status" hidden></p>
+
+      <!-- Vista: Sign In -->
+      <div id="login-view-signin" class="login-view">
+        <h1>Iniciar sesión</h1>
+        <p class="login-sub">Accedé con tu cuenta para continuar.</p>
+        <form id="login-signin-form" novalidate>
+          <label>Usuario o Email *
+            <input name="usuario" type="text" required autocomplete="username" placeholder="Usuario o Email" />
+          </label>
+          <label>Contraseña *
+            <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
+          </label>
+          <p class="login-error" id="login-signin-error" role="alert"></p>
+          <p class="login-ok-msg" id="login-signin-notice" role="status" hidden></p>
+          <button class="login-submit" type="submit">Iniciar sesión</button>
+        </form>
+        <div class="login-links">
+          <button type="button" class="text-link-button" id="login-open-signup" data-login-view="signup">Crear cuenta</button>
+          <button type="button" class="text-link-button" id="login-open-forgot" data-login-view="forgot">Olvidé mi contraseña</button>
+        </div>
+      </div>
+
+      <!-- Vista: Signup -->
+      <div id="login-view-signup" class="login-view" hidden>
+        <h1>Crear cuenta</h1>
+        <p class="login-sub">Tu cuenta se crea con el rol más básico. Un administrador puede asignarte más permisos
+          después.</p>
+        <form id="login-signup-form" novalidate>
+          <label>Nombre (opcional)
+            <input name="nombre" maxlength="60" autocomplete="given-name" />
+          </label>
+          <label>Apellidos (opcional)
+            <input name="apellido" maxlength="80" autocomplete="family-name" />
+          </label>
+          <label>Usuario *
+            <input name="usuario" maxlength="40" required autocomplete="username" />
+          </label>
+          <label>Email *
+            <input name="email" type="email" maxlength="120" required autocomplete="email" />
+          </label>
+          <label>Contraseña * (mín. 8 caracteres)
+            <input name="password" type="password" required minlength="8" autocomplete="new-password" />
+          </label>
+          <label>Confirmar contraseña *
+            <input name="password2" type="password" required autocomplete="new-password" />
+          </label>
+          <p class="login-error" id="login-signup-error" role="alert"></p>
+          <button class="login-submit" type="submit">Crear cuenta</button>
+        </form>
+        <div class="login-links">
+          <button type="button" class="text-link-button" data-login-view="signin">Ya tengo cuenta</button>
+        </div>
+      </div>
+
+      <!-- Vista: Forgot Password -->
+      <div id="login-view-forgot" class="login-view" hidden>
+        <h1>Recuperar contraseña</h1>
+        <p class="login-sub">Indicá el email de tu cuenta. Si está registrada y activa, recibirás un enlace válido
+          durante 30 minutos.</p>
+        <form id="login-forgot-form" novalidate>
+          <label>Email *
+            <input name="email" type="email" required autocomplete="email" />
+          </label>
+          <p class="login-error" id="login-forgot-error" role="alert"></p>
+          <p class="login-ok-msg" id="login-forgot-ok" hidden></p>
+          <button class="login-submit" type="submit">Enviar instrucciones</button>
+        </form>
+        <div id="login-reset-block" hidden>
+          <p class="form-intro">Token de recuperación recibido. Definí tu nueva contraseña:</p>
+          <form id="login-reset-form" novalidate>
+            <label>Nueva contraseña * (mín. 8)
+              <input name="password" type="password" required minlength="8" autocomplete="new-password" />
+            </label>
+            <label>Repetir nueva contraseña *
+              <input name="password2" type="password" required minlength="8" autocomplete="new-password" />
+            </label>
+            <p class="login-error" id="login-reset-error" role="alert"></p>
+            <button class="login-submit" type="submit">Cambiar contraseña</button>
+          </form>
+        </div>
+        <div class="login-links">
+          <button type="button" class="text-link-button" data-login-view="signin">Volver a iniciar sesión</button>
+        </div>
+      </div>
+      <p class="login-help" id="login-contact-info" hidden></p>
+    </div>
+  </div>
+
+  <main class="layout">
+    <aside class="sidebar" aria-label="Navegación">
+      <p class="sidebar-label" id="sidebar-label">GESTIÓN ADMINISTRADOR</p>
+      <a class="nav-item active" href="#home" id="nav-home">Inicio</a>
+      <a class="nav-item" href="#comunidades" id="nav-comunidades">Comunidades</a>
+      <a class="nav-item" href="#inmuebles" id="nav-inmuebles">Inmuebles</a>
+      <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
+      <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
+      <a class="nav-item" href="#cuotas" id="nav-cuotas" hidden>Cuotas</a>
+      <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
+      <a class="nav-item" href="#comunicacion" id="nav-comunicacion">Comunicación <span id="communication-unread"
+          class="comm-count" hidden>0</span></a>
+    </aside>
+
+    <!-- SECCIÓN: HOME / DASHBOARD -->
+    <section class="content" id="home">
+      <div id="home-dashboard"><h1 id="home-greeting-title">Inicio</h1><p>Cargando tus datos…</p></div>
+    </section>
+
+    <section class="content" id="cuotas" aria-label="Cuotas de comunidad" hidden>
+      <div id="fees-page"></div>
+    </section>
+
+    <!-- SECCIÓN: COMUNIDADES -->
+    <section class="content" id="comunidades" hidden>
+      <div class="owner-view-banner" id="owner-view-banner-com" style="display: none;">
+        <span><strong id="community-profile-title"></strong> <span id="community-profile-message"></span></span>
+        <span class="status-badge member" id="community-profile-name"></span>
+      </div>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow" id="comunidades-heading-eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
+          <h1 id="comunidades-heading-title">Comunidades de vecinos</h1>
+          <p class="subtitle" id="comunidades-heading-subtitle">Consulta y gestiona las comunidades vinculadas a
+            Peñarrubia.</p>
+        </div>
+        <button class="icon-action-btn btn-add btn-lg" id="new-community" type="button" title="Nueva comunidad"
+          aria-label="Nueva comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="toolbar" id="comunidades-toolbar">
+        <label class="search-field" for="search">
+          <span class="sr-only">Buscar comunidades</span>
+          <input id="search" type="search" placeholder="Buscar…" autocomplete="off" />
+        </label>
+        <p id="result-count" aria-live="polite"></p>
+      </div>
+      <div id="comunidades-table"></div>
+    </section>
+
+    <!-- SECCIÓN: INMUEBLES -->
+    <section class="content" id="inmuebles" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">ENTIDADES</p>
+          <h1>Inmuebles</h1>
+          <p class="subtitle">Gestiona inmuebles vinculados a una comunidad, sus propietarios e inquilinos.</p>
+        </div>
+        <button class="icon-action-btn btn-add btn-lg" id="new-property" type="button" title="Nuevo inmueble"
+          aria-label="Nuevo inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="toolbar">
+        <label class="search-field" for="search-properties">
+          <span class="sr-only">Buscar inmuebles</span>
+          <input id="search-properties" type="search" placeholder="Buscar…" autocomplete="off" />
+        </label>
+        <p id="property-result-count" aria-live="polite"></p>
+      </div>
+      <div id="inmuebles-table"></div>
+    </section>
+
+    <!-- SECCIÓN: PROPIETARIOS -->
+    <section class="content" id="propietarios" hidden>
+      <div class="owner-view-banner" id="owner-view-banner-own" style="display: none;">
+        <span>👤 <strong>Modo Propietario:</strong> Estás accediendo a tu ficha personal. Puedes subir y actualizar tu
+          documentación para convalidación administrativa.</span>
+        <span class="status-badge member">Expediente Particular</span>
+      </div>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow" id="owners-heading-eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
+          <h1 id="owners-heading-title">Propietarios</h1>
+          <p class="subtitle" id="owners-heading-subtitle">Consulta y gestiona los propietarios y asociados vinculados a
+            Peñarrubia.</p>
+        </div>
+        <button class="icon-action-btn btn-add btn-lg" id="new-owner" type="button" title="Nuevo propietario"
+          aria-label="Nuevo propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="toolbar" id="owners-toolbar">
+        <label class="search-field" for="search-owners">
+          <span class="sr-only">Buscar propietarios</span>
+          <input id="search-owners" type="search" placeholder="Buscar…" autocomplete="off" />
+        </label>
+        <p id="owner-result-count" aria-live="polite"></p>
+      </div>
+      <div id="propietarios-table"></div>
+    </section>
+
+    <!-- SECCIÓN: INQUILINOS (subsección de Propietarios) -->
+    <section class="content" id="inquilinos" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">PROPIETARIOS · RESIDENTES</p>
+          <h1>Inquilinos</h1>
+          <p class="subtitle">Consulta y gestiona los inquilinos, sus unidades, contratos, contactos y autorizaciones.
+          </p>
+        </div>
+        <button class="icon-action-btn btn-add btn-lg" id="new-tenant" type="button" title="Nuevo inquilino"
+          aria-label="Nuevo inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="toolbar">
+        <label class="search-field" for="search-tenants">
+          <span class="sr-only">Buscar inquilinos</span>
+          <input id="search-tenants" type="search" placeholder="Buscar…" autocomplete="off" />
+        </label>
+        <p id="tenant-result-count" aria-live="polite"></p>
+      </div>
+      <div id="inquilinos-table"></div>
+    </section>
+
+    <!-- SECCIÓN: ADMINISTRACIÓN -->
+    <section class="content" id="administracion" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">GESTIÓN DEL SISTEMA</p>
+          <h1>Administración</h1>
+          <p class="subtitle">Usuarios, roles y configuración general de la plataforma.</p>
+        </div>
+      </div>
+      <nav class="community-editor-tabs admin-tabs" aria-label="Secciones de administración">
+        <button class="community-editor-tab active" type="button" data-admin-tab="usuarios"
+          aria-selected="true">Usuarios</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="roles" aria-selected="false">Roles</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="settings" aria-selected="false">Configuración
+          General</button>
+        <button class="community-editor-tab" type="button" data-admin-tab="auditoria"
+          aria-selected="false">Auditoría</button>
+      </nav>
+
+      <section class="admin-pane" data-admin-pane="usuarios">
+        <div class="detail-section-heading">
+          <div>
+            <h3>Usuarios de la plataforma</h3>
+            <p class="detail-section-subtitle">Alta, edición y asignación de roles.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="new-user" type="button" title="Nuevo usuario"
+              aria-label="Nuevo usuario">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="usuarios-table"></div>
+      </section>
+
+      <section class="admin-pane" data-admin-pane="roles" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Roles y permisos</h3>
+            <p class="detail-section-subtitle">Definí qué puede hacer cada rol. Los roles del sistema no se pueden
+              eliminar.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="new-role" type="button" title="Nuevo rol"
+              aria-label="Nuevo rol">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="roles-table"></div>
+      </section>
+
+      <section class="admin-pane" data-admin-pane="auditoria" hidden>
+        <h3>Auditoría de seguridad</h3>
+        <p>Accesos y cambios de usuarios y roles. Solo disponible con permiso global de auditoría.</p>
+        <form id="audit-filter" class="form-grid">
+          <label>Evento
+            <select name="action">
+              <option value="">Todos</option>
+              <option value="login">Inicio de sesión</option>
+              <option value="logout">Cierre de sesión</option>
+              <option value="access-denied">Acceso denegado</option>
+              <option value="users.created">Usuario creado</option>
+              <option value="users.updated">Usuario modificado</option>
+              <option value="users.deleted">Usuario eliminado</option>
+              <option value="users.link-owner">Vínculo de propietario</option>
+              <option value="users.link-tenant">Vínculo de inquilino</option>
+              <option value="roles.created">Rol creado</option>
+              <option value="roles.updated">Rol modificado</option>
+              <option value="roles.deleted">Rol eliminado</option>
+              <option value="password-recovery.requested">Recuperación solicitada</option>
+              <option value="password-recovery.mail">Correo de recuperación</option>
+              <option value="password-recovery.completed">Contraseña recuperada</option>
+            </select>
+          </label>
+          <button type="submit" class="secondary-button">Actualizar</button>
+        </form>
+        <p id="audit-status" role="status" aria-live="polite"></p>
+        <div id="audit-results" style="overflow-x:auto"></div>
+        <div class="dialog-actions">
+          <button type="button" class="secondary-button" id="audit-prev">Anterior</button>
+          <button type="button" class="secondary-button" id="audit-next">Siguiente</button>
+        </div>
+      </section>
+
+      <section class="admin-pane" data-admin-pane="settings" hidden>
+        <nav class="community-editor-tabs" id="settings-subtabs" role="tablist" aria-label="Secciones de configuración">
+          <button type="button" class="community-editor-tab active" data-settings-tab="asociacion"
+            aria-selected="true">Asociación</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="seguridad"
+            aria-selected="false">Acceso y seguridad</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="notificaciones"
+            aria-selected="false">Notificaciones</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="cuotas"
+            aria-selected="false">Cuotas</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="sistema"
+            aria-selected="false">Sistema</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="estilo" aria-selected="false">Estilo</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="textos" aria-selected="false">Textos de
+            envío</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="proveedores" aria-selected="false"
+            hidden>Proveedores de comunicación</button>
+        </nav>
+          <form id="settings-form" novalidate>
+            <div id="settings-asociacion-panel">
+              <div class="form-grid">
+                <p class="form-section-title full">Datos de la asociación</p>
+                <label class="full">Nombre de la asociación *
+                  <input name="nombreAsociacion" maxlength="120" required />
+                </label>
+                <label>Email de contacto *
+                  <input name="emailContacto" type="email" maxlength="120" required />
+                </label>
+                <label>Teléfono de contacto (opcional)
+                  <input name="telefonoContacto" maxlength="20" inputmode="tel" />
+                </label>
+                <p class="form-intro full">Estos datos se muestran en la pantalla de acceso y en los correos de la plataforma.</p>
+              </div>
+            </div>
+            <div id="settings-seguridad-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Acceso y seguridad</p>
+                <p class="form-intro full">Se aplican en el servidor al guardar: el registro y la recuperación se bloquean de inmediato, la duración afecta a las sesiones nuevas y los tiempos de OTP a los códigos nuevos.</p>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="permitirRegistro" />
+                  Permitir que los vecinos creen su propia cuenta desde el login
+                </label>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="permitirRecuperacion" />
+                  Permitir la recuperación de contraseña por email
+                </label>
+                <label>Duración de la sesión (horas) (opcional)
+                  <input name="duracionSesionHoras" type="number" min="1" max="720" inputmode="numeric" />
+                </label>
+                <label>Expiración del código OTP (minutos) (opcional)
+                  <input name="otpExpiraMinutos" type="number" min="1" max="60" inputmode="numeric" />
+                </label>
+                <label>Reenvío de OTP permitido cada (segundos) (opcional)
+                  <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
+                </label>
+              </div>
+            </div>
+            <div id="settings-notificaciones-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Notificaciones</p>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="notificacionesEmail" />
+                  Enviar por email los avisos de comunidad a quien tenga el canal habilitado
+                </label>
+                <label class="full">Email(s) para avisar cambios de perfiles (opcional)
+                  <input name="avisosCambiosEmail" maxlength="300" placeholder="asociacionpenarubia@gmail.com, otra@gmail.com" />
+                </label>
+                <p class="form-intro full">Separá varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Requiere tildar «Habilitar correo electrónico».</p>
+              </div>
+            </div>
+            <div id="settings-cuotas-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Cuotas ordinarias · valores iniciales</p>
+                <p class="form-intro full">Se copian al crear un acuerdo de comunidad. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
+                <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="feeBeforeDays" type="number" min="0" max="60" step="1" /></label>
+                <label>Aviso después del vencimiento (días)<input name="feeAfterDays" type="number" min="0" max="365" step="1" /></label>
+                <label>Repetición de vencidos (días; 0: una vez)<input name="feeRepeatDays" type="number" min="0" max="365" step="1" /></label>
+                <label class="checkbox-line"><input name="feeInternal" type="checkbox" />Avisos de cuotas en el buzón de la app</label>
+                <label class="checkbox-line"><input name="feeEmail" type="checkbox" />Avisos de cuotas por email a destinatarios con el canal habilitado</label>
+                <label class="full">Asunto del email de cuotas<input name="feeEmailSubject" maxlength="200" /></label>
+                <label class="full">Texto del email de cuotas<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
+                <p class="form-intro full">Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
+              </div>
+            </div>
+            <div id="settings-sistema-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Documentos</p>
+                <label>Tamaño máximo por documento (MB) (opcional)
+                  <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
+                </label>
+                <label>Máximo de archivos por envío (opcional)
+                  <input name="documentosMaxArchivos" type="number" min="1" max="50" inputmode="numeric" />
+                </label>
+                <fieldset class="full settings-checkgroup">
+                  <legend>Tipos de archivo permitidos</legend>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="pdf" /> PDF</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpg" /> JPG</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpeg" /> JPEG</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="png" /> PNG</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="webp" /> WebP</label>
+                </fieldset>
+
+                <p class="form-section-title full">Contratos y vencimientos</p>
+                <label>Aviso de vencimiento de contrato (días antes) (opcional)
+                  <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
+                </label>
+
+                <p class="form-section-title full">Sistema</p>
+                <label>Filas por página en las tablas (opcional)
+                  <select name="filasPorPagina">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                  </select>
+                </label>
+                <label>Moneda por defecto (opcional)
+                  <select name="monedaPorDefecto">
+                    <option value="EUR">Euro (EUR)</option>
+                    <option value="USD">Dólar estadounidense (USD)</option>
+                    <option value="GBP">Libra esterlina (GBP)</option>
+                    <option value="CHF">Franco suizo (CHF)</option>
+                  </select>
+                </label>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="mantenimiento" />
+                  Modo mantenimiento (bloquea el acceso a usuarios no administradores)
+                </label>
+                <label class="full">Mensaje de mantenimiento (opcional)
+                  <textarea name="mensajeMantenimiento" rows="2" maxlength="300" placeholder="La plataforma está en mantenimiento. Volvé a intentar en unos minutos."></textarea>
+                </label>
+              </div>
+            </div>
+            <div id="settings-estilo-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Marca de la plataforma</p>
+                <p class="form-intro full">Este nombre y los colores representan a la plataforma completa (se ve en el login, correos y avisos); cada comunidad tiene su propio nombre en su ficha.</p>
+                <label class="full">Nombre visible de la plataforma *
+                  <input name="marcaNombre" maxlength="120" required />
+                </label>
+                <label>Color principal (opcional)
+                  <input name="marcaColorPrimario" type="color" />
+                </label>
+                <label>Color de acento (opcional)
+                  <input name="marcaColorAcento" type="color" />
+                </label>
+                <label class="full">Logo (PNG, JPG, SVG o WebP, máx. 225 KB) (opcional)
+                  <input name="marcaLogo" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+                </label>
+                <img id="marca-logo-preview" class="marca-logo-preview" alt="Vista previa del logo" hidden />
+
+                <p class="form-section-title full">Colores de la interfaz</p>
+                <p class="form-intro full">Ajustá el fondo, las superficies, el texto y los bordes. El color principal sigue definiendo la barra superior y el acento los botones y enlaces.</p>
+                <label>Fondo general (opcional)
+                  <input name="marcaColorFondo" type="color" />
+                </label>
+                <label>Superficies y tarjetas (opcional)
+                  <input name="marcaColorSuperficie" type="color" />
+                </label>
+                <label>Color del texto (opcional)
+                  <input name="marcaColorTexto" type="color" />
+                </label>
+                <label>Texto secundario (opcional)
+                  <input name="marcaColorTextoSuave" type="color" />
+                </label>
+                <label>Bordes y separadores (opcional)
+                  <input name="marcaColorBorde" type="color" />
+                </label>
+
+                <p class="form-section-title full">Tipografía y formato</p>
+                <label>Tipografía
+                  <select name="marcaTipografia">
+                    <option value="inter">Inter (predeterminada)</option>
+                    <option value="system">Sistema</option>
+                    <option value="arial">Arial</option>
+                    <option value="verdana">Verdana</option>
+                    <option value="georgia">Georgia</option>
+                  </select>
+                </label>
+                <label>Tamaño base del texto (px)
+                  <input name="marcaTamanoBase" type="number" min="12" max="18" inputmode="numeric" />
+                </label>
+                <label>Radio de bordes (px)
+                  <input name="marcaRadioBordes" type="number" min="0" max="16" inputmode="numeric" />
+                </label>
+                <label>Densidad de las tablas
+                  <select name="marcaDensidad">
+                    <option value="compacta">Compacta</option>
+                    <option value="normal">Normal</option>
+                    <option value="amplia">Amplia</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div id="settings-textos-panel" hidden>
+              <p class="form-section-title full">Textos de los envíos</p>
+              <p class="form-intro full">Personalizá los mensajes que envía la plataforma por correo, SMS y WhatsApp. Placeholders disponibles: <strong>{{plataforma}}</strong>, <strong>{{titulo}}</strong>, <strong>{{texto}}</strong>, <strong>{{comunidad}}</strong>, <strong>{{fecha}}</strong> y <strong>{{enlace}}</strong> (solo recuperación de contraseña).</p>
+              <div class="form-grid">
+                <label class="full">Asunto del email de nueva publicación
+                  <input name="texto_emailAvisoAsunto" data-texto="emailAvisoAsunto" maxlength="200" />
+                </label>
+                <label class="full">Cuerpo del email de nueva publicación
+                  <textarea name="texto_emailAvisoCuerpo" data-texto="emailAvisoCuerpo" rows="4" maxlength="5000"></textarea>
+                </label>
+                <label class="full">Texto SMS de nueva publicación
+                  <textarea name="texto_smsAviso" data-texto="smsAviso" rows="2" maxlength="1000"></textarea>
+                </label>
+                <label class="full">Texto WhatsApp de nueva publicación
+                  <textarea name="texto_whatsappAviso" data-texto="whatsappAviso" rows="2" maxlength="1000"></textarea>
+                </label>
+                <label class="full">Asunto del email de recordatorio
+                  <input name="texto_emailRecordatorioAsunto" data-texto="emailRecordatorioAsunto" maxlength="200" />
+                </label>
+                <label class="full">Texto del recordatorio (SMS/WhatsApp/email)
+                  <textarea name="texto_recordatorioTexto" data-texto="recordatorioTexto" rows="2" maxlength="1000"></textarea>
+                </label>
+                <label class="full">Asunto del email de cambio de perfiles
+                  <input name="texto_cambioAsunto" data-texto="cambioAsunto" maxlength="200" />
+                </label>
+                <label class="full">Cuerpo del email de cambio de perfiles
+                  <textarea name="texto_cambioCuerpo" data-texto="cambioCuerpo" rows="4" maxlength="5000"></textarea>
+                </label>
+                <label class="full">Asunto del email de recuperación de contraseña
+                  <input name="texto_emailRecuperacionAsunto" data-texto="emailRecuperacionAsunto" maxlength="200" />
+                </label>
+                <label class="full">Texto del email de recuperación de contraseña
+                  <textarea name="texto_emailRecuperacionTexto" data-texto="emailRecuperacionTexto" rows="4" maxlength="2000"></textarea>
+                </label>
+                <label class="full">Texto del mensaje de prueba
+                  <textarea name="texto_pruebaTexto" data-texto="pruebaTexto" rows="2" maxlength="500"></textarea>
+                </label>
+              </div>
+            </div>
+            <div class="dialog-actions">
+              <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar configuración"
+                aria-label="Guardar configuración">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+              </button>
+            </div>
+          </form>
+        <div id="settings-proveedores-panel" hidden></div>
+      </section>
+    </section>
+    <section class="content" id="comunicacion" hidden aria-labelledby="communication-title">
+      <div class="comm-heading">
+        <div>
+          <p class="eyebrow">VIDA EN COMUNIDAD</p>
+          <h1 id="communication-title">Comunicación</h1>
+          <p class="comm-muted">Avisos, eventos, reuniones y decisiones de tu comunidad.</p>
+        </div>
+        <div class="comm-actions"><button type="button" class="secondary-button" id="comm-preferences">Mis
+            canales</button><button type="button" class="primary-button" id="comm-new" hidden>Nueva publicación</button>
+        </div>
+      </div>
+      <div id="comm-tabs" class="comm-tabs" role="tablist" aria-label="Vistas de comunicación"><button type="button"
+          role="tab" aria-selected="true" data-comm-view="board">Tablón</button><button type="button" role="tab"
+          aria-selected="false" data-comm-view="calendar">Calendario</button><button type="button" role="tab"
+          aria-selected="false" data-comm-view="meetings">Reuniones</button></div>
+      <div class="comm-filters"><label>Comunidad<select id="comm-community">
+            <option value="">Todas mis comunidades</option>
+          </select></label><label>Tipo<select id="comm-type">
+            <option value="">Todos</option>
+            <option value="notice">Avisos</option>
+            <option value="event">Eventos</option>
+            <option value="meeting">Reuniones</option>
+          </select></label><label>Estado<select id="comm-filter">
+            <option value="current">Vigentes y próximos</option>
+            <option value="unread">Sin leer</option>
+            <option value="all">Todos e histórico</option>
+            <option value="draft">Borradores</option>
+            <option value="scheduled">Programados</option>
+          </select></label><label>Buscar<input id="comm-search" type="search"
+            placeholder="Título o contenido" /></label><button type="button" class="secondary-button"
+          id="comm-refresh">Actualizar</button></div>
+      <p id="comm-status" class="comm-muted" role="status" aria-live="polite"></p>
+      <div id="comm-content"></div>
+    </section>
+  </main>
+
+  <!-- DIÁLOGOS DE COMUNIDAD -->
+  <!-- Diálogo de formulario para Crear / Editar Comunidad -->
+  <dialog id="community-dialog" class="community-editor-dialog" aria-labelledby="dialog-title">
+    <form id="community-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">COMUNIDADES</p>
+          <h2 id="dialog-title">Nueva Comunidad</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">Los campos marcados con * son obligatorios.</p>
+      <nav class="community-editor-tabs" aria-label="Secciones de la Comunidad">
+        <button class="community-editor-tab active" type="button" data-community-tab="details"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-community-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-community-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" id="community-properties-tab" type="button" data-community-tab="properties"
+          aria-selected="false">Inmuebles (0)</button>
+        <button class="community-editor-tab" type="button" data-community-tab="docs"
+          aria-selected="false">Documentación</button>
+      </nav>
+      <section class="community-editor-pane" id="community-tab-details" data-community-pane="details">
+        <div class="form-grid">
+          <label class="full">Identificador Comunidad *
+            <input name="name" maxlength="100" required />
+          </label>
+          <label>NIF *
+            <input name="nif" maxlength="9" required pattern="H[0-9]{7}[0-9A-J]" placeholder="H12345674"
+              title="CIF de comunidad: H + 7 dígitos + dígito o letra de control." />
+          </label>
+          <label>Presidente (opcional)
+            <input name="president" maxlength="100" placeholder="Nombre y teléfono" />
+          </label>
+          <label>Administrador de Fincas (opcional)
+            <input name="administrator" maxlength="100" placeholder="Nombre / N.º colegiado" />
+            <span class="field-hint">Persona o empresa que administra la finca. Es un dato de contacto: no le da acceso a la app. Para dar acceso, usá «Administrador de Comunidad».</span>
+          </label>
+          <label>Año de Constitución (opcional)
+            <select name="constitutionYear"><option value="">Sin especificar</option></select>
+            <span class="field-hint">Dato legal que se muestra en la ficha. No interviene en el cálculo de las cuotas.</span>
+          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="community-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="community-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="community-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="community-notes-label"
+                data-placeholder="Escribí observaciones sobre la comunidad…" data-maxlength="2000"></div>
+            </div>
+            <textarea name="notes" id="community-notes-input" hidden></textarea>
+          </div>
+          <label class="full">Administrador de Comunidad (usuario del sistema) (opcional)
+            <select name="adminUserId" id="community-admin-select">
+              <option value="">Sin asignar (se completa manualmente en Presidente/Administrador)</option>
+            </select>
+            <span class="field-hint">Asigná la cuenta de usuario que administra esta comunidad. Se completa también el
+              campo Administrador de fincas.</span>
+          </label>
+        </div>
+      </section>
+      <section class="community-editor-pane" id="community-tab-contact" data-community-pane="contact" hidden>
+        <div class="form-grid">
+          <label>Teléfono Principal *
+            <div class="verify-row">
+              <input name="phone" maxlength="9" required inputmode="numeric" placeholder="600000000" />
+              <button class="secondary-button verify-btn" type="button" id="community-btn-verify-phone">Verificar</button>
+            </div>
+            <span class="verify-status" id="community-phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
+          </label>
+          <label>Teléfono Secundario (opcional)
+            <input name="otherPhone" type="tel" maxlength="9" inputmode="numeric" placeholder="600000000" />
+          </label>
+          <label>Email *
+            <div class="verify-row">
+              <input name="email" type="email" required maxlength="120" placeholder="contacto@Comunidad.es" />
+              <button class="secondary-button verify-btn" type="button" id="community-btn-verify-email">Verificar</button>
+            </div>
+            <span class="verify-status" id="community-email-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
+          </label>
+          <label class="full">Dirección *
+            <input name="address" maxlength="140" required />
+          </label>
+          <label>Provincia *
+            <select name="province" required disabled>
+              <option value="">Cargando provincias…</option>
+            </select>
+          </label>
+          <label>Municipio *
+            <select name="city" required disabled>
+              <option value="">Cargando municipios…</option>
+            </select>
+          </label>
+          <label>Código postal *
+            <select name="postalCode" required disabled>
+              <option value="">Cargando códigos postales…</option>
+            </select>
+          </label>
+        </div>
+      </section>
+      <section class="community-editor-pane" id="community-tab-finance" data-community-pane="finance" hidden>
+        <div id="community-editor-fees"></div>
+        <div class="form-grid">
+          <label>IBAN de la Comunidad (opcional)
+            <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
+              autocomplete="off" />
+            <span class="field-hint">Se muestra en la ficha y en los datos de pago de los recibos.</span>
+          </label>
+          <label>Moneda (opcional)
+            <select name="currency">
+              <option value="">Cargando monedas…</option>
+            </select>
+            <span class="field-hint">Las cuotas se gestionan solo en EUR. Con otra moneda, no se pueden configurar ni emitir recibos.</span>
+          </label>
+          <label>Fondo de reserva (importe) (opcional)
+            <input name="reserveFund" type="number" inputmode="decimal" min="0" max="999999999999.99" step="0.01" placeholder="Ej: 3500,00" />
+            <span class="field-hint">Importe declarado por la comunidad. Se muestra en la ficha; no se descuenta automáticamente de las cuotas.</span>
+          </label>
+        </div>
+      </section>
+      <section class="community-editor-pane" id="community-tab-properties" data-community-pane="properties" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Inmuebles (<span id="community-edit-property-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Asocia inmuebles existentes, crea nuevos o desvincula los que ya no
+              pertenezcan a esta Comunidad.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="btn-community-edit-add-property" type="button"
+              title="Crear nuevo Inmueble" aria-label="Crear nuevo Inmueble">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <button class="icon-action-btn btn-info" id="btn-community-edit-link-property" type="button"
+              title="Asociar Inmueble existente" aria-label="Asociar Inmueble existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="community-edit-link-panel" id="community-edit-link-panel" hidden>
+          <label>Inmueble (opcional)
+            <select id="community-edit-link-property-select"></select>
+          </label>
+          <button class="icon-action-btn btn-save" id="btn-community-edit-confirm-link" type="button"
+            title="Asociar Inmueble" aria-label="Asociar Inmueble">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+          <button class="icon-action-btn btn-cancel" id="btn-community-edit-cancel-link" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="community-properties-list" id="community-edit-properties-list"></div>
+      </section>
+      <section class="community-editor-pane" id="community-tab-docs" data-community-pane="docs" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Documentación de la comunidad (<span id="community-doc-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Adjunta actas, contratos, certificados u otros archivos. Se guardan al
+              pulsar Guardar.</p>
+          </div>
+        </div>
+        <div class="doc-dropzone-compact" id="community-doc-dropzone">
+          <input id="community-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
+            class="doc-file-input" />
+          <div class="doc-dropzone-compact-content">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p><strong>Arrastrá archivos acá</strong> o hacé clic para seleccionar</p>
+            <span>PDF, JPG, PNG o WEBP · máximo 15 MB por archivo · se guardan al pulsar Guardar</span>
+          </div>
+        </div>
+        <div class="doc-sample-bar">
+          <button class="sample-doc-btn" type="button" id="btn-sample-community-doc">✨ Cargar acta de ejemplo (sin
+            validez)</button>
+        </div>
+        <div class="doc-file-list" id="community-document-list"></div>
+        <div class="docs-summary-bar" id="community-docs-summary-bar">
+          <div class="docs-summary-text">
+            <span id="community-docs-summary-status">0 documentos adjuntos</span>
+            <span class="docs-summary-subtext" id="community-docs-summary-subtext">Adjunta la documentación oficial para
+              archivar en el expediente de la comunidad.</span>
+          </div>
+        </div>
+      </section>
+      <p class="form-error" id="form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar Comunidad"
+          aria-label="Guardar Comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de consulta completa de Comunidad (Más info) -->
+  <dialog id="detail-dialog" aria-labelledby="detail-dialog-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">COMUNIDADES</p>
+          <h2 id="detail-dialog-title">Información de la comunidad</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">Consulta detallada de la comunidad (sólo lectura; para modificar usá «Editar comunidad»).
+      </p>
+      <nav class="community-editor-tabs" aria-label="Secciones de la comunidad">
+        <button class="community-editor-tab active" type="button" data-cd-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="properties"
+          aria-selected="false">Inmuebles</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="docs"
+          aria-selected="false">Documentación</button>
+      </nav>
+      <section class="community-editor-pane" data-cd-pane="general">
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">Identificador Comunidad</span>
+            <span class="detail-value highlight" id="detail-name"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">NIF</span>
+            <span class="detail-value badge" id="detail-nif"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Propietarios censados</span>
+            <span class="detail-value badge" id="detail-owners-count">0</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Presidente</span>
+            <span class="detail-value" id="detail-president"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Administrador de fincas</span>
+            <span class="detail-value" id="detail-administrator"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Año de constitución</span>
+            <span class="detail-value" id="detail-constitutionYear"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Observaciones</span>
+            <span class="detail-value" id="detail-notes"></span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-cd-pane="contact" hidden>
+        <div class="detail-grid">
+          <div class="detail-item" id="detail-item-phone">
+            <span class="detail-label">Teléfono Principal</span>
+            <span class="detail-value" id="detail-phone"></span>
+          </div>
+          <div class="detail-item" id="detail-item-otherPhone">
+            <span class="detail-label">Teléfono Secundario</span>
+            <span class="detail-value" id="detail-otherPhone"></span>
+          </div>
+          <div class="detail-item" id="detail-item-email">
+            <span class="detail-label">Email</span>
+            <span class="detail-value" id="detail-email"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Dirección</span>
+            <span class="detail-value" id="detail-address"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Código postal</span>
+            <span class="detail-value" id="detail-postalCode"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Municipio</span>
+            <span class="detail-value" id="detail-city"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Provincia</span>
+            <span class="detail-value" id="detail-province"></span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-cd-pane="finance" hidden>
+        <div id="community-detail-fees"></div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">IBAN de la comunidad</span>
+            <span class="detail-value" id="detail-iban"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Moneda</span>
+            <span class="detail-value" id="detail-currency"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Fondo de reserva</span>
+            <span class="detail-value" id="detail-reserveFund"></span>
+          </div>
+          <p class="field-hint full" id="detail-currency-note" hidden></p>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-cd-pane="properties" hidden>
+        <!-- Inmuebles de la comunidad (sólo lectura; la edición se hace desde "Editar comunidad") -->
+        <div class="detail-section-heading">
+          <div>
+            <h3 id="community-detail-properties-heading">Inmuebles (<span id="community-detail-prop-count">0</span>)
+            </h3>
+            <p class="detail-section-subtitle">Consulta de unidades y parcelas censadas (1 a n). Para asociar o
+              desvincular, usa «Editar comunidad».</p>
+          </div>
+        </div>
+        <div id="community-properties-list" class="community-properties-list"></div>
+      </section>
+      <section class="community-editor-pane" data-cd-pane="docs" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Documentación (<span id="community-detail-doc-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Archivos adjuntos de la comunidad (sólo lectura).</p>
+          </div>
+        </div>
+        <div class="doc-file-list" id="community-detail-docs"></div>
+      </section>
+
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="detail-edit-btn" title="Editar comunidad"
+          aria-label="Editar comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Diálogo de confirmación para eliminar Comunidad -->
+  <dialog id="delete-dialog" aria-labelledby="delete-title">
+    <form method="dialog">
+      <h2 id="delete-title">¿Eliminar comunidad?</h2>
+      <p id="delete-message"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" value="cancel" title="Cancelar" aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-delete" value="confirm" title="Eliminar comunidad"
+          aria-label="Eliminar comunidad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIÁLOGOS DE PROPIETARIOS -->
+  <!-- Diálogo de formulario para Crear / Editar Propietario -->
+  <dialog id="owner-dialog" aria-labelledby="owner-dialog-title">
+    <form id="owner-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">PROPIETARIOS</p>
+          <h2 id="owner-dialog-title">Nuevo propietario</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro owner-readonly-note" id="owner-readonly-note" hidden>Ficha en modo lectura. Pulsá el lápiz
+        para editar los datos.</p>
+
+      <!-- Pestañas del formulario: General · Contacto y Domicilio · Comunidad y Notificaciones · Financiero · Inmueble · Documentación -->
+      <nav class="community-editor-tabs" aria-label="Secciones del propietario">
+        <button class="community-editor-tab active" type="button" data-owner-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="community" aria-selected="false">Comunidad y
+          Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="banking"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="property"
+          aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-owner-tab="docs" aria-selected="false">Documentación
+          <span class="tab-badge" id="tab-docs-badge">0/3</span></button>
+      </nav>
+
+      <!-- PESTAÑA: GENERAL (identificación) -->
+      <section class="community-editor-pane" id="owner-tab-general" data-owner-pane="general">
+        <p class="form-intro">Los campos marcados con * son obligatorios.</p>
+        <div class="form-grid">
+          <p class="form-section-title full">Identificación</p>
+          <label>Nombre *
+            <input name="name" maxlength="60" required placeholder="Nombre" autocomplete="given-name" />
+          </label>
+          <label>Apellidos *
+            <input name="surname" maxlength="80" required placeholder="Primer y segundo apellido"
+              autocomplete="family-name" />
+          </label>
+          <label>Tipo de documento *
+            <select name="documentType" required>
+              <option value="DNI">DNI</option>
+              <option value="NIE">NIE</option>
+              <option value="CIF">CIF</option>
+            </select>
+          </label>
+          <label>DNI / NIE / CIF *
+            <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI, NIE o CIF español."
+              inputmode="text" autocomplete="off" />
+          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="owner-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="owner-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones del propietario">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="owner-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="owner-notes-label"
+                data-placeholder="Escribí observaciones sobre el propietario…" data-maxlength="500"></div>
+            </div>
+            <textarea name="notes" id="owner-notes-input" hidden maxlength="500"></textarea>
+          </div>
+          <label class="full">Usuario del sistema
+            <select name="userId" id="owner-user-select">
+              <option value="">Sin cuenta de usuario</option>
+            </select>
+            <span class="field-hint">Vinculá la cuenta con la que esta persona accede al sistema (opcional).</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- PESTAÑA: COMUNIDAD Y NOTIFICACIONES -->
+      <section class="community-editor-pane" id="owner-tab-community" data-owner-pane="community" hidden>
+        <div class="form-grid">
+          <p class="form-section-title full">Comunidad</p>
+          <label>Condición de asociado *
+            <select name="isMember" required>
+              <option value="true" selected>Sí (Asociado / Socio de Peñarrubia)</option>
+              <option value="false">No (Propietario no asociado)</option>
+            </select>
+          </label>
+          <label>Comunidad (opcional)
+            <select name="communityId">
+              <option value="">Selecciona una comunidad…</option>
+            </select>
+            <span class="field-hint">Solo para asociados. La comunidad del propietario también se toma de los
+              inmuebles vinculados en la pestaña Inmueble.</span>
+          </label>
+          <p class="form-section-title full">Notificaciones (LPH)</p>
+          <label>Derecho de voto en Junta (LPH) (opcional)
+            <select name="votingRights">
+              <option value="active" selected>Con derecho a voto (al corriente)</option>
+              <option value="suspended">Voto suspendido por morosidad (art. 15.2 LPH)</option>
+            </select>
+            <span class="field-hint">Si está suspendido, este propietario no podrá votar en las consultas de su
+              comunidad.</span>
+          </label>
+          <label>Representante legal / Apoderado
+            <input name="legalRepresentative" maxlength="100" placeholder="Nombre y DNI del apoderado (opcional)" />
+            <span class="field-hint">Dato informativo de la ficha. No cambia el titular ni el destinatario de las
+              notificaciones.</span>
+          </label>
+          <label class="full">Canal preferente de notificaciones (LPH art. 9) (opcional)
+            <select name="notificationPreference">
+              <option value="email" selected>Correo electrónico</option>
+              <option value="postal">Domicilio postal</option>
+              <option value="phone">Teléfono / Mensajería</option>
+            </select>
+          </label>
+          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
+            están verificados en la pestaña Contacto y Domicilio. La preferencia se guarda en la ficha; el envío de
+            avisos usa las preferencias de la cuenta de usuario.</p>
+        </div>
+      </section>
+
+      <!-- PESTAÑA: INMUEBLE (asociación simplificada, mismo UX que comunidad) -->
+      <section class="community-editor-pane" id="owner-tab-property" data-owner-pane="property" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Inmuebles asociados (<span id="owner-property-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Asocia inmuebles existentes o crea uno nuevo. Puedes vincular varios.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="btn-owner-add-property" type="button" title="Crear inmueble"
+              aria-label="Crear inmueble">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <button class="icon-action-btn btn-info" id="btn-owner-link-property" type="button"
+              title="Asociar inmueble existente" aria-label="Asociar inmueble existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="community-edit-link-panel" id="owner-property-link-panel" hidden>
+          <label>Inmueble (opcional)
+            <select id="owner-property-link-select"></select>
+          </label>
+          <button class="icon-action-btn btn-save" id="btn-owner-confirm-property" type="button"
+            title="Asociar inmueble" aria-label="Asociar inmueble">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+          <button class="icon-action-btn btn-cancel" id="btn-owner-cancel-property" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="community-properties-list" id="owner-properties-list"></div>
+      </section>
+
+      <!-- PESTAÑA: CONTACTO Y DOMICILIO -->
+      <section class="community-editor-pane" id="owner-tab-contact" data-owner-pane="contact" hidden>
+        <div class="form-grid">
+          <p class="form-section-title full">Contacto</p>
+          <label id="label-phone">Teléfono principal *
+            <div class="verify-row">
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+                autocomplete="tel" />
+              <button class="secondary-button verify-btn" type="button" id="btn-verify-phone">Verificar</button>
+            </div>
+            <span class="verify-status" id="phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
+          </label>
+          <label>Teléfono Secundario (opcional)
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000" />
+          </label>
+          <label class="full" id="label-email">Email *
+            <div class="verify-row">
+              <input name="email" type="email" maxlength="120" required placeholder="propietario@email.es"
+                autocomplete="email" />
+              <button class="secondary-button verify-btn" type="button" id="btn-verify-email">Verificar</button>
+            </div>
+            <span class="verify-status" id="email-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
+          </label>
+          <label class="full">Dirección *
+            <input name="address" maxlength="140" required placeholder="Calle, número, piso..."
+              autocomplete="street-address" />
+          </label>
+          <label>Provincia *
+            <select name="province" required disabled>
+              <option value="">Cargando provincias…</option>
+            </select>
+          </label>
+          <label>Municipio *
+            <select name="city" required disabled>
+              <option value="">Cargando municipios…</option>
+            </select>
+          </label>
+          <label>Código postal *
+            <select name="postalCode" required disabled>
+              <option value="">Cargando códigos postales…</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <!-- PESTAÑA: DOMICILIACIÓN -->
+      <section class="community-editor-pane" id="owner-tab-banking" data-owner-pane="banking" hidden>
+        <div id="owner-editor-fees"></div>
+        <div class="form-grid">
+          <label class="full">IBAN (opcional)
+            <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
+              autocomplete="off" />
+          </label>
+          <label>Moneda (opcional)
+            <select name="currency">
+              <option value="">Cargando monedas…</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <!-- PESTAÑA: DOCUMENTACIÓN REQUERIDA Y VALIDACIÓN AUTOMÁTICA -->
+      <section class="community-editor-pane" id="owner-tab-docs" data-owner-pane="docs" hidden>
+        <div class="docs-callout">
+          <div class="docs-callout-icon">ℹ️</div>
+          <div>
+            <strong>Documentación exigida para el expediente del propietario:</strong>
+            <p>El sistema admite archivos PDF e imágenes. La identidad, el contenido y la legibilidad deben ser
+              revisados por un administrador antes de aprobarlos.</p>
+          </div>
+        </div>
+
+        <div class="docs-upload-container">
+          <!-- 1. DNI (Ambas caras) -->
+          <div class="doc-upload-card" id="card-doc-dni">
+            <div class="doc-card-header">
+              <div class="doc-card-title-wrap">
+                <span class="doc-card-num">1</span>
+                <div>
+                  <h3 class="doc-card-title">Copia de DNI (ambas caras) *</h3>
+                  <p class="doc-card-desc">Documento Nacional de Identidad español vigente (PDF o JPG/PNG). Debe incluir
+                    anverso y reverso.</p>
+                </div>
+              </div>
+              <span class="doc-card-badge status-badge doc-pending" id="badge-doc-dni">Pendiente</span>
+            </div>
+
+            <div class="doc-dropzone" id="dropzone-dni">
+              <input type="file" id="input-doc-dni" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
+              <div class="dropzone-content">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                  <circle cx="9" cy="9" r="2"></circle>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                </svg>
+                <p class="dropzone-text"><strong>Arrastra tu DNI aquí</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+              </div>
+            </div>
+
+            <!-- Botón de prueba rápida para testing asistido -->
+            <div class="doc-sample-bar">
+              <button class="sample-doc-btn" type="button" id="btn-sample-dni">
+                ✨ Cargar ejemplo de DNI (sin validez)
+              </button>
+            </div>
+
+            <!-- Resultado de validación automática -->
+            <div class="doc-validation-result" id="result-doc-dni" hidden>
+              <!-- Rellenado dinámicamente -->
+            </div>
+          </div>
+
+          <!-- 2. Recibo bancario o certificado de titularidad -->
+          <div class="doc-upload-card" id="card-doc-bank">
+            <div class="doc-card-header">
+              <div class="doc-card-title-wrap">
+                <span class="doc-card-num">2</span>
+                <div>
+                  <h3 class="doc-card-title">Recibo bancario o certificado de titularidad *</h3>
+                  <p class="doc-card-desc">Documento bancario donde se domiciliará el pago de cuotas. Debe figurar el
+                    IBAN y el nombre del titular.</p>
+                </div>
+              </div>
+              <span class="doc-card-badge status-badge doc-pending" id="badge-doc-bank">Pendiente</span>
+            </div>
+
+            <div class="doc-dropzone" id="dropzone-bank">
+              <input type="file" id="input-doc-bank" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
+              <div class="dropzone-content">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 21h18"></path>
+                  <path d="M3 10h18"></path>
+                  <path d="M5 6l7-3 7 3"></path>
+                  <path d="M4 10v11"></path>
+                  <path d="M20 10v11"></path>
+                  <path d="M8 14v4"></path>
+                  <path d="M12 14v4"></path>
+                  <path d="M16 14v4"></path>
+                </svg>
+                <p class="dropzone-text"><strong>Arrastra el recibo o certificado</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+              </div>
+            </div>
+
+            <div class="doc-sample-bar">
+              <button class="sample-doc-btn" type="button" id="btn-sample-bank">
+                ✨ Cargar ejemplo bancario (sin validez)
+              </button>
+            </div>
+
+            <div class="doc-validation-result" id="result-doc-bank" hidden>
+              <!-- Rellenado dinámicamente -->
+            </div>
+          </div>
+
+          <!-- 3. Copia de la escritura del inmueble -->
+          <div class="doc-upload-card" id="card-doc-deed">
+            <div class="doc-card-header">
+              <div class="doc-card-title-wrap">
+                <span class="doc-card-num">3</span>
+                <div>
+                  <h3 class="doc-card-title">Copia de la escritura del inmueble *</h3>
+                  <p class="doc-card-desc">Copia simple o escritura notarial de compraventa/propiedad que acredite la
+                    posesión del inmueble o parcela.</p>
+                </div>
+              </div>
+              <span class="doc-card-badge status-badge doc-pending" id="badge-doc-deed">Pendiente</span>
+            </div>
+
+            <div class="doc-dropzone" id="dropzone-deed">
+              <input type="file" id="input-doc-deed" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
+              <div class="dropzone-content">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <p class="dropzone-text"><strong>Arrastra la escritura aquí</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+              </div>
+            </div>
+
+            <div class="doc-sample-bar">
+              <button class="sample-doc-btn" type="button" id="btn-sample-deed">
+                ✨ Cargar ejemplo de escritura (sin validez)
+              </button>
+            </div>
+
+            <div class="doc-validation-result" id="result-doc-deed" hidden>
+              <!-- Rellenado dinámicamente -->
+            </div>
+          </div>
+        </div>
+
+        <div class="docs-summary-bar" id="docs-summary-bar">
+          <div class="docs-summary-text">
+            <span id="docs-summary-status">0 de 3 documentos subidos</span>
+            <span class="docs-summary-subtext" id="docs-summary-subtext">Sube los tres documentos requeridos para
+              completar el expediente.</span>
+          </div>
+        </div>
+      </section>
+
+      <p class="form-error" id="owner-form-error" role="alert"></p>
+
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-owner-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-readonly-edit-btn"
+          title="Editar propietario" aria-label="Editar propietario" hidden>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" id="btn-save-owner" title="Guardar propietario"
+          aria-label="Guardar propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de consulta completa de Propietario (Más info) -->
+  <dialog id="owner-detail-dialog" aria-labelledby="owner-detail-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">PROPIETARIOS</p>
+          <h2 id="owner-detail-title">Ficha del propietario</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">Ficha del propietario (sólo lectura; para modificar usá «Editar propietario»).</p>
+      <nav class="community-editor-tabs" aria-label="Secciones del propietario">
+        <button class="community-editor-tab active" type="button" data-od-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-od-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-od-tab="community" aria-selected="false">Comunidad y
+          Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-od-tab="banking"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-od-tab="property"
+          aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-od-tab="docs"
+          aria-selected="false">Documentación</button>
+      </nav>
+      <section class="community-editor-pane" data-od-pane="general">
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">Nombre completo</span>
+            <span class="detail-value highlight" id="owner-detail-name"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">DNI / NIE / CIF</span>
+            <span class="detail-value badge" id="owner-detail-dni"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Condición en la asociación</span>
+            <span class="detail-value" id="owner-detail-member"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Observaciones</span>
+            <span class="detail-value" id="owner-detail-notes"></span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-od-pane="contact" hidden>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Teléfono principal</span>
+            <span class="detail-value" id="owner-detail-phone"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Teléfono Secundario</span>
+            <span class="detail-value" id="owner-detail-otherPhone"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Email</span>
+            <span class="detail-value" id="owner-detail-email"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Dirección</span>
+            <span class="detail-value" id="owner-detail-address"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Código postal</span>
+            <span class="detail-value" id="owner-detail-postalCode"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Municipio</span>
+            <span class="detail-value" id="owner-detail-city"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Provincia</span>
+            <span class="detail-value" id="owner-detail-province"></span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-od-pane="community" hidden>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Comunidad vinculada</span>
+            <span class="detail-value" id="owner-detail-community"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Derecho de voto en Junta</span>
+            <span class="detail-value badge" id="owner-detail-votingRights">Con derecho a voto</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Representante legal</span>
+            <span class="detail-value" id="owner-detail-legalRepresentative">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Canal de notificaciones</span>
+            <span class="detail-value" id="owner-detail-notificationPreference">—</span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-od-pane="banking" hidden>
+        <div id="owner-detail-fees"></div>
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">IBAN</span>
+            <span class="detail-value" id="owner-detail-iban"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Moneda</span>
+            <span class="detail-value" id="owner-detail-currency"></span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-od-pane="property" hidden>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Parcela / Inmueble</span>
+            <span class="detail-value" id="owner-detail-plot"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Tipo de inmueble</span>
+            <span class="detail-value" id="owner-detail-property-type"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Referencia Catastral</span>
+            <span class="detail-value" id="owner-detail-cadastral"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Finca registral</span>
+            <span class="detail-value" id="owner-detail-registry"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Planta / puerta</span>
+            <span class="detail-value" id="owner-detail-floor-door"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Superficie / coeficiente</span>
+            <span class="detail-value" id="owner-detail-area-coef"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Uso</span>
+            <span class="detail-value" id="owner-detail-property-use"></span>
+          </div>
+        </div>
+        <section class="detail-docs-section" aria-labelledby="owner-detail-properties-heading">
+          <div class="detail-section-heading">
+            <div>
+              <p class="eyebrow">INMUEBLES</p>
+              <h3 id="owner-detail-properties-heading">Inmuebles del propietario</h3>
+            </div>
+            <span class="status-badge" id="owner-detail-property-count">0 inmuebles</span>
+          </div>
+          <p class="form-intro">Puedes filtrar por comunidad y seleccionar cualquiera de los inmuebles asociados a esta
+            persona.</p>
+          <div class="property-selector-row">
+            <label>Comunidad
+              <select id="owner-detail-property-community">
+                <option value="">Todas las comunidades</option>
+              </select>
+            </label>
+            <label>Inmueble
+              <select id="owner-detail-property-select">
+                <option value="">No hay inmuebles asociados</option>
+              </select>
+            </label>
+            <button class="secondary-button" id="owner-detail-view-property" type="button">Ver inmueble</button>
+          </div>
+        </section>
+        <section class="detail-docs-section" aria-labelledby="owner-detail-tenants-heading">
+          <div class="detail-section-heading">
+            <div>
+              <p class="eyebrow">RESIDENTES</p>
+              <h3 id="owner-detail-tenants-heading">Inquilinos</h3>
+            </div>
+          </div>
+          <p class="form-intro">Inquilinos de las unidades de este propietario.</p>
+          <div class="tenant-list" id="owner-detail-tenant-list"></div>
+          <p class="form-intro" id="owner-detail-tenant-empty">Este propietario todavía no tiene inquilinos registrados.
+          </p>
+        </section>
+      </section>
+      <section class="community-editor-pane" data-od-pane="docs" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <p class="eyebrow">EXPEDIENTE DOCUMENTAL</p>
+            <h3>Documentación requerida del propietario</h3>
+          </div>
+          <span class="status-badge" id="owner-detail-doc-badge">Sin documentación</span>
+        </div>
+
+        <div class="detail-docs-grid" id="owner-detail-docs-grid">
+          <!-- Renderizado dinámicamente con los 3 documentos -->
+        </div>
+
+        <!-- Panel de control de aprobación para el Administrador -->
+        <div class="admin-approval-panel" id="owner-detail-approval-panel">
+          <!-- Renderizado dinámicamente con botones de aprobación/rechazo -->
+        </div>
+      </section>
+
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="owner-detail-edit-btn"
+          title="Editar propietario" aria-label="Editar propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="tenant-dialog" aria-labelledby="tenant-dialog-title">
+    <form id="tenant-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INQUILINOS</p>
+          <h2 id="tenant-dialog-title">Nuevo inquilino</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <nav class="community-editor-tabs" aria-label="Secciones del inquilino">
+        <button class="community-editor-tab active" type="button" data-tenant-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="contact" aria-selected="false">Contacto y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="community" aria-selected="false">Comunidad y
+          Notificaciones</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="contract"
+          aria-selected="false">Contrato</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="property"
+          aria-selected="false">Inmueble</button>
+        <button class="community-editor-tab" type="button" data-tenant-tab="docs" aria-selected="false">Documentación
+          <span class="tab-badge" id="tenant-tab-docs-badge">0/2</span></button>
+      </nav>
+
+      <section class="community-editor-pane" id="tenant-tab-general" data-tenant-pane="general">
+        <p class="form-intro">Los campos marcados con * son obligatorios.</p>
+        <div class="form-grid">
+          <label>Nombre *
+            <input name="name" maxlength="60" required autocomplete="given-name" />
+          </label>
+          <label>Apellidos *
+            <input name="surname" maxlength="80" required autocomplete="family-name" />
+          </label>
+          <label>Tipo de documento *
+            <select name="documentType" required>
+              <option value="DNI" selected>DNI</option>
+              <option value="NIE">NIE</option>
+              <option value="CIF">CIF</option>
+            </select>
+          </label>
+          <label>DNI / NIE / CIF *
+            <input name="documentId" maxlength="20" required autocomplete="off" />
+          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="tenant-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="tenant-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones del inquilino">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="tenant-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="tenant-notes-label"
+                data-placeholder="Escribí observaciones sobre el inquilino…" data-maxlength="500"></div>
+            </div>
+            <textarea name="authorizationNotes" id="tenant-notes-input" hidden maxlength="500"></textarea>
+          </div>
+          <label class="full">Usuario del sistema
+            <select name="userId" id="tenant-user-select">
+              <option value="">Sin cuenta de usuario</option>
+            </select>
+            <span class="field-hint">Vinculá la cuenta con la que esta persona accede al sistema (opcional).</span>
+          </label>
+          <select name="ownerId" hidden></select>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-contact" data-tenant-pane="contact" hidden>
+        <div class="form-grid">
+          <p class="form-section-title full">Contacto</p>
+          <label id="tenant-label-phone">Teléfono Principal *
+            <div class="verify-row">
+              <input name="phone" maxlength="11" required inputmode="numeric" placeholder="600 000 000"
+                autocomplete="tel" />
+              <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-phone">Verificar</button>
+            </div>
+            <span class="verify-status" id="tenant-phone-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
+          </label>
+          <label>Teléfono Secundario (opcional)
+            <input name="otherPhone" maxlength="11" inputmode="numeric" placeholder="600000000" />
+          </label>
+          <label class="full" id="tenant-label-email">Email *
+            <div class="verify-row">
+              <input name="email" type="email" maxlength="120" required placeholder="inquilino@email.es"
+                autocomplete="email" />
+              <button class="secondary-button verify-btn" type="button" id="tenant-btn-verify-email">Verificar</button>
+            </div>
+            <span class="verify-status" id="tenant-email-verify-status" role="status" aria-live="polite">Pendiente de
+              verificación</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-community" data-tenant-pane="community" hidden>
+        <div class="form-grid">
+          <p class="form-section-title full">Autorizaciones concedidas</p>
+          <fieldset class="full tenant-authorizations">
+            <legend>Autorizaciones concedidas</legend>
+            <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
+            <label><input type="checkbox" name="authorizations" value="community_communications"
+                id="tenant-auth-comm" /> Recibir comunicaciones de la comunidad</label>
+            <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de
+              la unidad</label>
+          </fieldset>
+          <label class="full">Canal preferente de notificaciones (LPH art. 9) (opcional)
+            <select name="notificationPreference">
+              <option value="email" selected>Correo electrónico</option>
+              <option value="postal">Domicilio postal</option>
+              <option value="phone">Teléfono / Mensajería</option>
+            </select>
+          </label>
+          <p class="field-hint full">Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
+            están verificados en la pestaña Contacto y Domicilio.</p>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-contract" data-tenant-pane="contract" hidden>
+        <div class="form-grid">
+          <label>Tipo de contrato (LAU) (opcional)
+            <select name="contractType">
+              <option value="vivienda_habitual" selected>Arrendamiento vivienda habitual</option>
+              <option value="temporada">Arrendamiento de temporada</option>
+              <option value="comercial">Uso distinto de vivienda (local)</option>
+              <option value="cesion">Cesión o comodato</option>
+            </select>
+          </label>
+          <label>Moneda (opcional)
+            <select name="currency">
+              <option value="EUR" selected>Euro (EUR)</option>
+              <option value="USD">Dólar estadounidense (USD)</option>
+              <option value="GBP">Libra esterlina (GBP)</option>
+              <option value="CHF">Franco suizo (CHF)</option>
+            </select>
+          </label>
+          <label>Renta mensual (€) (opcional)
+            <input name="monthlyRent" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
+          </label>
+          <label>Fianza legal (€) (opcional)
+            <input name="deposit" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
+          </label>
+          <p class="field-hint full">Si el monto de la fianza es cero o nulo, se entenderá que no se entregó fianza.</p>
+          <label>Inicio del contrato *
+            <input name="contractStart" type="date" required />
+          </label>
+          <label>Fin del contrato *
+            <input name="contractEnd" type="date" required />
+          </label>
+        </div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-property" data-tenant-pane="property" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Inmueble vinculado</h3>
+            <p class="detail-section-subtitle">Un inquilino solo puede estar vinculado a un inmueble.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-info" id="btn-tenant-link-property" type="button"
+              title="Asociar inmueble existente" aria-label="Asociar inmueble existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="community-edit-link-panel" id="tenant-property-link-panel" hidden>
+          <label>Inmueble (opcional)
+            <select id="tenant-property-link-select"></select>
+          </label>
+          <button class="icon-action-btn btn-save" id="btn-tenant-confirm-property" type="button"
+            title="Asociar inmueble" aria-label="Asociar inmueble">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+          <button class="icon-action-btn btn-cancel" id="btn-tenant-cancel-property" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="community-properties-list" id="tenant-properties-list"></div>
+      </section>
+
+      <section class="community-editor-pane" id="tenant-tab-docs" data-tenant-pane="docs" hidden>
+        <div class="docs-callout">
+          <div class="docs-callout-icon">ℹ️</div>
+          <div>
+            <strong>Documentación del inquilino:</strong>
+            <p>El sistema valida de forma automática la legibilidad y correspondencia de cada archivo. Tras superarla,
+              el Administrador recibirá un aviso para su aprobación.</p>
+          </div>
+        </div>
+        <div class="docs-upload-container">
+          <div class="doc-upload-card" id="tenant-card-doc-dni">
+            <div class="doc-card-header">
+              <div class="doc-card-title-wrap">
+                <span class="doc-card-num">1</span>
+                <div>
+                  <h3 class="doc-card-title">Copia de DNI / NIE / CIF *</h3>
+                  <p class="doc-card-desc">Documento de identidad del inquilino (PDF o JPG/PNG).</p>
+                </div>
+              </div>
+              <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-dni">Pendiente</span>
+            </div>
+            <div class="doc-dropzone" id="tenant-dropzone-dni">
+              <input type="file" id="tenant-input-doc-dni" accept=".pdf,image/jpeg,image/png,image/webp"
+                class="doc-file-input" />
+              <div class="dropzone-content">
+                <p class="dropzone-text"><strong>Arrastra tu documento aquí</strong> o <span
+                    class="dropzone-browse">selecciona un archivo</span></p>
+                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+              </div>
+            </div>
+            <div class="doc-sample-bar">
+              <button class="sample-doc-btn" type="button" id="tenant-btn-sample-dni">✨ Cargar documento de
+                prueba</button>
+            </div>
+            <div class="doc-validation-result" id="tenant-result-doc-dni" hidden></div>
+          </div>
+        </div>
+        <div class="doc-upload-card" id="tenant-card-doc-contract">
+          <div class="doc-card-header">
+            <div class="doc-card-title-wrap">
+              <span class="doc-card-num">2</span>
+              <div>
+                <h3 class="doc-card-title">Contrato de arrendamiento *</h3>
+                <p class="doc-card-desc">Contrato firmado (PDF o JPG/PNG).</p>
+              </div>
+            </div>
+            <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-contract">Pendiente</span>
+          </div>
+          <div class="doc-dropzone" id="tenant-dropzone-contract">
+            <input type="file" id="tenant-input-doc-contract" accept=".pdf,image/jpeg,image/png,image/webp"
+              class="doc-file-input" />
+            <div class="dropzone-content">
+              <p class="dropzone-text"><strong>Arrastra el contrato aquí</strong> o <span
+                  class="dropzone-browse">selecciona un archivo</span></p>
+              <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+            </div>
+          </div>
+          <div class="doc-sample-bar">
+            <button class="sample-doc-btn" type="button" id="tenant-btn-sample-contract">✨ Cargar contrato de
+              prueba</button>
+          </div>
+          <div class="doc-validation-result" id="tenant-result-doc-contract" hidden></div>
+        </div>
+        <div class="docs-summary-bar" id="tenant-docs-summary-bar">
+          <div class="docs-summary-text">
+            <span id="tenant-docs-summary-status">0 de 2 documentos subidos</span>
+            <span class="docs-summary-subtext" id="tenant-docs-summary-subtext">Sube la copia del DNI y el contrato de
+              arrendamiento para completar el expediente.</span>
+          </div>
+        </div>
+      </section>
+
+      <p class="form-error" id="tenant-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-tenant-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar inquilino"
+          aria-label="Guardar inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de verificación de contacto para inquilinos -->
+  <dialog id="tenant-verification-dialog" class="dialog-sm" aria-labelledby="tenant-verification-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">VERIFICACIÓN DE CONTACTO</p>
+          <h2 id="tenant-verification-title">Verificar teléfono</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-verification-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro" id="tenant-verification-desc"></p>
+      <div class="verification-target" id="tenant-verification-target"></div>
+      <div class="verification-demo" id="tenant-verification-demo" hidden>
+        <span>Modo demostración — código:</span>
+        <strong id="tenant-verification-demo-code"></strong>
+      </div>
+      <label class="verification-code-label">Código de verificación
+        <input id="tenant-verification-code-input" maxlength="6" inputmode="numeric" placeholder="000000"
+          autocomplete="one-time-code" />
+      </label>
+      <p class="form-error" id="tenant-verification-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="tenant-verification-resend-btn">Reenviar código</button>
+        <button class="primary-button" type="button" id="tenant-verification-confirm-btn">Confirmar código</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="tenant-detail-dialog" aria-labelledby="tenant-detail-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INQUILINOS</p>
+          <h2 id="tenant-detail-title">Ficha del inquilino</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Propietario</span>
+          <span class="detail-value" id="tenant-detail-owner"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Documento</span>
+          <span class="detail-value" id="tenant-detail-document"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Teléfono</span>
+          <span class="detail-value" id="tenant-detail-phone"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Email</span>
+          <span class="detail-value" id="tenant-detail-email"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Unidad</span>
+          <span class="detail-value" id="tenant-detail-property"></span>
+          <button class="secondary-button tenant-property-link" id="tenant-detail-view-property" type="button">Ver
+            unidad</button>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Inicio del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-start"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Fin del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-end"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Tipo de contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-type">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Renta mensual</span>
+          <span class="detail-value" id="tenant-detail-monthly-rent">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Fianza legal</span>
+          <span class="detail-value" id="tenant-detail-deposit">—</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Teléfono de urgencias</span>
+          <span class="detail-value" id="tenant-detail-emergency-phone">—</span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Estado del contrato</span>
+          <span class="detail-value" id="tenant-detail-contract-status"></span>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Documentación</span>
+          <div class="doc-file-list" id="tenant-detail-docs-list"></div>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Autorizaciones</span>
+          <ul class="tenant-detail-authorizations" id="tenant-detail-authorizations"></ul>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Otras autorizaciones / observaciones</span>
+          <span class="detail-value" id="tenant-detail-authorization-notes"></span>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-tenant-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="tenant-detail-edit-btn"
+          title="Editar inquilino" aria-label="Editar inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="tenant-delete-dialog" aria-labelledby="tenant-delete-title">
+    <form method="dialog">
+      <h2 id="tenant-delete-title">¿Eliminar inquilino?</h2>
+      <p id="tenant-delete-message"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" value="cancel" title="Cancelar" aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-tenant-delete" value="confirm"
+          title="Eliminar inquilino" aria-label="Eliminar inquilino">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de verificación de teléfono / email (OTP) -->
+  <dialog id="verification-dialog" class="dialog-sm" aria-labelledby="verification-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">VERIFICACIÓN DE CONTACTO</p>
+          <h2 id="verification-title">Verificar teléfono</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-verification-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro" id="verification-desc">
+        Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca en pocos minutos y es de un
+        solo uso; el botón de reenvío se reactiva cuando corresponda.
+      </p>
+      <div class="verification-target" id="verification-target"></div>
+      <div class="verification-demo" id="verification-demo" hidden>
+        <span>Modo demostración — código:</span>
+        <strong id="verification-demo-code"></strong>
+      </div>
+      <label class="verification-code-label">Código de verificación
+        <input id="verification-code-input" maxlength="6" inputmode="numeric" placeholder="000000"
+          autocomplete="one-time-code" />
+      </label>
+      <p class="form-error" id="verification-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="verification-resend-btn">Reenviar código</button>
+        <button class="primary-button" type="button" id="verification-confirm-btn">Confirmar código</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="property-dialog" aria-labelledby="property-dialog-title">
+    <form id="property-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INMUEBLES</p>
+          <h2 id="property-dialog-title">Nuevo Inmueble</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-dialog" aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+
+          </svg></button>
+      </div>
+      <p class="form-intro">La Comunidad, al menos un propietario y la dirección son obligatorios. Los inquilinos y
+        documentos son opcionales.</p>
+      <nav class="community-editor-tabs property-editor-tabs" aria-label="Secciones del Inmueble">
+        <button class="community-editor-tab active" type="button" data-property-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-property-tab="details" aria-selected="false">Detalles y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-property-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-property-tab="owners"
+          aria-selected="false">Propietarios</button>
+        <button class="community-editor-tab" type="button" data-property-tab="tenants"
+          aria-selected="false">Inquilinos</button>
+        <button class="community-editor-tab" type="button" data-property-tab="docs"
+          aria-selected="false">Documentación</button>
+      </nav>
+      <section class="property-editor-pane" data-property-pane="general">
+        <div class="form-grid">
+          <label>Identificador Inmueble *
+            <input name="plot" maxlength="50" required placeholder="Ej.: Parcela 14, 3.º B" />
+          </label>
+          <label>Comunidad *
+            <select name="communityId" required></select>
+          </label>
+          <label>Tipo de Inmueble *
+            <select name="propertyType" required>
+              <option value="">Selecciona tipo…</option>
+              <option value="parcela">Parcela</option>
+              <option value="vivienda">Vivienda</option>
+              <option value="local">Local</option>
+              <option value="garaje">Plaza de garaje</option>
+              <option value="trastero">Trastero</option>
+            </select>
+          </label>
+          <label>Referencia Catastral (opcional)
+            <input name="cadastralRef" maxlength="20" />
+          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="property-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="property-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones del inmueble">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="property-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="property-notes-label"
+                data-placeholder="Escribí observaciones sobre el inmueble…" data-maxlength="500"></div>
+            </div>
+            <textarea name="notes" id="property-notes-input" hidden maxlength="500"></textarea>
+          </div>
+        </div>
+      </section>
+      <section class="property-editor-pane" data-property-pane="details" hidden>
+        <div class="form-grid">
+          <label class="full">Dirección *
+            <input name="address" maxlength="140" required autocomplete="street-address" />
+          </label>
+          <label>Provincia *
+            <select name="province" required disabled>
+              <option value="">Cargando provincias…</option>
+            </select>
+          </label>
+          <label>Municipio *
+            <select name="city" required disabled>
+              <option value="">Cargando municipios…</option>
+            </select>
+          </label>
+          <label>Código postal *
+            <select name="postalCode" required disabled>
+              <option value="">Cargando códigos postales…</option>
+            </select>
+          </label>
+          <label>Certificado Energético (opcional)
+            <select name="energyCertificate">
+              <option value="">Sin especificar</option>
+              <option value="A">A (Muy eficiente)</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="E">E</option>
+              <option value="F">F</option>
+              <option value="G">G (Menos eficiente)</option>
+              <option value="exento">Exento</option>
+            </select>
+          </label>
+          <label>Superficie (m²) (opcional)
+            <input name="areaM2" inputmode="numeric" maxlength="10" placeholder="Ej: 95" />
+          </label>
+          <label>Planta (opcional)
+            <input name="floor" maxlength="10" />
+          </label>
+          <label>Finca registral (opcional)
+            <input name="registryNumber" maxlength="20" />
+          </label>
+          <label>Puerta (opcional)
+            <input name="door" maxlength="10" />
+          </label>
+          <label>Bloque / Escalera / Portal (opcional)
+            <input name="staircase" maxlength="20" placeholder="Ej: Bloque 2, Esc. A" />
+          </label>
+          <label>Uso (opcional)
+            <select name="propertyUse">
+              <option value="">Sin especificar</option>
+              <option value="residencial">Residencial</option>
+              <option value="comercial">Comercial</option>
+              <option value="garaje">Garaje</option>
+              <option value="trastero">Trastero</option>
+              <option value="otros">Otros</option>
+            </select>
+          </label>
+        </div>
+      </section>
+      <section class="property-editor-pane" data-property-pane="finance" hidden>
+        <div class="form-grid">
+          <label>Cuota de Comunidad (opcional)
+            <input name="communityFee" inputmode="decimal" maxlength="10" placeholder="Ej: 65.50" />
+          </label>
+          <label>Moneda (opcional)
+            <select name="currency">
+              <option value="">Cargando monedas…</option>
+            </select>
+          </label>
+          <label>Coeficiente de participación (%) *
+            <input name="participationCoef" inputmode="decimal" maxlength="10" required placeholder="Ej: 4.2500" />
+          </label>
+          <label>Estado de recibos *
+            <select name="receiptStatus" required>
+              <option value="current">Al corriente</option>
+              <option value="pending">Pagos pendientes</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="property-editor-pane" data-property-pane="owners" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Propietarios asociados (<span id="property-owner-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Asocia propietarios existentes, crea nuevos o desvincula los que ya no
+              correspondan. Debe quedar al menos uno asociado.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="btn-property-add-owner" type="button" title="Crear propietario"
+              aria-label="Crear propietario">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <button class="icon-action-btn btn-info" id="btn-property-link-owner" type="button"
+              title="Asociar propietario existente" aria-label="Asociar propietario existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="community-edit-link-panel" id="property-owner-link-panel" hidden>
+          <label>Propietario (opcional)
+            <select id="property-owner-link-select"></select>
+          </label>
+          <button class="icon-action-btn btn-save" id="btn-property-confirm-owner" type="button"
+            title="Asociar propietario" aria-label="Asociar propietario">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+          <button class="icon-action-btn btn-cancel" id="btn-property-cancel-owner" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="community-properties-list" id="property-owners-list"></div>
+      </section>
+      <section class="property-editor-pane" data-property-pane="tenants" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Inquilinos asociados (<span id="property-tenant-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Asocia inquilinos de los propietarios vinculados, crea nuevos o
+              desvincula los existentes.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="icon-action-btn btn-add" id="btn-property-add-tenant" type="button" title="Crear inquilino"
+              aria-label="Crear inquilino">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <button class="icon-action-btn btn-info" id="btn-property-link-tenant" type="button"
+              title="Asociar inquilino existente" aria-label="Asociar inquilino existente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="community-edit-link-panel" id="property-tenant-link-panel" hidden>
+          <label>Inquilino (opcional)
+            <select id="property-tenant-link-select"></select>
+          </label>
+          <button class="icon-action-btn btn-save" id="btn-property-confirm-tenant" type="button"
+            title="Asociar inquilino" aria-label="Asociar inquilino">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+          <button class="icon-action-btn btn-cancel" id="btn-property-cancel-tenant" type="button" title="Cancelar"
+            aria-label="Cancelar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="community-properties-list" id="property-tenants-list"></div>
+      </section>
+      <section class="property-editor-pane" data-property-pane="docs" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Documentación del inmueble (<span id="property-doc-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Adjunta escrituras, certificados energéticos u otros archivos. Se guardan
+              al pulsar Guardar.</p>
+          </div>
+        </div>
+        <div class="doc-dropzone-compact" id="property-doc-dropzone">
+          <input id="property-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
+            class="doc-file-input" />
+          <div class="doc-dropzone-compact-content">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p><strong>Arrastrá archivos acá</strong> o hacé clic para seleccionar</p>
+            <span>PDF, JPG, PNG o WEBP · máximo 15 MB por archivo · se guardan al pulsar Guardar</span>
+          </div>
+        </div>
+        <div class="doc-sample-bar">
+          <button class="sample-doc-btn" type="button" id="btn-sample-property-doc">✨ Cargar certificado energético de
+            ejemplo (sin validez)</button>
+        </div>
+        <div class="doc-file-list" id="property-document-list"></div>
+      </section>
+      <p class="form-error" id="property-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-property-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar Inmueble"
+          aria-label="Guardar Inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="property-detail-dialog" aria-labelledby="property-detail-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">INMUEBLES</p>
+          <h2 id="property-detail-title">Ficha del inmueble</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">Consulta detallada del inmueble (sólo lectura; para modificar usá «Editar inmueble»).</p>
+      <nav class="community-editor-tabs" aria-label="Secciones del inmueble">
+        <button class="community-editor-tab active" type="button" data-pd-tab="general"
+          aria-selected="true">General</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="details" aria-selected="false">Detalles y
+          Domicilio</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="finance"
+          aria-selected="false">Financiero</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="owners"
+          aria-selected="false">Propietarios</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="tenants"
+          aria-selected="false">Inquilinos</button>
+        <button class="community-editor-tab" type="button" data-pd-tab="docs"
+          aria-selected="false">Documentación</button>
+      </nav>
+      <section class="community-editor-pane" data-pd-pane="general">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Tipo e identificador</span>
+            <span class="detail-value" id="property-detail-label"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Comunidad</span>
+            <span class="detail-value" id="property-detail-community"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Referencia Catastral</span>
+            <span class="detail-value" id="property-detail-registry"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Observaciones</span>
+            <span class="detail-value" id="property-detail-notes">—</span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-pd-pane="details" hidden>
+        <div class="detail-grid">
+          <div class="detail-item full">
+            <span class="detail-label">Dirección</span>
+            <span class="detail-value" id="property-detail-address"></span>
+          </div>
+          <div class="detail-item full">
+            <span class="detail-label">Código postal · Municipio · Provincia</span>
+            <span class="detail-value" id="property-detail-location">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Planta, puerta, superficie</span>
+            <span class="detail-value" id="property-detail-characteristics"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Bloque / Portal / Escalera</span>
+            <span class="detail-value" id="property-detail-staircase">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Certificado Energético</span>
+            <span class="detail-value badge" id="property-detail-energyCertificate">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Uso</span>
+            <span class="detail-value" id="property-detail-use">—</span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-pd-pane="finance" hidden>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Cuota de comunidad</span>
+            <span class="detail-value" id="property-detail-communityFee">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Coeficiente de participación</span>
+            <span class="detail-value" id="property-detail-coef">—</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Estado de recibos</span>
+            <span class="detail-value" id="property-detail-receipts"></span>
+          </div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-pd-pane="owners" hidden>
+        <div class="detail-item full">
+          <span class="detail-label">Propietario(s)</span>
+          <span class="detail-value" id="property-detail-owner"></span>
+          <div id="property-detail-owners-list" style="margin-top:4px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-pd-pane="tenants" hidden>
+        <div class="detail-item full">
+          <span class="detail-label">Inquilino(s)</span>
+          <span class="detail-value" id="property-detail-tenant"></span>
+          <div id="property-detail-tenants-list" style="margin-top:4px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+      </section>
+      <section class="community-editor-pane" data-pd-pane="docs" hidden>
+        <div class="detail-item full">
+          <span class="detail-label">Documentación</span>
+          <div class="property-detail-documents" id="property-detail-documents"></div>
+        </div>
+      </section>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-btn" title="Cerrar"
+          aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-edit btn-lg" type="button" id="property-detail-edit-btn"
+          title="Editar inmueble" aria-label="Editar inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Diálogo de usuario (Administración) -->
+  <dialog id="user-dialog" aria-labelledby="user-dialog-title">
+    <form id="user-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">ADMINISTRACIÓN</p>
+          <h2 id="user-dialog-title">Nuevo usuario</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-user-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <div class="form-grid">
+        <label>Nombre (opcional)
+          <input name="nombre" maxlength="60" autocomplete="given-name" />
+        </label>
+        <label>Apellidos (opcional)
+          <input name="apellido" maxlength="80" autocomplete="family-name" />
+        </label>
+        <label>Usuario *
+          <input name="usuario" maxlength="40" required autocomplete="username" />
+        </label>
+        <label>Email (opcional)
+          <input name="email" type="email" maxlength="120" autocomplete="email" />
+        </label>
+        <label>Contraseña (obligatoria al crear; vacía para conservarla)
+          <input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" />
+        </label>
+        <label>Repetir contraseña (opcional)
+          <input name="password2" type="password" minlength="8" maxlength="128" autocomplete="new-password" />
+        </label>
+        <label>Rol *
+          <select name="rol" required></select>
+        </label>
+        <label class="checkbox-line">
+          <input type="checkbox" name="activo" checked />
+          Usuario activo
+        </label>
+        <p class="form-section-title full">Perfiles vinculados</p>
+        <div class="admin-link-section" id="user-link-section">
+          <label>Perfil Propietario (opcional)
+            <select name="linkedOwnerId" id="user-linked-owner"></select>
+            <span class="field-hint">Vinculá el registro de propietario existente (por DNI, nombre o inmueble).</span>
+          </label>
+          <label>Perfil Inquilino (opcional)
+            <select name="linkedTenantId" id="user-linked-tenant"></select>
+            <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
+          </label>
+        </div>
+        <p class="field-hint full" id="user-link-superadmin-hint" hidden>Los roles de administración de la plataforma
+          (Super Administrador y Administrador) administran todo el sistema: no llevan perfiles vinculados.</p>
+      </div>
+      <p class="form-error" id="user-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-user-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar usuario"
+          aria-label="Guardar usuario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de rol (Administración) -->
+  <dialog id="role-dialog" aria-labelledby="role-dialog-title">
+    <form id="role-form" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">ADMINISTRACIÓN</p>
+          <h2 id="role-dialog-title">Nuevo rol</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-role-dialog" aria-label="Cerrar"><svg
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Nombre del rol *
+          <input name="nombre" maxlength="40" required placeholder="Ej: contador" />
+        </label>
+        <label class="full">Descripción (opcional)
+          <input name="descripcion" maxlength="200" />
+        </label>
+        <fieldset class="full role-permissions">
+          <legend>Permisos</legend>
+          <div id="role-permissions-list"></div>
+        </fieldset>
+      </div>
+      <p class="form-error" id="role-form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-role-dialog" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-save btn-lg" type="submit" title="Guardar rol" aria-label="Guardar rol">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de confirmación de cierre con cambios pendientes -->
+  <dialog id="confirm-close-dialog" class="dialog-sm">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">CAMBIOS SIN GUARDAR</p>
+          <h2>¿Cerrar sin guardar?</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-confirm-close-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">Hay cambios pendientes de guardar en este formulario. Si cerrás ahora se van a perder.</p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="confirm-close-stay">Seguir editando</button>
+        <button class="btn-reject-danger" type="button" id="confirm-close-leave">Cerrar sin guardar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Diálogo de confirmación para eliminar Inmueble -->
+  <dialog id="property-delete-dialog" aria-labelledby="property-delete-title">
+    <form method="dialog">
+      <h2 id="property-delete-title">¿Eliminar inmueble?</h2>
+      <p id="property-delete-message"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" id="cancel-property-delete-btn" type="button" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-property-delete" type="button"
+          title="Eliminar inmueble" aria-label="Eliminar inmueble">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 1. POPUP DE MENSAJE EMERGENTE: DOCUMENTACIÓN PROCESADA CORRECTAMENTE -->
+  <dialog id="doc-success-dialog" aria-labelledby="doc-success-title">
+    <div class="dialog-content success-modal-content">
+      <div class="success-icon-wrap">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#198b84" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <h2 id="doc-success-title">Documentación recibida</h2>
+      <p class="success-lead">
+        Los archivos se han guardado y quedan pendientes de revisión administrativa.
+      </p>
+
+      <div class="success-audit-box">
+        <div class="audit-item">
+          <span class="audit-check">✓</span>
+          <div>
+            <strong>Copia de DNI (ambas caras):</strong>
+            <span id="success-audit-dni">DNI español verificado · Legibilidad 98% (Óptima)</span>
+          </div>
+        </div>
+        <div class="audit-item">
+          <span class="audit-check">✓</span>
+          <div>
+            <strong>Recibo bancario o certificado de titularidad:</strong>
+            <span id="success-audit-bank">Entidad bancaria e IBAN verificados · Legibilidad 96%</span>
+          </div>
+        </div>
+        <div class="audit-item">
+          <span class="audit-check">✓</span>
+          <div>
+            <strong>Copia de la escritura del inmueble:</strong>
+            <span id="success-audit-deed">Escritura notarial de propiedad verificada · Legibilidad 95%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="success-next-steps">
+        <div class="step-badge">
+          <span class="step-num">1</span>
+          <span><strong>Registro único:</strong> Los documentos han quedado guardados y relacionados <em>sólo y
+              únicamente</em> para este usuario.</span>
+        </div>
+        <div class="step-badge highlight">
+          <span class="step-num">2</span>
+          <span><strong>Aviso al Administrador:</strong> Se ha creado un aviso en el buzón del administrador para que
+            revise la documentación.</span>
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="btn-view-admin-email">✉️ Ver email enviado al
+          Administrador</button>
+        <button class="primary-button" type="button" id="close-doc-success-btn">Entendido y continuar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 2. DIÁLOGO VISOR DE EMAIL RECIBIDO POR EL ADMINISTRADOR -->
+  <dialog id="admin-email-dialog" aria-labelledby="admin-email-title">
+    <div class="dialog-content email-modal-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">NOTIFICACIÓN POR CORREO ELECTRÓNICO</p>
+          <h2 id="admin-email-title">Email recibido por el Administrador</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-admin-email-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+
+      <div class="email-envelope">
+        <div class="email-meta-bar">
+          <div class="email-meta-row">
+            <span class="email-meta-label">De:</span>
+            <span class="email-meta-value"><strong>Sistema Peñarrubia</strong>
+              &lt;notificaciones@penarrubia.es&gt;</span>
+          </div>
+          <div class="email-meta-row">
+            <span class="email-meta-label">Para:</span>
+            <span class="email-meta-value"><strong>Administrador</strong> &lt;admin@penarrubia.es&gt;</span>
+          </div>
+          <div class="email-meta-row">
+            <span class="email-meta-label">Fecha:</span>
+            <span class="email-meta-value" id="email-date-display">12/10/2026, 19:35</span>
+          </div>
+          <div class="email-meta-row">
+            <span class="email-meta-label">Asunto:</span>
+            <span class="email-meta-value email-subject" id="email-subject-display">[Peñarrubia] Solicitud de
+              verificación y aprobación de documentación</span>
+          </div>
+        </div>
+
+        <div class="email-body-content">
+          <div class="email-branding">
+            <span class="email-brand-logo">peñarrubia<span>·</span></span>
+            <span class="email-badge-tag">EXPEDIENTE DE ASOCIADO</span>
+          </div>
+          <p class="email-salutation">Estimado Administrador,</p>
+          <p>
+            El usuario propietario <strong id="email-owner-name">Carlos Ruiz Mendoza</strong> con DNI <code
+              id="email-owner-dni">47895231P</code>, perteneciente a la comunidad <strong
+              id="email-owner-comm">Residencial Peñarrubia</strong> (<span id="email-owner-plot">Parcela 14</span>), ha
+            completado la subida de la documentación requerida para su cuenta.
+          </p>
+          <p>
+            El sistema ha realizado la <strong>validación automática previa</strong> con resultado satisfactorio:
+          </p>
+
+          <div class="email-table-wrap">
+            <table class="email-docs-table">
+              <thead>
+                <tr>
+                  <th>Documentación exigida</th>
+                  <th>Archivo aportado</th>
+                  <th>Validación del sistema</th>
+                  <th>Legibilidad</th>
+                </tr>
+              </thead>
+              <tbody id="email-docs-table-body">
+                <!-- Rellenado dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="email-alert-notice">
+            <p><strong>Acción requerida:</strong> Por favor, acceda a la plataforma para verificar el contenido
+              documental y proceder a su <strong>aprobación oficial</strong> o, si procede, solicitar subsanación al
+              propietario.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="close-admin-email-btn">Cerrar</button>
+        <a class="secondary-button" id="email-mailto-link" href="#" target="_blank">Abrir en cliente de correo local
+          (mailto)</a>
+        <button class="primary-button" type="button" id="email-goto-approval-btn">Revisar y Aprobar
+          Documentación</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 3. BUZÓN UNIFICADO DE NOTIFICACIONES -->
+  <dialog id="notifications-dialog" class="notification-inbox-dialog" aria-labelledby="notifications-title" aria-describedby="notifications-description">
+    <div class="dialog-content inbox-modal-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">MIS NOTIFICACIONES</p>
+          <h2 id="notifications-title">Mis notificaciones</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-notifications-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro" id="notifications-description">Avisos de administración y novedades de tus perfiles, reunidos en un solo lugar.</p>
+      <nav class="community-editor-tabs notification-tabs" id="notifications-tabs" aria-label="Buzones de notificaciones">
+        <button class="community-editor-tab active" type="button" data-notification-tab="admin" aria-selected="true" hidden>Administración <span class="notification-tab-count" id="admin-tab-count" hidden>0</span></button>
+        <button class="community-editor-tab" type="button" data-notification-tab="owner" aria-selected="false" hidden>Mis avisos <span class="notification-tab-count" id="owner-tab-count" hidden>0</span></button>
+      </nav>
+      <section data-notification-pane="admin" hidden>
+        <p class="form-intro" id="admin-inbox-description">Documentación y gestiones de propietarios que requieren tu atención. Abrí un aviso para ver los documentos y acceder al expediente.</p>
+        <div class="notification-inbox-summary" id="admin-inbox-summary" role="status" aria-live="polite"></div>
+        <div class="notification-inbox-toolbar">
+          <div class="notification-inbox-filters" role="group" aria-label="Filtrar avisos administrativos">
+            <button type="button" data-admin-inbox-filter="all" aria-pressed="true">Todos</button>
+            <button type="button" data-admin-inbox-filter="unread" aria-pressed="false">Sin leer</button>
+            <button type="button" data-admin-inbox-filter="read" aria-pressed="false">Leídos</button>
+          </div>
+          <label class="notification-inbox-search"><span class="sr-only">Buscar avisos administrativos</span><input type="search" id="admin-inbox-search" placeholder="Propietario, comunidad o asunto" /></label>
+        </div>
+        <p class="notification-inbox-results" id="admin-inbox-results"></p>
+        <div class="inbox-list" id="admin-inbox-list" role="list" aria-label="Avisos de administración"></div>
+      </section>
+      <section data-notification-pane="owner" hidden>
+        <p class="form-intro" id="owner-inbox-description">Respuestas de administración y novedades sobre tu documentación. Cada aviso indica si ya lo leíste.</p>
+        <div class="notification-inbox-owner-actions">
+          <div class="notification-inbox-summary" id="owner-inbox-summary" role="status" aria-live="polite"></div>
+          <button class="secondary-button notification-mark-all" type="button" id="mark-all-owner-notifs-read-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 12 4 4L17 6M12 16l9-9"/></svg><span>Marcar todos como leídos</span></button>
+        </div>
+        <div class="notification-inbox-toolbar">
+          <div class="notification-inbox-filters" role="group" aria-label="Filtrar mis avisos">
+            <button type="button" data-owner-inbox-filter="all" aria-pressed="true">Todos</button>
+            <button type="button" data-owner-inbox-filter="unread" aria-pressed="false">Sin leer</button>
+            <button type="button" data-owner-inbox-filter="read" aria-pressed="false">Leídos</button>
+          </div>
+          <label class="notification-inbox-search"><span class="sr-only">Buscar en mis avisos</span><input type="search" id="owner-inbox-search" placeholder="Buscar por título o mensaje" /></label>
+        </div>
+        <p class="notification-inbox-feedback" id="owner-inbox-feedback" role="status" aria-live="polite"></p>
+        <p class="notification-inbox-results" id="owner-inbox-results"></p>
+        <div class="inbox-list" id="owner-inbox-list" role="list" aria-label="Mis avisos"></div>
+      </section>
+    </div>
+  </dialog>
+
+  <!-- 4. VISOR COMPLETO DE DOCUMENTO CON AUDITORÍA -->
+  <dialog id="doc-viewer-dialog" aria-labelledby="doc-viewer-title">
+    <div class="dialog-content viewer-modal-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow" id="doc-viewer-eyebrow">DOCUMENTACIÓN DE PROPIETARIO</p>
+          <h2 id="doc-viewer-title">Visor de Documento</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-doc-viewer-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <div class="doc-viewer-body">
+        <div class="doc-viewer-preview-pane" id="doc-viewer-preview-pane">
+          <!-- Renderizado del documento (imagen/canvas/svg) -->
+        </div>
+        <div class="doc-viewer-info-pane">
+          <h3 class="viewer-pane-heading">Revisión documental</h3>
+          <div class="viewer-meta-row">
+            <span class="viewer-meta-label">Titular:</span>
+            <span class="viewer-meta-val" id="doc-viewer-owner"></span>
+          </div>
+          <div class="viewer-meta-row">
+            <span class="viewer-meta-label">Archivo:</span>
+            <span class="viewer-meta-val" id="doc-viewer-filename"></span>
+          </div>
+          <div class="viewer-meta-row">
+            <span class="viewer-meta-label">Fecha de subida:</span>
+            <span class="viewer-meta-val" id="doc-viewer-date"></span>
+          </div>
+          <div class="viewer-meta-row">
+            <span class="viewer-meta-label">Evaluación de legibilidad:</span>
+            <div class="score-bar-wrap">
+              <div class="score-bar-fill" id="doc-viewer-score-bar" style="width: 98%;"></div>
+            </div>
+            <span class="viewer-meta-val" id="doc-viewer-score-text">98% (Óptima)</span>
+          </div>
+
+          <div class="viewer-checks-wrap">
+            <h4>Revisión del contenido:</h4>
+            <ul class="viewer-checks-list" id="doc-viewer-checks-list"></ul>
+          </div>
+
+          <div class="viewer-approval-status" id="doc-viewer-approval-status">
+            <!-- Estado de aprobación -->
+          </div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" id="close-doc-viewer-btn">Cerrar visor</button>
+        <button class="primary-button" type="button" id="doc-viewer-quick-approve-btn">Aprobar este documento</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 5. DIÁLOGO DE RECHAZO / SUBSANACIÓN -->
+  <dialog id="doc-reject-dialog" aria-labelledby="doc-reject-title">
+    <form id="doc-reject-form" method="dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">ADMINISTRACIÓN</p>
+          <h2 id="doc-reject-title">Rechazar / Solicitar subsanación</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-doc-reject-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">Indica el motivo del rechazo para que el propietario conozca qué documento o aspecto debe
+        corregir.</p>
+      <label class="full" style="display:block; margin: 16px 0;">Motivo del requerimiento *
+        <textarea id="doc-reject-reason" required rows="3" style="width:100%;"
+          placeholder="Ej: La imagen del DNI no muestra con claridad los números del reverso, o el recibo bancario no acredita la titularidad requerida..."></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="cancel-doc-reject-btn" title="Cancelar"
+          aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="danger-button" type="submit" id="confirm-doc-reject-btn">Confirmar rechazo</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de confirmación para eliminar Propietario -->
+  <dialog id="owner-delete-dialog" aria-labelledby="owner-delete-title">
+    <form method="dialog">
+      <h2 id="owner-delete-title">¿Eliminar propietario?</h2>
+      <p id="owner-delete-message"></p>
+      <div class="dialog-actions">
+        <button class="icon-action-btn btn-cancel btn-lg" value="cancel" title="Cancelar" aria-label="Cancelar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button class="icon-action-btn btn-delete btn-lg" id="confirm-owner-delete" value="confirm"
+          title="Eliminar propietario" aria-label="Eliminar propietario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal único de errores de validación del formulario de propietario -->
+  <dialog id="owner-validation-dialog" aria-labelledby="owner-validation-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">VALIDACIÓN</p>
+          <h2 id="owner-validation-title">Revisa los datos del propietario</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-owner-validation-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">No se ha podido guardar. Corrige todos los puntos siguientes:</p>
+      <ul class="validation-error-list" id="owner-validation-list" aria-live="assertive"></ul>
+      <div class="dialog-actions">
+        <button class="primary-button" type="button" id="close-owner-validation-btn">Entendido</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="validation-dialog" class="dialog-sm" aria-labelledby="validation-title">
+    <div class="dialog-content">
+      <div class="validation-modal-header">
+        <span class="validation-modal-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg></span>
+        <div>
+          <p class="eyebrow">VALIDACIÓN</p>
+          <h2 id="validation-title">Revisá los siguientes datos</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-validation-dialog"
+          aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+             <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg></button>
+      </div>
+      <p class="form-intro">No se ha podido guardar. Corregí todos los puntos siguientes:</p>
+      <ul class="validation-error-list" id="validation-list" aria-live="assertive"></ul>
+      <div class="dialog-actions">
+        <button class="primary-button" type="button" id="close-validation-btn">Entendido</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="account-profile-dialog" class="dialog-sm account-dialog" aria-labelledby="account-profile-title">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">MI CUENTA</p>
+          <h2 id="account-profile-title">Mi perfil</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" aria-label="Cerrar mi perfil"
+          data-close-account-dialog="account-profile-dialog">×</button>
+      </div>
+      <dl class="account-profile-grid">
+        <div>
+          <dt>Nombre</dt>
+          <dd id="account-profile-name"></dd>
+        </div>
+        <div>
+          <dt>Usuario</dt>
+          <dd id="account-profile-username"></dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd id="account-profile-email"></dd>
+        </div>
+        <div>
+          <dt>Rol</dt>
+          <dd id="account-profile-role"></dd>
+        </div>
+      </dl>
+      <p class="form-intro" id="account-profile-hint"></p>
+      <div class="account-profile-links" id="account-profile-links"></div>
+      <div class="dialog-actions"><button class="primary-button" type="button"
+          data-close-account-dialog="account-profile-dialog">Cerrar perfil</button></div>
+    </div>
+  </dialog>
+  <dialog id="account-password-dialog" class="dialog-sm account-dialog" aria-labelledby="account-password-title">
+    <form id="account-password-form" class="dialog-content" novalidate>
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">SEGURIDAD</p>
+          <h2 id="account-password-title">Cambiar contraseña</h2>
+        </div>
+        <button class="icon-action-btn btn-cancel btn-lg" type="button" aria-label="Cerrar cambio de contraseña"
+          data-close-account-dialog="account-password-dialog">×</button>
+      </div>
+      <p class="form-intro" id="account-password-help">Usá entre 8 y 128 caracteres. Al guardar se cerrarán tus sesiones
+        y tendrás que iniciar sesión con la nueva contraseña.</p>
+      <div class="form-grid">
+        <label class="full">Contraseña actual<input name="currentPassword" type="password"
+            autocomplete="current-password" maxlength="128" required /></label>
+        <label class="full">Nueva contraseña<input name="newPassword" type="password" autocomplete="new-password"
+            minlength="8" maxlength="128" aria-describedby="account-password-help" required /></label>
+        <label class="full">Repetir nueva contraseña<input name="confirmPassword" type="password"
+            autocomplete="new-password" minlength="8" maxlength="128" required /></label>
+      </div>
+      <p class="form-error" id="account-password-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button"
+          data-close-account-dialog="account-password-dialog">Cancelar</button>
+        <button class="primary-button" type="submit" id="account-password-submit">Guardar contraseña</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
+  <script src="js/municipios-ine.js?v=3"></script>
+  <script type="module" src="js/main.js?v=3"></script>
+</body>
+
+</html>

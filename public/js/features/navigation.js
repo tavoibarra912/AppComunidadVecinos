@@ -1,0 +1,319 @@
+import { state, ROLE_LABELS, getCurrentUser, hasPermission } from "../state.js";
+
+import { accountView } from "../account-view.js";
+import { renderCommunities } from "./comunidades.js";
+import { renderOwners } from "./propietarios.js";
+import { renderTenants } from "./inquilinos.js";
+import { renderProperties } from "./inmuebles.js";
+import { renderHomeDashboard } from "./home.js";
+import { renderAdministracion } from "./administracion.js";
+import { renderCommunication } from "./communication.js";
+import { feeNavigation, renderFeesPage } from "./fees.js";
+import "./auth.js";
+import { updateOwnerInboxBadge } from "./notificaciones.js";
+import { readInjectedBrand } from "../brand.js";
+
+/** Título de la pestaña: siempre el Nombre visible configurado en la plataforma. */
+function brandTitle() {
+  return readInjectedBrand().nombre || "Peñarrubia";
+}
+
+const userAvatar = document.querySelector("#user-avatar");
+const userRoleLabel = document.querySelector("#user-role-label");
+const newOwnerBtn = document.querySelector("#new-owner");
+const newTenantBtn = document.querySelector("#new-tenant");
+const navHome = document.querySelector("#nav-home");
+const mobileNavHome = document.querySelector("#mobile-nav-home");
+const secHome = document.querySelector("#home");
+const navComunidades = document.querySelector("#nav-comunidades");
+const mobileNavComunidades = document.querySelector("#mobile-nav-comunidades");
+const navPropietarios = document.querySelector("#nav-propietarios");
+const mobileNavPropietarios = document.querySelector("#mobile-nav-propietarios");
+const navInmuebles = document.querySelector("#nav-inmuebles");
+const mobileNavInmuebles = document.querySelector("#mobile-nav-inmuebles");
+const navInquilinos = document.querySelector("#nav-inquilinos");
+const navAdministracion = document.querySelector("#nav-administracion");
+const navCuotas = document.querySelector("#nav-cuotas");
+const mobileNavCuotas = document.querySelector("#mobile-nav-cuotas");
+const secCuotas = document.querySelector("#cuotas");
+const mobileNavInquilinos = document.querySelector("#mobile-nav-inquilinos");
+const secComunidades = document.querySelector("#comunidades");
+const secPropietarios = document.querySelector("#propietarios");
+const secInmuebles = document.querySelector("#inmuebles");
+const secTenants = document.querySelector("#inquilinos");
+const secAdministracion = document.querySelector("#administracion");
+const sidebarLabel = document.querySelector("#sidebar-label");
+const comHeadingEyebrow = document.querySelector("#comunidades-heading-eyebrow");
+const comHeadingTitle = document.querySelector("#comunidades-heading-title");
+const comHeadingSubtitle = document.querySelector("#comunidades-heading-subtitle");
+const newCommunityBtn = document.querySelector("#new-community");
+const comToolbar = document.querySelector("#comunidades-toolbar");
+const ownersHeadingEyebrow = document.querySelector("#owners-heading-eyebrow");
+const ownersHeadingTitle = document.querySelector("#owners-heading-title");
+const ownersHeadingSubtitle = document.querySelector("#owners-heading-subtitle");
+const ownersToolbar = document.querySelector("#owners-toolbar");
+const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
+
+// === Elementos de navegación: declarados arriba (bloque consolidado) ===
+
+export function applyRoleUI() {
+  const isOwner = state.activeRole === "owner";
+  const user = getCurrentUser();
+  const feeAccess = feeNavigation();
+  for (const link of [navCuotas, mobileNavCuotas]) {
+    if (link) { link.hidden = !feeAccess.visible; link.textContent = feeAccess.title; }
+  }
+  const account = accountView(state, ROLE_LABELS);
+  const roleLabel = ROLE_LABELS[user?.rol] || user?.rol || "";
+
+  // 1. Selector y perfil en topbar (login simulado)
+  const displayName = `${user?.nombre || ""} ${user?.apellido || ""}`.trim() || user?.usuario || "?";
+  if (userAvatar) userAvatar.textContent = displayName.charAt(0).toUpperCase();
+  if (userRoleLabel) userRoleLabel.textContent = `${displayName} · ${roleLabel}`;
+
+  // 2. Buzón unificado en topbar: visible con cualquiera de los dos permisos.
+  const canReadAdminInbox = hasPermission("admin_notification:read");
+  const canReadOwnerInbox = hasPermission("owner_notification:read");
+  if (topbarInboxBtn) {
+    topbarInboxBtn.style.display =
+      canReadAdminInbox || canReadOwnerInbox ? "" : "none";
+  }
+  updateOwnerInboxBadge();
+
+  // 3. Etiqueta y opciones en Sidebar / Navegación
+  if (sidebarLabel) {
+    sidebarLabel.textContent = isOwner ? "MI ÁREA PERSONAL" : "GESTIÓN ADMINISTRADOR";
+  }
+  if (navComunidades) navComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
+  if (mobileNavComunidades) mobileNavComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
+  if (navPropietarios) navPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
+  if (mobileNavPropietarios) mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
+  if (navInmuebles) navInmuebles.hidden = !hasPermission("property:read");
+  if (mobileNavInmuebles) mobileNavInmuebles.hidden = !hasPermission("property:read");
+  if (navAdministracion) navAdministracion.hidden = !["admin:users", "admin:roles", "admin:settings", "audit:read", "admin:providers"].some(p => hasPermission(p));
+  document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach(link => {
+    link.hidden = isOwner;
+  });
+  newTenantBtn.hidden = isOwner || !hasPermission("tenant:create");
+
+  for (const link of [navPropietarios, mobileNavPropietarios]) if (link) link.hidden = !hasPermission("owner:read");
+  for (const link of [navInquilinos, mobileNavInquilinos]) if (link) link.hidden = !hasPermission("tenant:read");
+  // 4. Sección Comunidades
+  if (comHeadingEyebrow) comHeadingEyebrow.textContent = isOwner ? (account.communities.length ? "MIS COMUNIDADES" : "VINCULACIÓN DE PERFIL") : "ASOCIACIÓN DE PROPIETARIOS";
+  if (comHeadingTitle) comHeadingTitle.textContent = isOwner ? (account.communities.length > 1 ? "Mis comunidades" : "Mi comunidad") : "Comunidades de vecinos";
+  if (comHeadingSubtitle) comHeadingSubtitle.textContent = isOwner
+    ? "Aquí aparecen las comunidades vinculadas a tus perfiles."
+    : "Consulta y gestiona las comunidades vinculadas a Peñarrubia.";
+  if (newCommunityBtn) newCommunityBtn.style.display = isOwner || !hasPermission("community:create") ? "none" : "";
+  if (comToolbar) comToolbar.style.display = isOwner ? "none" : "";
+
+  // 5. Sección Propietarios
+  if (ownersHeadingEyebrow) ownersHeadingEyebrow.textContent = isOwner ? "MI CUENTA Y DOCUMENTACIÓN" : "ASOCIACIÓN DE PROPIETARIOS";
+  if (ownersHeadingTitle) ownersHeadingTitle.textContent = isOwner ? "Mi Perfil de Propietario" : "Propietarios";
+  if (ownersHeadingSubtitle) ownersHeadingSubtitle.textContent = isOwner
+    ? "Consulta tu expediente de asociado, adjunta tus documentos requeridos y comprueba su estado de aprobación."
+    : "Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.";
+  if (newOwnerBtn) newOwnerBtn.style.display = isOwner || !hasPermission("owner:create") ? "none" : "";
+  if (ownersToolbar) ownersToolbar.style.display = isOwner ? "none" : "";
+
+  // 6. Banners informativos de modo propietario
+  const bannerCom = document.querySelector("#owner-view-banner-com");
+  if (bannerCom) {
+    bannerCom.style.display = isOwner ? "flex" : "none";
+    document.querySelector("#community-profile-title").textContent = `${account.communityTitle}:`;
+    document.querySelector("#community-profile-message").textContent = account.communityMessage;
+    document.querySelector("#community-profile-name").textContent = account.displayName;
+  }
+  const bannerOwn = document.querySelector("#owner-view-banner-own");
+  if (bannerOwn) bannerOwn.style.display = isOwner && account.owners.length > 0 ? "flex" : "none";
+}
+
+
+export function handleRouting() {
+  const hash = (window.location.hash || "#home").split("?")[0].toLowerCase();
+  const isOwner = state.activeRole === "owner";
+  const communicationSection = document.querySelector("#comunicacion");
+  if (secCuotas) { secCuotas.hidden = true; secCuotas.style.display = "none"; }
+  for (const link of [navCuotas, mobileNavCuotas]) { link?.classList.remove("active"); link?.removeAttribute("aria-current"); }
+  communicationSection.hidden = true;
+  communicationSection.style.display = "none";
+  document.querySelectorAll('[href="#comunicacion"]').forEach(el => el.classList.remove("active"));
+  if ((hash === "#inmuebles" && !hasPermission("property:read")) || (hash === "#inquilinos" && !hasPermission("tenant:read"))) {
+    window.location.hash = "#home";
+    return;
+  }
+
+  if (secHome) {
+    secHome.hidden = true;
+    secHome.style.display = "none";
+  }
+  if (secComunidades) {
+    secComunidades.hidden = true;
+    secComunidades.style.display = "none";
+  }
+  if (secPropietarios) {
+    secPropietarios.hidden = true;
+    secPropietarios.style.display = "none";
+  }
+  if (secInmuebles) {
+    secInmuebles.hidden = true;
+    secInmuebles.style.display = "none";
+  }
+  if (secTenants) {
+    secTenants.hidden = true;
+    secTenants.style.display = "none";
+  }
+  if (secAdministracion) {
+    secAdministracion.hidden = true;
+    secAdministracion.style.display = "none";
+  }
+
+  [navHome, mobileNavHome, navComunidades, mobileNavComunidades, navInmuebles, mobileNavInmuebles, navPropietarios, mobileNavPropietarios, navInquilinos, mobileNavInquilinos, navAdministracion].forEach(el => {
+    if (el) el.classList.remove("active");
+  });
+
+  if (hash === "#cuotas") {
+    if (!feeNavigation().visible) { window.location.hash = "#home"; return; }
+    secCuotas.hidden = false; secCuotas.style.display = "block";
+    for (const link of [navCuotas, mobileNavCuotas]) { link?.classList.add("active"); link?.setAttribute("aria-current", "page"); }
+    if (mobileNavCuotas?.offsetParent) {
+      const nav = mobileNavCuotas.parentElement;
+      nav.scrollLeft = Math.max(0, mobileNavCuotas.offsetLeft - nav.clientWidth + mobileNavCuotas.offsetWidth + 12);
+    }
+    document.title = brandTitle();
+    renderFeesPage();
+  } else if (hash === "#comunicacion") {
+    communicationSection.hidden = false;
+    communicationSection.style.display = "block";
+    document.querySelectorAll('[href="#comunicacion"]').forEach(el => el.classList.add("active"));
+    document.title = brandTitle();
+    renderCommunication();
+  } else if (hash === "#administracion") {
+    if (!["admin:users", "admin:roles", "admin:settings", "audit:read", "admin:providers"].some(p => hasPermission(p))) {
+      window.location.hash = "#home";
+      return;
+    }
+    if (secAdministracion) {
+      secAdministracion.hidden = false;
+      secAdministracion.style.display = "block";
+    }
+    if (navAdministracion) navAdministracion.classList.add("active");
+    document.title = brandTitle();
+    renderAdministracion();
+  } else if (hash === "#inquilinos") {
+    if (secTenants) {
+      secTenants.hidden = false;
+      secTenants.style.display = "block";
+    }
+    if (navInquilinos) navInquilinos.classList.add("active");
+    if (mobileNavInquilinos) mobileNavInquilinos.classList.add("active");
+    document.title = brandTitle();
+    renderTenants();
+  } else if (hash === "#propietarios") {
+    if (secPropietarios) {
+      secPropietarios.hidden = false;
+      secPropietarios.style.display = "block";
+    }
+    if (navPropietarios) navPropietarios.classList.add("active");
+    if (mobileNavPropietarios) mobileNavPropietarios.classList.add("active");
+    document.title = brandTitle();
+    renderOwners();
+  } else if (hash === "#inmuebles") {
+    if (secInmuebles) {
+      secInmuebles.hidden = false;
+      secInmuebles.style.display = "block";
+    }
+    if (navInmuebles) navInmuebles.classList.add("active");
+    if (mobileNavInmuebles) mobileNavInmuebles.classList.add("active");
+    document.title = brandTitle();
+    renderProperties();
+  } else if (hash === "#comunidades") {
+    if (secComunidades) {
+      secComunidades.hidden = false;
+      secComunidades.style.display = "block";
+    }
+    if (navComunidades) navComunidades.classList.add("active");
+    if (mobileNavComunidades) mobileNavComunidades.classList.add("active");
+    document.title = brandTitle();
+    renderCommunities();
+  } else {
+    if (secHome) {
+      secHome.hidden = false;
+      secHome.style.display = "block";
+    }
+    if (navHome) navHome.classList.add("active");
+    if (mobileNavHome) mobileNavHome.classList.add("active");
+    document.title = brandTitle();
+    renderHomeDashboard();
+  }
+}
+
+export function navigateToSection(targetHash) {
+  if (window.location.hash !== targetHash) {
+    window.location.hash = targetHash;
+  }
+  handleRouting();
+}
+
+[navHome, mobileNavHome].forEach(el => {
+  if (el) {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateToSection("#home");
+    });
+  }
+});
+
+[navComunidades, mobileNavComunidades].forEach(el => {
+  if (el) {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateToSection("#comunidades");
+    });
+  }
+});
+
+[navPropietarios, mobileNavPropietarios].forEach(el => {
+  if (el) {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigateToSection("#propietarios");
+    });
+  }
+});
+
+[navInmuebles, mobileNavInmuebles].forEach(el => {
+  if (el) {
+    el.addEventListener("click", event => {
+      event.preventDefault();
+      navigateToSection("#inmuebles");
+    });
+  }
+});
+
+[navInquilinos, mobileNavInquilinos].forEach(el => {
+  if (el) {
+    el.addEventListener("click", event => {
+      event.preventDefault();
+      navigateToSection("#inquilinos");
+    });
+  }
+});
+
+window.addEventListener("hashchange", handleRouting);
+for (const link of [navCuotas, mobileNavCuotas]) link?.addEventListener("click", event => {
+  event.preventDefault(); navigateToSection("#cuotas");
+});
+
+
+// Login simulado: selector de usuario en el topbar
+const activeRoleSelect = document.querySelector("#active-role-select");
+
+export function renderUserSelector() {
+  if (!activeRoleSelect) return;
+  activeRoleSelect.replaceChildren();
+  const user = getCurrentUser();
+  if (user) activeRoleSelect.add(new Option(user.nombre || user.usuario, user.id));
+  activeRoleSelect.disabled = true;
+  activeRoleSelect.title = "Usuario conectado";
+}

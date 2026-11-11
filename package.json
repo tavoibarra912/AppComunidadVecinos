@@ -1,0 +1,26 @@
+{
+  "name": "app-comunidad-vecinos",
+  "version": "1.0.0",
+  "description": "Gestión de comunidades, propietarios, inmuebles e inquilinos (Asociación Peñarrubia)",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "restart": "node scripts/restart.mjs",
+    "test": "node --test scripts/tests/*.test.mjs"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.17",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.2",
+    "nodemailer": "^10.3.1"
+  },
+  "devDependencies": {
+    "acorn": "^8.19.0",
+    "eslint-scope": "^9.1.2",
+    "globals": "^17.14.0",
+    "jsdom": "^31.0.0",
+    "prettier": "^3.9.10"
+  }
+}

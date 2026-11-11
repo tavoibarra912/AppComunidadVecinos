@@ -31,7 +31,7 @@ coverage
 # Bower dependency directory (https://bower.io/)
 bower_components
 
-# node-waf configuration
+# node-waf configuration (https://github.com/nodejs/node-gyp/blob/master/docs/Common-Issues.md)
 .lock-wscript
 
 # Compiled binary addons (https://nodejs.org/api/addons.html)
@@ -85,32 +85,23 @@ dist
 
 # Gatsby files
 .cache/
-# Comment in the public line in if your project uses Gatsby and not Next.js
-# https://nextjs.org/blog/next-9-1#public-directory-support
+# Comment in the public line in if your project uses Gatsby (https://www.gatsbyjs.com/docs/how-to/previews-and-deploys/#deploy-with-gatsby-cloud)
 # public
 
 # vuepress build output
 .vuepress/dist
 
-# vuepress v2.x temp directory
+# vuepress v2.x temp and cache directory
 .temp
-
-# Sveltekit cache directory
-.svelte-kit/
-
-# vitepress build output
-**/.vitepress/dist
-
-# vitepress cache directory
-**/.vitepress/cache
+.cache
 
 # Docusaurus cache and generated files
-.docusaurus
+.docusaurus/
 
 # Serverless directories
 .serverless/
 
-# FuseBox cache
+# FuseBox cache directory
 .fusebox/
 
 # DynamoDB Local files
@@ -122,13 +113,10 @@ dist
 # TernJS port file
 .tern-port
 
-# Stores VSCode versions used for testing VSCode extensions
+# Stores VSCode versions used when testing VSCode extensions
 .vscode-test
 
-# pnpm
-.pnpm-store
-
-# yarn v3
+# yarn v2/v3 (https://yarnpkg.com/getting-started/qa/#which-files-should-be-gitignored)
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -141,3 +129,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Datos locales de la aplicación
+data/
+uploads/
+
+# Scratch local de desarrollo
+.kimchi/
