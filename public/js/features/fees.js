@@ -595,6 +595,15 @@ async function load(root, ctx) {
 function renderPanel(root, ctx) {
   const data = ctx.data,
     manage = data.canManage && !ctx.readonly;
+  const feeCurrency =
+    ctx.kind === "community"
+      ? (
+          state.communities.find((c) => c.id === ctx.id)?.currency || "EUR"
+        )
+          .trim()
+          .toUpperCase()
+      : "EUR";
+  const canConfigure = feeCurrency === "EUR";
   root.replaceChildren(
     el(
       "h3",
@@ -604,32 +613,41 @@ function renderPanel(root, ctx) {
     ),
   );
   const tools = el("div", undefined, "fee-toolbar");
-  if (ctx.kind === "community") guide(root, data, manage);
+  if (ctx.kind === "community" && canConfigure) guide(root, data, manage);
   if (ctx.kind === "community" && data.canManage) {
-    tools.append(
-      button(
-        "1 · Configurar acuerdo",
-        () => configuration(ctx),
-        !data.plans.length,
-      ),
-    );
-    if (manage) {
-      const emit = button("2 · Emitir recibos", () => emission(ctx), true);
-      emit.disabled = !data.plans.length || !data.properties.length;
+    if (canConfigure)
       tools.append(
-        emit,
+        button(
+          "1 · Configurar acuerdo",
+          () => configuration(ctx),
+          !data.plans.length,
+        ),
+      );
+    if (manage) {
+      if (canConfigure) {
+        const emit = button("2 · Emitir recibos", () => emission(ctx), true);
+        emit.disabled = !data.plans.length || !data.properties.length;
+        tools.append(emit);
+      }
+      tools.append(
         button("3 · Registrar cobro o anticipo", () => paymentForm(ctx)),
       );
     }
   }
   tools.append(button("Actualizar", () => load(root, ctx)));
   root.append(tools);
-  if (manage && !data.plans.length)
+  if (ctx.kind === "community" && data.canManage && !canConfigure)
+    info(
+      root,
+      `Las cuotas solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambiá su moneda en la ficha de la comunidad para poder configurar o emitir cuotas.`,
+      true,
+    );
+  if (manage && canConfigure && !data.plans.length)
     info(
       root,
       "Para emitir las primeras cuotas, guardá primero el importe aprobado, el reparto y la periodicidad en Configuración y acuerdos.",
     );
-  if (manage && !data.properties.length)
+  if (manage && canConfigure && !data.properties.length)
     info(
       root,
       "Asociá inmuebles con sus titulares a esta comunidad antes de emitir cuotas.",

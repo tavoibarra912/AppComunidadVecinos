@@ -197,15 +197,19 @@ export function getDocBadgeText(status, owner) {
 function adminUnreadCount() {
   return state.adminEmails.filter((n) => !n.read).length;
 }
+function ownerNotificationAllowed(notification) {
+  return hasPermission("owner_notification:read", notification.ownerId);
+}
+function ownerVisibleNotifications() {
+  return state.ownerNotifications.filter(ownerNotificationAllowed);
+}
 function ownerUnreadCount() {
-  return state.ownerNotifications.filter(
-    (n) => !n.read && n.ownerId === getCurrentOwnerProfileId(),
-  ).length;
+  return ownerVisibleNotifications().filter((n) => !n.read).length;
 }
 function canOpenInbox(kind) {
   return kind === "admin"
     ? hasPermission("admin_notification:read")
-    : hasPermission("owner_notification:read", getCurrentOwnerProfileId());
+    : hasPermission("owner_notification:read");
 }
 function setTabCount(element, count) {
   if (!element) return;
@@ -297,19 +301,15 @@ function openNotifications(kind = "") {
   if (!notificationsDialog.open) notificationsDialog.showModal();
 }
 export function openOwnerInbox() {
-  if (!requirePermission("owner_notification:read", getCurrentOwnerProfileId()))
-    return;
+  if (!requirePermission("owner_notification:read")) return;
   setOwnerFeedback("");
   openNotifications("owner");
 }
 export function renderOwnerInbox() {
   if (!ownerInboxList) return;
   ownerInboxList.replaceChildren();
-  if (!hasPermission("owner_notification:read", getCurrentOwnerProfileId()))
-    return;
-  const notifications = state.ownerNotifications.filter(
-    (n) => n.ownerId === getCurrentOwnerProfileId(),
-  );
+  if (!hasPermission("owner_notification:read")) return;
+  const notifications = ownerVisibleNotifications();
   const unread = inboxSummary("owner", notifications);
   markAllOwnerNotifsReadBtn.disabled =
     ownerBulkBusy || ownerReadPending.size > 0 || unread === 0;
@@ -556,27 +556,39 @@ for (const id of ["#close-admin-email-dialog", "#close-admin-email-btn"])
     ?.addEventListener("click", () => adminEmailDialog.close());
 markAllOwnerNotifsReadBtn?.addEventListener("click", async () => {
   if (ownerBulkBusy || ownerReadPending.size) return;
-  const ownerId = getCurrentOwnerProfileId();
-  if (!requirePermission("owner_notification:read", ownerId)) return;
-  const pendingIds = new Set(
-    state.ownerNotifications
-      .filter((n) => n.ownerId === ownerId && !n.read)
-      .map((n) => n.id),
-  );
-  if (!pendingIds.size) return;
+  if (!requirePermission("owner_notification:read")) return;
+  const pending = ownerVisibleNotifications().filter((n) => !n.read);
+  if (!pending.length) return;
+  const ownerIds = [...new Set(pending.map((n) => n.ownerId))];
   ownerBulkBusy = true;
   setOwnerFeedback("");
   renderOwnerInbox();
+  let marked = 0,
+    failure = null;
   try {
-    await api.markAllOwnerNotificationsRead(ownerId);
-    state.ownerNotifications.forEach((n) => {
-      if (pendingIds.has(n.id)) n.read = true;
-    });
+    for (const ownerId of ownerIds) {
+      try {
+        await api.markAllOwnerNotificationsRead(ownerId);
+        const markedIds = new Set(
+          pending.filter((n) => n.ownerId === ownerId).map((n) => n.id),
+        );
+        state.ownerNotifications.forEach((n) => {
+          if (markedIds.has(n.id)) n.read = true;
+        });
+        marked += markedIds.size;
+      } catch (error) {
+        failure = error;
+      }
+    }
+    if (failure) throw failure;
     setOwnerFeedback(
-      `${pendingIds.size} ${pendingIds.size === 1 ? "aviso marcado como leído" : "avisos marcados como leídos"}.`,
+      `${marked} ${marked === 1 ? "aviso marcado como leído" : "avisos marcados como leídos"}.`,
     );
   } catch (error) {
-    setOwnerFeedback(error.message, true);
+    const partial = marked
+      ? ` Se marcaron ${marked} de ${pending.length}.`
+      : "";
+    setOwnerFeedback(`${error.message}${partial}`, true);
   } finally {
     ownerBulkBusy = false;
     updateOwnerInboxBadge();

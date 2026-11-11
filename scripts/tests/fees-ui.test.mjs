@@ -179,6 +179,25 @@ test("cuotas UI: pantalla independiente con estados e importes escapados", async
     f.dom.window.close();
   }
 });
+test("cuotas UI: una comunidad que no usa euros no ofrece configurar ni emitir", async () => {
+  const f = fixture();
+  try {
+    f.w.state.communities[0].currency = "USD";
+    f.w.location.hash = "#cuotas?comunidad=c1";
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    const root = f.w.document.querySelector("#fees-page .fee-panel");
+    const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+    assert.equal(labels.includes("1 · Configurar acuerdo"), false);
+    assert.equal(labels.includes("2 · Emitir recibos"), false);
+    assert.equal(labels.includes("3 · Registrar cobro o anticipo"), true);
+    assert.match(root.textContent, /solo se gestionan en euros/);
+    assert.match(root.textContent, /USD/);
+    assert.match(root.textContent, /Parcela 1/);
+  } finally {
+    f.dom.window.close();
+  }
+});
 test("cuotas UI: Mis cuotas usa la consulta consolidada sin acciones de gestión", async () => {
   const f = fixture(false);
   try {

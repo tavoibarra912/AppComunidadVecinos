@@ -155,6 +155,20 @@ export function feeDefaults() {
       "{{mensaje}}\nConsultá el tab Financiero de tu ficha de propietario.",
   };
 }
+export function reminderSettings(plan) {
+  const defaults = feeDefaults(),
+    saved = plan?.reminders || {};
+  const bounded = (value, fallback, max) =>
+    Number.isInteger(value) && value >= 0 && value <= max ? value : fallback;
+  return {
+    beforeDays: bounded(saved.beforeDays, defaults.beforeDays, 60),
+    afterDays: bounded(saved.afterDays, defaults.afterDays, 365),
+    repeatDays: bounded(saved.repeatDays, defaults.repeatDays, 365),
+    internal:
+      typeof saved.internal === "boolean" ? saved.internal : defaults.internal,
+    email: typeof saved.email === "boolean" ? saved.email : defaults.email,
+  };
+}
 export function validateFeeDefaults(data) {
   for (const [key, max] of [
     ["feeBeforeDays", 60],
@@ -399,15 +413,19 @@ export function plans(communityId) {
     .all(communityId)
     .map((r) => ({ ...r, ...JSON.parse(r.data), data: undefined }));
 }
-export function savePlan(communityId, input, actor) {
+function feeCommunity(communityId) {
   const community = db
     .prepare("SELECT * FROM communities WHERE id=?")
     .get(communityId);
   if (!community) throw problem("Comunidad no encontrada.", 404);
-  if ((community.currency || "EUR") !== "EUR")
+  if (String(community.currency || "EUR").trim().toUpperCase() !== "EUR")
     throw problem(
       "Las cuotas de comunidad se gestionan en euros. Revisá la moneda de la comunidad.",
     );
+  return community;
+}
+export function savePlan(communityId, input, actor) {
+  feeCommunity(communityId);
   const annualAmount = money(input.annualAmount, "El importe anual");
   if (![1, 3, 6, 12].includes(input.months))
     throw problem("Periodicidad no válida.");
@@ -530,6 +548,7 @@ function distribute(total, entries) {
   return parts;
 }
 export function preview(communityId, period) {
+  feeCommunity(communityId);
   if (typeof period !== "string" || !/^20\d{2}-(0[1-9]|1[0-2])$/.test(period))
     throw problem("Indicá un periodo válido (AAAA-MM).");
   const plan = plans(communityId).find(
@@ -955,7 +974,7 @@ export function notify(
   targetOwnerId = "",
 ) {
   const plan = plans(row.communityId).find((p) => p.id === row.planId);
-  const options = plan?.reminders || feeDefaults();
+  const options = reminderSettings(plan);
   for (const owner of JSON.parse(row.snapshot).owners) {
     if (targetOwnerId && owner.id !== targetOwnerId) continue;
     const id = crypto.randomUUID(),
@@ -1024,7 +1043,7 @@ export function materializeFeeReminders(date = today()) {
       const view = receiptView(row, date);
       if (view.outstanding <= 0) continue;
       const plan = plans(row.communityId).find((p) => p.id === row.planId),
-        settings = plan.reminders;
+        settings = reminderSettings(plan);
       const days = Math.round(
         (Date.parse(date) - Date.parse(row.dueDate)) / 86400000,
       );

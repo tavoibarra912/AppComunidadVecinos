@@ -522,6 +522,87 @@ test("cuotas: protege historial y valida la configuración general", async () =>
     "Los acuerdos existentes no cambian",
   );
 });
+test("cuotas: una comunidad que no usa euros no puede configurar, previsualizar ni emitir", async () => {
+  const id = "fee-community-non-eur";
+  db.prepare(
+    "INSERT INTO communities(id,name,nif,currency) VALUES(?,?,?,?)",
+  ).run(id, "Comunidad en dólares", "H-FEE-USD", "USD");
+  db.prepare(
+    "INSERT INTO properties(id,communityId,plot,ownerIds,participationCoef) VALUES(?,?,?,?,?)",
+  ).run("fee-property-usd", id, "Unidad USD", JSON.stringify([o1]), "100");
+  const rejected = await admin(`/fees/communities/${id}/plans`, "POST", plan);
+  assert.equal(rejected.status, 400);
+  assert.match(rejected.data.error, /euros/);
+  // Aunque exista una configuración histórica, tampoco se puede emitir.
+  const actor = db
+    .prepare("SELECT * FROM users WHERE usuario='super_admin'")
+    .get();
+  db.prepare(
+    "INSERT INTO fee_plans(id,communityId,effectiveFrom,data,createdAt,actorId) VALUES(?,?,?,?,?,?)",
+  ).run(
+    "fee-plan-usd",
+    id,
+    "2026-01-01",
+    JSON.stringify(plan),
+    new Date().toISOString(),
+    actor.id,
+  );
+  const preview = await admin(`/fees/communities/${id}/preview`, "POST", {
+    period: "2026-11",
+  });
+  assert.equal(preview.status, 400);
+  assert.match(preview.data.error, /euros/);
+  const issued = await admin(`/fees/communities/${id}/issue`, "POST", {
+    period: "2026-11",
+    token: "unused",
+  });
+  assert.equal(issued.status, 400);
+  assert.match(issued.data.error, /euros/);
+  assert.equal(
+    db
+      .prepare("SELECT COUNT(*) AS n FROM fee_receipts WHERE communityId=?")
+      .get(id).n,
+    0,
+  );
+});
+test("cuotas: los planes anteriores sin recordatorios usan los valores por defecto", () => {
+  const id = "fee-legacy-plan",
+    actor = db.prepare("SELECT * FROM users WHERE usuario='super_admin'").get();
+  db.prepare(
+    "INSERT INTO communities(id,name,nif,currency) VALUES(?,?,?,'EUR')",
+  ).run(id, "Comunidad con plan antiguo", "H-FEE-LEGACY");
+  db.prepare(
+    "INSERT INTO properties(id,communityId,plot,ownerIds,participationCoef) VALUES(?,?,?,?,?)",
+  ).run("fee-legacy-property", id, "Unidad antigua", JSON.stringify([o1]), "100");
+  const legacy = { ...plan };
+  delete legacy.reminders;
+  db.prepare(
+    "INSERT INTO fee_plans(id,communityId,effectiveFrom,data,createdAt,actorId) VALUES(?,?,?,?,?,?)",
+  ).run(
+    "fee-legacy-config",
+    id,
+    "2026-01-01",
+    JSON.stringify(legacy),
+    new Date().toISOString(),
+    actor.id,
+  );
+  const batch = fees.preview(id, "2026-11");
+  const issued = fees.issue(
+    id,
+    { period: batch.period, token: batch.token },
+    actor,
+  );
+  assert.equal(issued.ids.length, 1);
+  assert.doesNotThrow(() => fees.materializeFeeReminders("2026-11-05"));
+  assert.equal(
+    db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM fee_events WHERE receiptId=? AND kind='due'",
+      )
+      .get(issued.ids[0]).n,
+    1,
+  );
+});
 test("cuotas: los redondeos suman el presupuesto anual y no duplican copropietarios", () => {
   const id = "fee-rounding";
   db.prepare(
