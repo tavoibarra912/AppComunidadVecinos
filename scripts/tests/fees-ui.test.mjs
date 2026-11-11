@@ -3,11 +3,22 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { JSDOM } from "jsdom";
+import createDOMPurify from "dompurify";
 
 const html = readFileSync("public/index.html", "utf8");
 const source = readFileSync("public/js/features/fees.js", "utf8")
   .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\r?\n/gm, "")
   .replace(/\bexport (?=(async )?function)/g, "");
+const moduleSource = (file) =>
+  readFileSync(file, "utf8")
+    .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\r?\n/gm, "")
+    .replace(/\bexport (?=(async )?function)/g, "");
+const editorSource = moduleSource("public/js/features/assessment-editor.js");
+const richSource = moduleSource("public/js/rich-text.js");
+const htmlSource = moduleSource("public/js/html.js");
+const comboSource = readFileSync("public/js/utils.js", "utf8")
+  .match(/export function makeSelectSearchable[\s\S]*?\r?\n}\r?\n/)[0]
+  .replace("export ", "");
 const flush = async () => {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
@@ -20,6 +31,7 @@ function fixture(manage = true) {
     w = dom.window,
     calls = [];
   w.document.querySelector("#cuotas").hidden = false;
+  w.DOMPurify = createDOMPurify(w);
   w.HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
   };
@@ -128,7 +140,12 @@ function fixture(manage = true) {
     },
   });
   vm.runInContext(
-    source +
+    htmlSource +
+      richSource +
+      "\nlet comboSequence = 0;\n" +
+      comboSource +
+      editorSource +
+      source +
       "\nwindow.feeTest={mountFees,showReceipt,renderFeesPage,feeNavigation,mountFeeShortcut};",
     dom.getInternalVMContext(),
   );
@@ -136,7 +153,7 @@ function fixture(manage = true) {
 }
 function click(w, label, container = w.document) {
   const button = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === label,
+    (b) => b.textContent === label || b.getAttribute("aria-label") === label,
   );
   assert.ok(button, label);
   button.click();
@@ -144,7 +161,11 @@ function click(w, label, container = w.document) {
 }
 function control(w, label) {
   const wrap = [...w.document.querySelectorAll(".fee-field,.fee-check")].find(
-    (node) => node.querySelector(".fee-field-label")?.textContent === label,
+    (node) =>
+      node
+        .querySelector(".fee-field-label")
+        ?.textContent.replace(/ \*$/, "")
+        .replace(/ \(opcional\)$/, "") === label,
   );
   assert.ok(wrap, label);
   return wrap.querySelector("input,select,textarea");
@@ -539,11 +560,17 @@ function assessmentFixture(manage = true) {
   return { ...f, assessment: a };
 }
 
+async function openAssessments(f) {
+  f.w.feeTest.renderFeesPage();
+  await flush();
+  click(f.w, "Derramas", f.w.document.querySelector("#fees-page"));
+  await flush();
+}
+
 test("derramas UI: valida y crea reparto manual con selección y plazos; emite con token de vista previa", async () => {
   const f = assessmentFixture();
   try {
-    f.w.feeTest.renderFeesPage();
-    await flush();
+    await openAssessments(f);
     click(f.w, "Nueva derrama");
     control(f.w, "Nombre de la derrama").value = "Obras de fachada";
     control(f.w, "Acuerdo de Junta que la aprueba").value =
@@ -554,6 +581,7 @@ test("derramas UI: valida y crea reparto manual con selección y plazos; emite c
     const mode = control(f.w, "Criterio de reparto");
     mode.value = "manual";
     mode.dispatchEvent(new f.w.Event("change"));
+    click(f.w, "Agregar todos");
     control(f.w, "Parcela 1 · importe (€)").value = "200";
     const first = f.w.document.querySelector(
       ".fee-installment-row input[data-money]",
@@ -610,8 +638,7 @@ test("derramas UI: valida y crea reparto manual con selección y plazos; emite c
 test("derramas UI: editar un borrador mantiene los euros de todos los plazos", async () => {
   const f = assessmentFixture();
   try {
-    f.w.feeTest.renderFeesPage();
-    await flush();
+    await openAssessments(f);
     click(f.w, "Abrir derrama");
     await flush();
     click(f.w, "Editar derrama");
@@ -649,8 +676,7 @@ test("derramas UI: editar un borrador mantiene los euros de todos los plazos", a
 test("derramas UI: anula un plazo pendiente con motivo y oculta edición y reemisión", async () => {
   const f = assessmentFixture();
   try {
-    f.w.feeTest.renderFeesPage();
-    await flush();
+    await openAssessments(f);
     click(f.w, "Abrir derrama");
     await flush();
     click(f.w, "Anular plazo");
@@ -687,8 +713,7 @@ test("derramas UI: cobros aplicados bloquean la anulación del plazo y de la der
       status: "partial",
     });
     f.assessment.totals.paid = 500;
-    f.w.feeTest.renderFeesPage();
-    await flush();
+    await openAssessments(f);
     click(f.w, "Abrir derrama");
     await flush();
     const body = f.w.document.querySelector("#fee-dialog-body");
@@ -728,8 +753,7 @@ test("derramas UI: Mis cuotas y CSV identifican nombre y plazo sin ofrecer gesti
     };
     f.w.URL.revokeObjectURL = () => {};
     f.w.HTMLAnchorElement.prototype.click = () => {};
-    f.w.feeTest.renderFeesPage();
-    await flush();
+    await openAssessments(f);
     const root = f.w.document.querySelector("#fees-page");
     assert.match(root.textContent, /Derrama.*plazo 1\/2/);
     assert.equal(
@@ -752,6 +776,172 @@ test("derramas UI: Mis cuotas y CSV identifican nombre y plazo sin ofrecer gesti
     click(f.w, "Descargar extracto del recibo");
     await flush();
     assert.match(await csv.text(), /Derrama.*Fachada.*plazo 1\/2/);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("derramas UI: pestañas separan los recibos y el editor integrado conserva el borrador al cambiar de pestaña", async () => {
+  const f = assessmentFixture();
+  try {
+    f.data.receipts.push({
+      ...f.data.receipts[0],
+      id: "extraordinary",
+      kind: "assessment",
+      concept: "Derrama Fachada",
+    });
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    let results = f.w.document.querySelector(".fee-receipts-results");
+    assert.doesNotMatch(results.textContent, /Derrama Fachada/);
+    click(f.w, "Derramas");
+    await flush();
+    results = f.w.document.querySelector(".fee-receipts-results");
+    assert.match(results.textContent, /Derrama Fachada/);
+    assert.equal(results.querySelectorAll("tbody tr").length, 1);
+    click(f.w, "Nueva derrama");
+    assert.equal(f.w.document.querySelector("#fee-dialog[open]"), null);
+    const name = control(f.w, "Nombre de la derrama");
+    name.value = "Mi borrador";
+    name.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    click(f.w, "Cuotas ordinarias");
+    assert.equal(f.w.document.querySelector(".fee-assessment-editor"), null);
+    click(f.w, "Derramas");
+    assert.equal(control(f.w, "Nombre de la derrama").value, "Mi borrador");
+    click(f.w, "Cerrar formulario de derrama");
+    assert.equal(
+      f.w.document.querySelector(".fee-discard-notice").hidden,
+      false,
+    );
+    click(f.w, "Descartar cambios");
+    assert.equal(f.w.document.querySelector(".fee-assessment-editor"), null);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("derramas UI: busca y vincula inmuebles sin duplicarlos, permite quitarlos y mantiene los importes manuales", async () => {
+  const f = assessmentFixture();
+  try {
+    await openAssessments(f);
+    click(f.w, "Nueva derrama");
+    const form = f.w.document.querySelector(".fee-assessment-form");
+    click(f.w, "Inmuebles", form);
+    click(f.w, "Vincular inmueble");
+    const search = form.querySelector(
+      '[aria-label="Buscar inmueble para vincular"]',
+    );
+    search.focus();
+    search.value = "Parcela";
+    search.dispatchEvent(new f.w.Event("input"));
+    const option = form.querySelector('.combo-box-options li[data-value="p1"]');
+    assert.ok(option);
+    option.dispatchEvent(new f.w.MouseEvent("mousedown", { bubbles: true }));
+    click(f.w, "Agregar inmueble seleccionado");
+    await flush();
+    assert.equal(form.querySelectorAll(".fee-property-card").length, 1);
+    assert.equal(
+      form.querySelector('.fee-property-picker select option[value="p1"]'),
+      null,
+    );
+    const mode = control(f.w, "Criterio de reparto");
+    mode.value = "manual";
+    mode.dispatchEvent(new f.w.Event("change"));
+    control(f.w, "Parcela 1 · importe (€)").value = "200";
+    click(f.w, "Quitar inmueble Parcela 1");
+    await flush();
+    assert.equal(form.querySelectorAll(".fee-property-card").length, 0);
+    click(f.w, "Agregar todos");
+    await flush();
+    assert.equal(control(f.w, "Parcela 1 · importe (€)").value, "200");
+    assert.equal(
+      [...form.querySelectorAll("button")].find(
+        (b) => b.textContent === "Agregar todos",
+      ).disabled,
+      true,
+    );
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("derramas UI: agrega y elimina plazos con botones estándar, renumera y conserva al menos uno", async () => {
+  const f = assessmentFixture();
+  try {
+    await openAssessments(f);
+    click(f.w, "Nueva derrama");
+    const form = f.w.document.querySelector(".fee-assessment-form");
+    click(f.w, "Plazos", form);
+    const first = form.querySelector(".fee-installment-row");
+    first.querySelector('input[type="date"]').value = "2031-01-31";
+    assert.equal(first.querySelector("button").disabled, true);
+    click(f.w, "Agregar plazo");
+    await flush();
+    assert.equal(form.querySelectorAll(".fee-installment-row").length, 2);
+    assert.equal(
+      form.querySelectorAll('.fee-installment-row input[type="date"]')[1].value,
+      "2031-02-28",
+    );
+    const remove = [...form.querySelectorAll("button")].find(
+      (b) => b.getAttribute("aria-label") === "Eliminar plazo 1",
+    );
+    assert.ok(remove.classList.contains("btn-delete"));
+    remove.click();
+    await flush();
+    assert.equal(form.querySelectorAll(".fee-installment-row").length, 1);
+    assert.equal(
+      form.querySelector(".fee-installment-number").textContent,
+      "Plazo 1",
+    );
+    assert.equal(
+      form.querySelector(".fee-installment-row button").disabled,
+      true,
+    );
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("derramas UI: valida campos requeridos en pestañas ocultas y conserva el motivo con formato", async () => {
+  const f = assessmentFixture();
+  try {
+    f.assessment.purpose = "<p>Reparación <strong>urgente</strong></p>";
+    await openAssessments(f);
+    click(f.w, "Abrir derrama");
+    await flush();
+    assert.ok(
+      f.w.document.querySelector("#fee-dialog .fee-rich-content strong"),
+    );
+    assert.ok(
+      f.w.document
+        .querySelector("[data-fee-close]")
+        .classList.contains("btn-cancel"),
+    );
+    assert.ok(f.w.document.querySelector("[data-fee-close] svg"));
+    click(f.w, "Editar derrama");
+    await flush();
+    const form = f.w.document.querySelector(".fee-assessment-form");
+    assert.ok(form.querySelector(".rich-text-content strong"));
+    const name = control(f.w, "Nombre de la derrama");
+    assert.equal(name.required, true);
+    name.value = "";
+    click(f.w, "Avisos", form);
+    click(f.w, "Guardar cambios");
+    await flush();
+    assert.equal(
+      form.querySelector('[data-assessment-pane="general"]').hidden,
+      false,
+    );
+    assert.equal(f.w.document.activeElement, name);
+    assert.equal(
+      f.calls.some((c) => c[1] === "PUT"),
+      false,
+    );
+    name.value = "Reparación";
+    click(f.w, "Guardar cambios");
+    await flush();
+    const saved = f.calls.find((c) => c[1] === "PUT");
+    assert.match(saved[2].purpose, /<strong>urgente<\/strong>/);
   } finally {
     f.dom.window.close();
   }

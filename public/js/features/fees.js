@@ -5,7 +5,8 @@ import {
   hasPermission,
   refreshState,
 } from "../state.js";
-import { escapeHtml as esc } from "../html.js";
+import { escapeHtml as esc, richTextHtml, htmlToText } from "../html.js";
+import { buildAssessmentEditor } from "./assessment-editor.js";
 import { toast, hayCambiosSinGuardar } from "../utils.js";
 
 const money = (cents) =>
@@ -42,6 +43,56 @@ const methods = {
   direct_debit: "Domiciliación confirmada",
 };
 const contexts = new Map();
+const icons = {
+  close: '<path d="m18 6-12 12M6 6l12 12"/>',
+  add: '<path d="M12 5v14M5 12h14"/>',
+  remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  save: '<path d="m5 12 4 4L19 6"/>',
+};
+function iconButton(label, action, kind = "add", icon = kind) {
+  const node = button("", action);
+  node.className = `icon-action-btn btn-${kind}`;
+  node.title = label;
+  node.setAttribute("aria-label", label);
+  node.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[icon]}</svg>`;
+  return node;
+}
+function tabBar(parent, items, active, select, label) {
+  const nav = el("nav", undefined, "community-editor-tabs fee-tabs");
+  nav.setAttribute("role", "tablist");
+  nav.setAttribute("aria-label", label);
+  const controls = items.map(([id, label]) => {
+    const node = button(label, () => select(id));
+    node.className = `community-editor-tab${id === active ? " active" : ""}`;
+    node.setAttribute("role", "tab");
+    node.setAttribute("aria-selected", String(id === active));
+    node.tabIndex = id === active ? 0 : -1;
+    node.dataset.tab = id;
+    nav.append(node);
+    return node;
+  });
+  nav.addEventListener("keydown", (event) => {
+    const index = controls.indexOf(event.target);
+    if (
+      index < 0 ||
+      !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+    )
+      return;
+    event.preventDefault();
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? controls.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + controls.length) %
+            controls.length;
+    controls[next].click();
+    parent.querySelector(`[role="tab"][data-tab="${items[next][0]}"]`)?.focus();
+  });
+  parent.append(nav);
+  return nav;
+}
 let dialog = null,
   dialogVersion = 0;
 let fieldSequence = 0,
@@ -316,7 +367,7 @@ function button(text, action, primary = false) {
       if (!node.closest("#fee-dialog") || version === dialogVersion)
         errorMessage(error.message);
     } finally {
-      node.disabled = false;
+      node.disabled = node.dataset.feeDisabled === "true";
       if (mutation && version === dialogVersion) {
         dialog.dataset.busy = "false";
         dialog.querySelector("[data-fee-close]").disabled = false;
@@ -331,8 +382,7 @@ function ensureDialog() {
   dialog = document.createElement("dialog");
   dialog.id = "fee-dialog";
   dialog.setAttribute("aria-labelledby", "fee-dialog-title");
-  dialog.innerHTML =
-    '<div class="dialog-content fee-dialog-content"><div class="dialog-header"><h2 id="fee-dialog-title"></h2><button type="button" class="secondary-button" data-fee-close>Cerrar</button></div><p class="fee-error" data-fee-error role="alert" tabindex="-1" hidden></p><form id="fee-dialog-body" novalidate></form></div>';
+  dialog.innerHTML = `<div class="dialog-content fee-dialog-content"><div class="dialog-header"><h2 id="fee-dialog-title"></h2><button type="button" class="icon-action-btn btn-cancel btn-lg" data-fee-close aria-label="Cerrar" title="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons.close}</svg></button></div><p class="fee-error" data-fee-error role="alert" tabindex="-1" hidden></p><form id="fee-dialog-body" novalidate></form></div>`;
   dialog
     .querySelector("[data-fee-close]")
     .addEventListener("click", () => dialog.close());
@@ -565,6 +615,8 @@ async function reloadAll() {
 export function mountFees(root, kind, id, options = {}) {
   if (!root) return;
   const ctx = {
+    root,
+    tab: "ordinary",
     kind,
     id,
     readonly: !!options.readonly,
@@ -616,6 +668,10 @@ async function load(root, ctx) {
 function renderPanel(root, ctx) {
   const data = ctx.data,
     manage = data.canManage && !ctx.readonly;
+  const assessmentTab = ctx.tab === "assessments";
+  const receipts = data.receipts.filter(
+    (r) => (r.kind === "assessment") === assessmentTab,
+  );
   const feeCurrency =
     ctx.kind === "community"
       ? (state.communities.find((c) => c.id === ctx.id)?.currency || "EUR")
@@ -623,18 +679,33 @@ function renderPanel(root, ctx) {
           .toUpperCase()
       : "EUR";
   const canConfigure = feeCurrency === "EUR";
-  root.replaceChildren(
-    el(
-      "h3",
-      root.classList.contains("fee-panel-standalone")
-        ? "Recibos de cuotas y derramas"
-        : panelTitle(ctx.kind, ctx.id),
-    ),
+  root.replaceChildren();
+  tabBar(
+    root,
+    [
+      ["ordinary", "Cuotas ordinarias"],
+      ["assessments", "Derramas"],
+    ],
+    ctx.tab,
+    (tab) => {
+      ctx.tab = tab;
+      ctx.period = ctx.status = ctx.search = ctx.property = "";
+      ctx.page = 1;
+      renderPanel(root, ctx);
+    },
+    "Tipo de cuotas",
   );
+  if (assessmentTab && ctx.assessmentEditor) {
+    root.append(ctx.assessmentEditor);
+    return;
+  }
+  if (!assessmentTab || !manage)
+    root.append(el("h3", assessmentTab ? "Derramas" : "Cuotas ordinarias"));
   const tools = el("div", undefined, "fee-toolbar");
-  if (ctx.kind === "community" && canConfigure) guide(root, data, manage);
+  if (!assessmentTab && ctx.kind === "community" && canConfigure)
+    guide(root, data, manage);
   if (ctx.kind === "community" && data.canManage) {
-    if (canConfigure)
+    if (canConfigure && !assessmentTab)
       tools.append(
         button(
           "1 · Configurar acuerdo",
@@ -643,13 +714,18 @@ function renderPanel(root, ctx) {
         ),
       );
     if (manage) {
-      if (canConfigure) {
+      if (canConfigure && !assessmentTab) {
         const emit = button("2 · Emitir recibos", () => emission(ctx), true);
         emit.disabled = !data.plans.length || !data.properties.length;
         tools.append(emit);
       }
       tools.append(
-        button("3 · Registrar cobro o anticipo", () => paymentForm(ctx)),
+        button(
+          assessmentTab
+            ? "Registrar cobro o anticipo"
+            : "3 · Registrar cobro o anticipo",
+          () => paymentForm(ctx),
+        ),
       );
     }
   }
@@ -661,7 +737,7 @@ function renderPanel(root, ctx) {
       `Las cuotas solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambiá su moneda en la ficha de la comunidad para poder configurar o emitir cuotas.`,
       true,
     );
-  if (manage && canConfigure && !data.plans.length)
+  if (!assessmentTab && manage && canConfigure && !data.plans.length)
     info(
       root,
       "Para emitir las primeras cuotas, guardá primero el importe aprobado, el reparto y la periodicidad en Configuración y acuerdos.",
@@ -672,16 +748,22 @@ function renderPanel(root, ctx) {
       "Asociá inmuebles con sus titulares a esta comunidad antes de emitir cuotas.",
     );
   if (
+    assessmentTab &&
     ctx.kind === "community" &&
     data.canManage &&
     canConfigure &&
     !ctx.readonly
   )
     assessmentSection(root, ctx);
+  if (assessmentTab && manage && !receipts.length) {
+    info(
+      root,
+      "Los recibos de derramas aparecerán aquí cuando emitas el primer plazo.",
+    );
+    return;
+  }
   const filters = el("div", undefined, "fee-filters");
-  const periods = [...new Set(data.receipts.map((r) => r.period))]
-    .sort()
-    .reverse();
+  const periods = [...new Set(receipts.map((r) => r.period))].sort().reverse();
   const period = field(filters, "Periodo", "select", ctx.period, [
     ["", "Todos los periodos"],
     ...periods.map((p) => [p, p]),
@@ -690,7 +772,7 @@ function renderPanel(root, ctx) {
   if (ctx.kind === "owner" || ctx.kind === "mine") {
     const communities = [
       ...new Map(
-        data.receipts.map((r) => [r.communityId, r.snapshot.community]),
+        receipts.map((r) => [r.communityId, r.snapshot.community]),
       ).entries(),
     ];
     if (communities.length > 1) {
@@ -707,7 +789,7 @@ function renderPanel(root, ctx) {
     }
     const properties = [
       ...new Map(
-        data.receipts
+        receipts
           .filter((r) => !ctx.community || r.communityId === ctx.community)
           .map((r) => [r.propertyId, r.snapshot.property]),
       ).entries(),
@@ -738,7 +820,7 @@ function renderPanel(root, ctx) {
   root.append(results);
   function updateReceipts() {
     const query = ctx.search.trim().toLocaleLowerCase("es");
-    const rows = data.receipts.filter(
+    const rows = receipts.filter(
       (r) =>
         (!ctx.period || r.period === ctx.period) &&
         (!ctx.community || r.communityId === ctx.community) &&
@@ -786,7 +868,7 @@ function renderPanel(root, ctx) {
     if (!rows.length)
       info(
         results,
-        data.receipts.length
+        receipts.length
           ? "No hay recibos que coincidan con estos filtros."
           : "Todavía no hay recibos emitidos.",
       );
@@ -943,14 +1025,14 @@ function assessmentSection(root, ctx) {
   const heading = el("div", undefined, "fee-section-heading"),
     copy = el("div");
   copy.append(
-    el("h4", "Derramas", "fee-section-title"),
+    el("h3", "Derramas", "fee-section-title"),
     el(
       "p",
       "Cuotas extraordinarias con el reparto congelado al guardar. Cada plazo se emite por separado y usa los mismos recibos, cobros y justificantes que las cuotas ordinarias.",
       "form-intro",
     ),
   );
-  copy.querySelector("h4").id = "fee-assessments-title";
+  copy.querySelector("h3").id = "fee-assessments-title";
   heading.append(copy);
   const create = button("Nueva derrama", () => assessmentForm(ctx), true);
   create.disabled = !(data.properties || []).length;
@@ -966,7 +1048,7 @@ function assessmentSection(root, ctx) {
       table(
         ["Derrama", "Total", "Plazos", "Emitido / cobrado", "Estado", "Acción"],
         list.map((a) => [
-          `<strong>${esc(a.name)}</strong><small>${esc(a.purpose || a.agreement)}</small>`,
+          `<strong>${esc(a.name)}</strong><small>${esc(htmlToText(a.purpose) || a.agreement)}</small>`,
           money(a.totalAmount),
           `${a.installments.length} ${a.installments.length === 1 ? "plazo" : "plazos"}`,
           `${money(a.totals.issued)}<small>Cobrado ${money(a.totals.paid)}</small>`,
@@ -978,294 +1060,23 @@ function assessmentSection(root, ctx) {
   root.append(section);
 }
 function assessmentForm(ctx, assessment = null) {
-  const editing = !!assessment,
-    body = open(editing ? "Editar derrama" : "Nueva derrama"),
-    data = ctx.data,
-    grid = el("div", undefined, "fee-form-grid");
-  body.append(grid);
-  info(
-    body,
-    editing
-      ? "Esta derrama todavía no tiene recibos emitidos. Al guardar se vuelve a congelar el reparto con los coeficientes actuales."
-      : "El reparto queda congelado al guardar: los cambios posteriores de coeficientes o del censo no modifican los importes ni los inmuebles incluidos. Los recibos identifican a los titulares al emitir cada plazo.",
-  );
-  const name = field(
-    grid,
-    "Nombre de la derrama",
-    "text",
-    assessment?.name || "",
-  );
-  name.maxLength = 120;
-  name.required = true;
-  hint(name, "Por ejemplo: Obras de rehabilitación de la fachada.");
-  const purpose = field(
-    grid,
-    "Motivo de la derrama",
-    "textarea",
-    assessment?.purpose || "",
-  );
-  purpose.maxLength = 500;
-  hint(purpose, "Detalle opcional que verán los propietarios en el recibo.");
-  const agreement = field(
-    grid,
-    "Acuerdo de Junta que la aprueba",
-    "text",
-    assessment?.agreement || "",
-  );
-  agreement.maxLength = 300;
-  agreement.required = true;
-  hint(agreement, "Número de acta o fecha del acuerdo.");
-  const total = euroField(
-    grid,
-    "Importe total de la derrama (€)",
-    assessment?.totalAmount ?? "",
-  );
-  hint(
-    total,
-    "Suma de todos los plazos, repartida entre los inmuebles elegidos.",
-  );
-  const mode = field(
-    grid,
-    "Criterio de reparto",
-    "select",
-    assessment?.mode || "coefficient",
-    [
-      ["coefficient", "Por coeficiente de participación"],
-      ["manual", "Importes manuales por inmueble"],
-    ],
-  );
-  hint(
-    mode,
-    "Coeficiente: reparte el total según la participación de cada inmueble. Manual: fijás el importe de cada inmueble y la suma debe coincidir con el total.",
-  );
-  body.append(el("h3", "Inmuebles incluidos"));
-  info(
-    body,
-    "Por defecto se incluyen todos los inmuebles. Podés excluir alguno; el reparto solo se aplica a los seleccionados.",
-  );
-  const selection = el("div", undefined, "fee-form-grid"),
-    properties = data.properties || [],
-    propertyState = properties.map((property) => ({
-      property,
-      input: field(
-        selection,
-        `${property.plot} · coeficiente ${property.coefficient} %`,
-        "checkbox",
-        !assessment || assessment.propertyIds.includes(property.id),
-      ),
-    }));
-  body.append(selection);
-  const manualGrid = el("div", undefined, "fee-form-grid");
-  body.append(manualGrid);
-  const manualInputs = {};
-  for (const { property } of propertyState)
-    manualInputs[property.id] = euroField(
-      manualGrid,
-      `${property.plot} · importe (€)`,
-      assessment?.allocations?.[property.id] ?? "",
-    );
-  body.append(el("h3", "Plazos de la derrama"));
-  info(
-    body,
-    "Cada plazo tiene su importe y vencimiento. La suma de los plazos debe coincidir con el total. Los plazos se emiten de a uno, con vista previa antes de confirmar.",
-  );
-  const installmentsBox = el("div", undefined, "fee-installments");
-  body.append(installmentsBox);
-  const rows = [];
-  let autoSingle = !editing;
-  const installmentsSummary = el("p", undefined, "fee-payment-summary");
-  installmentsSummary.setAttribute("aria-live", "polite");
-  body.append(installmentsSummary);
-  function updateInstallmentsSummary() {
-    const sum = rows.reduce(
-      (totalSum, row) => totalSum + (parseMoneyInput(row.amount.value) || 0),
-      0,
-    );
-    const expected = parseMoneyInput(total.value);
-    installmentsSummary.textContent = expected
-      ? `Plazos: ${rows.length} · Suma ${money(sum)} · Total ${money(expected)}${sum === expected ? " · Correcto" : " · La suma debe coincidir con el total"}`
-      : `Plazos: ${rows.length} · Suma ${money(sum)}. Completá el total de la derrama.`;
-    syncRemoveButtons();
-  }
-  function syncRemoveButtons() {
-    for (const row of rows) row.remove.disabled = rows.length === 1;
-  }
-  function addInstallment(item = null) {
-    const row = el("div", undefined, "fee-installment-row"),
-      amountInput = euroField(
-        row,
-        "Importe del plazo (€)",
-        item ? item.amount : "",
-      ),
-      dueInput = field(
-        row,
-        "Vencimiento del plazo",
-        "date",
-        item?.dueDate || defaultAssessmentDueDate(),
-      ),
-      remove = button("Quitar", () => {
-        const index = rows.findIndex((entry) => entry.row === row);
-        if (index >= 0) rows.splice(index, 1);
-        row.remove();
-        updateInstallmentsSummary();
-      });
-    dueInput.required = true;
-    amountInput.addEventListener("input", () => {
-      autoSingle = false;
-      updateInstallmentsSummary();
-    });
-    dueInput.addEventListener("input", updateInstallmentsSummary);
-    rows.push({ row, amount: amountInput, dueDate: dueInput, remove });
-    installmentsBox.append(row);
-    updateInstallmentsSummary();
-    return row;
-  }
-  for (const item of assessment?.installments || [null]) addInstallment(item);
-  body.append(
-    button("Agregar plazo", () => {
-      autoSingle = false;
-      addInstallment();
-    }),
-  );
-  total.addEventListener("input", () => {
-    if (autoSingle && rows.length === 1)
-      rows[0].amount.value = total.value.trim();
-    updateInstallmentsSummary();
+  buildAssessmentEditor(ctx, assessment, {
+    el,
+    button,
+    iconButton,
+    tabBar,
+    field,
+    euroField,
+    hint,
+    info,
+    money,
+    amount,
+    parseMoneyInput,
+    defaultAssessmentDueDate,
+    renderPanel,
+    reloadAll,
+    showAssessment,
   });
-  body.append(el("h3", "Avisos de esta derrama"));
-  const reminderDefaults = {
-    beforeDays: 3,
-    afterDays: 7,
-    repeatDays: 0,
-    internal: true,
-    email: false,
-    ...(data.defaults || {}),
-    ...(assessment?.reminders || {}),
-  };
-  const noticeGrid = el("div", undefined, "fee-form-grid");
-  body.append(noticeGrid);
-  const before = field(
-    noticeGrid,
-    "Días antes del vencimiento (0 desactiva)",
-    "number",
-    reminderDefaults.beforeDays,
-  );
-  const after = field(
-    noticeGrid,
-    "Días después del vencimiento",
-    "number",
-    reminderDefaults.afterDays,
-  );
-  const repeat = field(
-    noticeGrid,
-    "Repetir aviso vencido cada N días (0: una vez)",
-    "number",
-    reminderDefaults.repeatDays,
-  );
-  for (const input of [before, after, repeat]) {
-    input.min = "0";
-    input.required = true;
-  }
-  before.max = "60";
-  after.max = repeat.max = "365";
-  const internal = field(
-    noticeGrid,
-    "Avisos en el buzón de la app",
-    "checkbox",
-    reminderDefaults.internal,
-  );
-  const email = field(
-    noticeGrid,
-    "Avisos por email a quienes habiliten el canal",
-    "checkbox",
-    reminderDefaults.email,
-  );
-  const syncManual = () => {
-    manualGrid.hidden = mode.value !== "manual";
-    for (const { property, input } of propertyState) {
-      const manual = manualInputs[property.id];
-      manual.disabled = mode.value !== "manual" || !input.checked;
-      manual.required = mode.value === "manual" && input.checked;
-    }
-    updateInstallmentsSummary();
-  };
-  mode.addEventListener("change", syncManual);
-  for (const { input } of propertyState)
-    input.addEventListener("change", syncManual);
-  syncManual();
-  updateInstallmentsSummary();
-  body.append(
-    button(
-      editing ? "Guardar cambios" : "Crear derrama",
-      async () => {
-        const selected = propertyState
-          .filter(({ input }) => input.checked)
-          .map(({ property }) => property.id);
-        if (!selected.length) throw new Error("Elegí al menos un inmueble.");
-        const expected = parseMoneyInput(total.value);
-        const items = rows.map((row) => ({
-          amount: row.amount.value,
-          dueDate: row.dueDate.value,
-        }));
-        const sum = items.reduce(
-          (totalSum, item) => totalSum + (parseMoneyInput(item.amount) || 0),
-          0,
-        );
-        if (expected && sum !== expected)
-          throw new Error(
-            `La suma de los plazos (${money(sum)}) debe coincidir con el total (${money(expected)}).`,
-          );
-        if (mode.value === "manual" && expected) {
-          const manualSum = selected.reduce(
-            (totalSum, id) =>
-              totalSum + (parseMoneyInput(manualInputs[id].value) || 0),
-            0,
-          );
-          if (manualSum !== expected)
-            throw new Error(
-              `La suma de los importes por inmueble (${money(manualSum)}) debe coincidir con el total (${money(expected)}).`,
-            );
-        }
-        const saved = await api.fees(
-          editing
-            ? `/assessments/${encodeURIComponent(assessment.id)}`
-            : `/communities/${encodeURIComponent(ctx.id)}/assessments`,
-          editing ? "PUT" : "POST",
-          {
-            name: name.value,
-            purpose: purpose.value,
-            agreement: agreement.value,
-            totalAmount: total.value,
-            mode: mode.value,
-            propertyIds: selected,
-            manual: Object.fromEntries(
-              Object.entries(manualInputs).map(([id, input]) => [
-                id,
-                input.value,
-              ]),
-            ),
-            installments: items,
-            reminders: {
-              beforeDays: Number(before.value),
-              afterDays: Number(after.value),
-              repeatDays: Number(repeat.value),
-              internal: internal.checked,
-              email: email.checked,
-            },
-          },
-        );
-        dialog.close();
-        await reloadAll();
-        toast(
-          editing
-            ? "Derrama actualizada."
-            : "Derrama guardada. Todavía no se emitieron recibos.",
-        );
-        showAssessment(saved.id);
-      },
-      true,
-    ),
-  );
 }
 async function showAssessment(id) {
   const body = open("Derrama"),
@@ -1277,11 +1088,51 @@ async function showAssessment(id) {
     body.replaceChildren();
     dialog.querySelector("h2").textContent = a.name;
     const header = el("div", undefined, "fee-receipt-header");
-    header.innerHTML = `<h3>${esc(a.name)}</h3><p>${esc(a.purpose || "Derrama extraordinaria")}</p><p>Acuerdo: ${esc(a.agreement)}</p><p>${assessmentStatus(a)}</p>`;
+    header.innerHTML = `<p>Acuerdo: ${esc(a.agreement)}</p><p>${assessmentStatus(a)}</p>`;
     body.append(header);
+    const panes = new Map();
+    const detailTabs = tabBar(
+      body,
+      [
+        ["overview", "Resumen"],
+        ["schedule", "Plazos"],
+        ["receipts", "Recibos"],
+      ],
+      "overview",
+      (id) => {
+        for (const [key, pane] of panes) {
+          pane.hidden = key !== id;
+          const tab = detailTabs.querySelector('[data-tab="' + key + '"]');
+          tab.classList.toggle("active", key === id);
+          tab.setAttribute("aria-selected", String(key === id));
+          tab.tabIndex = key === id ? 0 : -1;
+        }
+      },
+      "Detalle de la derrama",
+    );
+    for (const id of ["overview", "schedule", "receipts"]) {
+      const pane = el("section", undefined, "fee-detail-pane");
+      pane.hidden = id !== "overview";
+      pane.setAttribute("role", "tabpanel");
+      pane.id = "fee-assessment-" + id;
+      const tab = detailTabs.querySelector('[data-tab="' + id + '"]');
+      tab.id = pane.id + "-tab";
+      tab.setAttribute("aria-controls", pane.id);
+      pane.setAttribute("aria-labelledby", tab.id);
+      panes.set(id, pane);
+      body.append(pane);
+    }
+    const overview = panes.get("overview"),
+      schedule = panes.get("schedule"),
+      receipts = panes.get("receipts");
+    if (a.purpose) {
+      const purpose = el("div", undefined, "fee-rich-content");
+      purpose.innerHTML = richTextHtml(a.purpose);
+      overview.append(purpose);
+    }
     if (a.cancelledAt)
       info(
-        body,
+        overview,
         `Anulada el ${date(a.cancelledAt)}. Motivo: ${a.cancellationReason}`,
         true,
       );
@@ -1298,24 +1149,35 @@ async function showAssessment(id) {
       cell.append(el("span", label), el("strong", money(value)));
       totals.append(cell);
     }
-    body.append(totals);
+    overview.append(totals);
     info(
-      body,
+      overview,
       `Reparto ${a.mode === "coefficient" ? "por coeficiente de participación" : "con importes manuales por inmueble"}, congelado al guardar la derrama.`,
     );
     if (a.canEdit)
-      body.append(
+      overview.append(
         button("Editar derrama", async () => {
           const current = dialogVersion;
           const data = await api.fees(
             `/communities/${encodeURIComponent(a.communityId)}`,
           );
-          if (current === dialogVersion && dialog.open)
-            assessmentForm({ id: a.communityId, data }, a);
+          if (current === dialogVersion && dialog.open) {
+            const ctx = [...contexts.values()].find(
+              (ctx) =>
+                ctx.kind === "community" &&
+                ctx.id === a.communityId &&
+                ctx.root.isConnected,
+            );
+            if (ctx) {
+              ctx.data = data;
+              dialog.close();
+              assessmentForm(ctx, a);
+            }
+          }
         }),
       );
-    body.append(el("h3", "Plazos"));
-    body.append(
+    schedule.append(el("h3", "Plazos"));
+    schedule.append(
       table(
         [
           "Plazo",
@@ -1372,8 +1234,8 @@ async function showAssessment(id) {
       ),
     );
     if (a.receipts.length) {
-      body.append(el("h3", "Recibos generados"));
-      body.append(
+      receipts.append(el("h3", "Recibos generados"));
+      receipts.append(
         table(
           [
             "Inmueble",
@@ -1396,6 +1258,8 @@ async function showAssessment(id) {
         ),
       );
     }
+    if (!a.receipts.length)
+      info(receipts, "Todavía no hay recibos emitidos de esta derrama.");
     if (!a.cancelledAt) {
       if (a.totals.paid > 0)
         info(
@@ -1420,7 +1284,7 @@ async function showAssessment(id) {
         ),
       );
       cancel.disabled = a.totals.paid > 0;
-      body.append(cancel);
+      overview.append(cancel);
     }
   } catch (error) {
     if (version === dialogVersion) {
@@ -1986,7 +1850,11 @@ export async function showReceipt(id) {
     const header = el("div", undefined, "fee-receipt-header");
     header.innerHTML = `<h3>${esc(r.snapshot.community)} · ${esc(r.snapshot.property)}</h3><p>${esc(r.concept || `Cuota ${r.period}`)} · Vencimiento ${esc(date(r.dueDate))}</p><p>${esc(r.snapshot.owners.map((o) => o.name).join(", "))}</p><p>${status(r)}</p>`;
     body.append(header);
-    if (r.snapshot.assessmentPurpose) info(body, r.snapshot.assessmentPurpose);
+    if (r.snapshot.assessmentPurpose) {
+      const purpose = el("div", undefined, "fee-rich-content");
+      purpose.innerHTML = richTextHtml(r.snapshot.assessmentPurpose);
+      body.append(purpose);
+    }
     const totals = el("div", undefined, "fee-summary");
     for (const [label, value] of [
       ["Importe", r.amount],
@@ -2147,7 +2015,7 @@ function downloadReceipt(r) {
     ["Recibo", r.id],
     ["Concepto", r.concept || `Cuota ${r.period}`],
     ...(r.snapshot.assessmentPurpose
-      ? [["Motivo de la derrama", r.snapshot.assessmentPurpose]]
+      ? [["Motivo de la derrama", htmlToText(r.snapshot.assessmentPurpose)]]
       : []),
     ["Periodo", r.period],
     ["Vencimiento", r.dueDate],

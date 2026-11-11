@@ -60,9 +60,16 @@ solo pueden descargarlos su autor y los gestores autorizados de la comunidad.
 
 ## Derramas (cuotas extraordinarias)
 
-En **Cuotas → Derramas → Nueva derrama**, indicar nombre, motivo opcional, acuerdo
-de Junta e importe total. Se pueden incluir todos los inmuebles de la comunidad o
-una selección y repartir por coeficientes o importes manuales. Si se incluyen todos,
+En **Cuotas** hay dos pestañas: **Cuotas ordinarias** y **Derramas**, cada una con
+sus propios recibos y filtros. En **Derramas → Nueva derrama** se abre un editor
+integrado en la página, con secciones **General**, **Inmuebles**, **Plazos** y
+**Avisos**. Los campos obligatorios llevan `*`; el motivo y los ajustes de avisos
+son opcionales. El motivo admite texto enriquecido, listas y enlaces saneados.
+
+Indicar nombre, acuerdo de Junta e importe total. En **Inmuebles**, usar el botón
+de vincular para buscar y agregar inmuebles existentes, o **Agregar todos** para
+incluir toda la comunidad. Cada inmueble se puede quitar con su botón de papelera.
+Se puede repartir por coeficientes o importes manuales. Si se incluyen todos,
 los coeficientes deben sumar el 100 %; una selección se reparte proporcionalmente.
 Los importes manuales deben sumar el total. Solo se admiten comunidades en EUR.
 
@@ -76,6 +83,10 @@ emitir el recibo, conservando los titulares históricos de los recibos anteriore
 No se permite borrar o mover a otra comunidad un inmueble incluido en una derrama
 vigente. Todos los plazos deben asignar al menos un céntimo a cada inmueble;
 los repartos que no lo permiten se rechazan antes de guardar.
+En **Plazos**, el botón `+` agrega otro plazo y la papelera lo elimina, manteniendo
+al menos uno. El formulario muestra cuánto queda por distribuir y valida también
+los campos de las pestañas que no estén visibles. El detalle de la derrama separa
+**Resumen**, **Plazos** y **Recibos** en pestañas.
 
 Se puede editar el borrador antes de emitir o anular cualquier plazo; al editar se
 actualiza el reparto con los datos actuales. Después de la primera emisión no se

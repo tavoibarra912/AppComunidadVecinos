@@ -758,3 +758,27 @@ test("derramas API: protege los inmuebles del reparto antes de emitir y permite 
   );
   await ok(admin, `/properties/${property.id}`, "DELETE");
 });
+
+test("derramas: conserva el motivo enriquecido y elimina etiquetas, atributos y enlaces peligrosos", () => {
+  const c = create({
+    purpose:
+      '<p>Obras <strong>urgentes</strong></p><ul><li>Fachada</li></ul><img src=x onerror=alert(1)><a href="javascript:alert(1)">Enlace</a>',
+  });
+  assert.match(c.assessment.purpose, /<strong>urgentes<\/strong>/);
+  assert.match(c.assessment.purpose, /<ul><li>Fachada<\/li><\/ul>/);
+  assert.doesNotMatch(c.assessment.purpose, /<img|onerror|javascript:/);
+  issue(c.assessment.id);
+  assert.equal(
+    detail(c.assessment.id).receipts[0].snapshot.assessmentPurpose,
+    c.assessment.purpose,
+  );
+  assert.throws(
+    () =>
+      fees.saveAssessment(
+        c.id,
+        { ...defaults, purpose: "x".repeat(20001) },
+        actor,
+      ),
+    { status: 400 },
+  );
+});

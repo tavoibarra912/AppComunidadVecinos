@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { db, getSettings, listProperties, listOwners } from "./db.js";
 import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
+import { sanitizeRichText } from "./rich-text.js";
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS fee_plans (
@@ -929,9 +930,11 @@ export function saveAssessment(communityId, input, actor, id = "") {
   const name = typeof input.name === "string" ? input.name.trim() : "";
   if (!name || name.length > 120)
     throw problem("Indicá un nombre de derrama (máximo 120 caracteres).");
-  const purpose = typeof input.purpose === "string" ? input.purpose.trim() : "";
-  if (purpose.length > 500)
-    throw problem("El motivo no puede superar 500 caracteres.");
+  const rawPurpose =
+    typeof input.purpose === "string" ? input.purpose.trim() : "";
+  if (rawPurpose.length > 20000)
+    throw problem("El motivo no puede superar 20000 caracteres de formato.");
+  const purpose = sanitizeRichText(rawPurpose);
   const agreement =
     typeof input.agreement === "string" ? input.agreement.trim() : "";
   if (!agreement || agreement.length > 300)
