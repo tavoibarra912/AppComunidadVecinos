@@ -11,6 +11,12 @@ function findProperty(id) {
   return row ? propertyFromRow(row) : null;
 }
 
+function hasAssessment(propertyId) {
+  return db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_assessments'").get() &&
+    db.prepare(`SELECT 1 FROM fee_assessments a, json_each(a.data, '$.propertyIds') p
+      WHERE a.cancelledAt='' AND p.value=? LIMIT 1`).get(propertyId);
+}
+
 function propertyPayload(property) {
   return { ...property, documents: listDocuments("property", property.id) };
 }
@@ -237,6 +243,8 @@ router.put("/:id", (req, res) => {
   const existing = findProperty(req.params.id);
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
   const data = req.body || {};
+  if ((data.communityId || "") !== existing.communityId && hasAssessment(existing.id))
+    return res.status(409).json({ error: "No se puede cambiar de comunidad un inmueble incluido en una derrama vigente. Anulá primero la derrama." });
   const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
   if (error) return res.status(400).json({ error });
   const community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
@@ -256,6 +264,8 @@ router.put("/:id", (req, res) => {
 });
 
 router.delete("/:id", (req, res) => {
+  if (hasAssessment(req.params.id))
+    return res.status(409).json({ error: "No se puede eliminar un inmueble incluido en una derrama vigente. Anulá primero la derrama." });
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() && db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=?").get(req.params.id))
     return res.status(409).json({ error: "No se puede eliminar un inmueble con historial de cuotas." });
   const existing = findProperty(req.params.id);

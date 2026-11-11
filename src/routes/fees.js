@@ -13,12 +13,20 @@ import {
   canReadReceipt,
   receiptById,
   receiptView,
+  receiptConcept,
   feeSummary,
   feeDefaults,
   plans,
   savePlan,
   preview,
   issue,
+  assessmentById,
+  assessments,
+  saveAssessment,
+  assessmentDetail,
+  previewAssessment,
+  issueAssessment,
+  cancelAssessment,
   recordPayment,
   paymentView,
   reversePayment,
@@ -83,6 +91,11 @@ function payment(req) {
   if (!p) throw problem("Cobro no encontrado.", 404);
   manage(req, p.communityId);
   return p;
+}
+function assessment(req) {
+  const row = assessmentById(req.params.assessmentId);
+  manage(req, row.communityId);
+  return row;
 }
 function data(user, rows, communityId = "") {
   const policy = policyData();
@@ -188,6 +201,7 @@ router.get(
       ),
       canManage: editable,
       plans: editable ? plans(id) : [],
+      assessments: editable ? assessments(id) : [],
       defaults: editable ? feeDefaults() : null,
       properties: editable
         ? listProperties()
@@ -250,6 +264,59 @@ router.post(
     const id = community(req);
     manage(req, id);
     res.status(201).json(issue(id, req.body || {}, req.user));
+  }),
+);
+router.get(
+  "/communities/:communityId/assessments",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json(assessments(id));
+  }),
+);
+router.post(
+  "/communities/:communityId/assessments",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.status(201).json(saveAssessment(id, req.body || {}, req.user));
+  }),
+);
+router.get(
+  "/assessments/:assessmentId",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(assessmentDetail(row));
+  }),
+);
+router.put(
+  "/assessments/:assessmentId",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(saveAssessment(row.communityId, req.body || {}, req.user, row.id));
+  }),
+);
+router.post(
+  "/assessments/:assessmentId/preview",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(previewAssessment(row.id, req.body?.installment));
+  }),
+);
+router.post(
+  "/assessments/:assessmentId/issue",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res
+      .status(201)
+      .json(issueAssessment(row.id, req.body || {}, req.user));
+  }),
+);
+router.post(
+  "/assessments/:assessmentId/cancel",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(cancelAssessment(row.id, req.body || {}, req.user));
   }),
 );
 router.post(
@@ -385,7 +452,7 @@ router.post("/receipts/:receiptId/proofs", (req, res, next) => {
         adminNotice(
           row,
           owner.id,
-          `Justificante de cuota pendiente de revisión · ${row.period}`,
+          `Justificante pendiente de revisión · ${receiptConcept(row)}`,
         );
         recordAudit({
           actor: req.user,
@@ -468,7 +535,7 @@ router.post(
         "proof",
         proof.id,
         "Justificante revisado",
-        `Tu justificante para la cuota ${row.period} fue ${req.body.status === "accepted" ? "aceptado para revisión bancaria" : "rechazado"}. ${req.body.note.trim()}`,
+        `Tu justificante para la ${receiptConcept(row)[0].toLowerCase()}${receiptConcept(row).slice(1)} fue ${req.body.status === "accepted" ? "aceptado para revisión bancaria" : "rechazado"}. ${req.body.note.trim()}`,
         proof.ownerId,
       );
       recordAudit({

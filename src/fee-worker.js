@@ -3,6 +3,7 @@ import {
   materializeFeeReminders,
   receiptById,
   receiptView,
+  receiptConcept,
   canReadReceipt,
   feeDefaults,
 } from "./fees.js";
@@ -61,7 +62,7 @@ export async function processFeeNotifications(send = sendMessage) {
             values = {
               titulo: item.title,
               mensaje: reminder
-                ? `Cuota ${row.period} de ${view.snapshot.property}. Vencimiento: ${row.dueDate}. Pendiente actual: ${(view.outstanding / 100).toFixed(2)} EUR.`
+                ? `${receiptConcept(row, view.snapshot)} de ${view.snapshot.property}. Vencimiento: ${row.dueDate}. Pendiente actual: ${(view.outstanding / 100).toFixed(2)} EUR.`
                 : item.message,
               comunidad: view.snapshot.community,
             };

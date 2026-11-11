@@ -58,8 +58,41 @@ reintentan automáticamente; quedan en auditoría. La aceptación por el proveed
 confirma entrega. Los justificantes se guardan dentro de `uploads/fee-proofs/` y
 solo pueden descargarlos su autor y los gestores autorizados de la comunidad.
 
-Esta versión gestiona exclusivamente cuotas ordinarias. Los mandatos y remesas
-SEPA, las derramas, otros cargos y la contabilidad de suministros quedan fuera.
+## Derramas (cuotas extraordinarias)
+
+En **Cuotas → Derramas → Nueva derrama**, indicar nombre, motivo opcional, acuerdo
+de Junta e importe total. Se pueden incluir todos los inmuebles de la comunidad o
+una selección y repartir por coeficientes o importes manuales. Si se incluyen todos,
+los coeficientes deben sumar el 100 %; una selección se reparte proporcionalmente.
+Los importes manuales deben sumar el total. Solo se admiten comunidades en EUR.
+
+El reparto y los inmuebles incluidos quedan congelados al guardar: los cambios
+posteriores de coeficientes o las altas de inmuebles no recalculan la derrama.
+Cada plazo tiene importe y vencimiento propios; los vencimientos deben ser
+crecientes y los importes sumar el total. La vista previa muestra el reparto antes
+de confirmar la emisión de cada plazo. Los redondeos conservan tanto el total del
+plazo como el importe aprobado para cada inmueble. Los titulares se identifican al
+emitir el recibo, conservando los titulares históricos de los recibos anteriores.
+No se permite borrar o mover a otra comunidad un inmueble incluido en una derrama
+vigente. Todos los plazos deben asignar al menos un céntimo a cada inmueble;
+los repartos que no lo permiten se rechazan antes de guardar.
+
+Se puede editar el borrador antes de emitir o anular cualquier plazo; al editar se
+actualiza el reparto con los datos actuales. Después de la primera emisión no se
+permite editar, aunque se anulen todos los recibos. Se pueden anular plazos
+pendientes o emitidos y la derrama completa, indicando un motivo. Los cobros
+aplicados bloquean la anulación hasta revertirlos. Un plazo anulado no se vuelve
+a emitir: para sustituirlo hay que crear una nueva derrama.
+
+Las derramas usan el mismo libro de recibos, cobros, imputaciones, saldos a favor,
+justificantes privados y avisos que las cuotas ordinarias. Aparecen identificadas
+por nombre y plazo en **Mis cuotas**, el detalle y el CSV del recibo, y sus saldos
+se incluyen en el resumen de Inicio. Los canales y recordatorios se configuran
+para cada derrama. Las cuotas ordinarias y varias derramas pueden coexistir en
+el mismo mes sin duplicar un inmueble dentro del mismo plazo.
+
+Quedan fuera de esta versión el adjunto del acta a la derrama, los mandatos y
+remesas SEPA, los intereses, otros cargos y la contabilidad de gastos.
 
 ## Ejecución
 

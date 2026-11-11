@@ -22,6 +22,20 @@ const labels = {
   pending: "Pendiente",
   cancelled: "Anulado",
 };
+const assessmentLabels = {
+  draft: "Borrador",
+  active: "En curso",
+  collected: "Cobrada",
+  cancelled: "Anulada",
+};
+const installmentLabels = {
+  pending: "Sin emitir",
+  issued: "Emitido",
+  partial: "Pago parcial",
+  paid: "Pagado",
+  overdue: "Vencido",
+  cancelled: "Anulado",
+};
 const methods = {
   transfer: "Transferencia",
   deposit: "Ingreso en cuenta",
@@ -163,7 +177,7 @@ export function renderFeesPage() {
     el(
       "p",
       kind === "community"
-        ? "Gestioná las cuotas ordinarias de cada comunidad, sus recibos y cobros."
+        ? "Gestioná las cuotas ordinarias y derramas de cada comunidad, sus recibos y cobros."
         : kind === "owner" && !ownProfile
           ? "Consultá los recibos, pagos y justificantes del propietario seleccionado."
           : "Consultá tus recibos, pagos, vencimientos y justificantes.",
@@ -420,14 +434,21 @@ function info(parent, text, alert = false) {
  * para que quede claro qué hacer primero y qué falta después.
  */
 function guide(root, data, manage) {
-  const active = data.receipts.filter((r) => !r.cancelledAt);
+  const active = data.receipts.filter(
+    (r) => !r.cancelledAt && r.kind !== "assessment",
+  );
   const issued = active.reduce((sum, r) => sum + r.amount, 0);
   const paid = active.reduce((sum, r) => sum + r.paid, 0);
   const percent = issued ? Math.round((paid / issued) * 100) : 0;
   const configured = data.plans.length > 0;
   const plan = data.plans[0];
-  const periodsPerYear = plan ? Math.max(1, Math.round(12 / Math.max(1, Number(plan.months) || 1))) : 0;
-  const periodLabel = { 1: "mensual", 3: "trimestral", 6: "semestral", 12: "anual" }[Number(plan?.months)] || `cada ${plan?.months || 1} meses`;
+  const periodsPerYear = plan
+    ? Math.max(1, Math.round(12 / Math.max(1, Number(plan.months) || 1)))
+    : 0;
+  const periodLabel =
+    { 1: "mensual", 3: "trimestral", 6: "semestral", 12: "anual" }[
+      Number(plan?.months)
+    ] || `cada ${plan?.months || 1} meses`;
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
   const steps = [
     {
@@ -597,9 +618,7 @@ function renderPanel(root, ctx) {
     manage = data.canManage && !ctx.readonly;
   const feeCurrency =
     ctx.kind === "community"
-      ? (
-          state.communities.find((c) => c.id === ctx.id)?.currency || "EUR"
-        )
+      ? (state.communities.find((c) => c.id === ctx.id)?.currency || "EUR")
           .trim()
           .toUpperCase()
       : "EUR";
@@ -608,7 +627,7 @@ function renderPanel(root, ctx) {
     el(
       "h3",
       root.classList.contains("fee-panel-standalone")
-        ? "Recibos de cuotas ordinarias"
+        ? "Recibos de cuotas y derramas"
         : panelTitle(ctx.kind, ctx.id),
     ),
   );
@@ -652,6 +671,13 @@ function renderPanel(root, ctx) {
       root,
       "Asociá inmuebles con sus titulares a esta comunidad antes de emitir cuotas.",
     );
+  if (
+    ctx.kind === "community" &&
+    data.canManage &&
+    canConfigure &&
+    !ctx.readonly
+  )
+    assessmentSection(root, ctx);
   const filters = el("div", undefined, "fee-filters");
   const periods = [...new Set(data.receipts.map((r) => r.period))]
     .sort()
@@ -724,7 +750,7 @@ function renderPanel(root, ctx) {
               ? r.outstanding > 0 && r.dueDate < madridDate()
               : r.status === ctx.status)) &&
         (!query ||
-          `${r.snapshot.property} ${r.snapshot.community} ${r.snapshot.owners.map((o) => o.name).join(" ")} ${r.period} ${r.id}`
+          `${r.snapshot.property} ${r.snapshot.community} ${r.snapshot.owners.map((o) => o.name).join(" ")} ${r.period} ${r.concept || ""} ${r.id}`
             .toLocaleLowerCase("es")
             .includes(query)),
     );
@@ -769,7 +795,7 @@ function renderPanel(root, ctx) {
         table(
           [
             "Comunidad / inmueble",
-            "Periodo / vencimiento",
+            "Concepto / vencimiento",
             "Importe",
             "Pendiente",
             "Estado",
@@ -779,7 +805,7 @@ function renderPanel(root, ctx) {
             .slice((ctx.page - 1) * ctx.pageSize, ctx.page * ctx.pageSize)
             .map((r) => [
               `<strong>${esc(r.snapshot.property)}</strong><small>${esc(r.snapshot.community)}</small>`,
-              `${esc(r.period)}<small>${esc(date(r.dueDate))}</small>`,
+              `${esc(r.concept || r.period)}<small>${esc(date(r.dueDate))}</small>`,
               money(r.amount),
               money(r.outstanding),
               status(r),
@@ -887,6 +913,582 @@ function renderPanel(root, ctx) {
     "Los importes corresponden al inmueble completo. Los porcentajes de titularidad no duplican la cuota entre copropietarios.",
   );
 }
+function parseMoneyInput(value) {
+  const text = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+  return /^\d{1,9}(\.\d{1,2})?$/.test(text)
+    ? Math.round(Number(text) * 100)
+    : null;
+}
+function defaultAssessmentDueDate() {
+  const due = new Date(`${madridDate()}T12:00:00Z`);
+  due.setUTCDate(due.getUTCDate() + 30);
+  return due.toISOString().slice(0, 10);
+}
+function assessmentStatus(a) {
+  return `<span class="fee-status fee-status-${esc(a.status)}">${esc(assessmentLabels[a.status] || a.status)}</span>`;
+}
+function installmentStatus(installment) {
+  const label = installmentLabels[installment.status] || installment.status;
+  const overdue =
+    installment.status === "partial" && installment.dueDate < madridDate();
+  return `<span class="fee-status fee-status-${esc(installment.status)}">${esc(label)}</span>${overdue ? '<span class="fee-status fee-status-overdue">Vencido</span>' : ""}${installment.cancellationReason ? `<small>${esc(installment.cancellationReason)}</small>` : ""}`;
+}
+function assessmentSection(root, ctx) {
+  const data = ctx.data,
+    list = data.assessments || [];
+  const section = el("section", undefined, "fee-assessments");
+  section.setAttribute("aria-labelledby", "fee-assessments-title");
+  const heading = el("div", undefined, "fee-section-heading"),
+    copy = el("div");
+  copy.append(
+    el("h4", "Derramas", "fee-section-title"),
+    el(
+      "p",
+      "Cuotas extraordinarias con el reparto congelado al guardar. Cada plazo se emite por separado y usa los mismos recibos, cobros y justificantes que las cuotas ordinarias.",
+      "form-intro",
+    ),
+  );
+  copy.querySelector("h4").id = "fee-assessments-title";
+  heading.append(copy);
+  const create = button("Nueva derrama", () => assessmentForm(ctx), true);
+  create.disabled = !(data.properties || []).length;
+  heading.append(create);
+  section.append(heading);
+  if (!list.length)
+    info(
+      section,
+      "Todavía no hay derramas. Creá una para aprobar un gasto extraordinario y emitir sus plazos.",
+    );
+  else
+    section.append(
+      table(
+        ["Derrama", "Total", "Plazos", "Emitido / cobrado", "Estado", "Acción"],
+        list.map((a) => [
+          `<strong>${esc(a.name)}</strong><small>${esc(a.purpose || a.agreement)}</small>`,
+          money(a.totalAmount),
+          `${a.installments.length} ${a.installments.length === 1 ? "plazo" : "plazos"}`,
+          `${money(a.totals.issued)}<small>Cobrado ${money(a.totals.paid)}</small>`,
+          assessmentStatus(a),
+          button("Abrir derrama", () => showAssessment(a.id)),
+        ]),
+      ),
+    );
+  root.append(section);
+}
+function assessmentForm(ctx, assessment = null) {
+  const editing = !!assessment,
+    body = open(editing ? "Editar derrama" : "Nueva derrama"),
+    data = ctx.data,
+    grid = el("div", undefined, "fee-form-grid");
+  body.append(grid);
+  info(
+    body,
+    editing
+      ? "Esta derrama todavía no tiene recibos emitidos. Al guardar se vuelve a congelar el reparto con los coeficientes actuales."
+      : "El reparto queda congelado al guardar: los cambios posteriores de coeficientes o del censo no modifican los importes ni los inmuebles incluidos. Los recibos identifican a los titulares al emitir cada plazo.",
+  );
+  const name = field(
+    grid,
+    "Nombre de la derrama",
+    "text",
+    assessment?.name || "",
+  );
+  name.maxLength = 120;
+  name.required = true;
+  hint(name, "Por ejemplo: Obras de rehabilitación de la fachada.");
+  const purpose = field(
+    grid,
+    "Motivo de la derrama",
+    "textarea",
+    assessment?.purpose || "",
+  );
+  purpose.maxLength = 500;
+  hint(purpose, "Detalle opcional que verán los propietarios en el recibo.");
+  const agreement = field(
+    grid,
+    "Acuerdo de Junta que la aprueba",
+    "text",
+    assessment?.agreement || "",
+  );
+  agreement.maxLength = 300;
+  agreement.required = true;
+  hint(agreement, "Número de acta o fecha del acuerdo.");
+  const total = euroField(
+    grid,
+    "Importe total de la derrama (€)",
+    assessment?.totalAmount ?? "",
+  );
+  hint(
+    total,
+    "Suma de todos los plazos, repartida entre los inmuebles elegidos.",
+  );
+  const mode = field(
+    grid,
+    "Criterio de reparto",
+    "select",
+    assessment?.mode || "coefficient",
+    [
+      ["coefficient", "Por coeficiente de participación"],
+      ["manual", "Importes manuales por inmueble"],
+    ],
+  );
+  hint(
+    mode,
+    "Coeficiente: reparte el total según la participación de cada inmueble. Manual: fijás el importe de cada inmueble y la suma debe coincidir con el total.",
+  );
+  body.append(el("h3", "Inmuebles incluidos"));
+  info(
+    body,
+    "Por defecto se incluyen todos los inmuebles. Podés excluir alguno; el reparto solo se aplica a los seleccionados.",
+  );
+  const selection = el("div", undefined, "fee-form-grid"),
+    properties = data.properties || [],
+    propertyState = properties.map((property) => ({
+      property,
+      input: field(
+        selection,
+        `${property.plot} · coeficiente ${property.coefficient} %`,
+        "checkbox",
+        !assessment || assessment.propertyIds.includes(property.id),
+      ),
+    }));
+  body.append(selection);
+  const manualGrid = el("div", undefined, "fee-form-grid");
+  body.append(manualGrid);
+  const manualInputs = {};
+  for (const { property } of propertyState)
+    manualInputs[property.id] = euroField(
+      manualGrid,
+      `${property.plot} · importe (€)`,
+      assessment?.allocations?.[property.id] ?? "",
+    );
+  body.append(el("h3", "Plazos de la derrama"));
+  info(
+    body,
+    "Cada plazo tiene su importe y vencimiento. La suma de los plazos debe coincidir con el total. Los plazos se emiten de a uno, con vista previa antes de confirmar.",
+  );
+  const installmentsBox = el("div", undefined, "fee-installments");
+  body.append(installmentsBox);
+  const rows = [];
+  let autoSingle = !editing;
+  const installmentsSummary = el("p", undefined, "fee-payment-summary");
+  installmentsSummary.setAttribute("aria-live", "polite");
+  body.append(installmentsSummary);
+  function updateInstallmentsSummary() {
+    const sum = rows.reduce(
+      (totalSum, row) => totalSum + (parseMoneyInput(row.amount.value) || 0),
+      0,
+    );
+    const expected = parseMoneyInput(total.value);
+    installmentsSummary.textContent = expected
+      ? `Plazos: ${rows.length} · Suma ${money(sum)} · Total ${money(expected)}${sum === expected ? " · Correcto" : " · La suma debe coincidir con el total"}`
+      : `Plazos: ${rows.length} · Suma ${money(sum)}. Completá el total de la derrama.`;
+    syncRemoveButtons();
+  }
+  function syncRemoveButtons() {
+    for (const row of rows) row.remove.disabled = rows.length === 1;
+  }
+  function addInstallment(item = null) {
+    const row = el("div", undefined, "fee-installment-row"),
+      amountInput = euroField(
+        row,
+        "Importe del plazo (€)",
+        item ? item.amount : "",
+      ),
+      dueInput = field(
+        row,
+        "Vencimiento del plazo",
+        "date",
+        item?.dueDate || defaultAssessmentDueDate(),
+      ),
+      remove = button("Quitar", () => {
+        const index = rows.findIndex((entry) => entry.row === row);
+        if (index >= 0) rows.splice(index, 1);
+        row.remove();
+        updateInstallmentsSummary();
+      });
+    dueInput.required = true;
+    amountInput.addEventListener("input", () => {
+      autoSingle = false;
+      updateInstallmentsSummary();
+    });
+    dueInput.addEventListener("input", updateInstallmentsSummary);
+    rows.push({ row, amount: amountInput, dueDate: dueInput, remove });
+    installmentsBox.append(row);
+    updateInstallmentsSummary();
+    return row;
+  }
+  for (const item of assessment?.installments || [null]) addInstallment(item);
+  body.append(
+    button("Agregar plazo", () => {
+      autoSingle = false;
+      addInstallment();
+    }),
+  );
+  total.addEventListener("input", () => {
+    if (autoSingle && rows.length === 1)
+      rows[0].amount.value = total.value.trim();
+    updateInstallmentsSummary();
+  });
+  body.append(el("h3", "Avisos de esta derrama"));
+  const reminderDefaults = {
+    beforeDays: 3,
+    afterDays: 7,
+    repeatDays: 0,
+    internal: true,
+    email: false,
+    ...(data.defaults || {}),
+    ...(assessment?.reminders || {}),
+  };
+  const noticeGrid = el("div", undefined, "fee-form-grid");
+  body.append(noticeGrid);
+  const before = field(
+    noticeGrid,
+    "Días antes del vencimiento (0 desactiva)",
+    "number",
+    reminderDefaults.beforeDays,
+  );
+  const after = field(
+    noticeGrid,
+    "Días después del vencimiento",
+    "number",
+    reminderDefaults.afterDays,
+  );
+  const repeat = field(
+    noticeGrid,
+    "Repetir aviso vencido cada N días (0: una vez)",
+    "number",
+    reminderDefaults.repeatDays,
+  );
+  for (const input of [before, after, repeat]) {
+    input.min = "0";
+    input.required = true;
+  }
+  before.max = "60";
+  after.max = repeat.max = "365";
+  const internal = field(
+    noticeGrid,
+    "Avisos en el buzón de la app",
+    "checkbox",
+    reminderDefaults.internal,
+  );
+  const email = field(
+    noticeGrid,
+    "Avisos por email a quienes habiliten el canal",
+    "checkbox",
+    reminderDefaults.email,
+  );
+  const syncManual = () => {
+    manualGrid.hidden = mode.value !== "manual";
+    for (const { property, input } of propertyState) {
+      const manual = manualInputs[property.id];
+      manual.disabled = mode.value !== "manual" || !input.checked;
+      manual.required = mode.value === "manual" && input.checked;
+    }
+    updateInstallmentsSummary();
+  };
+  mode.addEventListener("change", syncManual);
+  for (const { input } of propertyState)
+    input.addEventListener("change", syncManual);
+  syncManual();
+  updateInstallmentsSummary();
+  body.append(
+    button(
+      editing ? "Guardar cambios" : "Crear derrama",
+      async () => {
+        const selected = propertyState
+          .filter(({ input }) => input.checked)
+          .map(({ property }) => property.id);
+        if (!selected.length) throw new Error("Elegí al menos un inmueble.");
+        const expected = parseMoneyInput(total.value);
+        const items = rows.map((row) => ({
+          amount: row.amount.value,
+          dueDate: row.dueDate.value,
+        }));
+        const sum = items.reduce(
+          (totalSum, item) => totalSum + (parseMoneyInput(item.amount) || 0),
+          0,
+        );
+        if (expected && sum !== expected)
+          throw new Error(
+            `La suma de los plazos (${money(sum)}) debe coincidir con el total (${money(expected)}).`,
+          );
+        if (mode.value === "manual" && expected) {
+          const manualSum = selected.reduce(
+            (totalSum, id) =>
+              totalSum + (parseMoneyInput(manualInputs[id].value) || 0),
+            0,
+          );
+          if (manualSum !== expected)
+            throw new Error(
+              `La suma de los importes por inmueble (${money(manualSum)}) debe coincidir con el total (${money(expected)}).`,
+            );
+        }
+        const saved = await api.fees(
+          editing
+            ? `/assessments/${encodeURIComponent(assessment.id)}`
+            : `/communities/${encodeURIComponent(ctx.id)}/assessments`,
+          editing ? "PUT" : "POST",
+          {
+            name: name.value,
+            purpose: purpose.value,
+            agreement: agreement.value,
+            totalAmount: total.value,
+            mode: mode.value,
+            propertyIds: selected,
+            manual: Object.fromEntries(
+              Object.entries(manualInputs).map(([id, input]) => [
+                id,
+                input.value,
+              ]),
+            ),
+            installments: items,
+            reminders: {
+              beforeDays: Number(before.value),
+              afterDays: Number(after.value),
+              repeatDays: Number(repeat.value),
+              internal: internal.checked,
+              email: email.checked,
+            },
+          },
+        );
+        dialog.close();
+        await reloadAll();
+        toast(
+          editing
+            ? "Derrama actualizada."
+            : "Derrama guardada. Todavía no se emitieron recibos.",
+        );
+        showAssessment(saved.id);
+      },
+      true,
+    ),
+  );
+}
+async function showAssessment(id) {
+  const body = open("Derrama"),
+    version = dialogVersion;
+  info(body, "Cargando derrama…");
+  try {
+    const a = await api.fees(`/assessments/${encodeURIComponent(id)}`);
+    if (version !== dialogVersion || !dialog.open) return;
+    body.replaceChildren();
+    dialog.querySelector("h2").textContent = a.name;
+    const header = el("div", undefined, "fee-receipt-header");
+    header.innerHTML = `<h3>${esc(a.name)}</h3><p>${esc(a.purpose || "Derrama extraordinaria")}</p><p>Acuerdo: ${esc(a.agreement)}</p><p>${assessmentStatus(a)}</p>`;
+    body.append(header);
+    if (a.cancelledAt)
+      info(
+        body,
+        `Anulada el ${date(a.cancelledAt)}. Motivo: ${a.cancellationReason}`,
+        true,
+      );
+    const totals = el("div", undefined, "fee-summary");
+    for (const [label, value] of [
+      ["Total", a.totals.total],
+      ["Emitido", a.totals.issued],
+      ["Cobrado", a.totals.paid],
+      ["Pendiente", a.totals.outstanding],
+      ["Sin emitir", a.totals.unissued],
+      ["Anulado", a.totals.cancelled],
+    ]) {
+      const cell = el("div");
+      cell.append(el("span", label), el("strong", money(value)));
+      totals.append(cell);
+    }
+    body.append(totals);
+    info(
+      body,
+      `Reparto ${a.mode === "coefficient" ? "por coeficiente de participación" : "con importes manuales por inmueble"}, congelado al guardar la derrama.`,
+    );
+    if (a.canEdit)
+      body.append(
+        button("Editar derrama", async () => {
+          const current = dialogVersion;
+          const data = await api.fees(
+            `/communities/${encodeURIComponent(a.communityId)}`,
+          );
+          if (current === dialogVersion && dialog.open)
+            assessmentForm({ id: a.communityId, data }, a);
+        }),
+      );
+    body.append(el("h3", "Plazos"));
+    body.append(
+      table(
+        [
+          "Plazo",
+          "Vencimiento",
+          "Importe",
+          "Emitido",
+          "Cobrado",
+          "Pendiente",
+          "Estado",
+          "Acción",
+        ],
+        a.installments.map((installment) => {
+          const actions = el("div", undefined, "fee-row-actions");
+          if (installment.status === "pending" && !a.cancelledAt)
+            actions.append(
+              button(`Emitir plazo ${installment.number}`, () =>
+                assessmentEmission(a.id, installment.number),
+              ),
+            );
+          if (
+            !a.cancelledAt &&
+            installment.status !== "cancelled" &&
+            installment.paid === 0
+          )
+            actions.append(
+              button("Anular plazo", () =>
+                reasonDialog(
+                  `Anular plazo ${installment.number}`,
+                  "El plazo quedará anulado y no podrá emitirse. Se anularán sus recibos si ya se emitieron. Si hay cobros aplicados, primero revertilos.",
+                  async (reason) => {
+                    await api.fees(
+                      `/assessments/${encodeURIComponent(a.id)}/cancel`,
+                      "POST",
+                      { reason, installment: installment.number },
+                    );
+                    dialog.close();
+                    await reloadAll();
+                    showAssessment(a.id);
+                  },
+                ),
+              ),
+            );
+          return [
+            String(installment.number),
+            date(installment.dueDate),
+            money(installment.amount),
+            installment.issued ? "Sí" : "No",
+            money(installment.paid),
+            money(installment.outstanding),
+            installmentStatus(installment),
+            actions.childNodes.length ? actions : "—",
+          ];
+        }),
+      ),
+    );
+    if (a.receipts.length) {
+      body.append(el("h3", "Recibos generados"));
+      body.append(
+        table(
+          [
+            "Inmueble",
+            "Titulares",
+            "Importe",
+            "Cobrado",
+            "Pendiente",
+            "Estado",
+            "Acción",
+          ],
+          a.receipts.map((r) => [
+            `${esc(r.snapshot.property)}<small>Plazo ${r.installment}</small>`,
+            esc(r.snapshot.owners.map((o) => o.name).join(", ")),
+            money(r.amount),
+            money(r.paid),
+            money(r.outstanding),
+            status(r),
+            button("Ver recibo", () => showReceipt(r.id)),
+          ]),
+        ),
+      );
+    }
+    if (!a.cancelledAt) {
+      if (a.totals.paid > 0)
+        info(
+          body,
+          "Para anular la derrama completa primero revertí los cobros aplicados. También podés anular un plazo sin cobros.",
+          true,
+        );
+      const cancel = button("Anular derrama completa", () =>
+        reasonDialog(
+          "Anular derrama completa",
+          "Se anularán todos los recibos activos de la derrama. Los cobros aplicados bloquean esta acción.",
+          async (reason) => {
+            await api.fees(
+              `/assessments/${encodeURIComponent(a.id)}/cancel`,
+              "POST",
+              { reason },
+            );
+            dialog.close();
+            await reloadAll();
+            showAssessment(a.id);
+          },
+        ),
+      );
+      cancel.disabled = a.totals.paid > 0;
+      body.append(cancel);
+    }
+  } catch (error) {
+    if (version === dialogVersion) {
+      body.replaceChildren();
+      info(body, error.message, true);
+    }
+  }
+}
+async function assessmentEmission(id, number) {
+  const body = open(`Emitir plazo ${number}`),
+    version = dialogVersion;
+  info(body, "Calculando la vista previa del plazo…");
+  try {
+    const batch = await api.fees(
+      `/assessments/${encodeURIComponent(id)}/preview`,
+      "POST",
+      { installment: number },
+    );
+    if (version !== dialogVersion || !dialog.open) return;
+    body.replaceChildren();
+    body.append(
+      el(
+        "h3",
+        `Vista previa · plazo ${batch.installment}/${batch.installmentCount} · ${money(batch.total)}`,
+      ),
+    );
+    info(
+      body,
+      `Vencimiento ${date(batch.dueDate)}. Se crearán ${batch.rows.length} recibos y se avisará a sus titulares.`,
+    );
+    for (const warning of batch.warnings) info(body, warning, true);
+    body.append(
+      table(
+        ["Inmueble", "Titulares", "Coeficiente", "Importe"],
+        batch.rows.map((r) => [
+          esc(r.snapshot.property),
+          esc(r.snapshot.owners.map((o) => o.name).join(", ")),
+          `${esc(r.snapshot.coefficient)} %`,
+          money(r.amount),
+        ]),
+      ),
+    );
+    body.append(
+      button(
+        "Confirmar emisión del plazo",
+        async () => {
+          await api.fees(
+            `/assessments/${encodeURIComponent(id)}/issue`,
+            "POST",
+            { installment: number, token: batch.token },
+          );
+          dialog.close();
+          await reloadAll();
+          toast(
+            `Plazo ${number} emitido. Los recibos ya están disponibles para los propietarios.`,
+          );
+          showAssessment(id);
+        },
+        true,
+      ),
+    );
+  } catch (error) {
+    if (version === dialogVersion) {
+      body.replaceChildren();
+      info(body, error.message, true);
+    }
+  }
+}
 function ownerName(id, data) {
   const owner = state.owners.find((o) => o.id === id);
   return owner
@@ -964,7 +1566,10 @@ function configuration(ctx) {
   const agreement = field(grid, "Referencia del acuerdo de Junta", "text", "");
   agreement.maxLength = 300;
   agreement.required = true;
-  hint(agreement, "Número de acta o fecha del acuerdo que respalda estos importes.");
+  hint(
+    agreement,
+    "Número de acta o fecha del acuerdo que respalda estos importes.",
+  );
   const computeAmount = () => {
     const total = Number(annual.value.replace(",", "."));
     const count = Number(months.value);
@@ -1019,7 +1624,7 @@ function configuration(ctx) {
   for (const x of [before, after, repeat]) x.required = true;
   if (data.receipts.length) {
     const latest = data.receipts
-      .filter((r) => !r.cancelledAt)
+      .filter((r) => !r.cancelledAt && r.kind !== "assessment")
       .map((r) => r.periodEnd || `${r.period}-28`)
       .sort()
       .at(-1);
@@ -1169,7 +1774,7 @@ function receiptSelector(parent, receipts, checked = false) {
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
     const input = field(
       parent,
-      `${r.snapshot.property} · ${r.period} · pendiente ${money(r.outstanding)}`,
+      `${r.snapshot.property} · ${r.concept || r.period} · pendiente ${money(r.outstanding)}`,
       "checkbox",
       checked,
     );
@@ -1367,16 +1972,21 @@ function reasonDialog(title, description, action) {
   );
 }
 export async function showReceipt(id) {
-  const body = open("Recibo de cuota ordinaria"),
+  const body = open("Recibo"),
     version = dialogVersion;
   info(body, "Cargando recibo…");
   try {
     const r = await api.fees(`/receipts/${encodeURIComponent(id)}`);
     if (version !== dialogVersion || !dialog.open) return;
     body.replaceChildren();
+    dialog.querySelector("h2").textContent =
+      r.kind === "assessment"
+        ? "Recibo de derrama"
+        : "Recibo de cuota ordinaria";
     const header = el("div", undefined, "fee-receipt-header");
-    header.innerHTML = `<h3>${esc(r.snapshot.community)} · ${esc(r.snapshot.property)}</h3><p>Cuota ordinaria ${esc(r.period)} · Vencimiento ${esc(date(r.dueDate))}</p><p>${esc(r.snapshot.owners.map((o) => o.name).join(", "))}</p><p>${status(r)}</p>`;
+    header.innerHTML = `<h3>${esc(r.snapshot.community)} · ${esc(r.snapshot.property)}</h3><p>${esc(r.concept || `Cuota ${r.period}`)} · Vencimiento ${esc(date(r.dueDate))}</p><p>${esc(r.snapshot.owners.map((o) => o.name).join(", "))}</p><p>${status(r)}</p>`;
     body.append(header);
+    if (r.snapshot.assessmentPurpose) info(body, r.snapshot.assessmentPurpose);
     const totals = el("div", undefined, "fee-summary");
     for (const [label, value] of [
       ["Importe", r.amount],
@@ -1535,6 +2145,10 @@ function downloadReceipt(r) {
     ["Inmueble", r.snapshot.property],
     ["Titulares", r.snapshot.owners.map((o) => o.name).join(" / ")],
     ["Recibo", r.id],
+    ["Concepto", r.concept || `Cuota ${r.period}`],
+    ...(r.snapshot.assessmentPurpose
+      ? [["Motivo de la derrama", r.snapshot.assessmentPurpose]]
+      : []),
     ["Periodo", r.period],
     ["Vencimiento", r.dueDate],
     ["Importe EUR", amount(r.amount)],
@@ -1542,7 +2156,10 @@ function downloadReceipt(r) {
     ["Pendiente EUR", amount(r.outstanding)],
     ["Estado", labels[r.status]],
     ["Acuerdo", r.snapshot.agreement],
-    ["IBAN para transferencia", r.snapshot.communityIban || community?.iban || ""],
+    [
+      "IBAN para transferencia",
+      r.snapshot.communityIban || community?.iban || "",
+    ],
     ["", ""],
     ["Fecha", "Método", "Aplicado EUR", "Estado"],
   ];
@@ -1574,7 +2191,7 @@ function downloadReceipt(r) {
     ),
     a = document.createElement("a");
   a.href = url;
-  a.download = `cuota-${r.period}-${r.id.slice(0, 8)}.csv`;
+  a.download = `${r.kind === "assessment" ? "derrama" : "cuota"}-${r.period}-${r.id.slice(0, 8)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
