@@ -486,6 +486,25 @@
   line-height: 1.4;
 }
 
+.fee-payment-info {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.fee-payment-info strong {
+  font-size: 12px;
+}
+
+.fee-payment-info span {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 640px) {
   .fee-step {
     grid-template-columns: 26px minmax(0, 1fr);

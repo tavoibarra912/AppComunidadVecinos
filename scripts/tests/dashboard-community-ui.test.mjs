@@ -320,6 +320,33 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     refreshCommunication: async () => calls.push("refresh-posts"),
     openCommunicationPost: (id) => calls.push(id),
     openCommunicationComposer: noop,
+    api: {
+      fees: async () => ({
+        accessible: true,
+        totals: {
+          issued: 10000,
+          paid: 5000,
+          pending: 5000,
+          overdue: 0,
+          dueSoon: 0,
+          credit: 0,
+        },
+        counts: {
+          receipts: 2,
+          paid: 1,
+          partial: 0,
+          pending: 1,
+          withBalance: 1,
+          overdue: 0,
+          cancelled: 0,
+          proofsPending: 0,
+        },
+        collectionRate: 50,
+        nextDue: null,
+        oldestOverdue: null,
+        byCommunity: [],
+      }),
+    },
     toast: noop,
   });
   try {
@@ -328,8 +355,12 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
       dom.getInternalVMContext(),
     );
     const root = w.document.querySelector("#home-dashboard");
+    await flush();
     assert.match(root.textContent, /Hola, Ana/);
     assert.match(root.textContent, /Marca real/);
+    assert.match(root.textContent, /Situación de cuotas/);
+    assert.match(root.textContent, /Emitido/);
+    assert.match(root.textContent, /50% del emitido/);
     assert.doesNotMatch(
       root.textContent,
       /Sistema Operativo|cuotas y derechos al día/i,

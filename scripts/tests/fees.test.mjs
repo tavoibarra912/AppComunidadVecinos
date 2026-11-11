@@ -381,6 +381,29 @@ test("cuotas: pagos parciales, anticipos, reutilización de saldo y devolución 
     409,
   );
 });
+test("cuotas: resumen de Inicio respeta rol, ámbito y saldos pendientes", async () => {
+  const staffSummary = await ok(staff, `/fees/summary?communityId=${c1}`);
+  assert.equal(staffSummary.accessible, true);
+  assert.equal(staffSummary.personal, false);
+  assert.equal(staffSummary.totals.issued, 20000);
+  assert.equal(staffSummary.totals.paid, 1000);
+  assert.equal(staffSummary.totals.pending, 19000);
+  assert.equal(staffSummary.counts.receipts, 4);
+  assert.equal(staffSummary.byCommunity[0].id, c1);
+  const ownerSummary = await ok(owner, "/fees/summary");
+  assert.equal(ownerSummary.personal, true);
+  assert.equal(ownerSummary.totals.issued, 5000);
+  assert.equal(ownerSummary.totals.paid, 1000);
+  assert.equal(ownerSummary.totals.pending, 4000);
+  assert.equal(ownerSummary.counts.receipts, 2);
+  assert.equal(ownerSummary.counts.partial, 1);
+  assert.equal(ownerSummary.counts.withBalance, 2);
+  assert.equal(ownerSummary.nextDue?.period, "2026-12");
+  assert.equal((await staff(`/fees/summary?communityId=${c2}`)).status, 403);
+  assert.equal((await owner(`/fees/summary?communityId=${c2}`)).status, 403);
+  assert.equal((await tenant("/fees/summary")).status, 403);
+});
+
 test("cuotas: justificantes privados, contenido validado y revisión independiente del cobro", async () => {
   const form = new FormData();
   form.append(

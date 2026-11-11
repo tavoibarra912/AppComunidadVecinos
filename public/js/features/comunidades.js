@@ -21,6 +21,20 @@ const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" s
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
 const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
 
+function formatCommunityAmount(value, currency = "EUR") {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return value ? `${value} ${currency}`.trim() : "—";
+  try {
+    return new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: currency || "EUR",
+      maximumFractionDigits: 2
+    }).format(amount);
+  } catch {
+    return `${value} ${currency}`.trim();
+  }
+}
+
 function populateCommunityCurrencySelect(selected) {
   const select = communityForm.elements.currency;
   if (!select) return;
@@ -717,8 +731,18 @@ export function openCommunityDetail(id) {
   if (detailAdministrator) detailAdministrator.textContent = c.administrator || "—";
   const detailConstYear = document.querySelector("#detail-constitutionYear");
   if (detailConstYear) detailConstYear.textContent = c.constitutionYear || "—";
+  const currency = (c.currency || "EUR").toUpperCase();
+  const detailCurrency = document.querySelector("#detail-currency");
+  if (detailCurrency) detailCurrency.textContent = currency;
+  const currencyNote = document.querySelector("#detail-currency-note");
+  if (currencyNote) {
+    currencyNote.hidden = currency === "EUR";
+    currencyNote.textContent = currency === "EUR"
+      ? ""
+      : "Las cuotas se gestionan solo en EUR. Con esta moneda, no se pueden configurar ni emitir recibos.";
+  }
   const detailReserve = document.querySelector("#detail-reserveFund");
-  if (detailReserve) detailReserve.textContent = c.reserveFund ? `${c.reserveFund} €` : "—";
+  if (detailReserve) detailReserve.textContent = c.reserveFund ? formatCommunityAmount(c.reserveFund, currency) : "—";
 
   // Inmuebles vinculados a la comunidad (1-n) (Requisito 5)
   renderCommunityPropertiesSection(c);

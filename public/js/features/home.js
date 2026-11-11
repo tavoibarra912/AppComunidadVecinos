@@ -13,18 +13,33 @@ import {
   openCommunicationPost,
   openCommunicationComposer,
 } from "./communication.js";
+import { api } from "../api.js";
 import { toast } from "../utils.js";
 
 const root = document.querySelector("#home-dashboard");
 let selectedCommunity = "",
   lastUser = null,
-  refreshing = false;
+  refreshing = false,
+  feeSummary = null,
+  feeSummaryKey = "",
+  feeSummaryLoading = false;
 const number = (value) => new Intl.NumberFormat("es-ES").format(value);
+const money = (cents) =>
+  new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+  }).format((Number(cents) || 0) / 100);
 const date = (value) =>
   new Date(value).toLocaleString("es-ES", {
     dateStyle: "medium",
     timeStyle: "short",
   });
+const shortDate = (value) =>
+  value
+    ? new Date(`${value}T00:00:00`).toLocaleDateString("es-ES", {
+        dateStyle: "medium",
+      })
+    : "—";
 const button = (label, action, id = "", primary = false) =>
   `<button type="button" class="${primary ? "primary-button" : "secondary-button"}" data-dashboard-action="${action}" ${id ? `data-id="${h(id)}"` : ""}>${h(label)}</button>`;
 function metric(label, value, description, action, enabled = true) {
@@ -67,6 +82,85 @@ function postList(items, agenda = false) {
     )
     .join("");
 }
+function feeAccess() {
+  return hasPermission("fee:read") || hasPermission("fee:manage");
+}
+function feeKey() {
+  return `${state.currentUserId || ""}|${selectedCommunity}|${state.loadedAt || ""}`;
+}
+function feeSummaryBody(personal) {
+  if (!feeAccess()) return "";
+  if (feeSummaryKey !== feeKey() || !feeSummary)
+    return `<div class="dashboard-finance-loading" role="status"><strong>Cargando la situación de cuotas…</strong><p>Consultando recibos, cobros y vencimientos del ámbito seleccionado.</p></div>`;
+  if (!feeSummary.accessible || feeSummary.error)
+    return `<div class="dashboard-empty"><strong>No se pudo cargar la situación de cuotas</strong><p>Actualizá los datos del panel para volver a intentarlo.</p></div>`;
+  const totals = feeSummary.totals || {},
+    counts = feeSummary.counts || {};
+  if (!counts.receipts)
+    return `<div class="dashboard-empty"><strong>${personal ? "Todavía no tenés recibos emitidos" : "Todavía no hay recibos emitidos en este ámbito"}</strong><p>${personal ? "Cuando la administración emita una cuota, vas a poder consultarla acá y en Mis cuotas." : "Configurá el acuerdo de cuotas y emití el primer periodo para empezar a ver los importes."}</p></div>`;
+  if (personal) {
+    const next = feeSummary.nextDue || feeSummary.oldestOverdue,
+      oldest = feeSummary.oldestOverdue;
+    return `<div class="dashboard-finance-grid">
+      <article class="dashboard-finance-kpi"><span>Pendiente</span><strong>${money(totals.pending)}</strong><small>${counts.withBalance} ${counts.withBalance === 1 ? "recibo con saldo" : "recibos con saldo"}</small></article>
+      <article class="dashboard-finance-kpi ${totals.overdue ? "is-warning" : ""}"><span>Vencido</span><strong>${money(totals.overdue)}</strong><small>${counts.overdue ? `${counts.overdue} ${counts.overdue === 1 ? "recibo vencido" : "recibos vencidos"}${oldest ? ` · desde ${shortDate(oldest.dueDate)}` : ""}` : "Sin recibos vencidos"}</small></article>
+      <article class="dashboard-finance-kpi"><span>Vencimiento</span><strong>${next ? shortDate(next.dueDate) : "—"}</strong><small>${next ? `${money(next.outstanding)} · ${next.property}${feeSummary.nextDue ? "" : " · vencido"}` : "Sin vencimientos pendientes"}</small></article>
+      <article class="dashboard-finance-kpi"><span>Pagado</span><strong>${money(totals.paid)}</strong><small>${counts.paid} ${counts.paid === 1 ? "recibo pagado" : "recibos pagados"}</small></article>
+    </div>
+    <p class="dashboard-caption">${totals.credit ? `Saldo a favor: ${money(totals.credit)}. ` : ""}Los importes corresponden a tus recibos visibles en el ámbito seleccionado.</p>`;
+  }
+  return `<div class="dashboard-finance-grid">
+    <article class="dashboard-finance-kpi"><span>Emitido</span><strong>${money(totals.issued)}</strong><small>${counts.receipts} ${counts.receipts === 1 ? "recibo" : "recibos"}</small></article>
+    <article class="dashboard-finance-kpi"><span>Cobrado</span><strong>${money(totals.paid)}</strong><small>${feeSummary.collectionRate || 0}% del emitido</small></article>
+    <article class="dashboard-finance-kpi"><span>Pendiente</span><strong>${money(totals.pending)}</strong><small>${counts.withBalance} ${counts.withBalance === 1 ? "recibo con saldo" : "recibos con saldo"}</small></article>
+    <article class="dashboard-finance-kpi ${totals.overdue ? "is-warning" : ""}"><span>Vencido</span><strong>${money(totals.overdue)}</strong><small>${counts.overdue ? `${counts.overdue} ${counts.overdue === 1 ? "recibo" : "recibos"}${totals.dueSoon ? ` · ${money(totals.dueSoon)} por vencer en 7 días` : " · requiere seguimiento"}` : totals.dueSoon ? `${money(totals.dueSoon)} por vencer en 7 días` : "Sin recibos vencidos"}</small></article>
+  </div>
+  <div class="dashboard-finance-progress" role="img" aria-label="Cobrado ${feeSummary.collectionRate || 0}% del importe emitido"><span style="width:${Math.min(100, Math.max(0, feeSummary.collectionRate || 0))}%"></span></div>
+  <p class="dashboard-caption">${feeSummary.nextDue ? `Próximo vencimiento: ${shortDate(feeSummary.nextDue.dueDate)} · ${money(feeSummary.nextDue.outstanding)} (${feeSummary.nextDue.property}). ` : "Sin vencimientos próximos. "}${counts.proofsPending ? `${counts.proofsPending} ${counts.proofsPending === 1 ? "justificante pendiente" : "justificantes pendientes"} de revisión. ` : ""}${totals.credit ? `Saldo a favor: ${money(totals.credit)}.` : ""}</p>`;
+}
+function feeSection(personal) {
+  return `<section class="dashboard-panel dashboard-finance" id="dashboard-finance" data-personal="${personal}">
+    <div class="dashboard-panel-heading dashboard-finance-heading">
+      <div><h2>${personal ? "Mis cuotas" : "Situación de cuotas"}</h2><p>${personal ? "Recibos, vencimientos y pagos de tus inmuebles." : "Emitido, cobrado y pendiente en el ámbito seleccionado."}</p></div>
+      <button type="button" class="secondary-button" data-dashboard-action="fees">${personal ? "Ver mis cuotas" : "Abrir Cuotas"}</button>
+    </div>
+    <div id="dashboard-finance-body">${feeSummaryBody(personal)}</div>
+  </section>`;
+}
+function updateFeeSection() {
+  const section = root?.querySelector("#dashboard-finance"),
+    body = section?.querySelector("#dashboard-finance-body");
+  if (body) body.innerHTML = feeSummaryBody(section.dataset.personal === "true");
+}
+function ensureFeeSummary() {
+  if (!feeAccess() || feeSummaryLoading) return;
+  const key = feeKey();
+  if (feeSummaryKey === key) return;
+  feeSummaryLoading = true;
+  const query = selectedCommunity
+    ? `?communityId=${encodeURIComponent(selectedCommunity)}`
+    : "";
+  api
+    .fees(`/summary${query}`)
+    .then((data) => {
+      if (feeKey() === key) {
+        feeSummary = data;
+        feeSummaryKey = key;
+      }
+    })
+    .catch(() => {
+      if (feeKey() === key) {
+        feeSummary = { accessible: false, error: true };
+        feeSummaryKey = key;
+      }
+    })
+    .finally(() => {
+      feeSummaryLoading = false;
+      updateFeeSection();
+      if (feeKey() !== key) ensureFeeSummary();
+    });
+}
+
 export function renderHomeDashboard() {
   if (!root || !state.currentUserId) return;
   if (lastUser !== state.currentUserId) {
@@ -202,10 +296,12 @@ export function renderHomeDashboard() {
     <div class="dashboard-actions">${actions.join("")}</div>
     ${d.personal && !d.ownOwners.length && !d.ownTenants.length ? '<div class="dashboard-callout"><strong>Tu perfil todavía está pendiente de vinculación</strong><p>Un administrador debe asociar tu cuenta con tu perfil de propietario o inquilino. Las métricas aparecerán cuando existan registros vinculados.</p></div>' : ""}
     <div class="dashboard-metrics">${metrics.join("")}</div>
+    ${feeAccess() ? feeSection(d.personal) : ""}
     <div class="dashboard-chart-grid"><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>${d.docOwners.length ? "Estado de los expedientes" : "Documentación registrada"}</h2><p>${d.docOwners.length ? "Clasificación según archivos reales y revisión administrativa." : "Archivos de contrato disponibles para tu cuenta."}</p></div>${documentChart(d)}<p class="dashboard-caption">Fuente: documentación de los registros visibles. Los documentos de ejemplo no se consideran acreditaciones.</p></section><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Distribución de inmuebles</h2><p>Recuento por tipo de unidad registrada.</p></div>${propertyChart(d)}</section></div>
     <div class="dashboard-chart-grid"><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Gestiones a revisar</h2><p>Accesos directos según tus permisos.</p></div><div class="dashboard-tasks">${inboxAllowed ? `<button type="button" data-dashboard-action="${inboxAction}"><span><strong>${inboxCount ? `${inboxCount} avisos sin leer` : "Buzón sin avisos pendientes"}</strong><small>${d.personal ? "Respuestas sobre tus documentos y gestiones" : "Documentación y gestiones de propietarios"}</small></span><span aria-hidden="true">→</span></button>` : ""}${d.docOwners.length ? `<button type="button" data-dashboard-action="${d.personal ? "profile" : "owners"}"><span><strong>${d.personal ? `${needsAttention} expedientes por completar` : `${d.ownerStates.pending} expedientes en revisión`}</strong><small>${d.personal ? "Revisá archivos pendientes o correcciones" : `${d.ownerStates.rejected} con correcciones · ${d.ownerStates.incomplete + d.ownerStates.none} sin completar`}</small></span><span aria-hidden="true">→</span></button>` : ""}<button type="button" data-dashboard-action="communications"><span><strong>Tablón y reuniones</strong><small>${snapshot ? `${d.publishedCount} publicaciones en este ámbito` : "Abrí el tablón para consultar las comunicaciones"}</small></span><span aria-hidden="true">→</span></button></div></section><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Próximos eventos y reuniones</h2><p>Convocatorias vigentes y actividades en curso.</p></div>${d.agenda.length ? postList(d.agenda, true) : `<div class="dashboard-empty"><strong>${snapshot ? "No hay actividades próximas registradas" : "Agenda todavía sin cargar"}</strong><p>${snapshot ? "Los eventos y reuniones publicados aparecerán acá con su fecha." : "Actualizá el panel o abrí Comunicación para consultar la agenda."}</p></div>`}</section></div>
     <section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Últimas publicaciones</h2><p>Avisos publicados en tus comunidades, ordenados por actualización.</p></div><div class="dashboard-recent">${d.recent.length ? postList(d.recent) : `<p class="dashboard-caption">${snapshot ? "Todavía no hay publicaciones disponibles en este ámbito." : "Comunicaciones pendientes de carga."}</p>`}</div></section><p class="dashboard-caption dashboard-source">Fuente: registros visibles para tu cuenta dentro del ámbito seleccionado.</p>`;
   root.querySelector('[data-dashboard-action="refresh"]').disabled = refreshing;
+  if (feeAccess()) ensureFeeSummary();
 }
 root?.addEventListener("change", (event) => {
   if (event.target.id === "dashboard-community") {
@@ -233,6 +329,9 @@ root?.addEventListener("click", async (event) => {
         break;
       case "communities":
         navigateToSection("#comunidades");
+        break;
+      case "fees":
+        navigateToSection(d.personal ? "#cuotas?vista=personal" : "#cuotas");
         break;
       case "community-view":
         if (d.communities.length === 1)

@@ -1370,6 +1370,16 @@ export async function showReceipt(id) {
       totals.append(cell);
     }
     body.append(totals);
+    const community = state.communities.find((c) => c.id === r.communityId);
+    const iban = r.snapshot.communityIban || community?.iban || "";
+    if (iban) {
+      const paymentInfo = el("div", undefined, "fee-payment-info");
+      paymentInfo.append(
+        el("strong", "Datos para transferencia"),
+        el("span", iban),
+      );
+      body.append(paymentInfo);
+    }
     if (r.canManage && !r.cancelledAt && r.outstanding > 0)
       body.append(
         button("Registrar cobro de este recibo", async () => {
@@ -1501,6 +1511,7 @@ export async function showReceipt(id) {
   }
 }
 function downloadReceipt(r) {
+  const community = state.communities.find((c) => c.id === r.communityId);
   const rows = [
     ["Comunidad", r.snapshot.community],
     ["Inmueble", r.snapshot.property],
@@ -1513,6 +1524,7 @@ function downloadReceipt(r) {
     ["Pendiente EUR", amount(r.outstanding)],
     ["Estado", labels[r.status]],
     ["Acuerdo", r.snapshot.agreement],
+    ["IBAN para transferencia", r.snapshot.communityIban || community?.iban || ""],
     ["", ""],
     ["Fecha", "Método", "Aplicado EUR", "Estado"],
   ];

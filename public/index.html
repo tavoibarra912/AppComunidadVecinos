@@ -737,9 +737,11 @@
           </label>
           <label>Administrador de Fincas (opcional)
             <input name="administrator" maxlength="100" placeholder="Nombre / N.º colegiado" />
+            <span class="field-hint">Persona o empresa que administra la finca. Es un dato de contacto: no le da acceso a la app. Para dar acceso, usá «Administrador de Comunidad».</span>
           </label>
           <label>Año de Constitución (opcional)
             <select name="constitutionYear"><option value="">Sin especificar</option></select>
+            <span class="field-hint">Dato legal que se muestra en la ficha. No interviene en el cálculo de las cuotas.</span>
           </label>
           <div class="full rich-text-field">
             <span class="rich-text-label" id="community-notes-label">Observaciones (opcional)</span>
@@ -821,14 +823,17 @@
           <label>IBAN de la Comunidad (opcional)
             <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
               autocomplete="off" />
+            <span class="field-hint">Se muestra en la ficha y en los datos de pago de los recibos.</span>
           </label>
           <label>Moneda (opcional)
             <select name="currency">
               <option value="">Cargando monedas…</option>
             </select>
+            <span class="field-hint">Las cuotas se gestionan solo en EUR. Con otra moneda, no se pueden configurar ni emitir recibos.</span>
           </label>
-          <label>Fondo de reserva (€) (opcional)
+          <label>Fondo de reserva (importe) (opcional)
             <input name="reserveFund" type="number" inputmode="decimal" min="0" max="999999999999.99" step="0.01" placeholder="Ej: 3500,00" />
+            <span class="field-hint">Importe declarado por la comunidad. Se muestra en la ficha; no se descuenta automáticamente de las cuotas.</span>
           </label>
         </div>
       </section>
@@ -1039,9 +1044,14 @@
             <span class="detail-value" id="detail-iban"></span>
           </div>
           <div class="detail-item">
+            <span class="detail-label">Moneda</span>
+            <span class="detail-value" id="detail-currency"></span>
+          </div>
+          <div class="detail-item">
             <span class="detail-label">Fondo de reserva</span>
             <span class="detail-value" id="detail-reserveFund"></span>
           </div>
+          <p class="field-hint full" id="detail-currency-note" hidden></p>
         </div>
       </section>
       <section class="community-editor-pane" data-cd-pane="properties" hidden>

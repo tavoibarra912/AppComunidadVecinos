@@ -13,6 +13,7 @@ import {
   canReadReceipt,
   receiptById,
   receiptView,
+  feeSummary,
   feeDefaults,
   plans,
   savePlan,
@@ -144,6 +145,30 @@ router.get(
     );
     result.canManage = false;
     res.json(result);
+  }),
+);
+router.get(
+  "/summary",
+  wrap((req, res) => {
+    const communityId =
+      typeof req.query.communityId === "string" ? req.query.communityId : "";
+    if (
+      communityId &&
+      !db.prepare("SELECT 1 FROM communities WHERE id=?").get(communityId)
+    )
+      throw problem("Comunidad no encontrada.", 404);
+    if (
+      !allowed(req.user, "fee:read", "", policyData()) &&
+      !canManage(req.user, "")
+    )
+      throw problem("No tenés permiso para consultar cuotas.", 403);
+    if (
+      communityId &&
+      !allowed(req.user, "fee:read", communityId) &&
+      !canManage(req.user, communityId)
+    )
+      throw problem("No tenés acceso a las cuotas de esta comunidad.", 403);
+    res.json(feeSummary(req.user, communityId));
   }),
 );
 router.get(

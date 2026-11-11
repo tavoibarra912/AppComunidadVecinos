@@ -179,7 +179,7 @@ export function validateFeeDefaults(data) {
         `La plantilla ${key} está vacía o supera ${max} caracteres.`,
       );
 }
-export function canManage(user, communityId, policy) {
+export function canManage(user, communityId, policy = policyData()) {
   return allowed(user, "fee:manage", communityId, policy);
 }
 function ownerIds(user, policy) {
@@ -240,6 +240,157 @@ export function receiptView(row, date = today()) {
       .all(row.id),
   };
 }
+/**
+ * Resumen agregado para el panel de Inicio. No devuelve recibos completos:
+ * solo importes y conteos del ámbito al que el usuario tiene acceso.
+ */
+export function feeSummary(user, communityId = "", date = today()) {
+  const policy = policyData();
+  if (!allowed(user, "fee:read", "", policy) && !canManage(user, "", policy))
+    return { accessible: false };
+
+  const rows = db
+    .prepare(
+      `SELECT * FROM fee_receipts ${communityId ? "WHERE communityId=?" : ""} ORDER BY period DESC, createdAt DESC`,
+    )
+    .all(...(communityId ? [communityId] : []))
+    .filter((row) => canReadReceipt(user, row, policy));
+  const communityRows = db
+    .prepare("SELECT id,name,currency FROM communities")
+    .all();
+  const communities = new Map(communityRows.map((c) => [c.id, c]));
+  const byCommunity = new Map();
+  const totals = {
+    issued: 0,
+    paid: 0,
+    pending: 0,
+    overdue: 0,
+    dueSoon: 0,
+    credit: 0,
+  };
+  const counts = {
+    receipts: 0,
+    paid: 0,
+    partial: 0,
+    pending: 0,
+    withBalance: 0,
+    overdue: 0,
+    cancelled: 0,
+    proofsPending: 0,
+  };
+  let nextDue = null,
+    oldestOverdue = null;
+  const soon = new Date(
+    Date.parse(`${date}T00:00:00Z`) + 7 * 86400000,
+  )
+    .toISOString()
+    .slice(0, 10);
+  for (const row of rows) {
+    const view = receiptView(row, date);
+    const community = communities.get(row.communityId) || {
+      id: row.communityId,
+      name: "",
+      currency: "EUR",
+    };
+    let bucket = byCommunity.get(row.communityId);
+    if (!bucket) {
+      bucket = {
+        id: row.communityId,
+        name: community.name,
+        currency: community.currency || "EUR",
+        totals: { issued: 0, paid: 0, pending: 0, overdue: 0, dueSoon: 0 },
+        counts: { receipts: 0, overdue: 0, proofsPending: 0 },
+        nextDue: null,
+      };
+      byCommunity.set(row.communityId, bucket);
+    }
+    if (row.cancelledAt) {
+      counts.cancelled++;
+      continue;
+    }
+    bucket.counts.receipts++;
+    counts.receipts++;
+    totals.issued += row.amount;
+    bucket.totals.issued += row.amount;
+    totals.paid += view.paid;
+    bucket.totals.paid += view.paid;
+    if (view.status === "paid") counts.paid++;
+    else if (view.status === "partial") counts.partial++;
+    else counts.pending++;
+    const pendingProofs = view.proofs.filter(
+      (proof) => proof.status === "pending",
+    ).length;
+    counts.proofsPending += pendingProofs;
+    bucket.counts.proofsPending += pendingProofs;
+    if (view.outstanding <= 0) continue;
+    counts.withBalance++;
+    totals.pending += view.outstanding;
+    bucket.totals.pending += view.outstanding;
+    const item = {
+      receiptId: row.id,
+      communityId: row.communityId,
+      community: community.name,
+      property: view.snapshot.property,
+      period: row.period,
+      dueDate: row.dueDate,
+      amount: row.amount,
+      outstanding: view.outstanding,
+    };
+    if (row.dueDate < date) {
+      totals.overdue += view.outstanding;
+      bucket.totals.overdue += view.outstanding;
+      counts.overdue++;
+      bucket.counts.overdue++;
+      if (!oldestOverdue || row.dueDate < oldestOverdue.dueDate)
+        oldestOverdue = item;
+    } else {
+      if (row.dueDate <= soon) {
+        totals.dueSoon += view.outstanding;
+        bucket.totals.dueSoon += view.outstanding;
+      }
+      if (!nextDue || row.dueDate < nextDue.dueDate) nextDue = item;
+    }
+    if (
+      row.dueDate >= date &&
+      (!bucket.nextDue || row.dueDate < bucket.nextDue.dueDate)
+    )
+      bucket.nextDue = item;
+  }
+
+  const ownOwnerIds = new Set(
+    policy.owners.filter((owner) => owner.userId === user.id).map((o) => o.id),
+  );
+  const payments = db
+    .prepare(
+      `SELECT * FROM fee_payments ${communityId ? "WHERE communityId=?" : ""} ORDER BY createdAt DESC`,
+    )
+    .all(...(communityId ? [communityId] : []))
+    .filter(
+      (payment) =>
+        canManage(user, payment.communityId, policy) ||
+        (allowed(user, "fee:read", "", policy) &&
+          ownOwnerIds.has(payment.ownerId)),
+    )
+    .map(paymentView);
+  totals.credit = payments.reduce((sum, payment) => sum + payment.credit, 0);
+
+  return {
+    accessible: true,
+    personal:
+      policy.roles.find((role) => role.id === user.rol || role.nombre === user.rol)
+        ?.nombre === "user",
+    communityId,
+    totals,
+    counts,
+    collectionRate: totals.issued
+      ? Math.round((totals.paid / totals.issued) * 100)
+      : 0,
+    nextDue,
+    oldestOverdue,
+    byCommunity: [...byCommunity.values()],
+  };
+}
+
 export function plans(communityId) {
   return db
     .prepare(
@@ -461,7 +612,7 @@ export function preview(communityId, period) {
     Math.round((plan.annualAmount * (cycle + plan.months)) / 12) -
     Math.round((plan.annualAmount * cycle) / 12);
   const community = db
-    .prepare("SELECT name FROM communities WHERE id=?")
+    .prepare("SELECT name, iban FROM communities WHERE id=?")
     .get(communityId);
   // Cumulative rounding makes both each batch and the twelve-month owner totals
   // match the approved annual distribution, including manual amounts.
@@ -512,6 +663,7 @@ export function preview(communityId, period) {
       snapshot: {
         property: e.property.plot || e.property.address,
         community: community.name,
+        communityIban: community.iban || "",
         owners: e.owners,
         coefficient: e.property.participationCoef,
         months: plan.months,
@@ -577,7 +729,11 @@ export function issue(communityId, input, actor) {
         "issued",
         id,
         "Nuevo recibo de cuota",
-        `Cuota ordinaria ${batch.period}: ${formatMoney(item.amount)}. Vencimiento: ${batch.dueDate}.`,
+        `Cuota ordinaria ${batch.period}: ${formatMoney(item.amount)}. Vencimiento: ${batch.dueDate}.${
+          item.snapshot.communityIban
+            ? ` IBAN para transferencia: ${item.snapshot.communityIban}.`
+            : ""
+        }`,
       );
     }
     audit(actor, "issue", batch.planId, {
@@ -872,13 +1028,16 @@ export function materializeFeeReminders(date = today()) {
       const days = Math.round(
         (Date.parse(date) - Date.parse(row.dueDate)) / 86400000,
       );
+      const iban = view.snapshot.communityIban
+        ? ` IBAN para transferencia: ${view.snapshot.communityIban}.`
+        : "";
       if (days <= 0 && days >= -settings.beforeDays && settings.beforeDays > 0)
         notify(
           row,
           "due",
           row.dueDate,
           "Próximo vencimiento de cuota",
-          `La cuota ${row.period} vence el ${row.dueDate}. Pendiente: ${formatMoney(view.outstanding)}.`,
+          `La cuota ${row.period} vence el ${row.dueDate}. Pendiente: ${formatMoney(view.outstanding)}.${iban}`,
         );
       if (days >= settings.afterDays && days > 0) {
         const repeat = settings.repeatDays
@@ -889,7 +1048,7 @@ export function materializeFeeReminders(date = today()) {
           "overdue",
           `${row.dueDate}:${repeat}`,
           "Cuota vencida pendiente",
-          `La cuota ${row.period} de ${view.snapshot.property} tiene ${formatMoney(view.outstanding)} pendientes desde ${row.dueDate}.`,
+          `La cuota ${row.period} de ${view.snapshot.property} tiene ${formatMoney(view.outstanding)} pendientes desde ${row.dueDate}.${iban}`,
         );
       }
     }
