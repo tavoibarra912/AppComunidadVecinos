@@ -8,6 +8,59 @@ Aplicación web completa para la gestión de la Asociación de Propietarios de P
 - **Frontend**: vanilla JavaScript en módulos ES (sin build step), servido por el propio backend. Persistencia íntegra en base de datos — ya no se usa `localStorage`.
 - **Datos demo**: la base se inicializa con datos de ejemplo **solo si está vacía** al arrancar; los cambios persisten entre reinicios.
 
+## Cuotas ordinarias
+
+La gestión está en el menú **Cuotas**, con selector de comunidad y permisos por
+comunidad. El propietario tiene el menú **Mis cuotas**, que reúne los recibos de
+todos sus perfiles e inmuebles. Las fichas financieras mantienen accesos directos
+a estas pantallas. Un administrador que también sea propietario puede alternar
+entre la gestión de comunidades y sus cuotas personales.
+
+1. En «Configuración y acuerdos», guardar el importe anual aprobado, periodicidad,
+   primer día del mes de aplicación, vencimiento (día 1–28), criterio de reparto y
+   referencia al acuerdo. Cada cambio crea una versión y no altera recibos emitidos.
+2. Elegir reparto por coeficientes (deben sumar exactamente 100 %, hasta cuatro
+   decimales) o importes anuales aprobados por inmueble (deben sumar el total anual).
+3. En «Emitir cuotas», seleccionar el mes inicial, revisar importes y avisos y
+   confirmar. Los redondeos cuadran por periodo y por ciclo anual; no se duplican
+   cargos por copropiedad, ni se permiten periodos solapados o vistas previas obsoletas.
+4. Registrar transferencias, ingresos o domiciliaciones ya confirmadas. Un cobro
+   puede aplicarse a varios recibos del mismo pagador y comunidad; el sobrante queda
+   a favor para aplicarlo después. La devolución revierte también las aplicaciones
+   posteriores hechas con ese saldo. No se ejecuta ningún cargo bancario desde la app.
+5. Los propietarios pueden consultar sus recibos históricos, descargar un extracto
+   CSV y aportar justificantes PDF/JPG/PNG/WebP de hasta 10 MB. Revisar o aceptar un
+   justificante no marca el recibo como pagado: el cobro se registra por separado.
+
+La pantalla permite filtrar por periodo, estado, comunidad e inmueble según el
+perfil, buscar por titular o referencia y paginar los recibos. Los errores de los
+formularios se muestran dentro del diálogo, junto con la validación de importes,
+fechas y límites. Cambiar el mes invalida la vista previa de emisión. Al registrar
+un cobro se muestra cómo se reparte entre recibos y saldo a favor; la confirmación
+de posibles duplicados solo aparece cuando el servidor detecta una coincidencia.
+
+Los permisos `fee:read` y `fee:manage` se configuran en Administración → Roles.
+Los roles de administrador reciben ambos; el rol de usuario recibe consulta
+exclusiva de sus perfiles propietarios. Los inquilinos no reciben cuotas por su
+condición de inquilinos. Los titulares se conservan en cada recibo y no se puede
+eliminar una comunidad, inmueble o propietario con historial financiero.
+El estado de pagos del inmueble se calcula desde el libro de recibos cuando existe.
+
+En Administración → Configuración se definen los valores iniciales de recordatorios
+(3 días antes, 7 después, sin repetición por defecto), canales y plantillas de email.
+Cada acuerdo conserva su configuración de avisos. Los recordatorios se procesan con
+el servidor encendido, cada 30 segundos, usando Europe/Madrid, sin duplicados y
+sin reclamar recibos pagados o anulados. Los avisos internos enlazan al recibo;
+los emails requieren activar el canal en el acuerdo, el ajuste general, el proveedor
+y el consentimiento del destinatario en sus preferencias de comunicación. El email
+de cuotas está desactivado inicialmente. Los fallos e interrupciones de envío no se
+reintentan automáticamente; quedan en auditoría. La aceptación por el proveedor no
+confirma entrega. Los justificantes se guardan dentro de `uploads/fee-proofs/` y
+solo pueden descargarlos su autor y los gestores autorizados de la comunidad.
+
+Esta versión gestiona exclusivamente cuotas ordinarias. Los mandatos y remesas
+SEPA, las derramas, otros cargos y la contabilidad de suministros quedan fuera.
+
 ## Ejecución
 
 ```bash

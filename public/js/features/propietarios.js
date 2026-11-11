@@ -1,6 +1,7 @@
 import { sanitizeHtml, escapeHtml } from "../html.js";
 
 import { api } from "../api.js";
+import { mountFeeShortcut } from "./fees.js";
 import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, makeSelectSearchable, showValidationErrors, intentarCerrar } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
@@ -581,6 +582,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   applyOwnerDialogReadOnly(readOnly);
   switchOwnerDialogTab(defaultTab);
   if (!ownerDialog.open) ownerDialog.showModal();
+  mountFeeShortcut(document.querySelector("#owner-editor-fees"), "owner", id);
   if (defaultTab === "general" && !readOnly) {
     ownerForm.elements.name.focus();
   }
@@ -622,6 +624,7 @@ export function closeOwnerEditor() {
 function applyOwnerDialogReadOnly(readOnly) {
   ownerDialog.classList.toggle("is-readonly", readOnly);
   ownerForm.querySelectorAll("input, select, textarea").forEach(control => {
+    if (control.closest(".fee-panel")) return;
     if (readOnly) {
       if (control.dataset.readonlyWasDisabled === undefined) {
         control.dataset.readonlyWasDisabled = control.disabled ? "1" : "0";

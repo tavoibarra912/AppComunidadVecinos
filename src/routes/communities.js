@@ -91,6 +91,9 @@ router.put("/:id", (req, res) => {
 });
 
 router.delete("/:id", (req, res) => {
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_plans'").get() &&
+      (db.prepare("SELECT 1 FROM fee_plans WHERE communityId=?").get(req.params.id) || db.prepare("SELECT 1 FROM fee_payments WHERE communityId=?").get(req.params.id)))
+    return res.status(409).json({ error: "No se puede eliminar una comunidad con historial de cuotas o cobros." });
   const existing = findCommunity(req.params.id);
   if (!existing) return res.status(404).json({ error: "Comunidad no encontrada." });
   const properties = db.prepare("SELECT COUNT(*) AS total FROM properties WHERE communityId = ?").get(existing.id).total;

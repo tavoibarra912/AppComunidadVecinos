@@ -14,6 +14,8 @@ const ADMIN_TABS = { usuarios: "admin:users", roles: "admin:roles", settings: "a
 // ==========================================
 
 const PERMISOS_CATALOGO = [
+  { key: "fee:read", label: "Consultar cuotas", grupo: "Cuotas", hint: "Propietarios: recibos propios. Administradores: comunidades de su ámbito." },
+  { key: "fee:manage", label: "Gestionar cuotas", grupo: "Cuotas", hint: "Configurar acuerdos, emitir recibos, registrar cobros, revisar justificantes y devoluciones." },
   { key: "community:read", label: "Ver comunidades", grupo: "Comunidades" },
   { key: "community:create", label: "Crear comunidades", grupo: "Comunidades" },
   { key: "community:edit", label: "Editar comunidades", grupo: "Comunidades", hint: "Modificar los datos de una comunidad existente." },
@@ -644,6 +646,13 @@ function renderSettings() {
   settingsForm.elements.notificacionesEmail.checked =
     s.notificacionesEmail !== false;
   settingsForm.elements.avisosCambiosEmail.value = s.avisosCambiosEmail || "";
+  settingsForm.elements.feeBeforeDays.value = s.feeBeforeDays ?? 3;
+  settingsForm.elements.feeAfterDays.value = s.feeAfterDays ?? 7;
+  settingsForm.elements.feeRepeatDays.value = s.feeRepeatDays ?? 0;
+  settingsForm.elements.feeInternal.checked = s.feeInternal !== false;
+  settingsForm.elements.feeEmail.checked = s.feeEmail === true;
+  settingsForm.elements.feeEmailSubject.value = s.feeEmailSubject || "{{titulo}} · {{comunidad}}";
+  settingsForm.elements.feeEmailBody.value = s.feeEmailBody || "{{mensaje}}\nConsultá el tab Financiero de tu ficha de propietario.";
   settingsForm.elements.documentosMaxSizeMb.value = s.documentosMaxSizeMb ?? 15;
   settingsForm.elements.documentosMaxArchivos.value =
     s.documentosMaxArchivos ?? 20;
@@ -794,6 +803,13 @@ settingsForm?.addEventListener("submit", async event => {
     textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => { acc[el.dataset.texto] = el.value; return acc; }, {}),
     notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
     avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
+    feeBeforeDays: Number(settingsForm.elements.feeBeforeDays.value),
+    feeAfterDays: Number(settingsForm.elements.feeAfterDays.value),
+    feeRepeatDays: Number(settingsForm.elements.feeRepeatDays.value),
+    feeInternal: settingsForm.elements.feeInternal.checked,
+    feeEmail: settingsForm.elements.feeEmail.checked,
+    feeEmailSubject: settingsForm.elements.feeEmailSubject.value.trim(),
+    feeEmailBody: settingsForm.elements.feeEmailBody.value.trim(),
     documentosMaxSizeMb: numericValue(
       settingsForm.elements.documentosMaxSizeMb,
       15,

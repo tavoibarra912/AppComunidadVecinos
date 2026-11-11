@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="styles.css?v=8" />
   <link rel="stylesheet" href="communication.css?v=2" />
   <link rel="stylesheet" href="notifications.css?v=1" />
+  <link rel="stylesheet" href="fees.css?v=1" />
   <link rel="stylesheet" href="dashboard.css?v=2" />
 </head>
 
@@ -76,6 +77,7 @@
     <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
     <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
     <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
+    <a class="mobile-nav-item" href="#cuotas" id="mobile-nav-cuotas" hidden>Cuotas</a>
     <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion">Comunicación</a>
   </nav>
   <!-- PANTALLA DE LOGIN SIMULADO -->
@@ -180,6 +182,7 @@
       <a class="nav-item" href="#inmuebles" id="nav-inmuebles">Inmuebles</a>
       <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
       <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
+      <a class="nav-item" href="#cuotas" id="nav-cuotas" hidden>Cuotas</a>
       <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
       <a class="nav-item" href="#comunicacion" id="nav-comunicacion">Comunicación <span id="communication-unread"
           class="comm-count" hidden>0</span></a>
@@ -188,6 +191,10 @@
     <!-- SECCIÓN: HOME / DASHBOARD -->
     <section class="content" id="home">
       <div id="home-dashboard"><h1 id="home-greeting-title">Inicio</h1><p>Cargando tus datos…</p></div>
+    </section>
+
+    <section class="content" id="cuotas" aria-label="Cuotas de comunidad" hidden>
+      <div id="fees-page"></div>
     </section>
 
     <!-- SECCIÓN: COMUNIDADES -->
@@ -457,6 +464,16 @@
               </label>
               <p class="form-intro full">Separá varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Requiere tildar «Habilitar correo electrónico».</p>
 
+              <p class="form-section-title full">Cuotas ordinarias · valores iniciales</p>
+              <p class="form-intro full">Se copian al crear un acuerdo de comunidad. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
+              <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="feeBeforeDays" type="number" min="0" max="60" step="1" /></label>
+              <label>Aviso después del vencimiento (días)<input name="feeAfterDays" type="number" min="0" max="365" step="1" /></label>
+              <label>Repetición de vencidos (días; 0: una vez)<input name="feeRepeatDays" type="number" min="0" max="365" step="1" /></label>
+              <label class="checkbox-line"><input name="feeInternal" type="checkbox" />Avisos de cuotas en el buzón de la app</label>
+              <label class="checkbox-line"><input name="feeEmail" type="checkbox" />Avisos de cuotas por email a destinatarios con el canal habilitado</label>
+              <label class="full">Asunto del email de cuotas<input name="feeEmailSubject" maxlength="200" /></label>
+              <label class="full">Texto del email de cuotas<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
+              <p class="form-intro full">Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
               <p class="form-section-title full">Documentos</p>
               <label>Tamaño máximo por documento (MB) (opcional)
                 <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
@@ -777,6 +794,7 @@
         </div>
       </section>
       <section class="community-editor-pane" id="community-tab-finance" data-community-pane="finance" hidden>
+        <div id="community-editor-fees"></div>
         <div class="form-grid">
           <label>IBAN de la Comunidad (opcional)
             <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
@@ -992,6 +1010,7 @@
         </div>
       </section>
       <section class="community-editor-pane" data-cd-pane="finance" hidden>
+        <div id="community-detail-fees"></div>
         <div class="detail-grid">
           <div class="detail-item">
             <span class="detail-label">IBAN de la comunidad</span>
@@ -1278,6 +1297,7 @@
 
       <!-- PESTAÑA: DOMICILIACIÓN -->
       <section class="community-editor-pane" id="owner-tab-banking" data-owner-pane="banking" hidden>
+        <div id="owner-editor-fees"></div>
         <div class="form-grid">
           <label class="full">IBAN (opcional)
             <input name="iban" maxlength="29" placeholder="ES00 0000 0000 0000 0000 0000" inputmode="text"
@@ -1580,6 +1600,7 @@
         </div>
       </section>
       <section class="community-editor-pane" data-od-pane="banking" hidden>
+        <div id="owner-detail-fees"></div>
         <div class="detail-grid">
           <div class="detail-item full">
             <span class="detail-label">IBAN</span>

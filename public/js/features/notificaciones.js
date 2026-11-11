@@ -354,6 +354,12 @@ export function renderOwnerInbox() {
       button.addEventListener("click", () => markOwnerRead(n.id));
     }
     ownerInboxList.append(card);
+    if (n.feeReceiptId) {
+      const receiptButton = document.createElement("button");receiptButton.type = "button";
+      receiptButton.className = "secondary-button";receiptButton.textContent = "Ver recibo de cuota";
+      receiptButton.addEventListener("click", () => window.dispatchEvent(new CustomEvent("fees:receipt", { detail: { id: n.feeReceiptId } })));
+      card.querySelector(".notification-message-footer").append(receiptButton);
+    }
   }
 }
 async function markOwnerRead(id) {
@@ -486,8 +492,10 @@ export async function openAdminEmail(id) {
   emailGotoApprovalBtn.onclick = () => {
     adminEmailDialog.close();
     notificationsDialog.close();
-    openOwnerDetail(email.ownerId);
+    if (email.feeReceiptId) window.dispatchEvent(new CustomEvent("fees:receipt", { detail: { id: email.feeReceiptId } }));
+    else openOwnerDetail(email.ownerId);
   };
+  emailGotoApprovalBtn.textContent = email.feeReceiptId ? "Ver recibo de cuota" : "Ir al expediente";
   if (!adminEmailDialog.open) adminEmailDialog.showModal();
 }
 if (topbarInboxBtn)

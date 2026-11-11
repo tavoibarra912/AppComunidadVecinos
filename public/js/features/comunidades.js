@@ -1,5 +1,6 @@
 import { sanitizeHtml, escapeHtml, richTextHtml, htmlToText } from "../html.js";
 import { api } from "../api.js";
+import { mountFeeShortcut } from "./fees.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
@@ -79,7 +80,7 @@ const communityNotes = createRichText({
 function applyCommunityReadonly() {
   if (!communityReadonly) return;
   communityForm.querySelectorAll("input,select,textarea,button,a,[tabindex],[role=combobox],[role=button],[contenteditable]").forEach(element => {
-    const allowed = element.matches("button[data-community-tab],#close-dialog") || (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
+    const allowed = element.closest("#community-editor-fees") || element.matches("button[data-community-tab],#close-dialog") || (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
     if (!allowed && "disabled" in element && !element.disabled) { if (element.matches("button")) element.dataset.communityReadonlyDisabled = "true"; element.disabled = true; }
     if (!allowed && element.hasAttribute("contenteditable")) {
       if (!element.dataset.communityReadonlyEditable) element.dataset.communityReadonlyEditable = element.getAttribute("contenteditable") || "true";
@@ -97,7 +98,7 @@ function applyCommunityReadonly() {
 new MutationObserver(applyCommunityReadonly).observe(communityForm, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
 communityForm.addEventListener("click", event => {
   if (!communityReadonly) return;
-  const allowed = event.target.closest('button[data-community-tab],#close-dialog,#community-tab-docs [data-action="view"]');
+  const allowed = event.target.closest('button[data-community-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees');
   if (!allowed) {
     event.preventDefault(); event.stopImmediatePropagation();
   }
@@ -281,6 +282,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   applyCommunityReadonly();
   armarGuardia(communityForm, communityDialog);
   communityDialog.showModal();
+  mountFeeShortcut(document.querySelector("#community-editor-fees"), "community", id);
   if (!readonly) communityForm.elements.name.focus();
 }
 
@@ -729,6 +731,7 @@ export function openCommunityDetail(id) {
   if (detailEditBtn) detailEditBtn.hidden = true;
 
   communityDetailDialog.showModal();
+  mountFeeShortcut(document.querySelector("#community-detail-fees"), "community", id);
 }
 
 /** Tabs de la ficha de lectura de comunidad (misma estructura que la edición). */

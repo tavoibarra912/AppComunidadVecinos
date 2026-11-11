@@ -647,6 +647,11 @@ export function ownerFromRow(row) {
 }
 
 export function propertyFromRow(row) {
+  const ledger = db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get();
+  const latestFee = ledger ? db.prepare("SELECT amount,snapshot FROM fee_receipts WHERE propertyId=? AND cancelledAt='' ORDER BY period DESC LIMIT 1").get(row.id) : null;
+  const hasFeeReceipts = !!ledger && !!db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=? LIMIT 1").get(row.id);
+  const pendingFee = hasFeeReceipts && db.prepare(`SELECT 1 FROM fee_receipts r WHERE r.propertyId=? AND r.cancelledAt='' AND r.amount>
+    COALESCE((SELECT SUM(a.amount) FROM fee_allocations a JOIN fee_payments p ON p.id=a.paymentId WHERE a.receiptId=r.id AND p.reversedAt=''),0) LIMIT 1`).get(row.id);
   return {
     id: row.id,
     communityId: row.communityId,
@@ -658,7 +663,7 @@ export function propertyFromRow(row) {
     address: row.address,
     staircase: row.staircase,
     energyCertificate: row.energyCertificate,
-    communityFee: row.communityFee,
+    communityFee: latestFee ? (latestFee.amount / (JSON.parse(latestFee.snapshot).months || 1) / 100).toFixed(2) : row.communityFee,
     cadastralRef: row.cadastralRef,
     registryNumber: row.registryNumber,
     floor: row.floor,
@@ -666,7 +671,8 @@ export function propertyFromRow(row) {
     areaM2: row.areaM2,
     participationCoef: row.participationCoef,
     propertyUse: row.propertyUse,
-    receiptStatus: row.receiptStatus,
+    receiptStatus: hasFeeReceipts ? (pendingFee ? "pending" : "current") : row.receiptStatus,
+    hasFeeReceipts,
     notes: row.notes || "",
     postalCode: row.postalCode || "",
     city: row.city || "",
@@ -732,7 +738,8 @@ export function adminEmailFromRow(row) {
     date: row.date,
     timestamp: row.timestamp,
     read: !!row.read,
-    docs: parseJson(row.docs, [])
+    docs: parseJson(row.docs, []),
+    ...(row.feeReceiptId ? { feeReceiptId: row.feeReceiptId } : {})
   };
 }
 
@@ -745,7 +752,8 @@ export function ownerNotificationFromRow(row) {
     message: row.message,
     date: row.date,
     timestamp: row.timestamp,
-    read: !!row.read
+    read: !!row.read,
+    ...(row.feeReceiptId ? { feeReceiptId: row.feeReceiptId } : {})
   };
 }
 
@@ -821,6 +829,13 @@ export function getSettings() {
     otpExpiraMinutos: 10,
     otpReenvioSegundos: 60,
     notificacionesEmail: true,
+    feeBeforeDays: 3,
+    feeAfterDays: 7,
+    feeRepeatDays: 0,
+    feeInternal: true,
+    feeEmail: false,
+    feeEmailSubject: "{{titulo}} · {{comunidad}}",
+    feeEmailBody: "{{mensaje}}\nConsultá el tab Financiero de tu ficha de propietario.",
     avisosCambiosEmail: "",
     documentosMaxSizeMb: 15,
     documentosMaxArchivos: 20,

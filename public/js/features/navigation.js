@@ -8,6 +8,7 @@ import { renderProperties } from "./inmuebles.js";
 import { renderHomeDashboard } from "./home.js";
 import { renderAdministracion } from "./administracion.js";
 import { renderCommunication } from "./communication.js";
+import { feeNavigation, renderFeesPage } from "./fees.js";
 import "./auth.js";
 import { updateOwnerInboxBadge } from "./notificaciones.js";
 import { readInjectedBrand } from "../brand.js";
@@ -32,6 +33,9 @@ const navInmuebles = document.querySelector("#nav-inmuebles");
 const mobileNavInmuebles = document.querySelector("#mobile-nav-inmuebles");
 const navInquilinos = document.querySelector("#nav-inquilinos");
 const navAdministracion = document.querySelector("#nav-administracion");
+const navCuotas = document.querySelector("#nav-cuotas");
+const mobileNavCuotas = document.querySelector("#mobile-nav-cuotas");
+const secCuotas = document.querySelector("#cuotas");
 const mobileNavInquilinos = document.querySelector("#mobile-nav-inquilinos");
 const secComunidades = document.querySelector("#comunidades");
 const secPropietarios = document.querySelector("#propietarios");
@@ -55,6 +59,10 @@ const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
 export function applyRoleUI() {
   const isOwner = state.activeRole === "owner";
   const user = getCurrentUser();
+  const feeAccess = feeNavigation();
+  for (const link of [navCuotas, mobileNavCuotas]) {
+    if (link) { link.hidden = !feeAccess.visible; link.textContent = feeAccess.title; }
+  }
   const account = accountView(state, ROLE_LABELS);
   const roleLabel = ROLE_LABELS[user?.rol] || user?.rol || "";
 
@@ -122,9 +130,11 @@ export function applyRoleUI() {
 
 
 export function handleRouting() {
-  const hash = (window.location.hash || "#home").toLowerCase();
+  const hash = (window.location.hash || "#home").split("?")[0].toLowerCase();
   const isOwner = state.activeRole === "owner";
   const communicationSection = document.querySelector("#comunicacion");
+  if (secCuotas) { secCuotas.hidden = true; secCuotas.style.display = "none"; }
+  for (const link of [navCuotas, mobileNavCuotas]) { link?.classList.remove("active"); link?.removeAttribute("aria-current"); }
   communicationSection.hidden = true;
   communicationSection.style.display = "none";
   document.querySelectorAll('[href="#comunicacion"]').forEach(el => el.classList.remove("active"));
@@ -162,7 +172,17 @@ export function handleRouting() {
     if (el) el.classList.remove("active");
   });
 
-  if (hash === "#comunicacion") {
+  if (hash === "#cuotas") {
+    if (!feeNavigation().visible) { window.location.hash = "#home"; return; }
+    secCuotas.hidden = false; secCuotas.style.display = "block";
+    for (const link of [navCuotas, mobileNavCuotas]) { link?.classList.add("active"); link?.setAttribute("aria-current", "page"); }
+    if (mobileNavCuotas?.offsetParent) {
+      const nav = mobileNavCuotas.parentElement;
+      nav.scrollLeft = Math.max(0, mobileNavCuotas.offsetLeft - nav.clientWidth + mobileNavCuotas.offsetWidth + 12);
+    }
+    document.title = brandTitle();
+    renderFeesPage();
+  } else if (hash === "#comunicacion") {
     communicationSection.hidden = false;
     communicationSection.style.display = "block";
     document.querySelectorAll('[href="#comunicacion"]').forEach(el => el.classList.add("active"));
@@ -281,6 +301,9 @@ export function navigateToSection(targetHash) {
 });
 
 window.addEventListener("hashchange", handleRouting);
+for (const link of [navCuotas, mobileNavCuotas]) link?.addEventListener("click", event => {
+  event.preventDefault(); navigateToSection("#cuotas");
+});
 
 
 // Login simulado: selector de usuario en el topbar

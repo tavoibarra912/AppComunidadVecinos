@@ -9,6 +9,7 @@ import verificationRouter from "./verification.js";
 import adminRouter from "./admin.js";
 import authRouter from "./auth.js";
 import communicationsRouter from "./communications.js";
+import feesRouter from "./fees.js";
 import { auditRequests, listAudit } from "../audit.js";
 import {
   requireSession,
@@ -100,6 +101,7 @@ router.use("/tenants", tenantsRouter);
 router.use("/documents", documentsRouter);
 router.use("/notifications", notificationAccess, notificationsRouter);
 router.use("/communications", communicationsRouter);
+router.use("/fees", feesRouter);
 router.use("/owners/contact", verificationRouter);
 router.use(
   "/admin",

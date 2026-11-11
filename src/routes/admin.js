@@ -6,6 +6,7 @@ import { passwordRecord, setPassword } from "../auth.js";
 import { passwordError, validEmail } from "../validation.js";
 import { PERMISSIONS } from "../../public/js/permissions.js";
 import { validateBrand } from "../branding.js";
+import { validateFeeDefaults } from "../fees.js";
 export const PERMISOS_VALIDOS = PERMISSIONS;
 const router = Router();
 const roleFor = (value) =>
@@ -376,6 +377,7 @@ router.put("/settings", (req, res) => {
   const brandError = validateBrand(data.marca);
   if (brandError) return res.status(400).json({ error: brandError });
   const current = getSettings();
+  try { validateFeeDefaults(data); } catch (error) { return res.status(400).json({ error: error.message }); }
   const next = { ...current, ...data };
   if (data.marca) next.marca = { ...current.marca, ...data.marca };
   db.prepare(

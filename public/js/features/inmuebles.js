@@ -631,6 +631,15 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   updatePropertyPeopleSelectors(ownerIds, tenantIds, property?.ownerPercentages || {});
   state.ui.propertyDocuments = property?.documents ? property.documents.map(item => ({ ...item })) : [];
   propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
+  propertyForm.elements.receiptStatus.closest("label").hidden = !!property?.hasFeeReceipts;
+  propertyForm.elements.communityFee.closest("label").hidden = !!property?.hasFeeReceipts;
+  let ledgerHint = propertyForm.querySelector("[data-fee-ledger-hint]");
+  if (!ledgerHint) {
+    ledgerHint = document.createElement("p");ledgerHint.dataset.feeLedgerHint = "";ledgerHint.className = "form-intro full";
+    propertyForm.elements.receiptStatus.closest("label").after(ledgerHint);
+  }
+  ledgerHint.hidden = !property?.hasFeeReceipts;
+  ledgerHint.textContent = "La cuota y el estado de pagos se calculan a partir de los recibos. Gestioná los cobros desde el menú Cuotas, seleccionando la comunidad.";
   propertyForm.elements.propertyType.value = property?.propertyType || "";
   if (property) {
     ["communityId", "plot", "address", "cadastralRef", "registryNumber", "floor", "door", "staircase", "areaM2", "participationCoef", "propertyUse", "energyCertificate", "communityFee", "notes"]

@@ -5,6 +5,8 @@ export const PERMISSIONS = [
   "community:edit",
   "community:manage",
   "community:delete",
+  "fee:read",
+  "fee:manage",
   "owner:read",
   "owner:create",
   "owner:manage",
@@ -73,6 +75,8 @@ export function can(user, permission, resourceId = "", data) {
   if (role.nombre === "user") {
     if (!role.permisos?.includes(permission)) return false;
     switch (permission) {
+      case "fee:read":
+        return resourceId ? ownOwners.includes(resourceId) || ownedProperties.some(p => p.communityId === resourceId) : ownOwners.length > 0;
       case "community:read":
         return resourceId
           ? ownCommunities.has(resourceId)
@@ -138,6 +142,8 @@ export function can(user, permission, resourceId = "", data) {
 
 // Etiquetas legibles para los mensajes de «permiso insuficiente».
 const ETIQUETAS_PERMISO = {
+  "fee:read": "consultar cuotas propias o de comunidades asignadas",
+  "fee:manage": "gestionar cuotas de comunidades asignadas",
   "community:read": "ver comunidades",
   "community:create": "crear comunidades",
   "community:edit": "editar comunidades",

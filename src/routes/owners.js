@@ -130,6 +130,10 @@ router.put("/:id", (req, res) => {
 });
 
 router.delete("/:id", (req, res) => {
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() &&
+      (db.prepare("SELECT snapshot FROM fee_receipts").all().some(r => JSON.parse(r.snapshot).owners.some(o => o.id === req.params.id)) ||
+       db.prepare("SELECT 1 FROM fee_payments WHERE ownerId=?").get(req.params.id)))
+    return res.status(409).json({ error: "No se puede eliminar un propietario con historial de cuotas o cobros." });
   const existing = findOwner(req.params.id);
   if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
   // Inmuebles del propietario que tienen inquilino asociado: no se puede eliminar.

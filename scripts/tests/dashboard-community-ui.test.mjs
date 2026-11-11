@@ -76,6 +76,7 @@ function communityFixture() {
     dom.getInternalVMContext(),
   );
   Object.assign(w, {
+    mountFeeShortcut: noop,
     state,
     sanitizeHtml: (value) => value,
     escapeHtml,

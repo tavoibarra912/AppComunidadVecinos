@@ -256,6 +256,8 @@ router.put("/:id", (req, res) => {
 });
 
 router.delete("/:id", (req, res) => {
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() && db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=?").get(req.params.id))
+    return res.status(409).json({ error: "No se puede eliminar un inmueble con historial de cuotas." });
   const existing = findProperty(req.params.id);
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
   const inquilinos = db.prepare("SELECT COUNT(*) AS n FROM tenants WHERE propertyId = ?").get(existing.id).n;
