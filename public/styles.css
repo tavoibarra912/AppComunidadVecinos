@@ -3676,7 +3676,25 @@ select {
   border-radius: var(--radius);
   font: inherit;
   color: inherit;
-  background: #fff;
+  background-color: #fff;
+}
+
+.combo-box-arrow {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  pointer-events: none;
+  opacity: 0.75;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.combo-box-input::-webkit-search-cancel-button,
+.combo-box-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .combo-box-input:focus {
@@ -3861,7 +3879,7 @@ th.th-drag-over {
 #tenant-dialog form {
   display: flex;
   flex-direction: column;
-  height: min(86vh, 780px);
+  height: min(calc(100dvh - 32px), 780px);
 }
 
 #community-dialog .community-editor-pane,
@@ -4183,12 +4201,23 @@ dialog .toast {
   cursor: pointer;
 }
 
-.checkbox-line input[type="checkbox"] {
+/* Los checkboxes y radios no deben heredar el padding ni el borde de los
+   inputs de texto: de lo contrario se dibujan como cuadrados de ~38 px. */
+input[type="checkbox"],
+input[type="radio"] {
   width: 18px;
   height: 18px;
+  padding: 0;
   margin: 0;
+  border: 0;
+  box-sizing: border-box;
   accent-color: var(--brand);
   cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.checkbox-line input[type="checkbox"] {
+  margin: 0;
 }
 
 /* Perfiles vinculados en horizontal (2 columnas) */
@@ -4269,6 +4298,23 @@ dialog.is-readonly .doc-file-actions .btn-doc-action.danger {
   margin: 1px 0 0;
   accent-color: var(--brand);
   flex: 0 0 auto;
+}
+
+/* Lista de permisos: tarjetas separadas, en dos columnas cuando hay ancho. */
+#role-permissions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+#role-permissions-list .form-section-title {
+  grid-column: 1 / -1;
+  margin: 14px 0 2px;
+}
+
+#role-permissions-list .form-section-title:first-child {
+  margin-top: 0;
 }
 
 /* ==========================================
@@ -4596,4 +4642,63 @@ body[data-density="compacta"] .form-grid {
 
 body[data-density="amplia"] .form-grid {
   gap: 22px 20px;
+}
+
+/* ==========================================
+   VENTANAS Y MODALES: SIEMPRE DENTRO DEL DISPLAY
+   ========================================== */
+dialog {
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+}
+
+/* Los editores grandes (comunidad, inmueble, propietario e inquilino)
+   mantienen su cabecera fija y hacen scroll dentro de cada pestaña. */
+#community-dialog form,
+#property-dialog form,
+#owner-dialog form,
+#tenant-dialog form {
+  max-height: calc(100dvh - 32px);
+}
+
+/* El resto de diálogos hace scroll en su contenido cuando la ventana es baja. */
+#user-dialog form,
+#role-dialog form,
+#fee-dialog .dialog-content,
+#admin-email-dialog .dialog-content,
+#delete-dialog form,
+#property-delete-dialog form,
+#tenant-delete-dialog form,
+#verification-dialog form,
+#doc-reject-dialog form,
+#owner-validation-dialog form {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+/* Scroll fino y consistente en paneles y tablas anchas. */
+.community-editor-pane,
+.property-editor-pane,
+.tab-pane,
+.fee-table-scroll,
+.table-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: #b8c4d0 transparent;
+}
+
+@media (max-width: 760px) {
+  dialog {
+    width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px);
+  }
+
+  #community-dialog form,
+  #property-dialog form,
+  #owner-dialog form,
+  #tenant-dialog form,
+  #user-dialog form,
+  #role-dialog form,
+  #fee-dialog .dialog-content {
+    max-height: calc(100dvh - 24px);
+  }
 }

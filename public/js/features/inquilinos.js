@@ -1,9 +1,10 @@
-import { sanitizeHtml, escapeHtml } from "../html.js";
+import { sanitizeHtml, escapeHtml, richTextHtml } from "../html.js";
 import { api } from "../api.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
 import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, isValidEmail, isValidDateInput, isValidIdentityDocument, formatContractDate, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { createDataTable } from "../table.js";
+import { createRichText } from "../rich-text.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
 
@@ -33,6 +34,12 @@ const tenantResultCount = document.querySelector("#tenant-result-count");
 const newTenantBtn = document.querySelector("#new-tenant");
 const tenantDialog = document.querySelector("#tenant-dialog");
 const tenantForm = document.querySelector("#tenant-form");
+// Observaciones con formato (mismo editor que usa la ficha de comunidad).
+const tenantNotes = createRichText({
+  editor: document.querySelector("#tenant-notes-editor"),
+  input: tenantForm.elements.authorizationNotes,
+  toolbar: document.querySelector("#tenant-notes-toolbar"),
+});
 const tenantFormError = document.querySelector("#tenant-form-error");
 const tenantOwnerSelect = tenantForm.elements.ownerId;
 const tenantPropertySelect = document.querySelector("#tenant-property-link-select");
@@ -236,6 +243,7 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
     tenantForm.elements.contractStart.value = getLocalDateInputValue();
     tenantForm.elements.documentType.value = "DNI";
   }
+  tenantNotes?.setValue(tenantForm.elements.authorizationNotes.value || "");
 
   updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
   renderTenantPropertyTab();
@@ -766,7 +774,11 @@ export function openTenantDetail(ownerId, tenantId) {
   const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map(v => TENANT_AUTHORIZATION_LABELS[v] || v);
   if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
   labels.forEach(label => { const item = document.createElement("li"); item.textContent = label; authorizations.append(item); });
-  document.querySelector("#tenant-detail-authorization-notes").textContent = tenant.authorizationNotes || "Sin observaciones.";
+  const tenantNotesEl = document.querySelector("#tenant-detail-authorization-notes");
+  if (tenantNotesEl) {
+    if (tenant.authorizationNotes) tenantNotesEl.innerHTML = richTextHtml(tenant.authorizationNotes);
+    else tenantNotesEl.textContent = "Sin observaciones.";
+  }
   const docsListEl = document.querySelector("#tenant-detail-docs-list");
   if (docsListEl) {
     docsListEl.replaceChildren();

@@ -162,7 +162,7 @@ test("cuotas UI: pantalla independiente con estados e importes escapados", async
     assert.match(root.textContent, /Pago parcial/);
     assert.equal(root.querySelector("img"), null);
     assert.equal(root.querySelector("form"), null);
-    click(f.w, "Emitir cuotas", root);
+    click(f.w, "2 · Emitir recibos", root);           
     await flush();
     const month = f.w.document.querySelector('#fee-dialog input[type="month"]');
     month.value = "2026-11";
@@ -190,7 +190,7 @@ test("cuotas UI: Mis cuotas usa la consulta consolidada sin acciones de gestión
     assert.ok(f.calls.some((c) => c[0] === "/mine"));
     assert.equal(
       [...root.querySelectorAll("button")].some(
-        (b) => b.textContent === "Emitir cuotas",
+        (b) => b.textContent === "2 · Emitir recibos",
       ),
       false,
     );
@@ -244,7 +244,7 @@ test("cuotas UI: cambiar el periodo elimina la confirmación y descarta respuest
   try {
     f.w.feeTest.renderFeesPage();
     await flush();
-    click(f.w, "Emitir cuotas");
+    click(f.w, "2 · Emitir recibos");               
     const month = control(f.w, "Mes de inicio del periodo");
     month.value = "2026-11";
     click(f.w, "Calcular vista previa");
@@ -297,7 +297,7 @@ test("cuotas UI: valida importes dentro del diálogo y conserva los datos al fal
   try {
     f.w.feeTest.renderFeesPage();
     await flush();
-    click(f.w, "Registrar cobro / anticipo");
+    click(f.w, "3 · Registrar cobro o anticipo");
     const value = control(f.w, "Importe recibido (€)");
     value.value = "12,345";
     click(f.w, "Guardar cobro");

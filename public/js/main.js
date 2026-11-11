@@ -4,7 +4,7 @@
 import { refreshState, onDataChanged } from "./state.js";
 import { loadLocations } from "./territory.js";
 import { api } from "./api.js";
-import { intentarCerrar } from "./utils.js";
+import { intentarCerrar, installSearchableSelects } from "./utils.js";
 import { showLoginView, hideLoginScreen, showRecoveryFromLink } from "./features/auth.js";
 import { applyRoleUI, handleRouting, renderUserSelector } from "./features/navigation.js";
 import { renderHomeDashboard } from "./features/home.js";
@@ -21,6 +21,8 @@ async function boot() {
   // Marca y ajustes públicos embebidos por el server — también en el login.
   applyBrand();
   applyPublicSettings();
+  // Todos los desplegables de la app permiten buscar (también los dinámicos).
+  installSearchableSelects();
   // Catálogo territorial del INE (script clásico con window.MUNICIPIOS_INE)
   loadLocations();
 

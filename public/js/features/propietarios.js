@@ -1,4 +1,4 @@
-import { sanitizeHtml, escapeHtml } from "../html.js";
+import { sanitizeHtml, escapeHtml, htmlToText } from "../html.js";
 
 import { api } from "../api.js";
 import { mountFeeShortcut } from "./fees.js";
@@ -6,6 +6,7 @@ import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTe
 import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, makeSelectSearchable, showValidationErrors, intentarCerrar } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
+import { createRichText } from "../rich-text.js";
 import { editingDocs, renderOwnerDialogDocs, openDocViewer as engineOpenDocViewer } from "../docs-engine.js";
 import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, addOwnerNotification, sendAdminEmailNotification, openAdminEmail } from "./notificaciones.js";
 import { openTenantEditor, openTenantDetail, openTenantDelete } from "./inquilinos.js";
@@ -58,6 +59,12 @@ const ownerValidationDialog = document.querySelector("#owner-validation-dialog")
 const ownerValidationList = document.querySelector("#owner-validation-list");
 // Control territorial unificado: municipio → provincia → código postal.
 const ownerTerritory = setupTerritory(ownerForm);
+// Observaciones con formato (mismo editor que usa la ficha de comunidad).
+const ownerNotes = createRichText({
+  editor: document.querySelector("#owner-notes-editor"),
+  input: ownerForm.elements.notes,
+  toolbar: document.querySelector("#owner-notes-toolbar"),
+});
 const phoneVerifyStatus = document.querySelector("#phone-verify-status");
 const emailVerifyStatus = document.querySelector("#email-verify-status");
 
@@ -196,7 +203,7 @@ export function renderOwners() {
             if (owner.notes) {
               const notes = document.createElement("span");
               notes.className = "community-notes";
-              notes.textContent = owner.notes;
+              notes.textContent = htmlToText(owner.notes);
               wrap.append(notes);
             }
             return wrap;
@@ -567,6 +574,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     updateOwnerCommunitySelect("");
     ownerTerritory?.reset();
   }
+  ownerNotes?.setValue(ownerForm.elements.notes.value || "");
 
   if (tabDocsBadge) tabDocsBadge.textContent = `${["dni", "bankReceipt", "propertyDeed"].filter(key => editingDocs.current[key]).length}/3`;
   updateOwnerUserSelect(o ? o.userId || "" : "");

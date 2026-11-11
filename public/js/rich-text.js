@@ -76,6 +76,12 @@ export function createRichText({ editor, input, toolbar }) {
     sync();
   });
   editor.addEventListener("blur", sync);
+  // Un `form.reset()` vacía el textarea oculto pero no el editor visual.
+  editor.closest("form")?.addEventListener("reset", () => {
+    editor.innerHTML = "";
+    lastValid = "";
+    input.value = "";
+  });
   editor.addEventListener("paste", event => {
     event.preventDefault();
     const text = (event.clipboardData || window.clipboardData)?.getData("text/plain") || "";

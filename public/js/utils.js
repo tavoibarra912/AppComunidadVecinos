@@ -295,6 +295,8 @@ export function setupGenericFileDropzone(dropzoneEl, inputEl) {
   });
 }
 
+let comboSequence = 0;
+
 /**
  * Convierte un <select> en un combo con buscador integrado: un campo de
  * texto con desplegable filtrable. El select original queda oculto dentro
@@ -303,6 +305,7 @@ export function setupGenericFileDropzone(dropzoneEl, inputEl) {
  */
 export function makeSelectSearchable(select, placeholder = "Escribe para buscar…") {
   if (!select || select.dataset.combo === "true" || select.multiple) return select;
+  if (select.hidden || select.dataset.noCombo !== undefined) return select;
   select.dataset.combo = "true";
 
   const wrapper = document.createElement("div");
@@ -312,7 +315,9 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
   const input = document.createElement("input");
   input.type = "search";
   input.className = "combo-box-input";
+  input.id = `combo-search-${++comboSequence}`;
   input.placeholder = placeholder;
+  input.style.paddingRight = "30px";
   input.autocomplete = "off";
   input.setAttribute("role", "combobox");
   input.setAttribute("aria-expanded", "false");
@@ -322,9 +327,19 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
   list.hidden = true;
   list.setAttribute("role", "listbox");
 
-  wrapper.append(input, list);
+  // Flecha decorativa: se dibuja en el contenedor para que ningún estilo
+  // personalizado de input (fondo/padding) pueda ocultarla.
+  const arrow = document.createElement("span");
+  arrow.className = "combo-box-arrow";
+  arrow.setAttribute("aria-hidden", "true");
+
+  wrapper.append(input, list, arrow);
   select.classList.add("combo-box-select");
   wrapper.append(select);
+
+  // Si la etiqueta apuntaba al select, ahora debe enfocar el buscador visible.
+  const label = select.closest("label");
+  if (label?.htmlFor === select.id) label.htmlFor = input.id;
 
   // Un select oculto con required no puede enfocarse para validar: se traslada
   // la obligatoriedad al buscador (el select conserva el valor real).
@@ -339,8 +354,20 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
     return option && option.value ? option.textContent : "";
   }
 
+  /**
+   * Cuando la opción elegida no tiene valor (por ejemplo «Sin agrupar» o
+   * «Todos los periodos»), su texto se muestra como placeholder en gris:
+   * así el filtro no aparece vacío con un genérico «Buscar…».
+   */
+  function updatePlaceholder() {
+    const option = select.selectedOptions[0];
+    const text = option?.textContent?.trim();
+    input.placeholder = text && !option.value ? text : placeholder;
+  }
+
   function syncInput() {
     if (document.activeElement === input) return;
+    updatePlaceholder();
     input.value = selectedText();
     input.disabled = select.disabled;
   }
@@ -426,6 +453,7 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
   window.addEventListener("scroll", reposition, true);
 
   select.addEventListener("change", () => {
+    updatePlaceholder();
     if (document.activeElement !== input) input.value = selectedText();
     if (!list.hidden) renderOptions(input.value);
   });
@@ -482,6 +510,64 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
 
   syncInput();
   return select;
+}
+
+/**
+ * Convierte en combo con buscador todos los <select> de un contenedor.
+ * Se saltean los selects múltiples, ocultos, los que ya son combos y los que
+ * llevan `data-no-combo` (por ejemplo, el selector compacto de usuario).
+ */
+export function enhanceSearchableSelects(root = document) {
+  if (!root) return;
+  const selects = root.matches?.("select")
+    ? [root]
+    : [...(root.querySelectorAll?.("select") || [])];
+  for (const select of selects) {
+    if (!select || select.dataset.combo === "true") continue;
+    if (select.multiple || select.hidden || select.dataset.noCombo !== undefined) continue;
+    if (select.size > 1 || select.closest(".combo-box")) continue;
+    makeSelectSearchable(select, "Buscar…");
+  }
+}
+
+/**
+ * Instala el buscador en todos los selects presentes y futuros. La app
+ * reconstruye tablas, filtros y diálogos de forma dinámica: el observador
+ * garantiza que cualquier desplegable nuevo también permita buscar.
+ */
+export function installSearchableSelects() {
+  if (typeof document === "undefined" || document.body?.dataset.selectsReady === "true") return;
+  if (document.body) document.body.dataset.selectsReady = "true";
+  enhanceSearchableSelects(document);
+  const observer = new MutationObserver(records => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        enhanceSearchableSelects(node);
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // Los formularios en modo lectura (y otros flujos) deshabilitan el <select>
+  // real: el buscador visible debe reflejar ese estado.
+  const syncState = select => {
+    const box = select.closest?.(".combo-box");
+    const input = box?.querySelector(".combo-box-input");
+    if (!input) return;
+    input.disabled = select.disabled;
+    box.hidden = select.hidden;
+  };
+  const stateObserver = new MutationObserver(records => {
+    for (const record of records) {
+      if (record.target.tagName === "SELECT") syncState(record.target);
+    }
+  });
+  stateObserver.observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["disabled", "hidden"],
+  });
 }
 
 /**
@@ -584,12 +670,20 @@ export function setFormReadonly(form, readonly) {
   // siendo operables en modo lectura
   form.querySelectorAll("input, select, textarea, [contenteditable]").forEach(element => {
     if (element.type === "submit" || element.closest(".dialog-actions")) return;
+    // El buscador del combo se sincroniza desde su <select> real: si ese
+    // select está deshabilitado por otra regla, debe seguir bloqueado.
+    if (element.classList.contains("combo-box-input")) return;
     if (element.hasAttribute("contenteditable")) {
       element.setAttribute("contenteditable", readonly ? "false" : "true");
       element.setAttribute("aria-readonly", String(readonly));
       return;
     }
     element.disabled = readonly;
+  });
+  form.querySelectorAll(".combo-box").forEach(box => {
+    const select = box.querySelector("select");
+    const input = box.querySelector(".combo-box-input");
+    if (select && input) input.disabled = select.disabled;
   });
   form.querySelectorAll(".rich-text-toolbar button").forEach(button => {
     button.disabled = readonly;

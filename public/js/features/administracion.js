@@ -88,8 +88,18 @@ document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
   btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab));
 });
 
-// ---------- Sub-tabs de Configuración: General / Proveedores ----------
-let settingsTab = "general";
+// ---------- Sub-tabs de Configuración ----------
+let settingsTab = "asociacion";
+
+const SETTINGS_PANELS = {
+  asociacion: "#settings-asociacion-panel",
+  seguridad: "#settings-seguridad-panel",
+  notificaciones: "#settings-notificaciones-panel",
+  cuotas: "#settings-cuotas-panel",
+  sistema: "#settings-sistema-panel",
+  estilo: "#settings-estilo-panel",
+  textos: "#settings-textos-panel",
+};
 
 function prepararSettings() {
   const conProveedores = hasPermission("admin:providers");
@@ -97,8 +107,11 @@ function prepararSettings() {
   document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach(btn => {
     btn.hidden = btn.dataset.settingsTab === "proveedores" ? !conProveedores : !conGeneral;
   });
-  if (settingsTab === "proveedores" && !conProveedores) settingsTab = "general";
-  if (settingsTab === "general" && !conGeneral && conProveedores) settingsTab = "proveedores";
+  if (settingsTab === "proveedores" && !conProveedores) settingsTab = "asociacion";
+  if (settingsTab !== "proveedores" && !conGeneral && conProveedores) settingsTab = "proveedores";
+  // Se vuelca el estado una sola vez al entrar: cambiar de pestaña no debe
+  // descartar los cambios que la persona todavía no guardó.
+  if (settingsTab !== "proveedores") renderSettings();
   switchSettingsTab(settingsTab);
 }
 
@@ -109,15 +122,12 @@ async function switchSettingsTab(tab) {
     btn.classList.toggle("active", active);
     btn.setAttribute("aria-selected", String(active));
   });
-  const panelGeneral = document.querySelector("#settings-general-panel");
-  const panelEstilo = document.querySelector("#settings-estilo-panel");
-  const panelTextos = document.querySelector("#settings-textos-panel");
+  for (const [name, selector] of Object.entries(SETTINGS_PANELS)) {
+    const panel = document.querySelector(selector);
+    if (panel) panel.hidden = name !== tab;
+  }
   const panelProveedores = document.querySelector("#settings-proveedores-panel");
-  if (panelGeneral) panelGeneral.hidden = tab !== "general";
-  if (panelEstilo) panelEstilo.hidden = tab !== "estilo";
-  if (panelTextos) panelTextos.hidden = tab !== "textos";
   if (panelProveedores) panelProveedores.hidden = tab !== "proveedores";
-  if (tab === "general" || tab === "estilo" || tab === "textos") renderSettings();
   if (tab === "proveedores" && panelProveedores) {
     panelProveedores.replaceChildren();
     try { await renderProvidersPanel(panelProveedores); }

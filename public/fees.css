@@ -403,3 +403,98 @@
     max-width: 100%;
   }
 }
+
+/* ==========================================
+   GUÍA DEL CIRCUITO DE CUOTAS
+   ========================================== */
+.fee-guide {
+  margin: 18px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.fee-guide > summary {
+  padding: 13px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+.fee-guide[open] > summary {
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+}
+
+.fee-steps {
+  list-style: none;
+  margin: 0;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.fee-step {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.fee-step-number {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.fee-step.done .fee-step-number {
+  background: var(--brand);
+  color: #fff;
+}
+
+.fee-step-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fee-step-title {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.fee-step-state {
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.fee-step-text {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.fee-field-hint {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .fee-step {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .fee-step-number {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+}

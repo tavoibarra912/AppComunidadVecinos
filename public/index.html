@@ -44,7 +44,7 @@
       </button>
       <div class="role-selector-wrap" hidden>
         <label for="active-role-select" class="sr-only">Usuario conectado</label>
-        <select id="active-role-select" class="role-select" title="Cambiar usuario (login simulado)"></select>
+        <select id="active-role-select" class="role-select" data-no-combo title="Cambiar usuario (login simulado)"></select>
       </div>
       <div class="account-menu-wrap" id="user-account-badge">
         <button type="button" class="account account-toggle" id="user-menu-toggle" aria-label="Abrir menú de usuario"
@@ -412,8 +412,16 @@
 
       <section class="admin-pane" data-admin-pane="settings" hidden>
         <nav class="community-editor-tabs" id="settings-subtabs" role="tablist" aria-label="Secciones de configuración">
-          <button type="button" class="community-editor-tab active" data-settings-tab="general"
-            aria-selected="true">General</button>
+          <button type="button" class="community-editor-tab active" data-settings-tab="asociacion"
+            aria-selected="true">Asociación</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="seguridad"
+            aria-selected="false">Acceso y seguridad</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="notificaciones"
+            aria-selected="false">Notificaciones</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="cuotas"
+            aria-selected="false">Cuotas</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="sistema"
+            aria-selected="false">Sistema</button>
           <button type="button" class="community-editor-tab" data-settings-tab="estilo" aria-selected="false">Estilo</button>
           <button type="button" class="community-editor-tab" data-settings-tab="textos" aria-selected="false">Textos de
             envío</button>
@@ -421,105 +429,119 @@
             hidden>Proveedores de comunicación</button>
         </nav>
           <form id="settings-form" novalidate>
-            <div id="settings-general-panel">
-            <div class="form-grid">
-              <p class="form-section-title full">Datos de la asociación</p>
-              <label class="full">Nombre de la asociación *
-                <input name="nombreAsociacion" maxlength="120" required />
-              </label>
-              <label>Email de contacto *
-                <input name="emailContacto" type="email" maxlength="120" required />
-              </label>
-              <label>Teléfono de contacto (opcional)
-                <input name="telefonoContacto" maxlength="20" inputmode="tel" />
-              </label>
-              <p class="form-intro full">Estos datos se muestran en la pantalla de acceso y en los correos de la plataforma.</p>
-
-              <p class="form-section-title full">Acceso y seguridad</p>
-              <label class="full checkbox-line">
-                <input type="checkbox" name="permitirRegistro" />
-                Permitir que los vecinos creen su propia cuenta desde el login
-              </label>
-              <label class="full checkbox-line">
-                <input type="checkbox" name="permitirRecuperacion" />
-                Permitir la recuperación de contraseña por email
-              </label>
-              <label>Duración de la sesión (horas) (opcional)
-                <input name="duracionSesionHoras" type="number" min="1" max="720" inputmode="numeric" />
-              </label>
-              <label>Expiración del código OTP (minutos) (opcional)
-                <input name="otpExpiraMinutos" type="number" min="1" max="60" inputmode="numeric" />
-              </label>
-              <label>Reenvío de OTP permitido cada (segundos) (opcional)
-                <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
-              </label>
-
-              <p class="form-section-title full">Notificaciones</p>
-              <label class="full checkbox-line">
-                <input type="checkbox" name="notificacionesEmail" />
-                Enviar por email los avisos de comunidad a quien tenga el canal habilitado
-              </label>
-              <label class="full">Email(s) para avisar cambios de perfiles (opcional)
-                <input name="avisosCambiosEmail" maxlength="300" placeholder="asociacionpenarubia@gmail.com, otra@gmail.com" />
-              </label>
-              <p class="form-intro full">Separá varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Requiere tildar «Habilitar correo electrónico».</p>
-
-              <p class="form-section-title full">Cuotas ordinarias · valores iniciales</p>
-              <p class="form-intro full">Se copian al crear un acuerdo de comunidad. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
-              <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="feeBeforeDays" type="number" min="0" max="60" step="1" /></label>
-              <label>Aviso después del vencimiento (días)<input name="feeAfterDays" type="number" min="0" max="365" step="1" /></label>
-              <label>Repetición de vencidos (días; 0: una vez)<input name="feeRepeatDays" type="number" min="0" max="365" step="1" /></label>
-              <label class="checkbox-line"><input name="feeInternal" type="checkbox" />Avisos de cuotas en el buzón de la app</label>
-              <label class="checkbox-line"><input name="feeEmail" type="checkbox" />Avisos de cuotas por email a destinatarios con el canal habilitado</label>
-              <label class="full">Asunto del email de cuotas<input name="feeEmailSubject" maxlength="200" /></label>
-              <label class="full">Texto del email de cuotas<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
-              <p class="form-intro full">Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
-              <p class="form-section-title full">Documentos</p>
-              <label>Tamaño máximo por documento (MB) (opcional)
-                <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
-              </label>
-              <label>Máximo de archivos por envío (opcional)
-                <input name="documentosMaxArchivos" type="number" min="1" max="50" inputmode="numeric" />
-              </label>
-              <fieldset class="full settings-checkgroup">
-                <legend>Tipos de archivo permitidos</legend>
-                <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="pdf" /> PDF</label>
-                <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpg" /> JPG</label>
-                <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpeg" /> JPEG</label>
-                <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="png" /> PNG</label>
-                <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="webp" /> WebP</label>
-              </fieldset>
-
-              <p class="form-section-title full">Contratos y vencimientos</p>
-              <label>Aviso de vencimiento de contrato (días antes) (opcional)
-                <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
-              </label>
-
-              <p class="form-section-title full">Sistema</p>
-              <label>Filas por página en las tablas (opcional)
-                <select name="filasPorPagina">
-                  <option value="5">5</option>
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                </select>
-              </label>
-              <label>Moneda por defecto (opcional)
-                <select name="monedaPorDefecto">
-                  <option value="EUR">Euro (EUR)</option>
-                  <option value="USD">Dólar estadounidense (USD)</option>
-                  <option value="GBP">Libra esterlina (GBP)</option>
-                  <option value="CHF">Franco suizo (CHF)</option>
-                </select>
-              </label>
-              <label class="full checkbox-line">
-                <input type="checkbox" name="mantenimiento" />
-                Modo mantenimiento (bloquea el acceso a usuarios no administradores)
-              </label>
-              <label class="full">Mensaje de mantenimiento (opcional)
-                <textarea name="mensajeMantenimiento" rows="2" maxlength="300" placeholder="La plataforma está en mantenimiento. Volvé a intentar en unos minutos."></textarea>
-              </label>
+            <div id="settings-asociacion-panel">
+              <div class="form-grid">
+                <p class="form-section-title full">Datos de la asociación</p>
+                <label class="full">Nombre de la asociación *
+                  <input name="nombreAsociacion" maxlength="120" required />
+                </label>
+                <label>Email de contacto *
+                  <input name="emailContacto" type="email" maxlength="120" required />
+                </label>
+                <label>Teléfono de contacto (opcional)
+                  <input name="telefonoContacto" maxlength="20" inputmode="tel" />
+                </label>
+                <p class="form-intro full">Estos datos se muestran en la pantalla de acceso y en los correos de la plataforma.</p>
+              </div>
             </div>
+            <div id="settings-seguridad-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Acceso y seguridad</p>
+                <p class="form-intro full">Se aplican en el servidor al guardar: el registro y la recuperación se bloquean de inmediato, la duración afecta a las sesiones nuevas y los tiempos de OTP a los códigos nuevos.</p>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="permitirRegistro" />
+                  Permitir que los vecinos creen su propia cuenta desde el login
+                </label>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="permitirRecuperacion" />
+                  Permitir la recuperación de contraseña por email
+                </label>
+                <label>Duración de la sesión (horas) (opcional)
+                  <input name="duracionSesionHoras" type="number" min="1" max="720" inputmode="numeric" />
+                </label>
+                <label>Expiración del código OTP (minutos) (opcional)
+                  <input name="otpExpiraMinutos" type="number" min="1" max="60" inputmode="numeric" />
+                </label>
+                <label>Reenvío de OTP permitido cada (segundos) (opcional)
+                  <input name="otpReenvioSegundos" type="number" min="10" max="600" inputmode="numeric" />
+                </label>
+              </div>
+            </div>
+            <div id="settings-notificaciones-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Notificaciones</p>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="notificacionesEmail" />
+                  Enviar por email los avisos de comunidad a quien tenga el canal habilitado
+                </label>
+                <label class="full">Email(s) para avisar cambios de perfiles (opcional)
+                  <input name="avisosCambiosEmail" maxlength="300" placeholder="asociacionpenarubia@gmail.com, otra@gmail.com" />
+                </label>
+                <p class="form-intro full">Separá varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Requiere tildar «Habilitar correo electrónico».</p>
+              </div>
+            </div>
+            <div id="settings-cuotas-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Cuotas ordinarias · valores iniciales</p>
+                <p class="form-intro full">Se copian al crear un acuerdo de comunidad. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
+                <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="feeBeforeDays" type="number" min="0" max="60" step="1" /></label>
+                <label>Aviso después del vencimiento (días)<input name="feeAfterDays" type="number" min="0" max="365" step="1" /></label>
+                <label>Repetición de vencidos (días; 0: una vez)<input name="feeRepeatDays" type="number" min="0" max="365" step="1" /></label>
+                <label class="checkbox-line"><input name="feeInternal" type="checkbox" />Avisos de cuotas en el buzón de la app</label>
+                <label class="checkbox-line"><input name="feeEmail" type="checkbox" />Avisos de cuotas por email a destinatarios con el canal habilitado</label>
+                <label class="full">Asunto del email de cuotas<input name="feeEmailSubject" maxlength="200" /></label>
+                <label class="full">Texto del email de cuotas<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
+                <p class="form-intro full">Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
+              </div>
+            </div>
+            <div id="settings-sistema-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Documentos</p>
+                <label>Tamaño máximo por documento (MB) (opcional)
+                  <input name="documentosMaxSizeMb" type="number" min="1" max="50" inputmode="numeric" />
+                </label>
+                <label>Máximo de archivos por envío (opcional)
+                  <input name="documentosMaxArchivos" type="number" min="1" max="50" inputmode="numeric" />
+                </label>
+                <fieldset class="full settings-checkgroup">
+                  <legend>Tipos de archivo permitidos</legend>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="pdf" /> PDF</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpg" /> JPG</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpeg" /> JPEG</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="png" /> PNG</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="webp" /> WebP</label>
+                </fieldset>
+
+                <p class="form-section-title full">Contratos y vencimientos</p>
+                <label>Aviso de vencimiento de contrato (días antes) (opcional)
+                  <input name="diasAvisoVencimientoContrato" type="number" min="0" max="365" inputmode="numeric" />
+                </label>
+
+                <p class="form-section-title full">Sistema</p>
+                <label>Filas por página en las tablas (opcional)
+                  <select name="filasPorPagina">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                  </select>
+                </label>
+                <label>Moneda por defecto (opcional)
+                  <select name="monedaPorDefecto">
+                    <option value="EUR">Euro (EUR)</option>
+                    <option value="USD">Dólar estadounidense (USD)</option>
+                    <option value="GBP">Libra esterlina (GBP)</option>
+                    <option value="CHF">Franco suizo (CHF)</option>
+                  </select>
+                </label>
+                <label class="full checkbox-line">
+                  <input type="checkbox" name="mantenimiento" />
+                  Modo mantenimiento (bloquea el acceso a usuarios no administradores)
+                </label>
+                <label class="full">Mensaje de mantenimiento (opcional)
+                  <textarea name="mensajeMantenimiento" rows="2" maxlength="300" placeholder="La plataforma está en mantenimiento. Volvé a intentar en unos minutos."></textarea>
+                </label>
+              </div>
             </div>
             <div id="settings-estilo-panel" hidden>
               <div class="form-grid">
@@ -1149,10 +1171,30 @@
             <input name="dni" maxlength="9" required placeholder="12345678Z" title="DNI, NIE o CIF español."
               inputmode="text" autocomplete="off" />
           </label>
-          <label class="full">Observaciones
-            <textarea name="notes" rows="3" maxlength="500"
-              placeholder="Observaciones del propietario (opcional)"></textarea>
-          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="owner-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="owner-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones del propietario">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="owner-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="owner-notes-label"
+                data-placeholder="Escribí observaciones sobre el propietario…" data-maxlength="500"></div>
+            </div>
+            <textarea name="notes" id="owner-notes-input" hidden maxlength="500"></textarea>
+          </div>
           <label class="full">Usuario del sistema
             <select name="userId" id="owner-user-select">
               <option value="">Sin cuenta de usuario</option>
@@ -1768,10 +1810,30 @@
           <label>DNI / NIE / CIF *
             <input name="documentId" maxlength="20" required autocomplete="off" />
           </label>
-          <label class="full">Observaciones
-            <textarea name="authorizationNotes" rows="3" maxlength="500"
-              placeholder="Observaciones del inquilino (opcional)"></textarea>
-          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="tenant-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="tenant-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones del inquilino">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="tenant-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="tenant-notes-label"
+                data-placeholder="Escribí observaciones sobre el inquilino…" data-maxlength="500"></div>
+            </div>
+            <textarea name="authorizationNotes" id="tenant-notes-input" hidden maxlength="500"></textarea>
+          </div>
           <label class="full">Usuario del sistema
             <select name="userId" id="tenant-user-select">
               <option value="">Sin cuenta de usuario</option>
@@ -2246,10 +2308,30 @@
           <label>Referencia Catastral (opcional)
             <input name="cadastralRef" maxlength="20" />
           </label>
-          <label class="full">Observaciones
-            <textarea name="notes" rows="3" maxlength="500"
-              placeholder="Observaciones del inmueble (opcional)"></textarea>
-          </label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="property-notes-label">Observaciones (opcional)</span>
+            <div class="rich-text-editor">
+              <div class="rich-text-toolbar" id="property-notes-toolbar" role="toolbar"
+                aria-label="Formato de las observaciones del inmueble">
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
+                <button type="button" data-rich-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
+                <button type="button" data-rich-command="underline" title="Subrayado"
+                  aria-label="Subrayado"><u>U</u></button>
+                <button type="button" data-rich-command="insertUnorderedList" title="Lista con viñetas"
+                  aria-label="Lista con viñetas">• Lista</button>
+                <button type="button" data-rich-command="insertOrderedList" title="Lista numerada"
+                  aria-label="Lista numerada">1. Lista</button>
+                <button type="button" data-rich-command="createLink" title="Insertar enlace"
+                  aria-label="Insertar enlace">Enlace</button>
+                <button type="button" data-rich-command="removeFormat" title="Quitar formato"
+                  aria-label="Quitar formato">Limpiar</button>
+              </div>
+              <div class="rich-text-content" id="property-notes-editor" contenteditable="true" role="textbox"
+                aria-multiline="true" aria-labelledby="property-notes-label"
+                data-placeholder="Escribí observaciones sobre el inmueble…" data-maxlength="500"></div>
+            </div>
+            <textarea name="notes" id="property-notes-input" hidden maxlength="500"></textarea>
+          </div>
         </div>
       </section>
       <section class="property-editor-pane" data-property-pane="details" hidden>

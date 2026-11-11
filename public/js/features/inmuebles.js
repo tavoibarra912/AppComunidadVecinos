@@ -1,10 +1,11 @@
-import { sanitizeHtml, escapeHtml } from "../html.js";
+import { sanitizeHtml, escapeHtml, richTextHtml } from "../html.js";
 import { openDocViewer, DocumentValidator } from "../docs-engine.js";
 import { api } from "../api.js";
 import { state, refreshState, ownerProperties, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
 import { toast, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, makeSelectSearchable, showValidationErrors, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
+import { createRichText } from "../rich-text.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
 import { openCommunityEditor, refreshCommunityEditorAfterPropertySave } from "./comunidades.js";
@@ -22,6 +23,12 @@ const propertyDialog = document.querySelector("#property-dialog");
 const propertyForm = document.querySelector("#property-form");
 // Control territorial unificado: municipio → provincia → código postal.
 const propertyTerritory = setupTerritory(propertyForm);
+// Observaciones con formato (mismo editor que usa la ficha de comunidad).
+const propertyNotes = createRichText({
+  editor: document.querySelector("#property-notes-editor"),
+  input: propertyForm.elements.notes,
+  toolbar: document.querySelector("#property-notes-toolbar"),
+});
 const propertyFormError = document.querySelector("#property-form-error");
 const propertyDocumentInput = document.querySelector("#property-document-input");
 let pendingPropertyFiles = [];
@@ -650,6 +657,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
       });
     propertyTerritory?.set(property.city, property.province, property.postalCode);
   }
+  propertyNotes?.setValue(propertyForm.elements.notes.value || "");
   document.querySelector("#property-dialog-title").textContent = property ? (readonly ? `Ver inmueble: ${property.plot}` : "Editar inmueble") : "Nuevo inmueble";
   setFormReadonly(propertyForm, readonly);
   applyPropertyEditorReadOnly(readonly);
@@ -885,7 +893,10 @@ export function openPropertyDetail(id) {
   const coefEl = document.querySelector("#property-detail-coef");
   if (coefEl) coefEl.textContent = property.participationCoef ? `${property.participationCoef}%` : "—";
   const notesEl = document.querySelector("#property-detail-notes");
-  if (notesEl) notesEl.textContent = property.notes || "—";
+  if (notesEl) {
+    if (property.notes) notesEl.innerHTML = richTextHtml(property.notes);
+    else notesEl.textContent = "—";
+  }
 
   // Lista interactiva de propietarios (Requisito 7)
   const ownersListEl = document.querySelector("#property-detail-owners-list");
