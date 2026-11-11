@@ -3667,14 +3667,15 @@ select {
   width: 100%;
 }
 
+/* Mismo aspecto que los inputs/selects nativos del formulario para que el
+   control territorial se vea idéntico en todas las pantallas. */
 .combo-box-input {
   width: 100%;
-  padding: 9px 12px;
-  border: 1px solid #cbd5df;
-  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid #bdc9d4;
+  border-radius: var(--radius);
   font: inherit;
-  font-size: 13.5px;
-  color: var(--ink);
+  color: inherit;
   background: #fff;
 }
 
@@ -3685,11 +3686,13 @@ select {
 }
 
 .combo-box-options {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + 4px);
+  /* La posición concreta la calcula makeSelectSearchable (fixed sobre el
+     buscador, con volteo hacia arriba si no hay espacio debajo). */
+  position: fixed;
+  z-index: 90;
+  top: auto;
   left: 0;
-  right: 0;
+  right: auto;
   max-height: 240px;
   overflow-y: auto;
   margin: 0;

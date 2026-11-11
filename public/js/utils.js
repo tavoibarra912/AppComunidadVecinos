@@ -373,12 +373,57 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
     });
     list.hidden = false;
     input.setAttribute("aria-expanded", "true");
+    positionList();
+  }
+
+  /**
+   * Posiciona el desplegable con `position: fixed` sobre el buscador. Así las
+   * opciones no quedan recortadas por el scroll de los paneles ni por el borde
+   * del diálogo; si no hay espacio debajo se abre hacia arriba y nunca supera
+   * el alto visible de la ventana.
+   */
+  function positionList() {
+    if (list.hidden) return;
+    const rect = input.getBoundingClientRect();
+    const gap = 4;
+    const margin = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
+    const spaceAbove = rect.top - gap - margin;
+    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const available = Math.max(120, openUp ? spaceAbove : spaceBelow);
+    list.style.position = "fixed";
+    list.style.left = `${rect.left}px`;
+    list.style.width = `${rect.width}px`;
+    list.style.right = "auto";
+    list.style.maxHeight = `${Math.min(240, available)}px`;
+    if (openUp) {
+      list.style.top = "auto";
+      list.style.bottom = `${window.innerHeight - rect.top + gap}px`;
+    } else {
+      list.style.bottom = "auto";
+      list.style.top = `${rect.bottom + gap}px`;
+    }
   }
 
   function closeList() {
     list.hidden = true;
+    list.style.top = "";
+    list.style.bottom = "";
+    list.style.left = "";
+    list.style.width = "";
+    list.style.maxHeight = "";
     input.setAttribute("aria-expanded", "false");
   }
+
+  // Mantener el desplegable pegado al buscador mientras se desplaza el
+  // diálogo o se redimensiona la ventana.
+  const reposition = (event) => {
+    if (list.hidden) return;
+    if (event?.type === "scroll" && event.target === list) return;
+    positionList();
+  };
+  window.addEventListener("resize", reposition);
+  window.addEventListener("scroll", reposition, true);
 
   select.addEventListener("change", () => {
     if (document.activeElement !== input) input.value = selectedText();

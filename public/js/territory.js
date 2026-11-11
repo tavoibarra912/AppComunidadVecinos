@@ -10,7 +10,7 @@
 //     siendo válido para el municipio; si no, el primero).
 //   · Provincia → llena el desplegable de municipios con los de esa provincia
 //     (si hay uno único, lo selecciona junto a su código postal).
-// El orden visual exigido en los formularios es Municipio → Provincia → CP.
+// El orden visual exigido en los formularios es Provincia → Municipio → CP.
 
 import { makeSelectSearchable } from "./utils.js";
 
@@ -134,9 +134,10 @@ class TerritoryControl {
       this.province.value = target.province;
     });
 
-    // Los combos con buscador se aplican aquí para que los tres formularios
-    // compartan exactamente el mismo estilo y funcionamiento. El select sigue
-    // guardando el valor real: la serialización no cambia.
+    // Los tres controles usan el mismo combo con buscador en todos los
+    // formularios. El select sigue guardando el valor real: la serialización
+    // no cambia.
+    if (this.province.dataset.combo !== "true") makeSelectSearchable(this.province, "Buscar provincia…");
     if (this.city.dataset.combo !== "true") makeSelectSearchable(this.city, "Buscar municipio…");
     if (this.cp.dataset.combo !== "true") makeSelectSearchable(this.cp, "Buscar código postal…");
   }
