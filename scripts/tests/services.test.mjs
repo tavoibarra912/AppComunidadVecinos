@@ -398,6 +398,13 @@ test("servicios: reparte por coeficiente, congela el reparto, emite recibos y co
     (receipt) => receipt.propertyId === c.properties[0],
   );
   const paid = payment(c.id, owner1, "50", [first.id]);
+  const paymentNotice = db
+    .prepare(
+      "SELECT message FROM owner_notifications WHERE feeReceiptId=? AND title='Cobro registrado' ORDER BY timestamp DESC LIMIT 1",
+    )
+    .get(first.id);
+  assert.match(paymentNotice.message, /para el servicio de Agua · 2030-01/);
+  assert.doesNotMatch(paymentNotice.message, /servicio servicio/i);
   const partial = detail(c.service.id);
   assert.equal(partial.status, "partial");
   assert.equal(partial.totals.paid, 5000);
@@ -406,6 +413,13 @@ test("servicios: reparte por coeficiente, congela el reparto, emite recibos y co
     /Revertí primero los cobros/i,
   );
   fees.reversePayment(paid.id, { reason: "Devolución de prueba" }, actor);
+  const returnNotice = db
+    .prepare(
+      "SELECT message FROM owner_notifications WHERE feeReceiptId=? AND title='Devolución de cobro' ORDER BY timestamp DESC LIMIT 1",
+    )
+    .get(first.id);
+  assert.match(returnNotice.message, /aplicado sobre el servicio de Agua/);
+  assert.doesNotMatch(returnNotice.message, /a el servicio|servicio servicio/i);
   const cancelled = services.cancelService(
     c.service.id,
     { reason: "Factura duplicada" },
@@ -414,6 +428,13 @@ test("servicios: reparte por coeficiente, congela el reparto, emite recibos y co
   assert.equal(cancelled.status, "cancelled");
   assert.equal(cancelled.receipts.every((receipt) => receipt.cancelledAt), true);
   assert.equal(cancelled.totals.outstanding, 0);
+  const cancelNotice = db
+    .prepare(
+      "SELECT message FROM owner_notifications WHERE feeReceiptId=? AND title='Servicio anulado' ORDER BY timestamp DESC LIMIT 1",
+    )
+    .get(first.id);
+  assert.match(cancelNotice.message, /Se anuló el servicio de Agua · 2030-01/);
+  assert.doesNotMatch(cancelNotice.message, /servicio servicio/i);
 });
 
 test("servicios: reparte por lecturas, omite consumos cero y conserva la última lectura", () => {

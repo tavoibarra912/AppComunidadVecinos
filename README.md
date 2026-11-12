@@ -148,7 +148,8 @@ API de servicios (requiere sesión y `fee:manage` en la comunidad):
 `GET/PUT /api/fees/services/:serviceId`;
 `POST /api/fees/services/:serviceId/preview|issue|cancel`;
 `POST /api/fees/services/:serviceId/attachments`;
-`GET/DELETE /api/fees/service-attachments/:attachmentId[/download]`.
+`GET /api/fees/service-attachments/:attachmentId/download` y
+`DELETE /api/fees/service-attachments/:attachmentId`.
 
 Quedan fuera de esta versión el OCR, las plantillas recurrentes, las facturas
 negativas o abonos, los métodos por igual/superficie/personas, SEPA, intereses y

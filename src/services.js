@@ -831,7 +831,7 @@ export function cancelService(id, input, actor) {
         "cancelled",
         `${row.id}:${receipt.propertyId}`,
         "Servicio anulado",
-        `Se anuló ${receiptConcept(receiptById(receipt.id))} de ${JSON.parse(receipt.snapshot).property}. Motivo: ${note}`,
+        `Se anuló el servicio de ${serviceLabels[row.service] || row.service} · ${row.period} de ${JSON.parse(receipt.snapshot).property}. Motivo: ${note}`,
       );
     }
     db.prepare(

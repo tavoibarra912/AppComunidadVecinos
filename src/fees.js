@@ -274,13 +274,9 @@ export function receiptConcept(row, snapshot = JSON.parse(row.snapshot)) {
     ? `Derrama "${snapshot.assessmentName}" · plazo ${snapshot.installment}/${snapshot.installmentCount}`
     : `Cuota ${row.period}`;
 }
-/** Artículo correcto para los textos: el servicio, la derrama o la cuota. */
+/** Artículo correcto para anteponer al concepto: el servicio o la cuota/derrama. */
 export function receiptArticle(row) {
-  return row.serviceBillId
-    ? "el servicio"
-    : row.assessmentId
-      ? "la derrama"
-      : "la cuota";
+  return row.serviceBillId ? "el" : "la";
 }
 function lowerFirst(text) {
   return text ? text[0].toLowerCase() + text.slice(1) : text;
@@ -1650,7 +1646,7 @@ export function reversePayment(id, input, actor) {
         "returned",
         id,
         "Devolución de cobro",
-        `Se devolvió un cobro de ${formatMoney(a.amount)} aplicado a ${receiptArticle(r)} ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
+        `Se devolvió un cobro de ${formatMoney(a.amount)} aplicado sobre ${receiptArticle(r)} ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
       );
     }
     audit(actor, "return", id, { communityId: p.communityId, reason: note });
