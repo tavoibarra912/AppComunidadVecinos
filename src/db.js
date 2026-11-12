@@ -209,7 +209,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tenants_property ON tenants(propertyId);
   CREATE INDEX IF NOT EXISTS idx_tenants_owner ON tenants(ownerId);
   CREATE INDEX IF NOT EXISTS idx_documents_entity ON documents(entityType, entityId);
-  CREATE INDEX IF NOT EXISTS idx_documents_folder ON documents(entityType, entityId, folderId);
   CREATE INDEX IF NOT EXISTS idx_document_folders_entity ON document_folders(entityType, entityId);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_document_folders_unique ON document_folders(entityType, entityId, parentId, nameKey);
   CREATE INDEX IF NOT EXISTS idx_admin_emails_owner ON admin_emails(ownerId);
@@ -259,6 +258,11 @@ ensureColumns("documents", {
   uploadedBy: "TEXT NOT NULL DEFAULT ''",
   uploadedByName: "TEXT NOT NULL DEFAULT ''"
 });
+// El índice usa `folderId`: se crea después de asegurar la columna para que
+// las bases creadas con el esquema anterior puedan migrar sin errores.
+db.exec(
+  "CREATE INDEX IF NOT EXISTS idx_documents_folder ON documents(entityType, entityId, folderId)"
+);
 
 // Referencias catastrales: se normalizan y, si no hay duplicados heredados,
 // se protege su unicidad también a nivel de base de datos.
