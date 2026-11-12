@@ -777,6 +777,8 @@ function renderPanel(root, ctx) {
   }
   tools.append(button("Actualizar", () => load(root, ctx)));
   root.append(tools);
+  if (!assessmentTab && !serviceTab && !manage)
+    informativeServiceNotice(root, ctx, data);
   if (ctx.kind === "community" && data.canManage && !canConfigure)
     info(
       root,
@@ -811,6 +813,7 @@ function renderPanel(root, ctx) {
     !ctx.readonly
   )
     serviceSection(root, ctx);
+  if (serviceTab && !manage) informativeServiceSection(root, data);
   if (assessmentTab && manage && !receipts.length) {
     info(
       root,
@@ -823,6 +826,11 @@ function renderPanel(root, ctx) {
       root,
       "Los recibos de servicios aparecerán aquí cuando emitas el primer reparto con recibos. Los repartos informativos quedan en la lista de servicios.",
     );
+    return;
+  }
+  if (serviceTab && !manage && !receipts.length) {
+    if (!(data.informativeServices || []).length)
+      info(root, "No tenés recibos ni repartos informativos de servicios.");
     return;
   }
   const filters = el("div", undefined, "fee-filters");
@@ -1552,6 +1560,111 @@ function serviceRowsTable(items, method) {
       return row;
     }),
   );
+}
+function informativeServiceSection(root, data) {
+  const list = data.informativeServices || [];
+  if (!list.length) return;
+  const section = el(
+    "section",
+    undefined,
+    "fee-services fee-informative-services",
+  );
+  const heading = el("div", undefined, "fee-section-heading"),
+    copy = el("div");
+  copy.append(
+    el("h3", "Repartos informativos", "fee-section-title"),
+    el(
+      "p",
+      "Facturas de servicios repartidas solo a efectos informativos. No generan recibos ni deuda.",
+      "form-intro",
+    ),
+  );
+  heading.append(copy);
+  section.append(heading);
+  section.append(
+    table(
+      ["Servicio", "Periodo", "Total factura", "Tu parte", "Adjuntos", "Acción"],
+      list.map((service) => {
+        const mine = (service.properties || []).reduce(
+          (sum, property) => sum + property.amount,
+          0,
+        );
+        return [
+          `<strong>${esc(service.serviceLabel)}</strong><small>${esc(service.supplier || service.invoiceNumber || service.concept)}</small>`,
+          `${esc(service.period)}<small>Vence ${esc(date(service.dueDate))}</small>`,
+          money(service.totalAmount),
+          `${money(mine)}<small>${esc(
+            (service.properties || []).map((property) => property.plot).join(", "),
+          )}</small>`,
+          String((service.attachments || []).length || "—"),
+          button("Ver reparto", () => showInformativeService(service)),
+        ];
+      }),
+    ),
+  );
+  root.append(section);
+}
+function showInformativeService(service) {
+  const body = open("Reparto informativo");
+  dialog.querySelector("h2").textContent =
+    `Servicio de ${service.serviceLabel} · ${service.period}`;
+  const header = el("div", undefined, "fee-receipt-header");
+  header.innerHTML = `<h3>${esc(service.concept)}</h3><p>${esc(service.supplier || "Sin proveedor indicado")}${service.invoiceNumber ? ` · Factura ${esc(service.invoiceNumber)}` : ""} · Vence ${esc(date(service.dueDate))}</p><p><span class="fee-status fee-status-informative">Solo reparto informativo</span></p>`;
+  body.append(header);
+  info(
+    body,
+    "Este reparto no genera recibos ni deuda. El importe se muestra únicamente a efectos informativos.",
+  );
+  const mine = service.properties || [];
+  const totals = el("div", undefined, "fee-summary");
+  for (const [label, value] of [
+    ["Total factura", service.totalAmount],
+    [
+      "Tu parte",
+      mine.reduce((sum, property) => sum + property.amount, 0),
+    ],
+  ]) {
+    const cell = el("div");
+    cell.append(el("span", label), el("strong", money(value)));
+    totals.append(cell);
+  }
+  body.append(totals);
+  if (service.legalBasis)
+    info(body, `Base legal o acuerdo: ${service.legalBasis}`);
+  if (service.notes) info(body, service.notes);
+  body.append(el("h3", "Tu reparto"));
+  body.append(serviceRowsTable(mine, service.method));
+  for (const warning of service.warnings || [])
+    info(body, warning, true);
+  if ((service.attachments || []).length) {
+    body.append(el("h3", "Factura adjunta"));
+    for (const attachment of service.attachments) {
+      const row = el("div", undefined, "fee-proof"),
+        link = el("a", attachment.fileName);
+      link.href = `/api/fees/service-attachments/${encodeURIComponent(attachment.id)}/download`;
+      link.download = attachment.fileName;
+      row.append(link, el("span", date(attachment.createdAt)));
+      body.append(row);
+    }
+  }
+}
+function informativeServiceNotice(root, ctx, data) {
+  const count = (data.informativeServices || []).length;
+  if (!count) return;
+  const notice = el("div", undefined, "fee-informative-notice");
+  notice.append(
+    el(
+      "p",
+      `Tenés ${count} ${
+        count === 1 ? "reparto informativo" : "repartos informativos"
+      } de servicios sin deuda.`,
+    ),
+    button("Ver repartos informativos", () => {
+      ctx.tab = "services";
+      renderPanel(root, ctx);
+    }),
+  );
+  root.append(notice);
 }
 async function showService(id) {
   const body = open("Servicio"),
@@ -2387,6 +2500,19 @@ export async function showReceipt(id) {
           ),
         );
       body.append(detail);
+      if ((r.serviceAttachments || []).length) {
+        const attachments = el("div", undefined, "fee-service-receipt");
+        attachments.append(el("strong", "Factura adjunta"));
+        for (const attachment of r.serviceAttachments) {
+          const row = el("div", undefined, "fee-proof"),
+            link = el("a", attachment.fileName);
+          link.href = `/api/fees/service-attachments/${encodeURIComponent(attachment.id)}/download`;
+          link.download = attachment.fileName;
+          row.append(link, el("span", date(attachment.createdAt)));
+          attachments.append(row);
+        }
+        body.append(attachments);
+      }
     }
     if (r.snapshot.assessmentPurpose) {
       const purpose = el("div", undefined, "fee-rich-content");

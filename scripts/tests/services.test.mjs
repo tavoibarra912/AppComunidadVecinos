@@ -627,6 +627,40 @@ test("servicios: el modo informativo no crea recibos ni deuda", () => {
   );
 });
 
+test("servicios: el reparto informativo se ve en Mis cuotas y solo para sus propietarios", async () => {
+  const c = create({ billing: "informative" });
+  issue(c.service.id);
+  const mine = await ok(owner, "/fees/mine");
+  const entry = mine.informativeServices.find((s) => s.id === c.service.id);
+  assert.ok(entry, "el reparto informativo aparece en Mis cuotas");
+  assert.equal(entry.concept, "Servicio de Agua · 2030-01");
+  assert.equal(entry.totalAmount, 20000);
+  assert.equal(entry.properties.length, 1);
+  assert.equal(entry.properties[0].propertyId, c.properties[0]);
+  assert.equal(entry.properties[0].coefficient, 25);
+  assert.equal(entry.properties[0].amount, 5000);
+  assert.equal(
+    mine.receipts.some((r) => r.serviceBillId === c.service.id),
+    false,
+  );
+  const otherMine = await ok(other, "/fees/mine");
+  const otherEntry = otherMine.informativeServices.find(
+    (s) => s.id === c.service.id,
+  );
+  assert.ok(otherEntry, "el copropietario también ve el reparto informativo");
+  assert.equal(otherEntry.properties[0].propertyId, c.properties[1]);
+  assert.equal(otherEntry.properties[0].amount, 15000);
+  const tenantMine = await tenant("/fees/mine");
+  assert.equal(tenantMine.status, 403);
+  const communityView = await ok(owner, `/fees/communities/${c.id}`);
+  assert.equal(communityView.informativeServices.length, 1);
+  assert.equal(communityView.informativeServices[0].id, c.service.id);
+  assert.equal(
+    communityView.informativeServices[0].properties[0].amount,
+    5000,
+  );
+});
+
 test("servicios: adjunta la factura, descarga y protege los justificantes emitidos", async () => {
   const c = community(),
     route = `/fees/communities/${c.id}/services`;
@@ -677,6 +711,32 @@ test("servicios: adjunta la factura, descarga y protege los justificantes emitid
   await ok(staff, `/fees/services/${service.id}/issue`, "POST", {
     token: preview(service.id).token,
   }, 201);
+  const receipts = db
+    .prepare(
+      "SELECT * FROM fee_receipts WHERE serviceBillId=? ORDER BY propertyId",
+    )
+    .all(service.id);
+  const ownerReceipt = receipts.find(
+    (receipt) => receipt.propertyId === c.properties[0],
+  );
+  const latest = services.serviceDetail(services.serviceBillById(service.id))
+    .attachments[0];
+  const receiptDetail = await ok(
+    owner,
+    `/fees/receipts/${ownerReceipt.id}`,
+  );
+  assert.equal(receiptDetail.serviceAttachments.length, 1);
+  assert.equal(receiptDetail.serviceAttachments[0].id, latest.id);
+  const ownerDownload = await fetch(
+    `${base}/fees/service-attachments/${latest.id}/download`,
+    { headers: { Cookie: owner.cookie || "" } },
+  );
+  assert.equal(ownerDownload.status, 200);
+  const tenantDownload = await fetch(
+    `${base}/fees/service-attachments/${latest.id}/download`,
+    { headers: { Cookie: tenant.cookie || "" } },
+  );
+  assert.equal(tenantDownload.status, 403);
   assert.equal(
     (
       await staff(
@@ -686,8 +746,6 @@ test("servicios: adjunta la factura, descarga y protege los justificantes emitid
     ).status,
     404,
   );
-  const latest = services.serviceDetail(services.serviceBillById(service.id))
-    .attachments[0];
   assert.equal(
     (await staff(`/fees/service-attachments/${latest.id}`, "DELETE")).status,
     409,

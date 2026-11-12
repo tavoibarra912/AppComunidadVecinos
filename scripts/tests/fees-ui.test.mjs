@@ -1267,6 +1267,110 @@ test("servicios UI: revisa el reparto, emite con token y bloquea una segunda emi
   }
 });
 
+test("servicios UI: el propietario ve repartos informativos sin deuda y sin gestión", async () => {
+  const f = serviceFixture(false);
+  try {
+    f.data.informativeServices = [
+      {
+        id: "s1",
+        communityId: "c1",
+        service: "agua",
+        serviceLabel: "Agua",
+        supplier: "Canal",
+        invoiceNumber: "F-2030-1",
+        period: "2026-10",
+        issueDate: "2026-10-01",
+        dueDate: "2026-11-01",
+        totalAmount: 10000,
+        issuedAt: "2026-10-02T10:00:00.000Z",
+        concept: "Servicio de Agua · 2026-10",
+        method: "coefficient",
+        legalBasis: "",
+        notes: "",
+        warnings: [],
+        attachments: [
+          {
+            id: "a1",
+            fileName: "factura.pdf",
+            mime: "application/pdf",
+            createdAt: "2026-10-02T10:00:00.000Z",
+          },
+        ],
+        properties: [
+          {
+            propertyId: "p1",
+            plot: "Parcela 1",
+            coefficient: 100,
+            previous: null,
+            current: null,
+            consumption: null,
+            fixed: 10000,
+            variable: 0,
+            amount: 10000,
+          },
+        ],
+      },
+    ];
+    f.w.location.hash = "#cuotas";
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    let page = f.w.document.querySelector("#fees-page");
+    assert.match(page.textContent, /Tenés 1 reparto informativo/);
+    assert.equal(
+      [...page.querySelectorAll("button")].some(
+        (button) => button.textContent === "Nuevo servicio",
+      ),
+      false,
+    );
+    click(f.w, "Ver repartos informativos", page);
+    await flush();
+    page = f.w.document.querySelector("#fees-page");
+    assert.match(page.textContent, /Repartos informativos/);
+    assert.match(
+      page.textContent,
+      /Facturas de servicios repartidas solo a efectos informativos/,
+    );
+    assert.match(page.textContent, /100,00/);
+    click(f.w, "Ver reparto", page);
+    const body = f.w.document.querySelector("#fee-dialog-body");
+    assert.match(body.textContent, /Solo reparto informativo/);
+    assert.match(body.textContent, /Este reparto no genera recibos ni deuda/);
+    assert.match(body.textContent, /Factura adjunta/);
+    const link = body.querySelector(
+      'a[href="/api/fees/service-attachments/a1/download"]',
+    );
+    assert.ok(link);
+    assert.equal(link.download, "factura.pdf");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("servicios UI: el recibo de servicio enlaza la factura adjunta", async () => {
+  const f = serviceFixture(false);
+  try {
+    f.serviceReceipt.serviceAttachments = [
+      {
+        id: "a1",
+        fileName: "factura.pdf",
+        mime: "application/pdf",
+        createdAt: "2026-10-02T10:00:00.000Z",
+      },
+    ];
+    f.w.feeTest.showReceipt("svc-r1");
+    await flush();
+    const body = f.w.document.querySelector("#fee-dialog-body");
+    assert.match(body.textContent, /Factura adjunta/);
+    const link = body.querySelector(
+      'a[href="/api/fees/service-attachments/a1/download"]',
+    );
+    assert.ok(link);
+    assert.equal(link.download, "factura.pdf");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
 test("servicios UI: el recibo muestra proveedor y lecturas y descarga un CSV propio", async () => {
   const f = serviceFixture();
   try {

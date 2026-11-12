@@ -137,19 +137,24 @@ y 6.4). Solo se admiten comunidades en EUR.
 Los recibos de servicio reutilizan el mismo libro de cobros, imputaciones, saldos a
 favor, justificantes y avisos que las cuotas ordinarias y las derramas. Aparecen
 identificados en **Mis cuotas**, el detalle del recibo, el CSV y el resumen de
-Inicio. En modo informativo no se crean recibos ni deuda. Los adjuntos admiten PDF,
-PNG, JPG o WebP de hasta 10 MB (máximo 10 por factura), se guardan en
-`uploads/service-bills/` y solo se pueden eliminar mientras la factura es borrador.
-No se puede borrar ni mover a otra comunidad un inmueble incluido en un servicio
-vigente.
+Inicio. En modo informativo no se crean recibos ni deuda: el propietario ve el
+reparto en la pestaña **Servicios** de **Mis cuotas**, con su parte, las lecturas y
+la factura adjunta. La descarga de la factura está disponible para gestión, para
+los titulares de recibos del servicio y para los propietarios actuales de los
+inmuebles incluidos. Los adjuntos admiten PDF, PNG, JPG o WebP de hasta 10 MB
+(máximo 10 por factura), se guardan en `uploads/service-bills/` y solo se pueden
+eliminar mientras la factura es borrador. No se puede borrar ni mover a otra
+comunidad un inmueble incluido en un servicio vigente.
 
-API de servicios (requiere sesión y `fee:manage` en la comunidad):
+API de servicios (gestión: sesión y `fee:manage` en la comunidad):
 `GET/POST /api/fees/communities/:communityId/services`;
 `GET/PUT /api/fees/services/:serviceId`;
 `POST /api/fees/services/:serviceId/preview|issue|cancel`;
 `POST /api/fees/services/:serviceId/attachments`;
 `GET /api/fees/service-attachments/:attachmentId/download` y
-`DELETE /api/fees/service-attachments/:attachmentId`.
+`DELETE /api/fees/service-attachments/:attachmentId`. La descarga también está
+disponible para los titulares de recibos y los propietarios incluidos; el borrado
+sigue reservado a gestión y solo en borrador.
 
 Quedan fuera de esta versión el OCR, las plantillas recurrentes, las facturas
 negativas o abonos, los métodos por igual/superficie/personas, SEPA, intereses y

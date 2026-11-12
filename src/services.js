@@ -540,12 +540,87 @@ export function serviceConcept(row) {
   return `Servicio de ${serviceLabels[row.service] || row.service} · ${row.period}`;
 }
 
-function serviceAttachments(serviceBillId) {
+export function serviceAttachments(serviceBillId) {
   return db
     .prepare(
       "SELECT id,serviceBillId,fileName,mime,createdAt,actorId FROM service_attachments WHERE serviceBillId=? ORDER BY createdAt DESC",
     )
     .all(serviceBillId);
+}
+
+/**
+ * Repartos informativos visibles para los perfiles de propietario indicados.
+ * Devuelve una entrada por factura con las propiedades del usuario y sus
+ * importes, sin crear recibos ni deuda.
+ */
+export function informativeServicesFor(ownerIds, communityId = "") {
+  if (!Array.isArray(ownerIds) || !ownerIds.length) return [];
+  const properties = listProperties();
+  const rows = db
+    .prepare(
+      `SELECT * FROM service_bills WHERE cancelledAt='' AND issuedAt<>''${
+        communityId ? " AND communityId=?" : ""
+      } ORDER BY issueDate DESC,createdAt DESC`,
+    )
+    .all(...(communityId ? [communityId] : []));
+  const result = [];
+  for (const row of rows) {
+    const data = payload(row);
+    if (data.billing !== "informative") continue;
+    const included = new Set(data.propertyIds || []),
+      breakdown = new Map(
+        (data.breakdown || []).map((item) => [item.propertyId, item]),
+      ),
+      mine = properties.filter(
+        (property) =>
+          property.communityId === row.communityId &&
+          included.has(property.id) &&
+          property.ownerIds.some((ownerId) => ownerIds.includes(ownerId)),
+      );
+    if (!mine.length) continue;
+    result.push({
+      id: row.id,
+      communityId: row.communityId,
+      service: row.service,
+      serviceLabel: serviceLabels[row.service] || row.service,
+      supplier: row.supplier,
+      invoiceNumber: row.invoiceNumber,
+      period: row.period,
+      issueDate: row.issueDate,
+      dueDate: row.dueDate,
+      totalAmount: row.totalAmount,
+      issuedAt: row.issuedAt,
+      concept: serviceConcept(row),
+      method: data.method,
+      legalBasis: data.legalBasis,
+      notes: data.notes,
+      warnings: data.warnings || [],
+      attachments: serviceAttachments(row.id).map((attachment) => ({
+        id: attachment.id,
+        fileName: attachment.fileName,
+        mime: attachment.mime,
+        createdAt: attachment.createdAt,
+      })),
+      properties: mine.map((property) => {
+        const item = breakdown.get(property.id) || {};
+        return {
+          propertyId: property.id,
+          plot: property.plot,
+          coefficient:
+            data.effectiveCoefficients?.[property.id] ??
+            data.coefficients?.[property.id] ??
+            property.participationCoef,
+          previous: item.previous ?? null,
+          current: item.current ?? null,
+          consumption: item.consumption ?? null,
+          fixed: item.fixed ?? 0,
+          variable: item.variable ?? 0,
+          amount: data.allocations?.[property.id] ?? 0,
+        };
+      }),
+    });
+  }
+  return result;
 }
 
 export function serviceView(row, date = today()) {

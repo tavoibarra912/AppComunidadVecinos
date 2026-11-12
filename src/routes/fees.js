@@ -46,6 +46,8 @@ import {
   cancelService,
   lastServiceReadings,
   serviceAttachmentById,
+  serviceAttachments,
+  informativeServicesFor,
 } from "../services.js";
 
 const router = Router();
@@ -119,12 +121,41 @@ function service(req) {
   manage(req, row.communityId);
   return row;
 }
-function data(user, rows, communityId = "") {
+function canReadServiceBill(user, row) {
+  if (canManage(user, row.communityId)) return true;
+  const policy = policyData();
+  const receipts = db
+    .prepare("SELECT * FROM fee_receipts WHERE serviceBillId=?")
+    .all(row.id);
+  if (receipts.some((receipt) => canReadReceipt(user, receipt, policy)))
+    return true;
+  if (!allowed(user, "fee:read", row.communityId, policy)) return false;
+  if (user.rol !== "user") {
+    const role = policy.roles.find(
+      (r) => r.nombre === user.rol || r.id === user.rol,
+    );
+    if (role && role.nombre !== "user") return true;
+  }
+  const ownerIds = policy.owners
+    .filter((owner) => owner.userId === user.id)
+    .map((owner) => owner.id);
+  if (!ownerIds.length) return false;
+  const data = JSON.parse(row.data);
+  return listProperties().some(
+    (property) =>
+      property.communityId === row.communityId &&
+      (data.propertyIds || []).includes(property.id) &&
+      property.ownerIds.some((ownerId) => ownerIds.includes(ownerId)),
+  );
+}
+function data(user, rows, communityId = "", informativeOwnerIds) {
   const policy = policyData();
   const visible = rows.filter((r) => canReadReceipt(user, r, policy));
   const ownIds = policy.owners
     .filter((o) => o.userId === user.id)
     .map((o) => o.id);
+  const serviceOwnerIds =
+    informativeOwnerIds === null ? [] : informativeOwnerIds || ownIds;
   const payments = db
     .prepare(
       `SELECT * FROM fee_payments ${communityId ? "WHERE communityId=?" : ""} ORDER BY createdAt DESC`,
@@ -146,6 +177,7 @@ function data(user, rows, communityId = "") {
   return {
     receipts,
     payments,
+    informativeServices: informativeServicesFor(serviceOwnerIds, communityId),
     totals: {
       issued: receipts
         .filter((r) => !r.cancelledAt)
@@ -259,6 +291,8 @@ router.get(
         .filter((r) =>
           JSON.parse(r.snapshot).owners.some((o) => o.id === owner.id),
         ),
+      "",
+      [owner.id],
     );
     result.payments = result.payments.filter((p) => p.ownerId === owner.id);
     result.totals.credit = result.payments.reduce((s, p) => s + p.credit, 0);
@@ -492,7 +526,8 @@ router.get(
   wrap((req, res) => {
     const attachment = serviceAttachmentById(req.params.attachmentId),
       row = serviceBillById(attachment.serviceBillId);
-    manage(req, row.communityId);
+    if (!canReadServiceBill(req.user, row))
+      throw problem("No tenés acceso a la factura del servicio.", 403);
     if (!/^[a-f0-9-]{36}$/.test(attachment.diskName))
       throw problem("Archivo no válido.", 404);
     const file = path.join(serviceFilesDir, attachment.diskName);
@@ -561,10 +596,22 @@ router.get(
   "/receipts/:receiptId",
   wrap((req, res) => {
     const row = authorizedReceipt(req);
-    const result = data(req.user, [row], row.communityId);
+    const result = data(req.user, [row], row.communityId, null);
     res.json({
       ...result.receipts[0],
       canManage: canManage(req.user, row.communityId),
+      ...(row.serviceBillId
+        ? {
+            serviceAttachments: serviceAttachments(row.serviceBillId).map(
+              (attachment) => ({
+                id: attachment.id,
+                fileName: attachment.fileName,
+                mime: attachment.mime,
+                createdAt: attachment.createdAt,
+              }),
+            ),
+          }
+        : {}),
     });
   }),
 );

@@ -613,6 +613,24 @@
   margin-top: 16px;
   background: var(--surface);
 }
+.fee-informative-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+.fee-informative-notice p {
+  margin: 0;
+}
+.fee-informative-services {
+  margin-bottom: 24px;
+}
 .fee-service-editor {
   max-width: 1080px;
   border: 1px solid var(--line);
