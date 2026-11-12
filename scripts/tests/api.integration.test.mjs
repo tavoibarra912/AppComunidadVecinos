@@ -36,9 +36,12 @@ function client() {
     });
     const setCookie = response.headers.get("set-cookie");
     if (setCookie) cookie = setCookie.split(";")[0];
+    const type = response.headers.get("content-type") || "";
     return {
       status: response.status,
-      data: await response.json(),
+      data: type.includes("application/json")
+        ? await response.json()
+        : await response.text(),
       cookie: setCookie,
     };
   };
@@ -984,4 +987,392 @@ test("roles de plataforma: editar super_admin no exige perfiles y desvincular no
   });
   assert.equal(edited.status, 200, JSON.stringify(edited.data));
   assert.equal(edited.data.rol, "super_admin");
+});
+
+function pdfForm(entityType, entityId, name, { folderId = "", category = "" } = {}) {
+  const form = new FormData();
+  form.append("entityType", entityType);
+  form.append("entityId", entityId);
+  if (folderId) form.append("folderId", folderId);
+  if (category) form.append("category", category);
+  form.append(
+    "files",
+    new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
+    name,
+  );
+  return form;
+}
+
+test("biblioteca documental: carpetas, duplicados, mudanza y borrado en cascada", async () => {
+  const before = readdirSync(UPLOADS_DIR).sort();
+  const target = { entityType: "community", entityId: "com-seed-1" };
+  const root = await admin("/documents/folders", "POST", {
+    ...target,
+    name: "Actas",
+  });
+  assert.equal(root.status, 201, JSON.stringify(root.data));
+  assert.equal(root.data.parentId, "");
+  const child = await admin("/documents/folders", "POST", {
+    ...target,
+    parentId: root.data.id,
+    name: "2026",
+  });
+  assert.equal(child.status, 201, JSON.stringify(child.data));
+  assert.equal(child.data.parentId, root.data.id);
+  // Duplicado por nombre (sin distinguir mayúsculas ni acentos) en el mismo nivel.
+  assert.equal(
+    (
+      await admin("/documents/folders", "POST", {
+        ...target,
+        parentId: root.data.id,
+        name: "2026",
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await admin("/documents/folders", "POST", {
+        ...target,
+        name: "Áctas",
+      })
+    ).status,
+    409,
+  );
+  // Un documento no puede repetir nombre en la misma carpeta.
+  const inside = await admin(
+    "/documents",
+    "POST",
+    pdfForm("community", "com-seed-1", "Acta enero.pdf", {
+      folderId: child.data.id,
+    }),
+  );
+  assert.equal(inside.status, 201, JSON.stringify(inside.data));
+  assert.equal(inside.data[0].folderId, child.data.id);
+  const duplicate = await admin(
+    "/documents",
+    "POST",
+    pdfForm("community", "com-seed-1", "acta enero.pdf", {
+      folderId: child.data.id,
+    }),
+  );
+  assert.equal(duplicate.status, 409);
+  // El mismo nombre en la raíz sí está permitido.
+  const rootDocument = await admin(
+    "/documents",
+    "POST",
+    pdfForm("community", "com-seed-1", "Acta enero.pdf"),
+  );
+  assert.equal(rootDocument.status, 201, JSON.stringify(rootDocument.data));
+  // Renombrar exige conservar la extensión.
+  assert.equal(
+    (
+      await admin(`/documents/${rootDocument.data[0].id}`, "PATCH", {
+        name: "Acta enero.txt",
+      })
+    ).status,
+    400,
+  );
+  const renamed = await admin(`/documents/${rootDocument.data[0].id}`, "PATCH", {
+    name: "Acta enero 2026.pdf",
+  });
+  assert.equal(renamed.status, 200, JSON.stringify(renamed.data));
+  assert.equal(renamed.data.fileName, "Acta enero 2026.pdf");
+  // Mover a una carpeta y de vuelta a la raíz.
+  const moved = await admin(`/documents/${rootDocument.data[0].id}`, "PATCH", {
+    folderId: child.data.id,
+  });
+  assert.equal(moved.status, 200, JSON.stringify(moved.data));
+  assert.equal(moved.data.folderId, child.data.id);
+  const movedRoot = await admin(`/documents/${rootDocument.data[0].id}`, "PATCH", {
+    folderId: "",
+  });
+  assert.equal(movedRoot.status, 200);
+  assert.equal(movedRoot.data.folderId, "");
+  // La carpeta no se puede mover dentro de su propia subcarpeta.
+  assert.equal(
+    (
+      await admin(`/documents/folders/${root.data.id}`, "PATCH", {
+        parentId: child.data.id,
+      })
+    ).status,
+    400,
+  );
+  // Listado con jerarquía.
+  const listing = await admin(
+    "/documents?entityType=community&entityId=com-seed-1",
+  );
+  assert.equal(listing.status, 200);
+  assert.deepEqual(
+    listing.data.folders.map((folder) => folder.name).sort(),
+    ["2026", "Actas"],
+  );
+  assert.equal(listing.data.documents.length, 2);
+  // Sin confirmación no se borra nada y se informan los recuentos.
+  const blocked = await admin(
+    `/documents/folders/${root.data.id}`,
+    "DELETE",
+  );
+  assert.equal(blocked.status, 409);
+  assert.equal(blocked.data.requiresConfirmation, true);
+  assert.deepEqual(blocked.data.counts, { folders: 2, documents: 1 });
+  const deleted = await admin(
+    `/documents/folders/${root.data.id}?confirm=1`,
+    "DELETE",
+  );
+  assert.equal(deleted.status, 200, JSON.stringify(deleted.data));
+  assert.equal(deleted.data.deletedFolders, 2);
+  assert.equal(deleted.data.deletedDocuments, 1);
+  // El documento que quedó en la raíz se elimina aparte.
+  assert.equal(
+    (await admin(`/documents/${rootDocument.data[0].id}`, "DELETE")).status,
+    200,
+  );
+  assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
+  assert.equal(
+    (await admin("/documents?entityType=community&entityId=com-seed-1")).data
+      .documents.length,
+    0,
+  );
+});
+
+test("biblioteca documental: cinco niveles como máximo", async () => {
+  const target = { entityType: "property", entityId: "prop-seed-1" };
+  let parentId = "";
+  const created = [];
+  for (let level = 1; level <= 5; level += 1) {
+    const folder = await admin("/documents/folders", "POST", {
+      ...target,
+      parentId,
+      name: `Nivel ${level}`,
+    });
+    assert.equal(folder.status, 201, JSON.stringify(folder.data));
+    parentId = folder.data.id;
+    created.push(parentId);
+  }
+  assert.equal(
+    (
+      await admin("/documents/folders", "POST", {
+        ...target,
+        parentId,
+        name: "Nivel 6",
+      })
+    ).status,
+    400,
+  );
+  // Mover una carpeta con subárbol tampoco puede superar el límite.
+  const other = await admin("/documents/folders", "POST", {
+    ...target,
+    name: "Destino",
+  });
+  assert.equal(other.status, 201);
+  assert.equal(
+    (
+      await admin(`/documents/folders/${created[0]}`, "PATCH", {
+        parentId: other.data.id,
+      })
+    ).status,
+    400,
+  );
+  const deleted = await admin(
+    `/documents/folders/${created[0]}?confirm=1`,
+    "DELETE",
+  );
+  assert.equal(deleted.status, 200);
+  assert.equal(deleted.data.deletedFolders, 5);
+  assert.equal(
+    (await admin(`/documents/folders/${other.data.id}?confirm=1`, "DELETE"))
+      .status,
+    200,
+  );
+});
+
+test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", async () => {
+  const before = readdirSync(UPLOADS_DIR).sort();
+  const target = { entityType: "community", entityId: "com-seed-1" };
+  const folder = await admin("/documents/folders", "POST", {
+    ...target,
+    name: "Temporal estatutos",
+  });
+  assert.equal(folder.status, 201);
+  // Los estatutos no admiten carpetas.
+  assert.equal(
+    (
+      await admin("/documents/folders", "POST", {
+        ...target,
+        category: "statutes",
+        name: "Estatutos en carpeta",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await admin(
+        "/documents",
+        "POST",
+        pdfForm("community", "com-seed-1", "Estatutos.pdf", {
+          folderId: folder.data.id,
+          category: "statutes",
+        }),
+      )
+    ).status,
+    400,
+  );
+  // Sólo las comunidades tienen estatutos.
+  assert.equal(
+    (
+      await admin(
+        "/documents",
+        "POST",
+        pdfForm("property", "prop-seed-1", "Estatutos.pdf", {
+          category: "statutes",
+        }),
+      )
+    ).status,
+    400,
+  );
+  const uploaded = await admin(
+    "/documents",
+    "POST",
+    pdfForm("community", "com-seed-1", "Estatutos vigentes.pdf", {
+      category: "statutes",
+    }),
+  );
+  assert.equal(uploaded.status, 201, JSON.stringify(uploaded.data));
+  const statute = uploaded.data[0];
+  assert.equal(statute.category, "statutes");
+  assert.equal(statute.folderId, "");
+  assert.match(statute.url, /\/download$/);
+  assert.match(statute.previewUrl, /\/preview$/);
+  // Los residentes de la comunidad pueden consultarlos y descargarlos.
+  const ownerListing = await owner(
+    "/documents?entityType=community&entityId=com-seed-1&category=statutes",
+  );
+  assert.equal(ownerListing.status, 200);
+  assert.ok(ownerListing.data.documents.some((doc) => doc.id === statute.id));
+  assert.deepEqual(ownerListing.data.folders, []);
+  const ownerPreview = await owner(`/documents/${statute.id}/preview`);
+  assert.equal(ownerPreview.status, 200);
+  assert.match(String(ownerPreview.data), /%PDF/);
+  assert.equal(
+    (await owner(`/documents/${statute.id}/download`)).status,
+    200,
+  );
+  const tenantListing = await tenant(
+    "/documents?entityType=community&entityId=com-seed-1&category=statutes",
+  );
+  assert.equal(tenantListing.status, 200);
+  assert.ok(tenantListing.data.documents.some((doc) => doc.id === statute.id));
+  // Sólo lectura: un propietario no puede subir ni borrar.
+  const denied = await owner(
+    "/documents",
+    "POST",
+    pdfForm("community", "com-seed-1", "Ajeno.pdf", { category: "statutes" }),
+  );
+  assert.equal(denied.status, 403);
+  assert.equal((await owner(`/documents/${statute.id}`, "DELETE")).status, 403);
+  // El bootstrap los expone en su propia colección y no en documentación general.
+  const boot = await owner("/bootstrap");
+  const community = boot.data.communities.find((c) => c.id === "com-seed-1");
+  assert.ok(community.statutes.some((doc) => doc.id === statute.id));
+  assert.ok(!community.documents.some((doc) => doc.id === statute.id));
+  // Limpieza.
+  assert.equal((await admin(`/documents/${statute.id}`, "DELETE")).status, 200);
+  assert.equal(
+    (await admin(`/documents/folders/${folder.data.id}?confirm=1`, "DELETE"))
+      .status,
+    200,
+  );
+  assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
+});
+
+test("biblioteca documental: alcance de administradores de comunidad", async () => {
+  const communityAdmin = client();
+  const login = await communityAdmin("/auth/signin", "POST", {
+    usuario: "ca1",
+    password: "ca1",
+  });
+  assert.equal(login.status, 200, JSON.stringify(login.data));
+  const ownFolder = await communityAdmin("/documents/folders", "POST", {
+    entityType: "community",
+    entityId: "com-seed-1",
+    name: "Permitida",
+  });
+  assert.equal(ownFolder.status, 201, JSON.stringify(ownFolder.data));
+  assert.equal(
+    (
+      await communityAdmin("/documents/folders", "POST", {
+        entityType: "community",
+        entityId: "com-seed-2",
+        name: "Ajena",
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await communityAdmin(
+        "/documents",
+        "POST",
+        pdfForm("community", "com-seed-2", "Ajeno.pdf"),
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await communityAdmin(`/documents/folders/${ownFolder.data.id}?confirm=1`, "DELETE"))
+      .status,
+    200,
+  );
+});
+
+test("documentos Word: sólo descarga, sin vista previa", async () => {
+  assert.equal(
+    (
+      await admin("/admin/settings", "PUT", {
+        documentosTiposPermitidos: ["pdf", "doc", "docx"],
+        documentosMaxArchivos: 20,
+      })
+    ).status,
+    200,
+  );
+  const form = new FormData();
+  form.append("entityType", "property");
+  form.append("entityId", "prop-seed-1");
+  form.append(
+    "files",
+    new Blob([Buffer.from("PK\u0003\u0004[Content_Types].xml")], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }),
+    "Escritura.docx",
+  );
+  const uploaded = await admin("/documents", "POST", form);
+  assert.equal(uploaded.status, 201, JSON.stringify(uploaded.data));
+  assert.equal(
+    uploaded.data[0].fileType,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  );
+  assert.equal(uploaded.data[0].previewUrl, undefined);
+  assert.equal(
+    (await admin(`/documents/${uploaded.data[0].id}/preview`)).status,
+    415,
+  );
+  assert.equal(
+    (await admin(`/documents/${uploaded.data[0].id}/download`)).status,
+    200,
+  );
+  assert.equal(
+    (await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status,
+    200,
+  );
+  assert.equal(
+    (
+      await admin("/admin/settings", "PUT", {
+        documentosTiposPermitidos: ["pdf", "jpg", "jpeg", "png", "webp"],
+        documentosMaxArchivos: 20,
+      })
+    ).status,
+    200,
+  );
 });

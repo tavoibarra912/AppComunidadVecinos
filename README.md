@@ -61,6 +61,47 @@ solo pueden descargarlos su autor y los gestores autorizados de la comunidad.
 Esta versión gestiona exclusivamente cuotas ordinarias. Los mandatos y remesas
 SEPA, las derramas, otros cargos y la contabilidad de suministros quedan fuera.
 
+## Estatutos y biblioteca documental
+
+Los estatutos de cada comunidad se gestionan en la pestaña **Estatutos** del
+editor y de la ficha de comunidad, y también desde el acceso directo **Estatutos
+de la comunidad** del inicio. Una comunidad puede tener uno o varios documentos
+vigentes o históricos. Todos los residentes con acceso a la comunidad pueden
+consultarlos, previsualizarlos y descargarlos; subirlos, reemplazarlos,
+renombrarlos o borrarlos requiere ser administrador de esa comunidad y tener los
+permisos documentales correspondientes. La ficha muestra nombre, tipo, tamaño,
+fecha de subida y la cuenta que subió cada archivo.
+
+La documentación general de comunidades, inmuebles e inquilinos usa una
+**biblioteca documental reutilizable** con carpetas:
+
+- Crear, renombrar y eliminar carpetas, con hasta **cinco niveles** de
+  anidamiento (la raíz no cuenta como nivel). Las carpetas y los archivos se
+  mueven con arrastrar y soltar o con **Mover a…**.
+- Navegación por migas de pan, búsqueda por nombre, orden por nombre, fecha o
+  tamaño y vistas de lista o cuadrícula.
+- Subida directa dentro de la carpeta abierta. Se mantienen los límites y
+  formatos configurados en Administración → Configuración (PDF, JPG, PNG, WebP,
+  DOC y DOCX; tamaño y cantidad máximos), con validación del contenido en el
+  servidor. Los formatos Word sólo se descargan, sin vista previa.
+- No se permiten dos carpetas con el mismo nombre en el mismo nivel ni dos
+  archivos con el mismo nombre en la misma carpeta, sin distinguir mayúsculas ni
+  acentos. Sí puede repetirse un nombre en carpetas distintas.
+- Al eliminar una carpeta con contenido se muestra primero el recuento de
+  carpetas y archivos afectados; tras confirmar, el borrado es en cascada y
+  elimina también los archivos físicos. Una carpeta no puede moverse dentro de
+  sí misma.
+- Los permisos existentes se aplican sin cambios: `document:read` para consultar,
+  y el permiso de gestión de la entidad más `document:upload` o
+  `document:delete` para escribir. Los administradores de comunidad sólo operan
+  sobre sus comunidades asignadas; los vecinos acceden en modo lectura a sus
+  comunidades, inmuebles e inquilinos.
+
+La migración `document-library-v1` añade las columnas y la tabla de carpetas sin
+mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
+su entidad. La categoría `statutes` separa los estatutos de la documentación
+general y no admite carpetas.
+
 ## Ejecución
 
 ```bash
@@ -123,9 +164,10 @@ src/
     owners.js             CRUD de propietarios (+ vínculo de inmueble transaccional)
     properties.js         CRUD de inmuebles
     tenants.js            CRUD de inquilinos (ownerId derivado del inmueble)
-    documents.js          Subida/descarga/borrado de archivos (multer, 15 MB)
+    documents.js          Documentos, estatutos y carpetas (multer, 15 MB)
     notifications.js      Buzón del administrador y del propietario
     verification.js       contacto (envío no configurado)
+  document-library.js     Servicio genérico de carpetas, jerarquía y permisos
 public/
   index.html · styles.css
   js/
@@ -135,6 +177,7 @@ public/
     utils.js              Formateadores, validadores y helpers de documentos
     territory.js          Catálogo INE (provincia → municipio → CP)
     docs-engine.js        Motor de validación del expediente de propietario
+    document-library.js   Componente de biblioteca documental (carpetas, DnD)
     municipios-ine.js     Catálogo territorial (8.132 municipios, script clásico)
     features/             navigation, home, comunidades, propietarios,
                           inquilinos, inmuebles, notificaciones
@@ -146,7 +189,8 @@ public/
 - `owners`: datos personales, verificación de contacto, IBAN y **expediente de documentación** (JSON del motor de validación client-side).
 - `properties`: inmuebles con **uno o más propietarios** (`ownerIds`, N:M) y **uno o más inquilinos** (`tenantIds`), pertenecientes a una única comunidad.
 - `tenants`: inquilinos con propietario e inmueble, contrato (tipo, renta, fianza, teléfono de emergencia) y autorizaciones.
-- `documents`: archivos subidos (por entidad: comunidad, inmueble o inquilino) con su archivo en disco.
+- `documents`: archivos subidos (por entidad: comunidad, inmueble o inquilino), con carpeta, categoría (`document` o `statutes`), autor de la subida y archivo en disco.
+- `document_folders`: carpetas por entidad, con jerarquía (`parentId`) y nombre normalizado para evitar duplicados por nivel.
 - `admin_emails` / `owner_notifications`: buzones del administrador y del propietario.
 
 ### Sesiones, roles y contraseñas
@@ -250,7 +294,9 @@ protección de sus copias de seguridad para producción.
 
 - `GET /api/bootstrap` — estado permitido para el usuario autenticado.
 - `POST/PUT/DELETE /api/{communities|owners|properties|tenants}` — CRUD; el servidor resuelve la reasignación de inmuebles entre propietarios y el rearme de relaciones.
-- `POST /api/documents` (multipart: `entityType`, `entityId`, `files[]`) · `DELETE /api/documents/:id` · `GET /api/documents/:id/download`.
+- `GET /api/documents?entityType=&entityId=&category=` — documentos y carpetas de la entidad.
+- `POST /api/documents` (multipart: `entityType`, `entityId`, `folderId`, `category`, `files[]`) · `PATCH /api/documents/:id` (renombrar o mover) · `POST /api/documents/:id/replace` · `DELETE /api/documents/:id` · `GET /api/documents/:id/download` · `GET /api/documents/:id/preview` (sólo PDF e imágenes).
+- `POST /api/documents/folders` · `PATCH /api/documents/folders/:id` (renombrar o mover) · `DELETE /api/documents/folders/:id?confirm=1` (cascada con confirmación).
 - `POST /api/owners/contact/{phone|email}/{send|confirm}` — responde con un aviso de servicio no configurado; no genera códigos de prueba.
 - `GET /api/notifications/*`, `POST /api/notifications/*` — buzones.
 - `GET /api/health`.
@@ -259,13 +305,13 @@ protección de sus copias de seguridad para producción.
 
 ### Inicio
 - Panel con métricas de los registros visibles para la cuenta, filtro de comunidad y actualización manual. Los inmuebles con varios titulares se cuentan una sola vez; el usuario ve sus vínculos reales, incluidas varias comunidades si corresponde.
-- Gráficos de documentación e inmuebles, avisos pendientes, agenda y últimas publicaciones. La documentación de ejemplo no acredita un expediente; los contratos sin fechas válidas se identifican aparte. Los accesos se muestran según permisos.
+- Gráficos de documentación e inmuebles, avisos pendientes, agenda y últimas publicaciones. La documentación de ejemplo no acredita un expediente; los contratos sin fechas válidas se identifican aparte. Los accesos se muestran según permisos, incluido el acceso directo a los estatutos de la comunidad.
 
 ### Comunidades
 - En **Ver**, solo están habilitados las pestañas, el cierre y la apertura de los adjuntos. No se puede editar, verificar contactos, asociar inmuebles ni abrir sus fichas desde esa vista. La edición se recupera al abrir **Editar**.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
 - CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito o letra de control, teléfonos de 9 dígitos, email, CP contra catálogo INE con autocompletado municipio/provincia).
-- Documentación adjunta con drag & drop multi-archivo y ficha detallada con propietarios censados.
+- Documentación adjunta con biblioteca de archivos y carpetas, y ficha detallada con propietarios censados. Pestaña **Estatutos** independiente con consulta para residentes y gestión para administradores.
 
 ### Propietarios
 - Formulario en tres pestañas: **1. Datos personales**, **2. Inmueble** (un único selector que vincula al propietario con un inmueble existente, igual que la asociación «Propietario» del formulario de inmuebles; si el inmueble era de otro dueño se reasigna) y **3. Documentación requerida**.
@@ -275,11 +321,11 @@ protección de sus copias de seguridad para producción.
 
 ### Inmuebles
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
-- Documentación con dropzone drag & drop.
+- Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
 ### Inquilinos
 - Alta/edición seleccionando **directamente el inmueble** (el propietario se deduce de él; si se cambia a un inmueble de otro dueño, el inquilino cambia de propietario).
-- Pestaña de documentación multi-archivo y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
+- Pestaña de documentación multi-archivo, biblioteca de archivos y carpetas, y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
 
 ### Comunicación: tablón, calendario y reuniones
 

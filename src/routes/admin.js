@@ -363,7 +363,7 @@ router.put("/settings", (req, res) => {
     )
       return res
         .status(400)
-        .json({ error: "Elegí al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG o WebP)." });
+        .json({ error: "Elegí al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG, WebP, DOC o DOCX)." });
     data.documentosTiposPermitidos = tipos;
   }
   if (

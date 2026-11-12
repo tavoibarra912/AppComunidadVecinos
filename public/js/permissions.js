@@ -110,7 +110,23 @@ export function can(user, permission, resourceId = "", data) {
           ? ownOwners.includes(resourceId) ||
               (!!tenant && ownOwners.includes(tenant.ownerId))
           : ownOwners.length > 0;
-      case "document:read":
+      case "document:read": {
+        const readablePropertyIds = new Set([
+          ...ownedProperties.map((p) => p.id),
+          ...ownTenants.map((t) => t.propertyId),
+        ]);
+        const readableTenantIds = new Set([
+          ...ownTenants.map((t) => t.id),
+          ...tenants
+            .filter((t) => readablePropertyIds.has(t.propertyId))
+            .map((t) => t.id),
+        ]);
+        return resourceId
+          ? ownCommunities.has(resourceId) ||
+              readablePropertyIds.has(resourceId) ||
+              readableTenantIds.has(resourceId)
+          : ownOwners.length > 0 || ownTenants.length > 0;
+      }
       case "document:upload":
         return ownOwners.length > 0 || ownTenants.length > 0;
       default:

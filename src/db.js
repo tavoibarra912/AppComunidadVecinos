@@ -133,11 +133,27 @@ db.exec(`
     id TEXT PRIMARY KEY,
     entityType TEXT NOT NULL,
     entityId TEXT NOT NULL,
+    folderId TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT 'document',
     fileName TEXT NOT NULL,
     fileType TEXT NOT NULL DEFAULT '',
     fileSize INTEGER NOT NULL DEFAULT 0,
     uploadedAt TEXT NOT NULL DEFAULT '',
+    uploadedBy TEXT NOT NULL DEFAULT '',
+    uploadedByName TEXT NOT NULL DEFAULT '',
     storedName TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS document_folders (
+    id TEXT PRIMARY KEY,
+    entityType TEXT NOT NULL,
+    entityId TEXT NOT NULL,
+    parentId TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL,
+    nameKey TEXT NOT NULL,
+    createdAt TEXT NOT NULL DEFAULT '',
+    createdBy TEXT NOT NULL DEFAULT '',
+    createdByName TEXT NOT NULL DEFAULT ''
   );
 
   CREATE TABLE IF NOT EXISTS admin_emails (
@@ -193,6 +209,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tenants_property ON tenants(propertyId);
   CREATE INDEX IF NOT EXISTS idx_tenants_owner ON tenants(ownerId);
   CREATE INDEX IF NOT EXISTS idx_documents_entity ON documents(entityType, entityId);
+  CREATE INDEX IF NOT EXISTS idx_documents_folder ON documents(entityType, entityId, folderId);
+  CREATE INDEX IF NOT EXISTS idx_document_folders_entity ON document_folders(entityType, entityId);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_document_folders_unique ON document_folders(entityType, entityId, parentId, nameKey);
   CREATE INDEX IF NOT EXISTS idx_admin_emails_owner ON admin_emails(ownerId);
   CREATE INDEX IF NOT EXISTS idx_owner_notifications_owner ON owner_notifications(ownerId);
 `);
@@ -232,6 +251,15 @@ ensureColumns("tenants", {
   userId: "TEXT NOT NULL DEFAULT ''"
 });
 
+// Biblioteca documental: las columnas nuevas dejan los documentos existentes
+// en la raíz (folderId = '') sin mover ni reescribir ningún archivo.
+ensureColumns("documents", {
+  folderId: "TEXT NOT NULL DEFAULT ''",
+  category: "TEXT NOT NULL DEFAULT 'document'",
+  uploadedBy: "TEXT NOT NULL DEFAULT ''",
+  uploadedByName: "TEXT NOT NULL DEFAULT ''"
+});
+
 // Referencias catastrales: se normalizan y, si no hay duplicados heredados,
 // se protege su unicidad también a nivel de base de datos.
 db.exec("UPDATE properties SET cadastralRef = UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) WHERE cadastralRef <> ''");
@@ -253,9 +281,9 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
   db.exec("DELETE FROM roles");
   const insertRole = db.prepare("INSERT INTO roles (id, nombre, descripcion, permisos, sistema) VALUES (?, ?, ?, ?, ?)");
   insertRole.run("rol-super-admin", "super_admin", "Super administrador: acceso total a la plataforma. Además de gestionar comunidades, propietarios, inmuebles, inquilinos y documentación, administra usuarios, roles, la configuración general, los proveedores de envío (email/SMS/WhatsApp) y la auditoría. Es el único rol que puede crear comunidades nuevas.", JSON.stringify(["community:read", "community:create", "community:edit", "community:manage", "community:delete", "owner:read", "owner:create", "owner:manage", "owner:edit", "owner:documents:submit", "owner:delete", "property:read", "property:create", "property:manage", "property:delete", "tenant:read", "tenant:create", "tenant:manage", "tenant:delete", "document:read", "document:upload", "document:approve", "document:delete", "reports:read", "audit:read", "admin:users", "admin:roles", "admin:settings", "admin:providers", "comm:participacion", "comm:publicar", "comm:moderar", "admin_notification:read", "owner_notification:read", "owner_notification:send"]), 1);
-  insertRole.run("rol-admin-general", "administrator", "Administrador general: crea comunidades y administra todo su contenido — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No gestiona usuarios, roles, configuración general ni proveedores de la plataforma.", JSON.stringify(["community:read", "community:create", "community:edit", "community:manage", "owner:read", "owner:create", "owner:manage", "owner:edit", "owner:documents:submit", "owner:delete", "property:read", "property:create", "property:manage", "tenant:read", "tenant:create", "tenant:manage", "tenant:delete", "document:approve", "document:upload", "document:delete", "comm:participacion", "comm:publicar", "comm:moderar", "admin_notification:read", "owner_notification:send"]), 1);
+  insertRole.run("rol-admin-general", "administrator", "Administrador general: crea comunidades y administra todo su contenido — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No gestiona usuarios, roles, configuración general ni proveedores de la plataforma.", JSON.stringify(["community:read", "community:create", "community:edit", "community:manage", "owner:read", "owner:create", "owner:manage", "owner:edit", "owner:documents:submit", "owner:delete", "property:read", "property:create", "property:manage", "tenant:read", "tenant:create", "tenant:manage", "tenant:delete", "document:read", "document:approve", "document:upload", "document:delete", "comm:participacion", "comm:publicar", "comm:moderar", "admin_notification:read", "owner_notification:send"]), 1);
   insertRole.run("rol-admin-comunidad", "community_admin", "Administrador de comunidad: gestiona únicamente la comunidad que tiene asignada — propietarios, inmuebles, inquilinos, documentación y comunicaciones. No puede crear comunidades ni acceder a la configuración de la plataforma.", JSON.stringify(["community:read", "community:edit", "community:manage", "owner:read", "owner:create", "owner:manage", "owner:edit", "owner:documents:submit", "property:read", "property:create", "property:manage", "tenant:read", "tenant:create", "tenant:manage", "tenant:delete", "document:approve", "document:upload", "document:delete", "comm:participacion", "comm:publicar", "comm:moderar", "owner_notification:send"]), 1);
-  insertRole.run("rol-usuario", "user", "Vecino (propietario o inquilino): solo puede ver y administrar su propio perfil, sus inmuebles, documentos y notificaciones. No accede a datos de otros vecinos ni de otras comunidades.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "document:upload", "comm:participacion", "owner_notification:read"]), 1);
+  insertRole.run("rol-usuario", "user", "Vecino (propietario o inquilino): solo puede ver y administrar su propio perfil, sus inmuebles, documentos y notificaciones. No accede a datos de otros vecinos ni de otras comunidades.", JSON.stringify(["community:read", "owner:read", "owner:edit", "owner:documents:submit", "property:read", "tenant:read", "document:read", "document:upload", "comm:participacion", "owner_notification:read"]), 1);
   // Migrar usuarios del set viejo
   db.prepare("UPDATE users SET rol = 'super_admin' WHERE rol IN ('administrador', 'rol-admin')").run();
   db.prepare("UPDATE users SET rol = 'user' WHERE rol NOT IN ('super_admin', 'administrator', 'community_admin', 'user')").run();
@@ -307,6 +335,23 @@ if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'granular-permissio
     }
   }
   db.prepare("INSERT INTO schema_migrations (id) VALUES ('granular-permissions-v1')").run();
+}
+// Biblioteca documental (v1): los documentos existentes quedan en la raíz y
+// los roles que pueden gestionar archivos conservan también la lectura.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'document-library-v1'").get()) {
+  db.exec("UPDATE documents SET folderId = '' WHERE folderId IS NULL");
+  db.exec("UPDATE documents SET category = 'document' WHERE category IS NULL OR category = ''");
+  const documentPermissions = ["document:read", "document:upload", "document:delete", "document:approve"];
+  for (const role of db.prepare("SELECT id, permisos FROM roles").all()) {
+    const permisos = JSON.parse(role.permisos || "[]");
+    if (!documentPermissions.some((permission) => permisos.includes(permission))) continue;
+    if (permisos.includes("document:read")) continue;
+    db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(
+      JSON.stringify([...permisos, "document:read"]),
+      role.id,
+    );
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('document-library-v1')").run();
 }
 // Corrige los CIF de demostración que no cumplían el dígito de control.
 if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'demo-community-cif-v1'").get()) {
@@ -722,16 +767,43 @@ export function tenantFromRow(row) {
   };
 }
 
+const PREVIEWABLE_DOCUMENT_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
 export function documentFromRow(row) {
   return {
     id: row.id,
     entityType: row.entityType,
     entityId: row.entityId,
+    folderId: row.folderId || "",
+    category: row.category || "document",
     fileName: row.fileName,
     fileType: row.fileType,
     fileSize: row.fileSize,
     uploadedAt: row.uploadedAt,
-    url: `/api/documents/${row.id}/download`
+    uploadedBy: row.uploadedBy || "",
+    uploadedByName: row.uploadedByName || "",
+    url: `/api/documents/${row.id}/download`,
+    ...(PREVIEWABLE_DOCUMENT_TYPES.has(row.fileType)
+      ? { previewUrl: `/api/documents/${row.id}/preview` }
+      : {}),
+  };
+}
+
+export function documentFolderFromRow(row) {
+  return {
+    id: row.id,
+    entityType: row.entityType,
+    entityId: row.entityId,
+    parentId: row.parentId || "",
+    name: row.name,
+    createdAt: row.createdAt,
+    createdBy: row.createdBy || "",
+    createdByName: row.createdByName || "",
   };
 }
 
@@ -814,7 +886,15 @@ export function listRoles() {
   }));
 }
 
-export const DOCUMENT_TYPES = Object.freeze(["pdf", "jpg", "jpeg", "png", "webp"]);
+export const DOCUMENT_TYPES = Object.freeze([
+  "pdf",
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "doc",
+  "docx",
+]);
 
 export function normalizeDocumentTypes(value) {
   const list = Array.isArray(value)
@@ -861,7 +941,20 @@ export function getSettings() {
   return settings;
 }
 
-export function listDocuments(entityType, entityId) {
-  return db.prepare("SELECT * FROM documents WHERE entityType = ? AND entityId = ? ORDER BY uploadedAt DESC")
-    .all(entityType, entityId).map(documentFromRow);
+export function listDocuments(entityType, entityId, category = "document") {
+  return db
+    .prepare(
+      "SELECT * FROM documents WHERE entityType = ? AND entityId = ? AND category = ? ORDER BY uploadedAt DESC, fileName COLLATE NOCASE",
+    )
+    .all(entityType, entityId, category)
+    .map(documentFromRow);
+}
+
+export function listDocumentFolders(entityType, entityId) {
+  return db
+    .prepare(
+      "SELECT * FROM document_folders WHERE entityType = ? AND entityId = ? ORDER BY name COLLATE NOCASE",
+    )
+    .all(entityType, entityId)
+    .map(documentFolderFromRow);
 }

@@ -510,6 +510,8 @@
                   <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpeg" /> JPEG</label>
                   <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="png" /> PNG</label>
                   <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="webp" /> WebP</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="doc" /> DOC</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="docx" /> DOCX</label>
                 </fieldset>
 
                 <p class="form-section-title full">Contratos y vencimientos</p>
@@ -722,6 +724,8 @@
           aria-selected="false">Inmuebles (0)</button>
         <button class="community-editor-tab" type="button" data-community-tab="docs"
           aria-selected="false">Documentación</button>
+        <button class="community-editor-tab" type="button" data-community-tab="statutes"
+          aria-selected="false">Estatutos</button>
       </nav>
       <section class="community-editor-pane" id="community-tab-details" data-community-pane="details">
         <div class="form-grid">
@@ -889,36 +893,21 @@
         <div class="detail-section-heading">
           <div>
             <h3>Documentación de la comunidad (<span id="community-doc-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Adjunta actas, contratos, certificados u otros archivos. Se guardan al
-              pulsar Guardar.</p>
+            <p class="detail-section-subtitle">Actas, contratos, certificados y otros archivos, organizados en carpetas.
+              Los cambios se guardan al instante.</p>
           </div>
         </div>
-        <div class="doc-dropzone-compact" id="community-doc-dropzone">
-          <input id="community-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
-            class="doc-file-input" />
-          <div class="doc-dropzone-compact-content">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <p><strong>Arrastrá archivos acá</strong> o hacé clic para seleccionar</p>
-            <span>PDF, JPG, PNG o WEBP · máximo 15 MB por archivo · se guardan al pulsar Guardar</span>
+        <div class="doc-library-host" id="community-document-list"></div>
+      </section>
+      <section class="community-editor-pane" id="community-tab-statutes" data-community-pane="statutes" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Estatutos de la comunidad (<span id="community-statutes-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Documentos vigentes para consulta de todos los vecinos. Solo los
+              administradores pueden subirlos, reemplazarlos, renombrarlos o eliminarlos.</p>
           </div>
         </div>
-        <div class="doc-sample-bar">
-          <button class="sample-doc-btn" type="button" id="btn-sample-community-doc">✨ Cargar acta de ejemplo (sin
-            validez)</button>
-        </div>
-        <div class="doc-file-list" id="community-document-list"></div>
-        <div class="docs-summary-bar" id="community-docs-summary-bar">
-          <div class="docs-summary-text">
-            <span id="community-docs-summary-status">0 documentos adjuntos</span>
-            <span class="docs-summary-subtext" id="community-docs-summary-subtext">Adjunta la documentación oficial para
-              archivar en el expediente de la comunidad.</span>
-          </div>
-        </div>
+        <div class="doc-library-host" id="community-statutes-list"></div>
       </section>
       <p class="form-error" id="form-error" role="alert"></p>
       <div class="dialog-actions">
@@ -971,6 +960,8 @@
           aria-selected="false">Inmuebles</button>
         <button class="community-editor-tab" type="button" data-cd-tab="docs"
           aria-selected="false">Documentación</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="statutes"
+          aria-selected="false">Estatutos</button>
       </nav>
       <section class="community-editor-pane" data-cd-pane="general">
         <div class="detail-grid">
@@ -1073,7 +1064,16 @@
             <p class="detail-section-subtitle">Archivos adjuntos de la comunidad (sólo lectura).</p>
           </div>
         </div>
-        <div class="doc-file-list" id="community-detail-docs"></div>
+        <div class="doc-library-host" id="community-detail-documents"></div>
+      </section>
+      <section class="community-editor-pane" data-cd-pane="statutes" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Estatutos (<span id="community-detail-statutes-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Documentos de consulta disponibles para todos los vecinos.</p>
+          </div>
+        </div>
+        <div class="doc-library-host" id="community-detail-statutes"></div>
       </section>
 
       <div class="dialog-actions">
@@ -2055,6 +2055,14 @@
               arrendamiento para completar el expediente.</span>
           </div>
         </div>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Archivos y carpetas (<span id="tenant-doc-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Documentación adicional del inquilino, organizada en carpetas. Los
+              cambios se guardan al instante.</p>
+          </div>
+        </div>
+        <div class="doc-library-host" id="tenant-document-library"></div>
       </section>
 
       <p class="form-error" id="tenant-form-error" role="alert"></p>
@@ -2181,6 +2189,10 @@
         <div class="detail-item full">
           <span class="detail-label">Documentación</span>
           <div class="doc-file-list" id="tenant-detail-docs-list"></div>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Archivos y carpetas (<span id="tenant-detail-library-count">0</span>)</span>
+          <div class="doc-library-host" id="tenant-detail-document-library"></div>
         </div>
         <div class="detail-item full">
           <span class="detail-label">Autorizaciones</span>
@@ -2533,29 +2545,11 @@
         <div class="detail-section-heading">
           <div>
             <h3>Documentación del inmueble (<span id="property-doc-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Adjunta escrituras, certificados energéticos u otros archivos. Se guardan
-              al pulsar Guardar.</p>
+            <p class="detail-section-subtitle">Escrituras, certificados energéticos y otros archivos organizados en
+              carpetas. Los cambios se guardan al instante.</p>
           </div>
         </div>
-        <div class="doc-dropzone-compact" id="property-doc-dropzone">
-          <input id="property-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
-            class="doc-file-input" />
-          <div class="doc-dropzone-compact-content">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <p><strong>Arrastrá archivos acá</strong> o hacé clic para seleccionar</p>
-            <span>PDF, JPG, PNG o WEBP · máximo 15 MB por archivo · se guardan al pulsar Guardar</span>
-          </div>
-        </div>
-        <div class="doc-sample-bar">
-          <button class="sample-doc-btn" type="button" id="btn-sample-property-doc">✨ Cargar certificado energético de
-            ejemplo (sin validez)</button>
-        </div>
-        <div class="doc-file-list" id="property-document-list"></div>
+        <div class="doc-library-host" id="property-document-list"></div>
       </section>
       <p class="form-error" id="property-form-error" role="alert"></p>
       <div class="dialog-actions">
@@ -2688,10 +2682,13 @@
         </div>
       </section>
       <section class="community-editor-pane" data-pd-pane="docs" hidden>
-        <div class="detail-item full">
-          <span class="detail-label">Documentación</span>
-          <div class="property-detail-documents" id="property-detail-documents"></div>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Documentación del inmueble (<span id="property-detail-doc-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Archivos y carpetas del inmueble (sólo lectura).</p>
+          </div>
         </div>
+        <div class="doc-library-host" id="property-detail-documents"></div>
       </section>
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-btn" title="Cerrar"

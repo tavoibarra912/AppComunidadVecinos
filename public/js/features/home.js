@@ -4,7 +4,7 @@ import { dashboardData } from "../dashboard-data.js";
 import { readInjectedBrand } from "../brand.js";
 import { navigateToSection } from "./navigation.js";
 import { openOwnerEditor, openOwnerDetail } from "./propietarios.js";
-import { openCommunityEditor } from "./comunidades.js";
+import { openCommunityEditor, openCommunityDetail } from "./comunidades.js";
 import { openTenantDetail } from "./inquilinos.js";
 import { openAdminInbox, openOwnerInbox } from "./notificaciones.js";
 import {
@@ -298,7 +298,7 @@ export function renderHomeDashboard() {
     <div class="dashboard-metrics">${metrics.join("")}</div>
     ${feeAccess() ? feeSection(d.personal) : ""}
     <div class="dashboard-chart-grid"><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>${d.docOwners.length ? "Estado de los expedientes" : "Documentación registrada"}</h2><p>${d.docOwners.length ? "Clasificación según archivos reales y revisión administrativa." : "Archivos de contrato disponibles para tu cuenta."}</p></div>${documentChart(d)}<p class="dashboard-caption">Fuente: documentación de los registros visibles. Los documentos de ejemplo no se consideran acreditaciones.</p></section><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Distribución de inmuebles</h2><p>Recuento por tipo de unidad registrada.</p></div>${propertyChart(d)}</section></div>
-    <div class="dashboard-chart-grid"><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Gestiones a revisar</h2><p>Accesos directos según tus permisos.</p></div><div class="dashboard-tasks">${inboxAllowed ? `<button type="button" data-dashboard-action="${inboxAction}"><span><strong>${inboxCount ? `${inboxCount} avisos sin leer` : "Buzón sin avisos pendientes"}</strong><small>${d.personal ? "Respuestas sobre tus documentos y gestiones" : "Documentación y gestiones de propietarios"}</small></span><span aria-hidden="true">→</span></button>` : ""}${d.docOwners.length ? `<button type="button" data-dashboard-action="${d.personal ? "profile" : "owners"}"><span><strong>${d.personal ? `${needsAttention} expedientes por completar` : `${d.ownerStates.pending} expedientes en revisión`}</strong><small>${d.personal ? "Revisá archivos pendientes o correcciones" : `${d.ownerStates.rejected} con correcciones · ${d.ownerStates.incomplete + d.ownerStates.none} sin completar`}</small></span><span aria-hidden="true">→</span></button>` : ""}<button type="button" data-dashboard-action="communications"><span><strong>Tablón y reuniones</strong><small>${snapshot ? `${d.publishedCount} publicaciones en este ámbito` : "Abrí el tablón para consultar las comunicaciones"}</small></span><span aria-hidden="true">→</span></button></div></section><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Próximos eventos y reuniones</h2><p>Convocatorias vigentes y actividades en curso.</p></div>${d.agenda.length ? postList(d.agenda, true) : `<div class="dashboard-empty"><strong>${snapshot ? "No hay actividades próximas registradas" : "Agenda todavía sin cargar"}</strong><p>${snapshot ? "Los eventos y reuniones publicados aparecerán acá con su fecha." : "Actualizá el panel o abrí Comunicación para consultar la agenda."}</p></div>`}</section></div>
+    <div class="dashboard-chart-grid"><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Gestiones a revisar</h2><p>Accesos directos según tus permisos.</p></div><div class="dashboard-tasks">${inboxAllowed ? `<button type="button" data-dashboard-action="${inboxAction}"><span><strong>${inboxCount ? `${inboxCount} avisos sin leer` : "Buzón sin avisos pendientes"}</strong><small>${d.personal ? "Respuestas sobre tus documentos y gestiones" : "Documentación y gestiones de propietarios"}</small></span><span aria-hidden="true">→</span></button>` : ""}${d.docOwners.length ? `<button type="button" data-dashboard-action="${d.personal ? "profile" : "owners"}"><span><strong>${d.personal ? `${needsAttention} expedientes por completar` : `${d.ownerStates.pending} expedientes en revisión`}</strong><small>${d.personal ? "Revisá archivos pendientes o correcciones" : `${d.ownerStates.rejected} con correcciones · ${d.ownerStates.incomplete + d.ownerStates.none} sin completar`}</small></span><span aria-hidden="true">→</span></button>` : ""}<button type="button" data-dashboard-action="communications"><span><strong>Tablón y reuniones</strong><small>${snapshot ? `${d.publishedCount} publicaciones en este ámbito` : "Abrí el tablón para consultar las comunicaciones"}</small></span><span aria-hidden="true">→</span></button>${d.communities.length ? `<button type="button" data-dashboard-action="statutes"><span><strong>Estatutos de la comunidad</strong><small>${hasPermission("community:manage", d.communities[0].id) ? "Subí o actualizá los estatutos vigentes" : "Consultá los estatutos publicados"}</small></span><span aria-hidden="true">→</span></button>` : ""}</div></section><section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Próximos eventos y reuniones</h2><p>Convocatorias vigentes y actividades en curso.</p></div>${d.agenda.length ? postList(d.agenda, true) : `<div class="dashboard-empty"><strong>${snapshot ? "No hay actividades próximas registradas" : "Agenda todavía sin cargar"}</strong><p>${snapshot ? "Los eventos y reuniones publicados aparecerán acá con su fecha." : "Actualizá el panel o abrí Comunicación para consultar la agenda."}</p></div>`}</section></div>
     <section class="dashboard-panel"><div class="dashboard-panel-heading"><h2>Últimas publicaciones</h2><p>Avisos publicados en tus comunidades, ordenados por actualización.</p></div><div class="dashboard-recent">${d.recent.length ? postList(d.recent) : `<p class="dashboard-caption">${snapshot ? "Todavía no hay publicaciones disponibles en este ámbito." : "Comunicaciones pendientes de carga."}</p>`}</div></section><p class="dashboard-caption dashboard-source">Fuente: registros visibles para tu cuenta dentro del ámbito seleccionado.</p>`;
   root.querySelector('[data-dashboard-action="refresh"]').disabled = refreshing;
   if (feeAccess()) ensureFeeSummary();
@@ -350,6 +350,16 @@ root?.addEventListener("click", async (event) => {
       case "communications":
         navigateToSection("#comunicacion");
         break;
+      case "statutes": {
+        const community =
+          d.communities.find((c) => c.id === selectedCommunity) ||
+          d.communities[0];
+        if (!community) navigateToSection("#comunidades");
+        else if (hasPermission("community:manage", community.id))
+          openCommunityEditor(community.id, "statutes");
+        else openCommunityDetail(community.id, "statutes");
+        break;
+      }
       case "new-community":
         openCommunityEditor();
         break;

@@ -37,7 +37,8 @@ function domFixture() {
 function communityFixture() {
   const dom = domFixture(),
     w = dom.window,
-    calls = [];
+    calls = [],
+    libraries = [];
   const state = {
     communities: [
       {
@@ -135,6 +136,18 @@ function communityFixture() {
         return null;
       },
     },
+    createDocumentLibrary: (options) => {
+      options.container.classList.add("doc-library");
+      const entry = { options, entity: options.entityId || "" };
+      libraries.push(entry);
+      return {
+        setEntity: (id) => {
+          entry.entity = id || "";
+        },
+        refresh: noop,
+        render: noop,
+      };
+    },
     openDocViewer: () => calls.push("view-document"),
     crearVerificadorContacto: () => ({
       abrir: () => calls.push("verify"),
@@ -145,7 +158,7 @@ function communityFixture() {
     `${source("public/js/features/comunidades.js")}\nwindow.communityUI={openCommunityEditor,closeCommunityEditor};`,
     dom.getInternalVMContext(),
   );
-  return { dom, w, state, calls };
+  return { dom, w, state, calls, libraries };
 }
 test("Comunidad Ver: campos y acciones bloqueados, pestañas y documento operables", async () => {
   const f = communityFixture();
@@ -182,10 +195,18 @@ test("Comunidad Ver: campos y acciones bloqueados, pestañas y documento operabl
     await flush();
     assert.deepEqual(f.calls, []);
     form.querySelector('[data-community-tab="docs"]').click();
-    const view = form.querySelector('[data-action="view"]');
-    assert.equal(view.disabled, false);
-    view.click();
-    assert.deepEqual(f.calls, ["view-document"]);
+    assert.equal(f.w.document.querySelector("#community-tab-docs").hidden, false);
+    const documentsLibrary = f.libraries.find(
+      (entry) => entry.options.container.id === "community-document-list",
+    );
+    assert.ok(documentsLibrary);
+    assert.equal(documentsLibrary.options.canWrite(), false);
+    assert.equal(documentsLibrary.entity, "c1");
+    const statutesLibrary = f.libraries.find(
+      (entry) => entry.options.container.id === "community-statutes-list",
+    );
+    assert.ok(statutesLibrary);
+    assert.equal(statutesLibrary.options.canWrite(), false);
     form.querySelector("#close-dialog").click();
     assert.equal(f.w.document.querySelector("#community-dialog").open, false);
   } finally {
@@ -313,6 +334,7 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     openOwnerEditor: noop,
     openOwnerDetail: noop,
     openCommunityEditor: () => calls.push("community"),
+    openCommunityDetail: () => calls.push("community-detail"),
     openTenantDetail: noop,
     openAdminInbox: noop,
     openOwnerInbox: noop,
