@@ -13,12 +13,21 @@ import {
   canReadReceipt,
   receiptById,
   receiptView,
+  receiptConcept,
+  receiptArticle,
   feeSummary,
   feeDefaults,
   plans,
   savePlan,
   preview,
   issue,
+  assessmentById,
+  assessments,
+  saveAssessment,
+  assessmentDetail,
+  previewAssessment,
+  issueAssessment,
+  cancelAssessment,
   recordPayment,
   paymentView,
   reversePayment,
@@ -27,6 +36,19 @@ import {
   adminNotice,
   notify,
 } from "../fees.js";
+import {
+  serviceBillById,
+  services,
+  saveService,
+  serviceDetail,
+  previewService,
+  issueService,
+  cancelService,
+  lastServiceReadings,
+  serviceAttachmentById,
+  serviceAttachments,
+  informativeServicesFor,
+} from "../services.js";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -44,7 +66,12 @@ router.use((req, res, next) => {
   next();
 });
 const filesDir = path.join(UPLOADS_DIR, "fee-proofs");
+const serviceFilesDir = path.join(UPLOADS_DIR, "service-bills");
 const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 0 },
+}).single("file");
+const serviceUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 0 },
 }).single("file");
@@ -84,12 +111,51 @@ function payment(req) {
   manage(req, p.communityId);
   return p;
 }
-function data(user, rows, communityId = "") {
+function assessment(req) {
+  const row = assessmentById(req.params.assessmentId);
+  manage(req, row.communityId);
+  return row;
+}
+function service(req) {
+  const row = serviceBillById(req.params.serviceId);
+  manage(req, row.communityId);
+  return row;
+}
+function canReadServiceBill(user, row) {
+  if (canManage(user, row.communityId)) return true;
+  const policy = policyData();
+  const receipts = db
+    .prepare("SELECT * FROM fee_receipts WHERE serviceBillId=?")
+    .all(row.id);
+  if (receipts.some((receipt) => canReadReceipt(user, receipt, policy)))
+    return true;
+  if (!allowed(user, "fee:read", row.communityId, policy)) return false;
+  if (user.rol !== "user") {
+    const role = policy.roles.find(
+      (r) => r.nombre === user.rol || r.id === user.rol,
+    );
+    if (role && role.nombre !== "user") return true;
+  }
+  const ownerIds = policy.owners
+    .filter((owner) => owner.userId === user.id)
+    .map((owner) => owner.id);
+  if (!ownerIds.length) return false;
+  const data = JSON.parse(row.data);
+  return listProperties().some(
+    (property) =>
+      property.communityId === row.communityId &&
+      (data.propertyIds || []).includes(property.id) &&
+      property.ownerIds.some((ownerId) => ownerIds.includes(ownerId)),
+  );
+}
+function data(user, rows, communityId = "", informativeOwnerIds) {
   const policy = policyData();
   const visible = rows.filter((r) => canReadReceipt(user, r, policy));
   const ownIds = policy.owners
     .filter((o) => o.userId === user.id)
     .map((o) => o.id);
+  const serviceOwnerIds =
+    informativeOwnerIds === null ? [] : informativeOwnerIds || ownIds;
   const payments = db
     .prepare(
       `SELECT * FROM fee_payments ${communityId ? "WHERE communityId=?" : ""} ORDER BY createdAt DESC`,
@@ -111,6 +177,7 @@ function data(user, rows, communityId = "") {
   return {
     receipts,
     payments,
+    informativeServices: informativeServicesFor(serviceOwnerIds, communityId),
     totals: {
       issued: receipts
         .filter((r) => !r.cancelledAt)
@@ -188,6 +255,9 @@ router.get(
       ),
       canManage: editable,
       plans: editable ? plans(id) : [],
+      assessments: editable ? assessments(id) : [],
+      services: editable ? services(id) : [],
+      serviceMeters: editable ? lastServiceReadings(id) : {},
       defaults: editable ? feeDefaults() : null,
       properties: editable
         ? listProperties()
@@ -221,6 +291,8 @@ router.get(
         .filter((r) =>
           JSON.parse(r.snapshot).owners.some((o) => o.id === owner.id),
         ),
+      "",
+      [owner.id],
     );
     result.payments = result.payments.filter((p) => p.ownerId === owner.id);
     result.totals.credit = result.payments.reduce((s, p) => s + p.credit, 0);
@@ -252,6 +324,251 @@ router.post(
     res.status(201).json(issue(id, req.body || {}, req.user));
   }),
 );
+router.get(
+  "/communities/:communityId/assessments",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json(assessments(id));
+  }),
+);
+router.post(
+  "/communities/:communityId/assessments",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.status(201).json(saveAssessment(id, req.body || {}, req.user));
+  }),
+);
+router.get(
+  "/assessments/:assessmentId",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(assessmentDetail(row));
+  }),
+);
+router.put(
+  "/assessments/:assessmentId",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(saveAssessment(row.communityId, req.body || {}, req.user, row.id));
+  }),
+);
+router.post(
+  "/assessments/:assessmentId/preview",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(previewAssessment(row.id, req.body?.installment));
+  }),
+);
+router.post(
+  "/assessments/:assessmentId/issue",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res
+      .status(201)
+      .json(issueAssessment(row.id, req.body || {}, req.user));
+  }),
+);
+router.post(
+  "/assessments/:assessmentId/cancel",
+  wrap((req, res) => {
+    const row = assessment(req);
+    res.json(cancelAssessment(row.id, req.body || {}, req.user));
+  }),
+);
+router.get(
+  "/communities/:communityId/services",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json({
+      services: services(id),
+      serviceMeters: lastServiceReadings(id),
+    });
+  }),
+);
+router.post(
+  "/communities/:communityId/services",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.status(201).json(saveService(id, req.body || {}, req.user));
+  }),
+);
+router.get(
+  "/services/:serviceId",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(serviceDetail(row));
+  }),
+);
+router.put(
+  "/services/:serviceId",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(saveService(row.communityId, req.body || {}, req.user, row.id));
+  }),
+);
+router.post(
+  "/services/:serviceId/preview",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(previewService(row.id));
+  }),
+);
+router.post(
+  "/services/:serviceId/issue",
+  wrap((req, res) => {
+    const row = service(req);
+    res.status(201).json(issueService(row.id, req.body || {}, req.user));
+  }),
+);
+router.post(
+  "/services/:serviceId/cancel",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(cancelService(row.id, req.body || {}, req.user));
+  }),
+);
+router.post("/services/:serviceId/attachments", (req, res, next) => {
+  let row;
+  try {
+    row = service(req);
+    if (row.cancelledAt) throw problem("El servicio está anulado.");
+  } catch (error) {
+    return next(error);
+  }
+  serviceUpload(req, res, (error) => {
+    if (error)
+      return next(
+        problem(
+          error.code === "LIMIT_FILE_SIZE"
+            ? "El adjunto supera 10 MB."
+            : "Subí un único archivo sin campos adicionales.",
+        ),
+      );
+    let diskPath;
+    try {
+      const file = req.file;
+      if (!file) throw problem("Adjuntá la factura en PDF, PNG, JPG o WebP.");
+      const b = file.buffer;
+      const mime =
+        b.subarray(0, 5).toString() === "%PDF-"
+          ? "application/pdf"
+          : b
+                .subarray(0, 8)
+                .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+            ? "image/png"
+            : b[0] === 255 && b[1] === 216 && b[2] === 255
+              ? "image/jpeg"
+              : b.subarray(0, 4).toString() === "RIFF" &&
+                  b.subarray(8, 12).toString() === "WEBP"
+                ? "image/webp"
+                : "";
+      if (!mime)
+        throw problem("El contenido del archivo no es PDF, PNG, JPG ni WebP.");
+      if (
+        db
+          .prepare(
+            "SELECT COUNT(*) AS n FROM service_attachments WHERE serviceBillId=?",
+          )
+          .get(row.id).n >= 10
+      )
+        throw problem("Este servicio ya tiene 10 adjuntos.");
+      const id = crypto.randomUUID(),
+        originalName =
+          path
+            .basename(file.originalname)
+            .replace(/[\x00-\x1f\x7f]/g, "")
+            .slice(0, 140) || "factura";
+      const extension = {
+        "application/pdf": ".pdf",
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+      }[mime];
+      const fileName = originalName.toLowerCase().endsWith(extension)
+        ? originalName
+        : originalName + extension;
+      fs.mkdirSync(serviceFilesDir, { recursive: true });
+      diskPath = path.join(serviceFilesDir, id);
+      fs.writeFileSync(diskPath, b, { flag: "wx" });
+      transaction(() => {
+        db.prepare(
+          "INSERT INTO service_attachments(id,serviceBillId,fileName,diskName,mime,createdAt,actorId) VALUES(?,?,?,?,?,?,?)",
+        ).run(
+          id,
+          row.id,
+          fileName,
+          id,
+          mime,
+          new Date().toISOString(),
+          req.user.id,
+        );
+        recordAudit({
+          actor: req.user,
+          action: "fee.service.attachment",
+          resourceType: "fee",
+          resourceId: row.id,
+          details: { attachmentId: id },
+        });
+      });
+      res.status(201).json({ id, fileName, mime });
+    } catch (failure) {
+      if (diskPath && fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+      next(failure);
+    }
+  });
+});
+router.get(
+  "/service-attachments/:attachmentId/download",
+  wrap((req, res) => {
+    const attachment = serviceAttachmentById(req.params.attachmentId),
+      row = serviceBillById(attachment.serviceBillId);
+    if (!canReadServiceBill(req.user, row))
+      throw problem("No tenés acceso a la factura del servicio.", 403);
+    if (!/^[a-f0-9-]{36}$/.test(attachment.diskName))
+      throw problem("Archivo no válido.", 404);
+    const file = path.join(serviceFilesDir, attachment.diskName);
+    if (!fs.existsSync(file))
+      throw problem("El archivo no está disponible.", 404);
+    res.set("Content-Type", attachment.mime);
+    res.set(
+      "Content-Disposition",
+      `attachment; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
+    );
+    res.sendFile(file);
+  }),
+);
+router.delete(
+  "/service-attachments/:attachmentId",
+  wrap((req, res) => {
+    const attachment = serviceAttachmentById(req.params.attachmentId),
+      row = serviceBillById(attachment.serviceBillId);
+    manage(req, row.communityId);
+    if (row.issuedAt)
+      throw problem(
+        "El servicio ya fue emitido. Los adjuntos se conservan como justificante.",
+        409,
+      );
+    transaction(() => {
+      db.prepare("DELETE FROM service_attachments WHERE id=?").run(attachment.id);
+      recordAudit({
+        actor: req.user,
+        action: "fee.service.attachment_delete",
+        resourceType: "fee",
+        resourceId: row.id,
+        details: { attachmentId: attachment.id },
+      });
+    });
+    if (/^[a-f0-9-]{36}$/.test(attachment.diskName)) {
+      const file = path.join(serviceFilesDir, attachment.diskName);
+      if (fs.existsSync(file)) fs.unlinkSync(file);
+    }
+    res.json({ ok: true });
+  }),
+);
 router.post(
   "/communities/:communityId/payments",
   wrap((req, res) => {
@@ -279,10 +596,22 @@ router.get(
   "/receipts/:receiptId",
   wrap((req, res) => {
     const row = authorizedReceipt(req);
-    const result = data(req.user, [row], row.communityId);
+    const result = data(req.user, [row], row.communityId, null);
     res.json({
       ...result.receipts[0],
       canManage: canManage(req.user, row.communityId),
+      ...(row.serviceBillId
+        ? {
+            serviceAttachments: serviceAttachments(row.serviceBillId).map(
+              (attachment) => ({
+                id: attachment.id,
+                fileName: attachment.fileName,
+                mime: attachment.mime,
+                createdAt: attachment.createdAt,
+              }),
+            ),
+          }
+        : {}),
     });
   }),
 );
@@ -385,7 +714,7 @@ router.post("/receipts/:receiptId/proofs", (req, res, next) => {
         adminNotice(
           row,
           owner.id,
-          `Justificante de cuota pendiente de revisión · ${row.period}`,
+          `Justificante pendiente de revisión · ${receiptConcept(row)}`,
         );
         recordAudit({
           actor: req.user,
@@ -468,7 +797,7 @@ router.post(
         "proof",
         proof.id,
         "Justificante revisado",
-        `Tu justificante para la cuota ${row.period} fue ${req.body.status === "accepted" ? "aceptado para revisión bancaria" : "rechazado"}. ${req.body.note.trim()}`,
+        `Tu justificante para ${receiptArticle(row)} ${receiptConcept(row)[0].toLowerCase()}${receiptConcept(row).slice(1)} fue ${req.body.status === "accepted" ? "aceptado para revisión bancaria" : "rechazado"}. ${req.body.note.trim()}`,
         proof.ownerId,
       );
       recordAudit({

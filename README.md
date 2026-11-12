@@ -58,8 +58,107 @@ reintentan automáticamente; quedan en auditoría. La aceptación por el proveed
 confirma entrega. Los justificantes se guardan dentro de `uploads/fee-proofs/` y
 solo pueden descargarlos su autor y los gestores autorizados de la comunidad.
 
-Esta versión gestiona exclusivamente cuotas ordinarias. Los mandatos y remesas
-SEPA, las derramas, otros cargos y la contabilidad de suministros quedan fuera.
+## Derramas (cuotas extraordinarias)
+
+En **Cuotas** hay tres pestañas: **Cuotas ordinarias**, **Derramas** y
+**Servicios**, cada una con sus propios recibos y filtros. En **Derramas → Nueva
+derrama** se abre un editor integrado en la página, con secciones **General**,
+**Inmuebles**, **Plazos** y **Avisos**. Los campos obligatorios llevan `*`; el
+motivo y los ajustes de avisos son opcionales. El motivo admite texto enriquecido,
+listas y enlaces saneados.
+
+Indicar nombre, acuerdo de Junta e importe total. En **Inmuebles**, usar el botón
+de vincular para buscar y agregar inmuebles existentes, o **Agregar todos** para
+incluir toda la comunidad. Cada inmueble se puede quitar con su botón de papelera.
+Se puede repartir por coeficientes o importes manuales. Si se incluyen todos,
+los coeficientes deben sumar el 100 %; una selección se reparte proporcionalmente.
+Los importes manuales deben sumar el total. Solo se admiten comunidades en EUR.
+
+El reparto y los inmuebles incluidos quedan congelados al guardar: los cambios
+posteriores de coeficientes o las altas de inmuebles no recalculan la derrama.
+Cada plazo tiene importe y vencimiento propios; los vencimientos deben ser
+crecientes y los importes sumar el total. La vista previa muestra el reparto antes
+de confirmar la emisión de cada plazo. Los redondeos conservan tanto el total del
+plazo como el importe aprobado para cada inmueble. Los titulares se identifican al
+emitir el recibo, conservando los titulares históricos de los recibos anteriores.
+No se permite borrar o mover a otra comunidad un inmueble incluido en una derrama
+vigente. Todos los plazos deben asignar al menos un céntimo a cada inmueble;
+los repartos que no lo permiten se rechazan antes de guardar.
+En **Plazos**, el botón `+` agrega otro plazo y la papelera lo elimina, manteniendo
+al menos uno. El formulario muestra cuánto queda por distribuir y valida también
+los campos de las pestañas que no estén visibles. El detalle de la derrama separa
+**Resumen**, **Plazos** y **Recibos** en pestañas.
+
+Se puede editar el borrador antes de emitir o anular cualquier plazo; al editar se
+actualiza el reparto con los datos actuales. Después de la primera emisión no se
+permite editar, aunque se anulen todos los recibos. Se pueden anular plazos
+pendientes o emitidos y la derrama completa, indicando un motivo. Los cobros
+aplicados bloquean la anulación hasta revertirlos. Un plazo anulado no se vuelve
+a emitir: para sustituirlo hay que crear una nueva derrama.
+
+Las derramas usan el mismo libro de recibos, cobros, imputaciones, saldos a favor,
+justificantes privados y avisos que las cuotas ordinarias. Aparecen identificadas
+por nombre y plazo en **Mis cuotas**, el detalle y el CSV del recibo, y sus saldos
+se incluyen en el resumen de Inicio. Los canales y recordatorios se configuran
+para cada derrama. Las cuotas ordinarias y varias derramas pueden coexistir en
+el mismo mes sin duplicar un inmueble dentro del mismo plazo.
+
+Quedan fuera de esta versión el adjunto del acta a la derrama, los mandatos y
+remesas SEPA, los intereses, otros cargos y la contabilidad de gastos.
+
+## Servicios y suministros
+
+La pestaña **Servicios**, dentro de **Cuotas**, permite repartir facturas de luz,
+agua, gas o gasóleo entre los inmuebles de la comunidad. Se indican proveedor,
+número de factura, periodo, fecha de factura, vencimiento e importe total. La foto
+o el PDF de la factura se adjunta manualmente como justificante; todavía no hay OCR.
+También se pueden cargar a mano las lecturas de contador.
+
+Métodos de reparto disponibles:
+
+- **Coeficiente**: usa el coeficiente de participación de cada inmueble. Si se elige
+  un subconjunto, los coeficientes se renormalizan entre los incluidos y se muestra
+  el coeficiente efectivo.
+- **Lecturas**: reparte según el consumo del periodo. Las lecturas se guardan en
+  milésimos de m³; la lectura anterior se propone desde el último servicio emitido
+  del mismo suministro. Los inmuebles sin consumo no reciben recibo y se avisa.
+- **Mixto**: separa una parte fija por coeficiente y una parte variable por lecturas.
+  Para calefacción o refrigeración centralizada, si la parte variable queda fuera del
+  60–75 % se muestra la recomendación del RD 736/2020.
+- **Manual**: importes por inmueble que deben sumar exactamente el total de la factura.
+
+Cada factura elige entre **emitir un recibo por inmueble** o **solo reparto
+informativo**. El reparto y los inmuebles incluidos quedan congelados al guardar:
+los cambios posteriores del censo o de los coeficientes no lo recalculan. Los
+métodos distintos de coeficiente muestran una advertencia si falta la base legal o
+el acuerdo de Junta que los autoriza (LPH art. 9.1.e y 9.2; RD 736/2020 arts. 6.1
+y 6.4). Solo se admiten comunidades en EUR.
+
+Los recibos de servicio reutilizan el mismo libro de cobros, imputaciones, saldos a
+favor, justificantes y avisos que las cuotas ordinarias y las derramas. Aparecen
+identificados en **Mis cuotas**, el detalle del recibo, el CSV y el resumen de
+Inicio. En modo informativo no se crean recibos ni deuda: el propietario ve el
+reparto en la pestaña **Servicios** de **Mis cuotas**, con su parte, las lecturas y
+la factura adjunta. La descarga de la factura está disponible para gestión, para
+los titulares de recibos del servicio y para los propietarios actuales de los
+inmuebles incluidos. Los adjuntos admiten PDF, PNG, JPG o WebP de hasta 10 MB
+(máximo 10 por factura), se guardan en `uploads/service-bills/` y solo se pueden
+eliminar mientras la factura es borrador. No se puede borrar ni mover a otra
+comunidad un inmueble incluido en un servicio vigente.
+
+API de servicios (gestión: sesión y `fee:manage` en la comunidad):
+`GET/POST /api/fees/communities/:communityId/services`;
+`GET/PUT /api/fees/services/:serviceId`;
+`POST /api/fees/services/:serviceId/preview|issue|cancel`;
+`POST /api/fees/services/:serviceId/attachments`;
+`GET /api/fees/service-attachments/:attachmentId/download` y
+`DELETE /api/fees/service-attachments/:attachmentId`. La descarga también está
+disponible para los titulares de recibos y los propietarios incluidos; el borrado
+sigue reservado a gestión y solo en borrador.
+
+Quedan fuera de esta versión el OCR, las plantillas recurrentes, las facturas
+negativas o abonos, los métodos por igual/superficie/personas, SEPA, intereses y
+la contabilidad de gastos.
 
 ## Ejecución
 
