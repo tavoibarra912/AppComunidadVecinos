@@ -17,18 +17,18 @@ db.exec(`
 `);
 const digest = value => crypto.createHash("sha256").update(value).digest("hex");
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
-export const RECOVERY_MESSAGE = "Si existe una cuenta activa con ese email, se enviarán instrucciones para recuperar la contraseña. Revisá también la carpeta de correo no deseado.";
+export const RECOVERY_MESSAGE = "Si existe una cuenta activa con ese email, se enviarán instrucciones para recuperar la contraseña. Revisa también la carpeta de correo no deseado.";
 export function recoveryUrl() {
   const configured = process.env.APP_PUBLIC_URL || (process.env.NODE_ENV !== "production" ? `http://localhost:${process.env.PORT || 3000}` : undefined);
   let url;
-  try { url = new URL(configured); } catch { throw fail("Configurá APP_PUBLIC_URL para habilitar la recuperación de contraseña.", 503); }
+  try { url = new URL(configured); } catch { throw fail("Configura APP_PUBLIC_URL para habilitar la recuperación de contraseña.", 503); }
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (url.username || url.password || url.search || url.hash || url.pathname !== "/" || (url.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && local && url.protocol === "http:")))
     throw fail("APP_PUBLIC_URL debe ser el origen HTTPS de la aplicación (HTTP solo en localhost de desarrollo).", 503);
   return url;
 }
 export function requestRecovery(email, req) {
-  if (!validEmail(email)) throw fail("Indicá una dirección de email válida.");
+  if (!validEmail(email)) throw fail("Indica una dirección de email válida.");
   let url;
   try {
     url = recoveryUrl();
@@ -67,13 +67,13 @@ export function requestRecovery(email, req) {
   return { mensaje: RECOVERY_MESSAGE };
 }
 export function resetRecoveredPassword(token, password, req) {
-  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) throw fail("El enlace de recuperación no es válido o venció. Solicitá uno nuevo.");
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) throw fail("El enlace de recuperación no es válido o ha caducado. Solicita uno nuevo.");
   const error = passwordError(password);
   if (error) throw fail(error);
   db.exec("BEGIN IMMEDIATE");
   try {
     const user = db.prepare("SELECT * FROM users WHERE resetToken=? AND resetTokenExpira > ? AND activo=1").get(digest(token), new Date().toISOString());
-    if (!user) throw fail("El enlace de recuperación no es válido o venció. Solicitá uno nuevo.");
+    if (!user) throw fail("El enlace de recuperación no es válido o ha caducado. Solicita uno nuevo.");
     setPassword(user.id, password);
     db.prepare("DELETE FROM password_recovery_mail WHERE userId=?").run(user.id);
     recordAudit({ action: "password-recovery.completed", resourceType: "user", resourceId: user.id, req });

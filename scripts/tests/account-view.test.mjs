@@ -52,7 +52,7 @@ test("cuenta nueva: no adopta el propietario ni la comunidad de los datos demo",
   assert.equal(result.communityTitle, "Perfil pendiente de vinculación");
   assert.doesNotMatch(result.communityMessage, /Carlos|Modo Propietario/);
 });
-test("perfil de propietario: muestra sólo las comunidades de sus inmuebles", () => {
+test("perfil de propietario: muestra solo las comunidades de sus inmuebles", () => {
   const data = fixture();
   data.owners.push({
     id: "own-profile",

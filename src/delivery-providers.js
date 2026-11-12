@@ -53,7 +53,7 @@ export function unseal(value) {
     );
   } catch {
     throw problem(
-      "No se pudo descifrar la credencial del proveedor. Revisá la clave del servidor.",
+      "No se pudo descifrar la credencial del proveedor. Revisa la clave del servidor.",
       503,
     );
   }
@@ -114,7 +114,7 @@ export function saveProviders(input) {
   for (const channel of ["smtp", "sms", "whatsapp"]) {
     const s = input[channel];
     if (!s || typeof s !== "object" || Array.isArray(s))
-      throw problem("Completá la configuración de los tres canales.");
+      throw problem("Completa la configuración de los tres canales.");
     const out = result[channel];
     out.enabled = s.enabled === true;
     out.provider =
@@ -183,12 +183,12 @@ export function saveProviders(input) {
             !out.token
           )
             throw problem(
-              `${channel}: indicá Account SID, token y número emisor internacional.`,
+              `${channel}: indica Account SID, token y número emisor internacional.`,
             );
         } else if (channel === "whatsapp") {
           if (!out.token || !/^\d{8,15}$/.test(out.from))
             throw problem(
-              "WhatsApp (Brevo): indicá la API key y el número de WhatsApp emisor con código de país (solo dígitos).",
+              "WhatsApp (Brevo): indica la API key y el número de WhatsApp emisor con código de país (solo dígitos).",
             );
           if (out.contentSid && !/^\d+$/.test(out.contentSid))
             throw problem(
@@ -196,7 +196,7 @@ export function saveProviders(input) {
             );
         } else if (!out.token || !/^[a-zA-Z0-9 -]{2,11}$/.test(out.from)) {
           throw problem(
-            `${channel} (Brevo): indicá la API key y un nombre de remitente de 2 a 11 caracteres alfanuméricos.`,
+            `${channel} (Brevo): indica la API key y un nombre de remitente de 2 a 11 caracteres alfanuméricos.`,
           );
         }
       }

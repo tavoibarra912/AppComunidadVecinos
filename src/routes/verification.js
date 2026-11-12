@@ -81,7 +81,7 @@ router.post("/:tipo/send", async (req, res) => {
     const segundos = Math.ceil((cooldownMs - (now - ultimo.createdAt)) / 1000);
     return res
       .status(429)
-      .json({ error: `Esperá ${segundos} segundos para pedir otro código de verificación.`, reenvioSegundos: segundos });
+      .json({ error: `Espera ${segundos} segundos para pedir otro código de verificación.`, reenvioSegundos: segundos });
   }
 
   const codigo = String(crypto.randomInt(100000, 999999));
@@ -104,7 +104,7 @@ router.post("/:tipo/send", async (req, res) => {
   }
 
   const minutos = Math.round(ttlMs / 60000);
-  const texto = `Tu código de verificación es: ${codigo}\n\nExpira en ${minutos} minutos y es de un solo uso.\n\nSi no lo solicitaste, ignorá este mensaje.\n\n— ${nombrePlataforma()}`;
+  const texto = `Tu código de verificación es: ${codigo}\n\nExpira en ${minutos} minutos y es de un solo uso.\n\nSi no lo solicitaste, ignora este mensaje.\n\n— ${nombrePlataforma()}`;
   const asunto = `Código de verificación — ${nombrePlataforma()}`;
 
   try {
@@ -136,13 +136,13 @@ router.post("/:tipo/confirm", (req, res) => {
     .get(challengeId);
   if (!row || row.expiresAt < Date.now()) {
     db.prepare("DELETE FROM contact_verification_challenges WHERE id = ?").run(challengeId);
-    return res.status(410).json({ error: "El código expiró. Solicitá uno nuevo." });
+    return res.status(410).json({ error: "El código ha caducado. Solicita uno nuevo." });
   }
   if (row.codigo !== digest(String(code).trim())) {
     const intentos = Number(row.attempts || 0) + 1;
     if (intentos >= MAX_ATTEMPTS) {
       db.prepare("DELETE FROM contact_verification_challenges WHERE id = ?").run(challengeId);
-      return res.status(410).json({ error: "Demasiados intentos con códigos incorrectos. Solicitá uno nuevo." });
+      return res.status(410).json({ error: "Demasiados intentos con códigos incorrectos. Solicita uno nuevo." });
     }
     db.prepare("UPDATE contact_verification_challenges SET attempts = ? WHERE id = ?").run(intentos, challengeId);
     return res.status(400).json({ error: "El código no es correcto." });

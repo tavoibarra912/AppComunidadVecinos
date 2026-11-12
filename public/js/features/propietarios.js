@@ -706,7 +706,7 @@ function updateOwnerLphFieldAccess() {
   });
 }
 
-/** Opciones del canal habilitadas sólo con el contacto correspondiente verificado. */
+/** Opciones del canal habilitadas solo con el contacto correspondiente verificado. */
 function updateCanalOptions() {
   const select = ownerForm.elements.notificationPreference;
   if (!select) return;
@@ -925,7 +925,7 @@ export function renderDetailDocsGrid(o) {
 export function renderDetailApprovalPanel(o, docStatus) {
   ownerDetailApprovalPanel.replaceChildren();
 
-  // En modo Propietario: sólo información de estado para el usuario (sin controles administrativos)
+  // En modo Propietario: solo información de estado para el usuario (sin controles administrativos)
   if (state.activeRole === "owner") {
     if (docStatus === "approved") {
       ownerDetailApprovalPanel.className = "admin-approval-panel approved-box";
@@ -1205,7 +1205,7 @@ export function openOwnerDelete(id) {
     state.tenants.some(tenant => tenant.propertyId === property.id)
   );
   if (conInquilino.length > 0) {
-    toast(`No se puede eliminar a “${o.name} ${o.surname}”: el inmueble “${conInquilino[0].plot}” tiene un inquilino asociado. Desvinculá primero al inquilino.`);
+    toast(`No se puede eliminar a “${o.name} ${o.surname}”: el inmueble “${conInquilino[0].plot}” tiene un inquilino asociado. Desvincula primero al inquilino.`);
     return;
   }
   state.ui.deletingOwnerId = id;
@@ -1260,7 +1260,7 @@ export function collectOwnerErrors() {
     marks.push("otherPhone");
   }
 
-  // Email opcional: sólo se valida formato (y su verificación habilita el canal de correo)
+  // Email opcional: solo se valida formato (y su verificación habilita el canal de correo)
   const emailVal = (el("email")?.value || "").trim();
   if (!emailVal) {
     errors.push("El email es obligatorio.");
@@ -1362,7 +1362,7 @@ ownerForm.addEventListener("submit", async event => {
   const isEditing = !!state.ui.editingOwnerId;
   data.id = state.ui.editingOwnerId || crypto.randomUUID();
 
-  // Asignar documentación validada y relacionada sólo y únicamente para este usuario
+  // Asignar documentación validada y relacionada solo y únicamente para este usuario
   data.documents = editingDocs.current;
 
   const docKeys = ["dni", "bankReceipt", "propertyDeed"];

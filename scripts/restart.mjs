@@ -14,7 +14,7 @@ export function parseListeningPids(output, port) {
   const pids = new Set();
   for (const line of output.split(/\r?\n/)) {
     const [protocol, localAddress, , status, rawPid] = line.trim().split(/\s+/);
-    // Sólo el puerto LOCAL exacto: :3000 no debe coincidir con :30001
+    // Solo el puerto LOCAL exacto: :3000 no debe coincidir con :30001
     // ni con una conexión cuyo puerto remoto sea 3000.
     if (protocol !== "TCP" || status !== "LISTENING") continue;
     if (localAddress?.slice(localAddress.lastIndexOf(":") + 1) !== String(port)) continue;

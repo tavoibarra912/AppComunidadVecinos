@@ -16,7 +16,7 @@ export function showRecoveryFromLink() {
   recoveryToken = match?.[1] || "";
   document.querySelector("#login-forgot-form").hidden = true;
   document.querySelector("#login-reset-block").hidden = false;
-  document.querySelector("#login-reset-error").textContent = recoveryToken ? "" : "El enlace no es válido. Solicitá uno nuevo.";
+  document.querySelector("#login-reset-error").textContent = recoveryToken ? "" : "El enlace no es válido. Solicita uno nuevo.";
   return true;
 }
 window.addEventListener("hashchange", showRecoveryFromLink);
@@ -157,7 +157,7 @@ document.querySelector("#login-reset-form")?.addEventListener("submit", async ev
     event.target.reset();
     showLoginView("signin");
     const notice = document.querySelector("#login-signin-notice");
-    notice.textContent = "Contraseña actualizada. Iniciá sesión con la nueva contraseña.";
+    notice.textContent = "Contraseña actualizada. Inicia sesión con la nueva contraseña.";
     notice.hidden = false;
   } catch (error) {
     errorEl.textContent = error.message;

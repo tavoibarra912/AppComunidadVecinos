@@ -2,7 +2,7 @@ import { sanitizeHtml, escapeHtml, richTextHtml, htmlToText } from "../html.js";
 import { api } from "../api.js";
 import { mountFeeShortcut } from "./fees.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
-import { toast, validateDocumentFiles, setupGenericFileDropzone, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif } from "../utils.js";
+import { toast, validateDocumentFiles, setupGenericFileDropzone, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif, normalizeIdentityDocument } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
@@ -136,7 +136,7 @@ export function visibleCommunities() {
 }
 
 export function renderCommunities() {
-  // Crear comunidades: sólo Super Admin y Admin General
+  // Crear comunidades: solo Super Admin y Admin General
   if (newCommunityBtn) newCommunityBtn.hidden = !hasPermission("community:create");
   if (!communityTable) {
     communityTable = createDataTable({
@@ -147,7 +147,7 @@ export function renderCommunities() {
       entitySingular: "comunidad",
       entityPlural: "comunidades",
       emptyTitle: state.activeRole === "owner" && state.communities.length === 0 ? "Sin comunidad asignada" : "No hay comunidades que mostrar",
-      emptyText: state.activeRole === "owner" && state.communities.length === 0 ? "Un administrador debe vincular tu perfil a un inmueble o comunidad para que aparezca aquí." : "No hay resultados. Revisá los criterios de búsqueda.",
+      emptyText: state.activeRole === "owner" && state.communities.length === 0 ? "Un administrador debe vincular tu perfil a un inmueble o comunidad para que aparezca aquí." : "No hay resultados. Revisa los criterios de búsqueda.",
       getRows: () => visibleCommunities(),
       columns: [
         {
@@ -805,7 +805,7 @@ function renderCommunityDetailDocs(c) {
   });
 }
 
-// Tabs de la ficha de comunidad (sólo lectura)
+// Tabs de la ficha de comunidad (solo lectura)
 document.querySelectorAll("#detail-dialog [data-cd-tab]").forEach(btn => {
   btn.addEventListener("click", () => switchCommunityDetailTab(btn.dataset.cdTab));
 });
@@ -874,7 +874,7 @@ export function validateCommunityFields() {
   const emailInput = communityForm.elements.email;
   const postalCodeInput = communityForm.elements.postalCode;
 
-  const nif = nifInput.value.trim().toUpperCase();
+  const nif = normalizeIdentityDocument(nifInput.value);
   const phone = phoneInput.value.trim();
   const otherPhone = otherPhoneInput.value.trim();
   const email = emailInput.value.trim();
@@ -885,13 +885,13 @@ export function validateCommunityFields() {
   otherPhoneInput.value = otherPhone;
   emailInput.value = email;
 
-  nifInput.setCustomValidity(isValidCommunityNif(nif) ? "" : "El NIF debe ser un CIF válido de comunidad: H + 7 dígitos + dígito o letra de control (ejemplo: H12345674).");
+  nifInput.setCustomValidity(isValidCommunityNif(nif) ? "" : "El NIF debe ser un CIF válido de comunidad: H + 7 dígitos + dígito de control numérico (ejemplo: H12345674).");
   phoneInput.setCustomValidity(/^\d{9}$/.test(phone) ? "" : "El teléfono principal debe contener 9 dígitos numéricos.");
   otherPhoneInput.setCustomValidity(!otherPhone || /^\d{9}$/.test(otherPhone) ? "" : "El teléfono secundario debe contener 9 dígitos numéricos.");
   emailInput.setCustomValidity(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "" : "Introduce una dirección de email válida.");
   postalCodeInput.setCustomValidity(/^\d{5}$/.test(postalCode) && isValidPostalCode(postalCode) ? "" : "El código postal debe contener 5 dígitos y corresponder a un código postal de España.");
   const year = communityForm.elements.constitutionYear;
-  year.setCustomValidity(!year.value || /^\d{4}$/.test(year.value) && Number(year.value) >= 1000 && Number(year.value) <= new Date().getFullYear() ? "" : "Seleccioná un año de constitución válido.");
+  year.setCustomValidity(!year.value || /^\d{4}$/.test(year.value) && Number(year.value) >= 1000 && Number(year.value) <= new Date().getFullYear() ? "" : "Selecciona un año de constitución válido.");
 }
 
 communityForm.addEventListener("submit", async event => {
@@ -927,16 +927,16 @@ async function persistCommunityDraft() {
     }
   });
   if (!selectedLocation) {
-    messages.push("Municipio: seleccioná un municipio válido del listado.");
+    messages.push("Municipio: selecciona un municipio válido del listado.");
   } else if (selectedLocation.province !== provinceSelect.value) {
     messages.push("Municipio: debe pertenecer a la provincia seleccionada.");
   }
-  if (state.communities.some(c => c.nif === (communityForm.elements.nif.value || "").trim().toUpperCase() && c.id !== editingCommunityId)) {
+  if (state.communities.some(c => normalizeIdentityDocument(c.nif) === normalizeIdentityDocument(communityForm.elements.nif.value) && c.id !== editingCommunityId)) {
     messages.push("NIF: ya existe una comunidad registrada con ese NIF.");
   }
 
   if (messages.length > 0) {
-    showValidationErrors(messages, "Revisá los datos de la comunidad");
+    showValidationErrors(messages, "Revisa los datos de la comunidad");
     return null;
   }
 
@@ -986,7 +986,7 @@ async function ensureCommunitySavedForProperties() {
     const saved = state.communities.find(item => item.id === id);
     renderCommunityEditorProperties(saved);
     renderCommunityDocumentList(saved);
-    toast("Comunidad guardada. Ahora podés asociar inmuebles.");
+    toast("Comunidad guardada. Ahora puedes asociar inmuebles.");
     switchCommunityEditorTab("properties");
   }
   return id;
@@ -998,8 +998,13 @@ const comPhoneInput = communityForm.elements.phone;
 const comOtherPhoneInput = communityForm.elements.otherPhone;
 
 comNifInput.addEventListener("input", () => {
-  comNifInput.value = comNifInput.value.toUpperCase();
+  // Normalizar mientras se escribe evita que el navegador bloquee el envío por
+  // el pattern nativo cuando el NIF viene con espacios, guiones o en minúsculas.
+  comNifInput.value = normalizeIdentityDocument(comNifInput.value);
   comNifInput.setCustomValidity("");
+});
+comNifInput.addEventListener("blur", () => {
+  comNifInput.value = normalizeIdentityDocument(comNifInput.value);
 });
 
 [comPhoneInput, comOtherPhoneInput].forEach(inp => {
@@ -1070,5 +1075,4 @@ document.querySelector("#confirm-delete").addEventListener("click", async () => 
 });
 
 // --- Asociación de inmuebles a la comunidad (tab de edición) ---
-// (los botones del diálogo de consulta se eliminaron: la vista es sólo lectura)
-
+// (los botones del diálogo de consulta se eliminaron: la vista es solo lectura)

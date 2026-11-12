@@ -110,7 +110,7 @@ function tenantUpdateCanalOptions() {
 }
 
 /**
- * El canal preferente sólo está disponible si el inquilino autoriza las
+ * El canal preferente solo está disponible si el inquilino autoriza las
  * comunicaciones de la comunidad. setFormReadonly() vuelve a habilitar los
  * controles al abrir el editor, así que este estado debe aplicarse después.
  */
@@ -658,7 +658,7 @@ tenantForm.addEventListener("submit", async event => {
   const derivedOwnerId = property?.ownerIds?.includes(selectedOwnerId) ? selectedOwnerId : (property?.ownerIds?.[0] || selectedOwnerId);
   const owner = derivedOwnerId ? state.owners.find(item => item.id === derivedOwnerId) : null;
   if (owner && !requirePermission("tenant:manage", owner.id)) {
-    tenantFormError.textContent = "No tenés permisos para gestionar este propietario.";
+    tenantFormError.textContent = "No tienes permisos para gestionar este propietario.";
     return;
   }
   const formData = new FormData(tenantForm);
@@ -680,7 +680,7 @@ tenantForm.addEventListener("submit", async event => {
   if (values.contractEnd && !isValidDateInput(values.contractEnd)) messages.push("Indica una fecha de fin de contrato válida.");
   else if (values.contractStart && values.contractEnd && values.contractEnd < values.contractStart) messages.push("La fecha de fin no puede ser anterior al inicio del contrato.");
   // verification checks
-  // Verificación de email opcional para inquilinos (sólo se valida formato)
+  // Verificación de email opcional para inquilinos (solo se valida formato)
   if (messages.length) {
     const tabMark = messages.find(m => typeof m === "string" && m.startsWith("__tab:"));
     if (tabMark) switchTenantDialogTab(tabMark.slice(6));
@@ -688,7 +688,7 @@ tenantForm.addEventListener("submit", async event => {
     else if (messages.some(m => m.includes("teléfono") || m.includes("email"))) switchTenantDialogTab("contact");
     else if (messages.some(m => m.includes("inmueble"))) switchTenantDialogTab("property");
     else if (messages.some(m => m.includes("contrato") || m.includes("fecha"))) switchTenantDialogTab("contract");
-    showValidationErrors(messages, "Revisá los siguientes datos");
+    showValidationErrors(messages, "Revisa los siguientes datos");
     return;
   }
   const submittedAuthorizations = formData.getAll("authorizations");

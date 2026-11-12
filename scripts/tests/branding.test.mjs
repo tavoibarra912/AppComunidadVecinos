@@ -132,7 +132,7 @@ test("injectBranding: reemplaza marca en el HTML y escapa cierres de script", ()
   assert.ok(!out.includes("__BRAND_TITLE__"), "el título de la pestaña usa el nombre de marca");
   assert.ok(out.includes("<title>&lt;/script&gt;&lt;img src=x onerror=1&gt;</title>"), "el título escapa HTML");
 });
-test("publicSettingsOf: sólo expone datos públicos y respeta los interruptores", () => {
+test("publicSettingsOf: solo expone datos públicos y respeta los interruptores", () => {
   const fallback = publicSettingsOf({});
   assert.equal(fallback.permitirRegistro, true);
   assert.equal(fallback.permitirRecuperacion, true);

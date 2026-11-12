@@ -56,7 +56,7 @@ router.use((req, res, next) => {
   return res.status(503).json({
     error:
       settings.mensajeMantenimiento ||
-      "La plataforma está en mantenimiento. Volvé a intentar en unos minutos.",
+      "La plataforma está en mantenimiento. Vuelve a intentar en unos minutos.",
     mantenimiento: true,
   });
 });

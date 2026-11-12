@@ -95,8 +95,8 @@ function inboxEmpty(list, kind, total) {
   const message = !total
     ? kind === "admin"
       ? "Las solicitudes y novedades de los propietarios aparecerán aquí, con su comunidad y documentación."
-      : "Acá vas a recibir las respuestas de administración y las novedades sobre tus documentos."
-    : "Probá con otra búsqueda o elegí «Todos» para consultar el historial.";
+      : "Aquí vas a recibir las respuestas de administración y las novedades sobre tus documentos."
+    : "Prueba con otra búsqueda o elige «Todos» para consultar el historial.";
   list.innerHTML = `<div class="notification-inbox-empty" role="listitem"><span>${filter === "unread" && !search.trim() ? checkIcon : mailIcon}</span><h3>${title}</h3><p>${message}</p></div>`;
 }
 function notificationDate(n) {
@@ -320,7 +320,7 @@ export function renderOwnerInbox() {
       : "Todo está leído";
   markAllOwnerNotifsReadBtn.title = unread
     ? "Se aplica a todos tus avisos sin leer, incluso con filtros activos."
-    : "No tenés avisos pendientes de lectura.";
+    : "No tienes avisos pendientes de lectura.";
   ownerInboxList.setAttribute(
     "aria-busy",
     String(ownerBulkBusy || ownerReadPending.size > 0),

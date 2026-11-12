@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { parseListeningPids } from "../restart.mjs";
 
-test("restart: selecciona sólo listeners del puerto local exacto (IPv4 e IPv6)", () => {
+test("restart: selecciona solo listeners del puerto local exacto (IPv4 e IPv6)", () => {
   const output = `
   TCP    0.0.0.0:3000       0.0.0.0       LISTENING       101
   TCP    [::]:3000          [::]:0        LISTENING       101

@@ -94,5 +94,5 @@ test("UI auditoría: filtra y pagina por API, trata contenido como texto y recha
   await ui.renderAudit();
   assert.equal(calls.length, count);
   assert.equal(ui.get("#audit-results").children.length, 0);
-  assert.match(ui.get("#audit-status").textContent, /No tenés permiso/);
+  assert.match(ui.get("#audit-status").textContent, /No tienes permiso/);
 });

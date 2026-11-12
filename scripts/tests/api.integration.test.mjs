@@ -112,7 +112,7 @@ test("login: cookie HttpOnly, contraseña incorrecta y origen ajeno", async () =
     403,
   );
 });
-test("bootstrap: propietario e inquilino sólo reciben datos de sus perfiles", async () => {
+test("bootstrap: propietario e inquilino solo reciben datos de sus perfiles", async () => {
   const own = await owner("/bootstrap");
   assert.deepEqual(
     own.data.owners.map((o) => o.id),
@@ -452,7 +452,7 @@ test("propietario: la administración persiste los datos LPH en la ficha", async
     });
   }
 });
-test("buzones: avisos persisten y sólo el destinatario los puede marcar leídos", async () => {
+test("buzones: avisos persisten y solo el destinatario los puede marcar leídos", async () => {
   const n = await admin("/notifications/owner-notifications", "POST", {
     ownerId: "own-seed-1",
     title: "Aviso",
@@ -532,6 +532,34 @@ test("validaciones de servidor rechazan NIF y contacto inválidos", async () => 
         name: "Inválida",
         nif: "H99999997",
         email: "no-email",
+      })
+    ).status,
+    400,
+  );
+});
+test("comunidades: el NIF se normaliza aunque venga con espacios, guiones o minúsculas", async () => {
+  const created = await admin("/communities", "POST", {
+    name: "Comunidad normalizada",
+    nif: " h-33333337 ",
+  });
+  assert.equal(created.status, 201);
+  assert.equal(created.data.nif, "H33333337");
+  assert.equal(
+    (
+      await admin("/communities", "POST", {
+        name: "Duplicada",
+        nif: "H 33333337",
+      })
+    ).status,
+    409,
+  );
+  assert.equal((await admin(`/communities/${created.data.id}`, "DELETE")).status, 200);
+  // Un dígito de control incorrecto se sigue rechazando.
+  assert.equal(
+    (
+      await admin("/communities", "POST", {
+        name: "Control incorrecto",
+        nif: "H33333331",
       })
     ).status,
     400,
@@ -622,7 +650,7 @@ test("auditoría: tab y API responden al permiso audit:read del rol", async () =
   assert.equal((await sin("/admin/users")).status, 403);
 });
 
-test("proveedores de comunicación: visible sólo con el permiso admin:providers", async () => {
+test("proveedores de comunicación: visible solo con el permiso admin:providers", async () => {
   assert.equal((await admin("/admin/roles", "POST", { nombre: "proveedor-tab", descripcion: "solo proveedores", permisos: ["admin:providers"] })).status, 201);
   assert.equal((await admin("/admin/roles", "POST", { nombre: "sin-proveedores", descripcion: "sin proveedores", permisos: ["community:read"] })).status, 201);
   assert.equal((await admin("/admin/users", "POST", { nombre: "Proveedor", apellido: "Tab", usuario: "proveedor-tab-1", password: "clave-proveedores-1", rol: "proveedor-tab", activo: true })).status, 201);
@@ -789,7 +817,7 @@ test("registro nuevo: sesión propia sin perfiles ni comunidades de otra cuenta"
   );
 });
 
-test("cambio de contraseña propio: valida la actual y cierra sólo las sesiones de esa cuenta", async () => {
+test("cambio de contraseña propio: valida la actual y cierra solo las sesiones de esa cuenta", async () => {
   const created = await admin("/admin/users", "POST", {
     usuario: "self-password",
     rol: "user",
@@ -953,7 +981,7 @@ test("configuración: el modo mantenimiento bloquea vecinos y deja pasar a admin
   assert.equal((await admin("/bootstrap")).status, 200);
   assert.equal((await admin("/admin/settings", "PUT", {
     mantenimiento: false,
-    mensajeMantenimiento: "La plataforma está en mantenimiento. Volvé a intentar en unos minutos.",
+    mensajeMantenimiento: "La plataforma está en mantenimiento. Vuelve a intentar en unos minutos.",
   })).status, 200);
   assert.equal((await owner("/bootstrap")).status, 200);
 });

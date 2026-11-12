@@ -81,5 +81,5 @@ boot().catch(error => {
   console.error("[main] Error de inicialización:", error);
   showLoginView("signin");
   document.querySelector("#login-signin-error").textContent =
-    `No se pudo iniciar la aplicación: ${error.message}. Recargá la página para reintentar.`;
+    `No se pudo iniciar la aplicación: ${error.message}. Recarga la página para volver a intentarlo.`;
 });

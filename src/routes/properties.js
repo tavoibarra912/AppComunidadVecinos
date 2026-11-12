@@ -263,7 +263,7 @@ router.delete("/:id", (req, res) => {
   const inquilinos = db.prepare("SELECT COUNT(*) AS n FROM tenants WHERE propertyId = ?").get(existing.id).n;
   if (inquilinos > 0)
     return res.status(409).json({
-      error: `No se puede eliminar el inmueble: tiene ${inquilinos === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvinculá primero al inquilino.`,
+      error: `No se puede eliminar el inmueble: tiene ${inquilinos === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvincula primero al inquilino.`,
     });
   db.exec("BEGIN");
   try {

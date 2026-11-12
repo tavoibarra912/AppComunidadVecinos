@@ -51,7 +51,7 @@ const upload = (req, res, done) =>
       cb(
         ok
           ? null
-          : new Error(`Formato no permitido. Usá ${allowedLabels() || "PDF, JPG, JPEG, PNG o WebP"}.`),
+          : new Error(`Formato no permitido. Usa ${allowedLabels() || "PDF, JPG, JPEG, PNG o WebP"}.`),
         ok,
       );
     },
@@ -149,13 +149,13 @@ router.post("/", (req, res, next) =>
       if (!hasAccess(req.user, { entityType, entityId }, true)) {
         removeFiles(files);
         return res.status(403).json({
-          error: "No tenés permiso para adjuntar documentos a este registro.",
+          error: "No tienes permiso para adjuntar documentos a este registro.",
         });
       }
       if (!allowed(req.user, "document:upload", entityId)) {
         removeFiles(files);
         return res.status(403).json({
-          error: "No tenés permiso para subir documentos.",
+          error: "No tienes permiso para subir documentos.",
         });
       }
       if (
@@ -165,7 +165,7 @@ router.post("/", (req, res, next) =>
       ) {
         removeFiles(files);
         return res.status(400).json({
-          error: `Adjuntá archivos de hasta ${maxBytes() / 1024 / 1024} MB y un máximo total de 50 MB.`,
+          error: `Adjunta archivos de hasta ${maxBytes() / 1024 / 1024} MB y un máximo total de 50 MB.`,
         });
       }
       const types = files.map(contentType);
@@ -224,11 +224,11 @@ router.delete("/:id", (req, res) => {
   if (!hasAccess(req.user, row, true))
     return res
       .status(403)
-      .json({ error: "No tenés permiso para eliminar este documento." });
+      .json({ error: "No tienes permiso para eliminar este documento." });
   if (!allowed(req.user, "document:delete", row.entityId))
     return res
       .status(403)
-      .json({ error: "No tenés permiso para eliminar documentos." });
+      .json({ error: "No tienes permiso para eliminar documentos." });
   try {
     fs.unlinkSync(documentPath(row));
   } catch (e) {
@@ -243,7 +243,7 @@ router.get("/:id/download", (req, res) => {
     .get(req.params.id);
   if (!row) return res.status(404).json({ error: "Documento no encontrado." });
   if (!hasAccess(req.user, row))
-    return res.status(403).json({ error: "No tenés acceso a este documento." });
+    return res.status(403).json({ error: "No tienes acceso a este documento." });
   if (!fs.existsSync(documentPath(row)))
     return res.status(404).json({ error: "El archivo no está disponible." });
   res.download(documentPath(row), row.fileName);

@@ -341,7 +341,7 @@ test("cuotas UI: valida importes dentro del diálogo y conserva los datos al fal
       route.endsWith("/payments")
         ? Promise.reject(
             Object.assign(
-              new Error("Posible cobro duplicado: revisá la referencia"),
+              new Error("Posible cobro duplicado: revisa la referencia"),
               { status: 409 },
             ),
           )
@@ -415,7 +415,7 @@ test("cuotas UI: protege el ámbito de comunidad y los accesos desde fichas con 
     await flush();
     assert.match(
       f.w.document.querySelector("#fees-page").textContent,
-      /No tenés acceso financiero/,
+      /No tienes acceso financiero/,
     );
     assert.equal(
       f.calls.some((c) => c[0] === "/communities/c2"),
@@ -428,7 +428,7 @@ test("cuotas UI: protege el ámbito de comunidad y los accesos desde fichas con 
     f.w.hayCambiosSinGuardar = () => true;
     root.querySelector("a").click();
     assert.equal(f.w.location.hash, "#cuotas?comunidad=c2");
-    assert.match(root.textContent, /Guardá o descartá/);
+    assert.match(root.textContent, /Guarda o descarta/);
   } finally {
     f.dom.window.close();
   }

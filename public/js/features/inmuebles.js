@@ -184,7 +184,7 @@ function renderPropertyOwnersTab() {
   if (atFullCapacity) {
     const note = document.createElement("p");
     note.className = "form-intro property-owners-capacity-note";
-    note.textContent = "La titularidad de este inmueble ya suma 100%. Para agregar otro propietario, bajá primero el porcentaje de alguno de los actuales.";
+    note.textContent = "La titularidad de este inmueble ya suma 100%. Para agregar otro propietario, baja primero el porcentaje de alguno de los actuales.";
     listEl.parentElement.insertBefore(note, listEl);
   }
 
@@ -292,7 +292,7 @@ function renderPropertyTenantsTab() {
   if (tenantIds.length === 0) {
     const empty = document.createElement("p");
     empty.className = "form-intro";
-    empty.textContent = "No hay inquilinos asociados. Opcional: asociá inquilinos de los propietarios vinculados.";
+    empty.textContent = "No hay inquilinos asociados. Opcional: asocia inquilinos de los propietarios vinculados.";
     listEl.append(empty);
     return;
   }
@@ -348,7 +348,7 @@ function openPropertyOwnerLinkPanel() {
     select.replaceChildren();
     const selectedCommunityId = selectedPropertyCommunityId();
     if (!selectedCommunityId) {
-      select.add(new Option("Seleccioná primero la comunidad del inmueble", ""));
+      select.add(new Option("Selecciona primero la comunidad del inmueble", ""));
       return;
     }
     if (propertyOwnerCapacity() <= 0) {
@@ -380,7 +380,7 @@ function openPropertyTenantLinkPanel() {
     select.replaceChildren();
     const selectedCommunityId = selectedPropertyCommunityId();
     if (!selectedCommunityId) {
-      select.add(new Option("Seleccioná primero la comunidad del inmueble", ""));
+      select.add(new Option("Selecciona primero la comunidad del inmueble", ""));
       return;
     }
     const candidates = state.owners
@@ -427,7 +427,7 @@ if (btnConfirmOwner) {
     }
     const capacity = propertyOwnerCapacity();
     if (capacity <= 0) {
-      toast("La titularidad del inmueble ya está completa (100%). Bajá el porcentaje de algún propietario para agregar otro.");
+      toast("La titularidad del inmueble ya está completa (100%). Baja el porcentaje de algún propietario para agregar otro.");
       return;
     }
     editingPropertyPeople.ownerIds.push(ownerId);
@@ -646,7 +646,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
     propertyForm.elements.receiptStatus.closest("label").after(ledgerHint);
   }
   ledgerHint.hidden = !property?.hasFeeReceipts;
-  ledgerHint.textContent = "La cuota y el estado de pagos se calculan a partir de los recibos. Gestioná los cobros desde el menú Cuotas, seleccionando la comunidad.";
+  ledgerHint.textContent = "La cuota y el estado de los pagos se calculan a partir de los recibos. Gestiona los cobros desde el menú Cuotas, seleccionando la comunidad.";
   propertyForm.elements.propertyType.value = property?.propertyType || "";
   if (property) {
     ["communityId", "plot", "address", "cadastralRef", "registryNumber", "floor", "door", "staircase", "areaM2", "participationCoef", "propertyUse", "energyCertificate", "communityFee", "notes"]
@@ -966,7 +966,7 @@ export function openPropertyDelete(id) {
   if (!p) return;
   const inquilinos = tenantsForProperty(id);
   if (inquilinos.length > 0) {
-    toast(`No se puede eliminar “${p.plot}”: tiene ${inquilinos.length === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvinculá primero al inquilino.`);
+    toast(`No se puede eliminar “${p.plot}”: tiene ${inquilinos.length === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvincula primero al inquilino.`);
     return;
   }
   state.ui.deletingPropertyId = id;
@@ -1013,14 +1013,14 @@ makeSelectSearchable(document.querySelector("#property-owner-link-select"), "Bus
 makeSelectSearchable(document.querySelector("#property-tenant-link-select"), "Buscar inquilino…");
 
 // Territorio del inmueble: CP → municipio/provincia automáticos
-// Cuota de comunidad: sólo valores de dinero (dígitos, coma o punto)
+// Cuota de comunidad: solo valores de dinero (dígitos, coma o punto)
 const propertyFeeInput = propertyForm.elements.communityFee;
 if (propertyFeeInput) {
   propertyFeeInput.addEventListener("input", () => {
     propertyFeeInput.value = propertyFeeInput.value.replace(/[^0-9.,]/g, "").slice(0, 10);
   });
 }
-// Superficie: sólo enteros
+// Superficie: solo enteros
 const propertyAreaInput = propertyForm.elements.areaM2;
 if (propertyAreaInput) {
   propertyAreaInput.addEventListener("input", () => {
@@ -1114,16 +1114,16 @@ propertyForm.addEventListener("submit", async event => {
     }
   }
   if (!values.address || !values.address.trim()) messages.push("La dirección es obligatoria.");
-  if (!values.propertyType) messages.push("Seleccioná el tipo de inmueble.");
+  if (!values.propertyType) messages.push("Selecciona el tipo de inmueble.");
   if (!values.plot || !values.plot.trim()) messages.push("El identificador del inmueble es obligatorio.");
   if (!values.postalCode || !isValidPostalCode(values.postalCode)) messages.push("El código postal es obligatorio y debe ser válido en España.");
   const selectedLocation = getLocationById(values.city);
   if (!selectedLocation) {
-    messages.push("Seleccioná un municipio válido del listado.");
+    messages.push("Selecciona un municipio válido del listado.");
   } else if (selectedLocation.province !== values.province) {
     messages.push("El municipio debe pertenecer a la provincia seleccionada.");
   }
-  if (!["current", "pending"].includes(values.receiptStatus)) messages.push("Seleccioná un estado de recibos válido.");
+  if (!["current", "pending"].includes(values.receiptStatus)) messages.push("Selecciona un estado de recibos válido.");
   if (cadastralRef) {
     if (!isValidCadastralRef(cadastralRef)) {
       messages.push("La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.");
@@ -1154,7 +1154,7 @@ propertyForm.addEventListener("submit", async event => {
     if (file.size > 15 * 1024 * 1024) messages.push(`El archivo "${file.name}" supera el límite de 15 MB.`);
   });
   if (messages.length) {
-    showValidationErrors(messages, "Revisá los datos del inmueble");
+    showValidationErrors(messages, "Revisa los datos del inmueble");
     return;
   }
 
@@ -1241,4 +1241,3 @@ if (confirmPropertyDeleteBtn) {
 if (cancelPropertyDeleteBtn) {
   cancelPropertyDeleteBtn.addEventListener("click", closePropertyDelete);
 }
-

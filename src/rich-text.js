@@ -1,5 +1,5 @@
 // Saneamiento de texto enriquecido para el servidor. No depende del DOM:
-// reconstruye el HTML desde cero y sólo conserva una lista cerrada de etiquetas
+// reconstruye el HTML desde cero y solo conserva una lista cerrada de etiquetas
 // y el atributo href de los enlaces (validado por esquema).
 const ALLOWED_TAGS = new Set([
   "b",
@@ -61,7 +61,7 @@ export function sanitizeRichText(value, { maxLength = 20000 } = {}) {
 
     if (closing) {
       if (VOID_TAGS.has(name)) continue;
-      // Sólo se cierra una etiqueta que esté realmente abierta. Si hay
+      // Solo se cierra una etiqueta que esté realmente abierta. Si hay
       // etiquetas anidadas pendientes, se cierran en orden para mantener
       // un HTML bien formado (y descartar cierres huérfanos).
       const index = openTags.lastIndexOf(name);

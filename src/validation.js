@@ -1,4 +1,6 @@
-import { isValidCommunityNif, isValidIdentityDocument } from "../public/js/utils.js";
+import { isValidCommunityNif, isValidIdentityDocument, normalizeIdentityDocument } from "../public/js/utils.js";
+
+export { normalizeIdentityDocument };
 
 export const validEmail = (value) =>
   typeof value === "string" &&
@@ -15,7 +17,7 @@ export function identityDocumentError(value, documentType = "DNI") {
 export function communityNifError(value) {
   if (!value) return "El NIF de la comunidad es obligatorio.";
   if (!isValidCommunityNif(value))
-    return "El NIF de la comunidad debe ser un CIF válido con formato H + 7 dígitos + dígito o letra de control (por ejemplo, H12345674).";
+    return "El NIF de la comunidad debe ser un CIF válido con formato H + 7 dígitos + dígito de control numérico (por ejemplo, H12345674).";
   return null;
 }
 export function passwordError(value) {

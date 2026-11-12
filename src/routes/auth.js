@@ -30,7 +30,7 @@ router.use((req, res, next) => {
     return res
       .status(429)
       .json({
-        error: "Demasiados intentos. Volvé a intentar en unos minutos.",
+        error: "Demasiados intentos. Vuelve a intentar en unos minutos.",
       });
   entry.count++;
   attempts.set(key, entry);
@@ -63,7 +63,7 @@ router.post("/signup", (req, res) => {
     return res
       .status(400)
       .json({
-        error: "Indicá un usuario válido y una dirección de email válida.",
+        error: "Indica un usuario válido y una dirección de email válida.",
       });
   }
   const error = passwordError(password);
@@ -100,7 +100,7 @@ router.post("/signin", (req, res) => {
     typeof password !== "string" ||
     password.length > 128
   )
-    return res.status(400).json({ error: "Indicá usuario y contraseña." });
+    return res.status(400).json({ error: "Indica usuario y contraseña." });
   const user = db
     .prepare(
       "SELECT * FROM users WHERE LOWER(usuario) = LOWER(?) OR LOWER(email) = LOWER(?)",
@@ -119,7 +119,7 @@ router.post("/sso", (_req, res) =>
     .status(503)
     .json({
       error:
-        "El acceso con proveedores externos no está configurado. Usá usuario y contraseña.",
+        "El acceso con proveedores externos no está configurado. Usa usuario y contraseña.",
     }),
 );
 router.post("/forgot-password", (req, res, next) => {
