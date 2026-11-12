@@ -183,7 +183,7 @@ export function money(value, label = "El importe", allowZero = false) {
     throw problem(`${label} debe ser positivo.`);
   return cents;
 }
-function integer(value, min, max, label) {
+export function integer(value, min, max, label) {
   if (!Number.isInteger(value) || value < min || value > max)
     throw problem(`${label}: valor no válido (${min}–${max}).`);
   return value;
@@ -268,14 +268,33 @@ export function receiptById(id) {
   return row;
 }
 export function receiptConcept(row, snapshot = JSON.parse(row.snapshot)) {
+  if (row.serviceBillId)
+    return `Servicio de ${snapshot.serviceLabel || snapshot.service || "suministro"} · ${snapshot.servicePeriod || row.period}`;
   return row.assessmentId
     ? `Derrama "${snapshot.assessmentName}" · plazo ${snapshot.installment}/${snapshot.installmentCount}`
     : `Cuota ${row.period}`;
+}
+/** Artículo correcto para los textos: el servicio, la derrama o la cuota. */
+export function receiptArticle(row) {
+  return row.serviceBillId
+    ? "el servicio"
+    : row.assessmentId
+      ? "la derrama"
+      : "la cuota";
 }
 function lowerFirst(text) {
   return text ? text[0].toLowerCase() + text.slice(1) : text;
 }
 export function reminderSettingsForReceipt(row) {
+  if (row.serviceBillId) {
+    const service = db
+      .prepare("SELECT data FROM service_bills WHERE id=?")
+      .get(row.serviceBillId);
+    if (service)
+      return reminderSettings({
+        reminders: JSON.parse(service.data).reminders || {},
+      });
+  }
   if (row.assessmentId) {
     const assessment = db
       .prepare("SELECT data FROM fee_assessments WHERE id=?")
@@ -303,7 +322,11 @@ export function receiptView(row, date = today()) {
   return {
     ...row,
     snapshot,
-    kind: row.assessmentId ? "assessment" : "ordinary",
+    kind: row.serviceBillId
+      ? "service"
+      : row.assessmentId
+        ? "assessment"
+        : "ordinary",
     concept: receiptConcept(row, snapshot),
     payments,
     paid,
@@ -485,7 +508,7 @@ export function plans(communityId) {
     .all(communityId)
     .map((r) => ({ ...r, ...JSON.parse(r.data), data: undefined }));
 }
-function feeCommunity(communityId) {
+export function feeCommunity(communityId) {
   const community = db
     .prepare("SELECT * FROM communities WHERE id=?")
     .get(communityId);
@@ -574,7 +597,7 @@ export function savePlan(communityId, input, actor) {
       );
     const conflict = db
       .prepare(
-        "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND periodEnd>=?",
+        "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND serviceBillId='' AND periodEnd>=?",
       )
       .get(communityId, input.effectiveFrom);
     if (conflict)
@@ -605,7 +628,7 @@ function monthIndex(value) {
 function monthString(index) {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
 }
-function distribute(total, entries) {
+export function distribute(total, entries) {
   const sum = entries.reduce((s, x) => s + x.weight, 0);
   const parts = entries.map((x) => ({
     ...x,
@@ -727,7 +750,7 @@ export function preview(communityId, period) {
       );
     const previous = db
       .prepare(
-        "SELECT * FROM fee_receipts WHERE communityId=? AND propertyId=? AND cancelledAt='' AND assessmentId='' ORDER BY period DESC LIMIT 1",
+        "SELECT * FROM fee_receipts WHERE communityId=? AND propertyId=? AND cancelledAt='' AND assessmentId='' AND serviceBillId='' ORDER BY period DESC LIMIT 1",
       )
       .get(communityId, e.property.id);
     if (previous) {
@@ -769,7 +792,7 @@ export function preview(communityId, period) {
   if (
     db
       .prepare(
-        "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND period<=? AND periodEnd>=?",
+        "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND serviceBillId='' AND period<=? AND periodEnd>=?",
       )
       .get(communityId, periodEnd.slice(0, 7), `${period}-01`)
   )
@@ -849,7 +872,7 @@ export function assessmentById(id) {
 function assessmentPayload(row) {
   return JSON.parse(row.data);
 }
-function selectedAssessmentProperties(communityId, input) {
+export function selectedChargeProperties(communityId, input) {
   const all = listProperties()
     .filter((property) => property.communityId === communityId)
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -857,7 +880,7 @@ function selectedAssessmentProperties(communityId, input) {
   if (input.propertyIds !== undefined && !Array.isArray(input.propertyIds))
     throw problem("La selección de inmuebles no es válida.");
   if (Array.isArray(input.propertyIds) && !input.propertyIds.length)
-    throw problem("Elegí al menos un inmueble para la derrama.");
+    throw problem("Elegí al menos un inmueble.");
   const ids = input.propertyIds
     ? [...new Set(input.propertyIds)]
     : all.map((property) => property.id);
@@ -942,7 +965,7 @@ export function saveAssessment(communityId, input, actor, id = "") {
   const totalAmount = money(input.totalAmount, "El importe total");
   if (!["coefficient", "manual"].includes(input.mode))
     throw problem("Criterio de reparto no válido.");
-  const { all, selected, entries } = selectedAssessmentProperties(
+  const { all, selected, entries } = selectedChargeProperties(
     communityId,
     input,
   );
@@ -1222,7 +1245,7 @@ export function previewAssessment(id, number) {
       .get(row.id, number)
   )
     throw problem("Este plazo ya fue emitido.", 409);
-  const { entries } = selectedAssessmentProperties(row.communityId, {
+  const { entries } = selectedChargeProperties(row.communityId, {
     propertyIds: data.propertyIds,
   });
   for (const entry of entries) {
@@ -1515,7 +1538,7 @@ function allocate(payment, ids) {
         "payment",
         `${payment.id}:${view.paid + amount}`,
         "Cobro registrado",
-        `Se registraron ${formatMoney(amount)} para la ${lowerFirst(receiptConcept(receipt, view.snapshot))} de ${view.snapshot.property}.`,
+        `Se registraron ${formatMoney(amount)} para ${receiptArticle(receipt)} ${lowerFirst(receiptConcept(receipt, view.snapshot))} de ${view.snapshot.property}.`,
       );
     }
   }
@@ -1606,7 +1629,7 @@ export function allocateCredit(id, input, actor) {
     return paymentView(payment);
   });
 }
-function reason(value) {
+export function reason(value) {
   if (typeof value !== "string" || !value.trim() || value.length > 500)
     throw problem("Indicá el motivo (máximo 500 caracteres).");
   return value.trim();
@@ -1627,7 +1650,7 @@ export function reversePayment(id, input, actor) {
         "returned",
         id,
         "Devolución de cobro",
-        `Se devolvió un cobro de ${formatMoney(a.amount)} aplicado a la ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
+        `Se devolvió un cobro de ${formatMoney(a.amount)} aplicado a ${receiptArticle(r)} ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
       );
     }
     audit(actor, "return", id, { communityId: p.communityId, reason: note });
@@ -1652,7 +1675,7 @@ export function cancelReceipt(id, input, actor) {
       "cancelled",
       id,
       "Recibo anulado",
-      `Se anuló la ${lowerFirst(receiptConcept(row))}. Motivo: ${note}`,
+      `Se anuló ${receiptArticle(row)} ${lowerFirst(receiptConcept(row))}. Motivo: ${note}`,
     );
     audit(actor, "cancel", id, { communityId: row.communityId, reason: note });
   });
@@ -1741,13 +1764,20 @@ export function materializeFeeReminders(date = today()) {
         ? ` IBAN para transferencia: ${view.snapshot.communityIban}.`
         : "";
       const concept = receiptConcept(row, view.snapshot),
-        kind = row.assessmentId ? "derrama" : "cuota";
+        kind = row.serviceBillId
+          ? "servicio"
+          : row.assessmentId
+            ? "derrama"
+            : "cuota",
+        kindArticle = `${
+          kind === "servicio" ? "del" : "de la"
+        } ${kind}`;
       if (days <= 0 && days >= -settings.beforeDays && settings.beforeDays > 0)
         notify(
           row,
           "due",
           row.dueDate,
-          `Próximo vencimiento de ${kind}`,
+          `Próximo vencimiento ${kindArticle}`,
           `${concept} de ${view.snapshot.property} vence el ${row.dueDate}. Pendiente: ${formatMoney(view.outstanding)}.${iban}`,
         );
       if (days >= settings.afterDays && days > 0) {
@@ -1758,7 +1788,11 @@ export function materializeFeeReminders(date = today()) {
           row,
           "overdue",
           `${row.dueDate}:${repeat}`,
-          `${kind === "derrama" ? "Derrama" : "Cuota"} vencida pendiente`,
+          kind === "derrama"
+            ? "Derrama vencida pendiente"
+            : kind === "servicio"
+              ? "Servicio pendiente de pago"
+              : "Cuota vencida pendiente",
           `${concept} de ${view.snapshot.property} tiene ${formatMoney(view.outstanding)} pendientes desde ${row.dueDate}.${iban}`,
         );
       }

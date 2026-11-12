@@ -14,6 +14,7 @@ const moduleSource = (file) =>
     .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\r?\n/gm, "")
     .replace(/\bexport (?=(async )?function)/g, "");
 const editorSource = moduleSource("public/js/features/assessment-editor.js");
+const serviceEditorSource = moduleSource("public/js/features/service-editor.js");
 const richSource = moduleSource("public/js/rich-text.js");
 const htmlSource = moduleSource("public/js/html.js");
 const comboSource = readFileSync("public/js/utils.js", "utf8")
@@ -79,6 +80,8 @@ function fixture(manage = true) {
       },
     ],
     defaults: {},
+    services: [],
+    serviceMeters: {},
     properties: [{ id: "p1", plot: "Parcela 1", coefficient: "100" }],
   };
   Object.assign(w, {
@@ -145,8 +148,9 @@ function fixture(manage = true) {
       "\nlet comboSequence = 0;\n" +
       comboSource +
       editorSource +
+      serviceEditorSource +
       source +
-      "\nwindow.feeTest={mountFees,showReceipt,renderFeesPage,feeNavigation,mountFeeShortcut};",
+      "\nwindow.feeTest={mountFees,showReceipt,showService,renderFeesPage,feeNavigation,mountFeeShortcut};",
     dom.getInternalVMContext(),
   );
   return { dom, w, calls, data };
@@ -942,6 +946,355 @@ test("derramas UI: valida campos requeridos en pestañas ocultas y conserva el m
     await flush();
     const saved = f.calls.find((c) => c[1] === "PUT");
     assert.match(saved[2].purpose, /<strong>urgente<\/strong>/);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+function serviceFixture(manage = true) {
+  const f = fixture(manage);
+  const service = {
+    id: "s1",
+    communityId: "c1",
+    service: "agua",
+    serviceLabel: "Agua",
+    supplier: "Canal",
+    invoiceNumber: "F-2030-1",
+    period: "2026-10",
+    issueDate: "2026-10-01",
+    dueDate: "2026-11-01",
+    totalAmount: 10000,
+    createdAt: "2026-10-01T10:00:00.000Z",
+    actorId: "",
+    issuedAt: "",
+    cancelledAt: "",
+    cancellationReason: "",
+    concept: "Servicio de Agua · 2026-10",
+    canEdit: true,
+    method: "coefficient",
+    billing: "receipts",
+    variableShare: 0,
+    centralHeating: false,
+    legalBasis: "",
+    notes: "",
+    propertyIds: ["p1"],
+    allocations: { p1: 10000 },
+    coefficients: { p1: "100" },
+    effectiveCoefficients: { p1: 100 },
+    readings: {},
+    breakdown: [
+      {
+        propertyId: "p1",
+        plot: "Parcela 1",
+        coefficient: "100",
+        effectiveCoefficient: 100,
+        previous: null,
+        current: null,
+        consumption: null,
+        fixed: 10000,
+        variable: 0,
+        amount: 10000,
+      },
+    ],
+    omitted: [],
+    warnings: [],
+    subset: false,
+    reminders: {},
+    receiptCount: 0,
+    attachmentCount: 0,
+    totals: { total: 10000, issued: 0, paid: 0, outstanding: 0, cancelled: 0 },
+    status: "draft",
+    receipts: [],
+    attachments: [],
+  };
+  const serviceReceipt = {
+    ...f.data.receipts[0],
+    id: "svc-r1",
+    kind: "service",
+    serviceBillId: "s1",
+    concept: "Servicio de Agua · 2026-10",
+    amount: 10000,
+    paid: 0,
+    outstanding: 10000,
+    status: "pending",
+    dueDate: "2026-11-01",
+    snapshot: {
+      community: "Comunidad",
+      property: "Parcela 1",
+      owners: [{ id: "o1", name: "Titular" }],
+      agreement: "Servicio de suministros",
+      service: "agua",
+      serviceLabel: "Agua",
+      servicePeriod: "2026-10",
+      serviceSupplier: "Canal de Isabel II",
+      serviceInvoice: "F-2030-1",
+      serviceReadingPrevious: 100000,
+      serviceReadingCurrent: 120000,
+      serviceReadingConsumption: 20000,
+    },
+  };
+  const services = new Map([["s1", service]]);
+  const preview = {
+    serviceId: "s1",
+    serviceLabel: "Agua",
+    period: "2026-10",
+    dueDate: "2026-11-01",
+    total: 10000,
+    method: "coefficient",
+    billing: "receipts",
+    variableShare: 0,
+    warnings: [],
+    token: "service-token",
+    rows: [
+      {
+        propertyId: "p1",
+        amount: 10000,
+        fixed: 10000,
+        variable: 0,
+        reading: null,
+        snapshot: { property: "Parcela 1", coefficient: "100" },
+      },
+    ],
+  };
+  const original = f.w.api.fees;
+  f.w.api.fees = async (route, method = "GET", body) => {
+    if (route === "/receipts/svc-r1")
+      return { ...serviceReceipt, canManage: manage };
+    if (route === "/services/s1/preview") {
+      f.calls.push([route, method, body]);
+      return preview;
+    }
+    if (route === "/services/s1/issue") {
+      f.calls.push([route, method, body]);
+      service.issuedAt = "2026-11-12T10:00:00.000Z";
+      service.status = "issued";
+      service.canEdit = false;
+      return { ids: ["svc-r1"], total: 10000, billing: "receipts", serviceId: "s1" };
+    }
+    if (route === "/services/s1/cancel") {
+      f.calls.push([route, method, body]);
+      service.cancelledAt = "2026-11-12T10:00:00.000Z";
+      service.status = "cancelled";
+      service.cancellationReason = body.reason;
+      service.canEdit = false;
+      return service;
+    }
+    if (route === "/communities/c1/services" && method === "POST") {
+      f.calls.push([route, method, body]);
+      const saved = {
+        ...service,
+        ...body,
+        id: "s2",
+        status: "draft",
+        canEdit: true,
+        totals: { total: 10000, issued: 0, paid: 0, outstanding: 0, cancelled: 0 },
+        receipts: [],
+        attachments: [],
+      };
+      services.set("s2", saved);
+      return saved;
+    }
+    if (route.startsWith("/services/")) {
+      f.calls.push([route, method, body]);
+      const id = route.split("/")[2],
+        found = services.get(id);
+      if (method === "PUT") Object.assign(found, body);
+      return found;
+    }
+    return original(route, method, body);
+  };
+  f.data.services = [service];
+  f.data.serviceMeters = {
+    agua: {
+      p1: {
+        reading: 100000,
+        previous: 90000,
+        period: "2026-09",
+        issueDate: "2026-09-01",
+        serviceBillId: "s0",
+      },
+    },
+  };
+  f.data.properties = [
+    { id: "p1", plot: "Parcela 1", coefficient: "100" },
+    { id: "p2", plot: "Parcela 2", coefficient: "50" },
+  ];
+  f.w.state.properties.push({
+    id: "p2",
+    communityId: "c1",
+    ownerIds: ["o1"],
+  });
+  return { ...f, service, serviceReceipt };
+}
+
+async function openServices(f) {
+  f.w.feeTest.renderFeesPage();
+  await flush();
+  click(f.w, "Servicios", f.w.document.querySelector("#fees-page"));
+  await flush();
+}
+
+test("servicios UI: pestaña propia, listado y editor integrado que conserva el borrador", async () => {
+  const f = serviceFixture();
+  try {
+    f.data.receipts.push(f.serviceReceipt);
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    let results = f.w.document.querySelector(".fee-receipts-results");
+    assert.doesNotMatch(results.textContent, /Servicio de Agua/);
+    click(f.w, "Servicios", f.w.document.querySelector("#fees-page"));
+    await flush();
+    results = f.w.document.querySelector(".fee-receipts-results");
+    assert.match(results.textContent, /Servicio de Agua/);
+    assert.equal(results.querySelectorAll("tbody tr").length, 1);
+    const root = f.w.document.querySelector("#fees-page");
+    assert.match(root.textContent, /Servicios y suministros/);
+    assert.match(root.textContent, /Canal/);
+    click(f.w, "Nuevo servicio");
+    const form = f.w.document.querySelector(".fee-service-form");
+    assert.ok(form);
+    assert.equal(control(f.w, "Tipo de suministro").value, "agua");
+    assert.equal(
+      [...form.querySelectorAll(".fee-editor-pane")].filter(
+        (pane) => !pane.hidden,
+      ).length,
+      1,
+    );
+    click(f.w, "Cuotas ordinarias");
+    assert.equal(f.w.document.querySelector(".fee-service-editor"), null);
+    click(f.w, "Servicios");
+    assert.ok(f.w.document.querySelector(".fee-service-form"));
+    click(f.w, "Cerrar formulario de servicio");
+    assert.equal(f.w.document.querySelector(".fee-service-editor"), null);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("servicios UI: carga lecturas, propone la anterior, calcula consumo y guarda el reparto", async () => {
+  const f = serviceFixture();
+  try {
+    await openServices(f);
+    click(f.w, "Nuevo servicio");
+    const form = f.w.document.querySelector(".fee-service-form");
+    click(f.w, "Reparto", form);
+    const method = control(f.w, "Criterio de reparto");
+    method.value = "reading";
+    method.dispatchEvent(new f.w.Event("change", { bubbles: true }));
+    click(f.w, "Lecturas", form);
+    const rows = form.querySelectorAll(".fee-reading-row");
+    assert.equal(rows.length, 2);
+    const first = rows[0];
+    assert.equal(
+      first.querySelector('[data-reading="previous"]').value,
+      "100",
+    );
+    const current = first.querySelector('[data-reading="current"]');
+    current.value = "120";
+    current.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    assert.match(
+      first.querySelector(".fee-reading-consumption").textContent,
+      /Consumo: 20 m³/,
+    );
+    const second = rows[1];
+    second.querySelector('[data-reading="previous"]').value = "0";
+    second
+      .querySelector('[data-reading="previous"]')
+      .dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    const secondCurrent = second.querySelector('[data-reading="current"]');
+    secondCurrent.value = "30";
+    secondCurrent.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    const total = control(f.w, "Importe total de la factura (€)");
+    total.value = "100";
+    total.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    click(f.w, "Crear servicio");
+    await flush();
+    const saved = f.calls.find(
+      (call) => call[0] === "/communities/c1/services" && call[1] === "POST",
+    );
+    assert.ok(saved, "No se envió el servicio");
+    assert.equal(saved[2].method, "reading");
+    assert.equal(saved[2].totalAmount, "100");
+    assert.deepEqual(JSON.parse(JSON.stringify(saved[2].readings)), {
+      p1: { previous: "100", current: "120" },
+      p2: { previous: "0", current: "30" },
+    });
+    assert.match(
+      f.w.document.querySelector("#fee-dialog h2").textContent,
+      /Servicio de Agua/,
+    );
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("servicios UI: revisa el reparto, emite con token y bloquea una segunda emisión", async () => {
+  const f = serviceFixture();
+  try {
+    f.w.feeTest.showService("s1");
+    await flush();
+    assert.match(
+      f.w.document.querySelector("#fee-dialog h2").textContent,
+      /Servicio de Agua/,
+    );
+    let body = f.w.document.querySelector("#fee-dialog-body");
+    assert.match(body.textContent, /Reparto congelado/);
+    click(f.w, "Revisar y emitir");
+    await flush();
+    body = f.w.document.querySelector("#fee-dialog-body");
+    assert.match(body.textContent, /Vista previa/);
+    assert.match(body.textContent, /Se crearán 1 recibos/);
+    click(f.w, "Confirmar emisión de recibos");
+    await flush();
+    const issued = f.calls.find(
+      (call) => call[0] === "/services/s1/issue",
+    );
+    assert.deepEqual(JSON.parse(JSON.stringify(issued[2])), {
+      token: "service-token",
+    });
+    assert.match(
+      f.w.document.querySelector("#fee-dialog-body").textContent,
+      /Reparto congelado/,
+    );
+    assert.equal(
+      [...f.w.document.querySelectorAll("#fee-dialog-body button")].some(
+        (button) => button.textContent === "Revisar y emitir",
+      ),
+      false,
+    );
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("servicios UI: el recibo muestra proveedor y lecturas y descarga un CSV propio", async () => {
+  const f = serviceFixture();
+  try {
+    f.data.receipts.push(f.serviceReceipt);
+    f.w.Blob = Blob;
+    let csv;
+    f.w.URL.createObjectURL = (blob) => {
+      csv = blob;
+      return "blob:receipt";
+    };
+    f.w.URL.revokeObjectURL = () => {};
+    f.w.HTMLAnchorElement.prototype.click = () => {};
+    await openServices(f);
+    click(f.w, "Ver recibo");
+    await flush();
+    assert.match(
+      f.w.document.querySelector("#fee-dialog h2").textContent,
+      /Recibo de servicio/,
+    );
+    const body = f.w.document.querySelector("#fee-dialog-body");
+    assert.match(body.textContent, /Canal de Isabel II/);
+    assert.match(body.textContent, /Lectura anterior: 100 m³/);
+    assert.match(body.textContent, /Consumo: 20 m³/);
+    click(f.w, "Descargar extracto del recibo");
+    await flush();
+    const text = await csv.text();
+    assert.match(text, /"Servicio";"Agua"/);
+    assert.match(text, /"Lectura actual \(m³\)";"120"/);
   } finally {
     f.dom.window.close();
   }

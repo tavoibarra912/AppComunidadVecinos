@@ -12,9 +12,15 @@ function findProperty(id) {
 }
 
 function hasAssessment(propertyId) {
-  return db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_assessments'").get() &&
+  const assessment =
+    db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_assessments'").get() &&
     db.prepare(`SELECT 1 FROM fee_assessments a, json_each(a.data, '$.propertyIds') p
       WHERE a.cancelledAt='' AND p.value=? LIMIT 1`).get(propertyId);
+  if (assessment) return true;
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name='service_bills'").get())
+    return false;
+  return db.prepare(`SELECT 1 FROM service_bills s, json_each(s.data, '$.propertyIds') p
+      WHERE s.cancelledAt='' AND p.value=? LIMIT 1`).get(propertyId);
 }
 
 function propertyPayload(property) {
@@ -244,7 +250,7 @@ router.put("/:id", (req, res) => {
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
   const data = req.body || {};
   if ((data.communityId || "") !== existing.communityId && hasAssessment(existing.id))
-    return res.status(409).json({ error: "No se puede cambiar de comunidad un inmueble incluido en una derrama vigente. Anulá primero la derrama." });
+    return res.status(409).json({ error: "No se puede cambiar de comunidad un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto." });
   const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
   if (error) return res.status(400).json({ error });
   const community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
@@ -265,7 +271,7 @@ router.put("/:id", (req, res) => {
 
 router.delete("/:id", (req, res) => {
   if (hasAssessment(req.params.id))
-    return res.status(409).json({ error: "No se puede eliminar un inmueble incluido en una derrama vigente. Anulá primero la derrama." });
+    return res.status(409).json({ error: "No se puede eliminar un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto." });
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() && db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=?").get(req.params.id))
     return res.status(409).json({ error: "No se puede eliminar un inmueble con historial de cuotas." });
   const existing = findProperty(req.params.id);

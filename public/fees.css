@@ -609,6 +609,84 @@
   padding: 28px;
   background: var(--surface);
 }
+.fee-services {
+  margin-top: 16px;
+  background: var(--surface);
+}
+.fee-service-editor {
+  max-width: 1080px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 28px;
+  background: var(--surface);
+}
+.fee-service-editor .icon-action-btn {
+  flex-shrink: 0;
+}
+.fee-service-form {
+  display: block;
+  margin-top: 24px;
+}
+.fee-service-form .fee-form-grid {
+  gap: 22px;
+  margin-bottom: 22px;
+}
+.fee-service-form .fee-field-label {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.fee-service-editor [hidden] {
+  display: none !important;
+}
+.fee-readings {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+}
+.fee-reading-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 14px 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+}
+.fee-reading-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  grid-column: 1 / -1;
+}
+.fee-reading-consumption {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fee-reading-consumption.is-invalid {
+  color: #b42318;
+  font-weight: 600;
+}
+.fee-service-receipt {
+  padding: 14px 16px;
+  margin: 0 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+  font-size: 14px;
+}
+.fee-service-receipt p {
+  margin: 0 0 6px;
+}
+.fee-service-receipt p:last-child {
+  margin-bottom: 0;
+}
+.fee-status-informative {
+  background: #eef2f6;
+  color: #4b5b6b;
+}
 .fee-editor-heading {
   display: flex;
   align-items: flex-start;
@@ -781,12 +859,16 @@
   .fee-assessments {
     padding: 14px;
   }
-  .fee-assessment-editor {
+  .fee-assessment-editor,
+  .fee-service-editor {
     padding: 18px;
   }
   .fee-assessment-form .fee-installment-row {
     flex-wrap: wrap;
     gap: 14px;
+  }
+  .fee-reading-row {
+    grid-template-columns: 1fr;
   }
   .fee-installment-number {
     flex: 1;

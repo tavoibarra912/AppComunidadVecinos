@@ -14,6 +14,7 @@ import {
   receiptById,
   receiptView,
   receiptConcept,
+  receiptArticle,
   feeSummary,
   feeDefaults,
   plans,
@@ -35,6 +36,17 @@ import {
   adminNotice,
   notify,
 } from "../fees.js";
+import {
+  serviceBillById,
+  services,
+  saveService,
+  serviceDetail,
+  previewService,
+  issueService,
+  cancelService,
+  lastServiceReadings,
+  serviceAttachmentById,
+} from "../services.js";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -52,7 +64,12 @@ router.use((req, res, next) => {
   next();
 });
 const filesDir = path.join(UPLOADS_DIR, "fee-proofs");
+const serviceFilesDir = path.join(UPLOADS_DIR, "service-bills");
 const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 0 },
+}).single("file");
+const serviceUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 0 },
 }).single("file");
@@ -94,6 +111,11 @@ function payment(req) {
 }
 function assessment(req) {
   const row = assessmentById(req.params.assessmentId);
+  manage(req, row.communityId);
+  return row;
+}
+function service(req) {
+  const row = serviceBillById(req.params.serviceId);
   manage(req, row.communityId);
   return row;
 }
@@ -202,6 +224,8 @@ router.get(
       canManage: editable,
       plans: editable ? plans(id) : [],
       assessments: editable ? assessments(id) : [],
+      services: editable ? services(id) : [],
+      serviceMeters: editable ? lastServiceReadings(id) : {},
       defaults: editable ? feeDefaults() : null,
       properties: editable
         ? listProperties()
@@ -317,6 +341,197 @@ router.post(
   wrap((req, res) => {
     const row = assessment(req);
     res.json(cancelAssessment(row.id, req.body || {}, req.user));
+  }),
+);
+router.get(
+  "/communities/:communityId/services",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json({
+      services: services(id),
+      serviceMeters: lastServiceReadings(id),
+    });
+  }),
+);
+router.post(
+  "/communities/:communityId/services",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.status(201).json(saveService(id, req.body || {}, req.user));
+  }),
+);
+router.get(
+  "/services/:serviceId",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(serviceDetail(row));
+  }),
+);
+router.put(
+  "/services/:serviceId",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(saveService(row.communityId, req.body || {}, req.user, row.id));
+  }),
+);
+router.post(
+  "/services/:serviceId/preview",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(previewService(row.id));
+  }),
+);
+router.post(
+  "/services/:serviceId/issue",
+  wrap((req, res) => {
+    const row = service(req);
+    res.status(201).json(issueService(row.id, req.body || {}, req.user));
+  }),
+);
+router.post(
+  "/services/:serviceId/cancel",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(cancelService(row.id, req.body || {}, req.user));
+  }),
+);
+router.post("/services/:serviceId/attachments", (req, res, next) => {
+  let row;
+  try {
+    row = service(req);
+    if (row.cancelledAt) throw problem("El servicio está anulado.");
+  } catch (error) {
+    return next(error);
+  }
+  serviceUpload(req, res, (error) => {
+    if (error)
+      return next(
+        problem(
+          error.code === "LIMIT_FILE_SIZE"
+            ? "El adjunto supera 10 MB."
+            : "Subí un único archivo sin campos adicionales.",
+        ),
+      );
+    let diskPath;
+    try {
+      const file = req.file;
+      if (!file) throw problem("Adjuntá la factura en PDF, PNG, JPG o WebP.");
+      const b = file.buffer;
+      const mime =
+        b.subarray(0, 5).toString() === "%PDF-"
+          ? "application/pdf"
+          : b
+                .subarray(0, 8)
+                .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+            ? "image/png"
+            : b[0] === 255 && b[1] === 216 && b[2] === 255
+              ? "image/jpeg"
+              : b.subarray(0, 4).toString() === "RIFF" &&
+                  b.subarray(8, 12).toString() === "WEBP"
+                ? "image/webp"
+                : "";
+      if (!mime)
+        throw problem("El contenido del archivo no es PDF, PNG, JPG ni WebP.");
+      if (
+        db
+          .prepare(
+            "SELECT COUNT(*) AS n FROM service_attachments WHERE serviceBillId=?",
+          )
+          .get(row.id).n >= 10
+      )
+        throw problem("Este servicio ya tiene 10 adjuntos.");
+      const id = crypto.randomUUID(),
+        originalName =
+          path
+            .basename(file.originalname)
+            .replace(/[\x00-\x1f\x7f]/g, "")
+            .slice(0, 140) || "factura";
+      const extension = {
+        "application/pdf": ".pdf",
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+      }[mime];
+      const fileName = originalName.toLowerCase().endsWith(extension)
+        ? originalName
+        : originalName + extension;
+      fs.mkdirSync(serviceFilesDir, { recursive: true });
+      diskPath = path.join(serviceFilesDir, id);
+      fs.writeFileSync(diskPath, b, { flag: "wx" });
+      transaction(() => {
+        db.prepare(
+          "INSERT INTO service_attachments(id,serviceBillId,fileName,diskName,mime,createdAt,actorId) VALUES(?,?,?,?,?,?,?)",
+        ).run(
+          id,
+          row.id,
+          fileName,
+          id,
+          mime,
+          new Date().toISOString(),
+          req.user.id,
+        );
+        recordAudit({
+          actor: req.user,
+          action: "fee.service.attachment",
+          resourceType: "fee",
+          resourceId: row.id,
+          details: { attachmentId: id },
+        });
+      });
+      res.status(201).json({ id, fileName, mime });
+    } catch (failure) {
+      if (diskPath && fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+      next(failure);
+    }
+  });
+});
+router.get(
+  "/service-attachments/:attachmentId/download",
+  wrap((req, res) => {
+    const attachment = serviceAttachmentById(req.params.attachmentId),
+      row = serviceBillById(attachment.serviceBillId);
+    manage(req, row.communityId);
+    if (!/^[a-f0-9-]{36}$/.test(attachment.diskName))
+      throw problem("Archivo no válido.", 404);
+    const file = path.join(serviceFilesDir, attachment.diskName);
+    if (!fs.existsSync(file))
+      throw problem("El archivo no está disponible.", 404);
+    res.set("Content-Type", attachment.mime);
+    res.set(
+      "Content-Disposition",
+      `attachment; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
+    );
+    res.sendFile(file);
+  }),
+);
+router.delete(
+  "/service-attachments/:attachmentId",
+  wrap((req, res) => {
+    const attachment = serviceAttachmentById(req.params.attachmentId),
+      row = serviceBillById(attachment.serviceBillId);
+    manage(req, row.communityId);
+    if (row.issuedAt)
+      throw problem(
+        "El servicio ya fue emitido. Los adjuntos se conservan como justificante.",
+        409,
+      );
+    transaction(() => {
+      db.prepare("DELETE FROM service_attachments WHERE id=?").run(attachment.id);
+      recordAudit({
+        actor: req.user,
+        action: "fee.service.attachment_delete",
+        resourceType: "fee",
+        resourceId: row.id,
+        details: { attachmentId: attachment.id },
+      });
+    });
+    if (/^[a-f0-9-]{36}$/.test(attachment.diskName)) {
+      const file = path.join(serviceFilesDir, attachment.diskName);
+      if (fs.existsSync(file)) fs.unlinkSync(file);
+    }
+    res.json({ ok: true });
   }),
 );
 router.post(
@@ -535,7 +750,7 @@ router.post(
         "proof",
         proof.id,
         "Justificante revisado",
-        `Tu justificante para la ${receiptConcept(row)[0].toLowerCase()}${receiptConcept(row).slice(1)} fue ${req.body.status === "accepted" ? "aceptado para revisión bancaria" : "rechazado"}. ${req.body.note.trim()}`,
+        `Tu justificante para ${receiptArticle(row)} ${receiptConcept(row)[0].toLowerCase()}${receiptConcept(row).slice(1)} fue ${req.body.status === "accepted" ? "aceptado para revisión bancaria" : "rechazado"}. ${req.body.note.trim()}`,
         proof.ownerId,
       );
       recordAudit({
