@@ -670,6 +670,10 @@ router.get("/:id/preview", (req, res) => {
     "Content-Disposition",
     `inline; filename*=UTF-8''${encodeURIComponent(row.fileName)}`,
   );
+  // La vista previa se muestra dentro de un iframe del mismo origen: la CSP
+  // global (frame-ancestors 'none') impediría el encuadre. Se relaja solo para
+  // esta respuesta y solo para el propio origen.
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
   res.sendFile(documentPath(row));
 });
 

@@ -43,6 +43,7 @@ function client() {
         ? await response.json()
         : await response.text(),
       cookie: setCookie,
+      headers: response.headers,
     };
   };
 }
@@ -1418,6 +1419,28 @@ test("biblioteca documental: alcance de administradores de comunidad", async () 
       .status,
     200,
   );
+});
+
+test("vista previa: la CSP permite encuadrar el documento en el mismo origen", async () => {
+  const before = readdirSync(UPLOADS_DIR).sort();
+  const uploaded = await admin(
+    "/documents",
+    "POST",
+    pdfForm("property", "prop-seed-1", "Vista previa.pdf"),
+  );
+  assert.equal(uploaded.status, 201, JSON.stringify(uploaded.data));
+  const preview = await admin(`/documents/${uploaded.data[0].id}/preview`);
+  assert.equal(preview.status, 200);
+  assert.match(String(preview.data), /%PDF/);
+  assert.equal(
+    preview.headers.get("content-security-policy"),
+    "frame-ancestors 'self'",
+  );
+  assert.equal(
+    (await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status,
+    200,
+  );
+  assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
 });
 
 test("documentos Word: sólo descarga, sin vista previa", async () => {
