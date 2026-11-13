@@ -60,7 +60,6 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     ["general", "General"],
     ["properties", "Inmuebles"],
     ["installments", "Plazos"],
-    ["notices", "Avisos"],
   ];
   const nav = tabBar(
     form,
@@ -87,9 +86,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
           ? "Datos de la derrama"
           : label === "Inmuebles"
             ? "Reparto e inmuebles incluidos"
-            : label === "Plazos"
-              ? "Calendario de plazos"
-              : "Avisos y recordatorios",
+            : "Calendario de plazos",
       ),
     );
     panes.set(id, pane);
@@ -484,60 +481,6 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     updateSummary();
   }
 
-  const noticesPane = panes.get("notices");
-  info(
-    noticesPane,
-    "Opcional: elegí los canales y ajustá los recordatorios. Si no cambiás nada se usan los valores iniciales de la comunidad.",
-  );
-  const defaults = {
-    beforeDays: 3,
-    afterDays: 7,
-    repeatDays: 0,
-    internal: true,
-    email: false,
-    ...(ctx.data.defaults || {}),
-    ...(assessment?.reminders || {}),
-  };
-  const channels = el("div", undefined, "fee-notice-channels");
-  noticesPane.append(channels);
-  const internal = field(
-    channels,
-    "Avisos en el buzón de la app (opcional)",
-    "checkbox",
-    defaults.internal,
-  );
-  const email = field(
-    channels,
-    "Avisos por email a quienes habiliten el canal (opcional)",
-    "checkbox",
-    defaults.email,
-  );
-  const noticeGrid = el("div", undefined, "fee-form-grid");
-  noticesPane.append(noticeGrid);
-  const before = field(
-    noticeGrid,
-    "Días antes del vencimiento (opcional)",
-    "number",
-    defaults.beforeDays,
-  );
-  const after = field(
-    noticeGrid,
-    "Días después del vencimiento (opcional)",
-    "number",
-    defaults.afterDays,
-  );
-  const repeat = field(
-    noticeGrid,
-    "Repetir cada N días (opcional)",
-    "number",
-    defaults.repeatDays,
-  );
-  before.min = after.min = repeat.min = "0";
-  before.max = "60";
-  after.max = repeat.max = "365";
-  hint(before, "0 desactiva el aviso previo.");
-  hint(after, "0 avisa al día siguiente de vencer.");
-  hint(repeat, "0 envía un único aviso de vencimiento.");
   const footer = el("div", undefined, "fee-editor-footer");
   const footerSummary = el("p", undefined, "fee-editor-summary");
   const save = button(
@@ -678,16 +621,6 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
             amount: row.amount.value,
             dueDate: row.dueDate.value,
           })),
-          reminders: {
-            beforeDays:
-              before.value === "" ? defaults.beforeDays : Number(before.value),
-            afterDays:
-              after.value === "" ? defaults.afterDays : Number(after.value),
-            repeatDays:
-              repeat.value === "" ? defaults.repeatDays : Number(repeat.value),
-            internal: internal.checked,
-            email: email.checked,
-          },
         },
       );
       ctx.assessmentEditor = null;

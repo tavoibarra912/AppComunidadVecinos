@@ -418,8 +418,8 @@
             aria-selected="false">Acceso y seguridad</button>
           <button type="button" class="community-editor-tab" data-settings-tab="notificaciones"
             aria-selected="false">Notificaciones</button>
-          <button type="button" class="community-editor-tab" data-settings-tab="cuotas"
-            aria-selected="false">Cuotas</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="inquilinos"
+            aria-selected="false">Inquilinos</button>
           <button type="button" class="community-editor-tab" data-settings-tab="sistema"
             aria-selected="false">Sistema</button>
           <button type="button" class="community-editor-tab" data-settings-tab="estilo" aria-selected="false">Estilo</button>
@@ -469,7 +469,7 @@
             </div>
             <div id="settings-notificaciones-panel" hidden>
               <div class="form-grid">
-                <p class="form-section-title full">Notificaciones</p>
+                <p class="form-section-title full">Avisos generales</p>
                 <label class="full checkbox-line">
                   <input type="checkbox" name="notificacionesEmail" />
                   Enviar por email los avisos de comunidad a quien tenga el canal habilitado
@@ -478,20 +478,50 @@
                   <input name="avisosCambiosEmail" maxlength="300" placeholder="asociacionpenarubia@gmail.com, otra@gmail.com" />
                 </label>
                 <p class="form-intro full">Separá varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Requiere tildar «Habilitar correo electrónico».</p>
-              </div>
-            </div>
-            <div id="settings-cuotas-panel" hidden>
-              <div class="form-grid">
-                <p class="form-section-title full">Cuotas ordinarias · valores iniciales</p>
-                <p class="form-intro full">Se copian al crear un acuerdo de comunidad. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
+
+                <p class="form-section-title full">Cuotas ordinarias</p>
+                <p class="form-intro full">Valores iniciales que se copian al crear un acuerdo de cuotas. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
                 <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="feeBeforeDays" type="number" min="0" max="60" step="1" /></label>
                 <label>Aviso después del vencimiento (días)<input name="feeAfterDays" type="number" min="0" max="365" step="1" /></label>
                 <label>Repetición de vencidos (días; 0: una vez)<input name="feeRepeatDays" type="number" min="0" max="365" step="1" /></label>
                 <label class="checkbox-line"><input name="feeInternal" type="checkbox" />Avisos de cuotas en el buzón de la app</label>
                 <label class="checkbox-line"><input name="feeEmail" type="checkbox" />Avisos de cuotas por email a destinatarios con el canal habilitado</label>
-                <label class="full">Asunto del email de cuotas<input name="feeEmailSubject" maxlength="200" /></label>
-                <label class="full">Texto del email de cuotas<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
-                <p class="form-intro full">Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
+
+                <p class="form-section-title full">Derramas</p>
+                <p class="form-intro full">Valores iniciales que se copian al crear una derrama. Se aplican a los recibos de derrama que no tengan una configuración propia guardada.</p>
+                <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="assessmentBeforeDays" type="number" min="0" max="60" step="1" /></label>
+                <label>Aviso después del vencimiento (días)<input name="assessmentAfterDays" type="number" min="0" max="365" step="1" /></label>
+                <label>Repetición de vencidos (días; 0: una vez)<input name="assessmentRepeatDays" type="number" min="0" max="365" step="1" /></label>
+                <label class="checkbox-line"><input name="assessmentInternal" type="checkbox" />Avisos de derramas en el buzón de la app</label>
+                <label class="checkbox-line"><input name="assessmentEmail" type="checkbox" />Avisos de derramas por email a destinatarios con el canal habilitado</label>
+
+                <p class="form-section-title full">Servicios y suministros</p>
+                <p class="form-intro full">Valores iniciales que se copian al crear un servicio. Se aplican a los recibos de servicios que no tengan una configuración propia guardada.</p>
+                <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="serviceBeforeDays" type="number" min="0" max="60" step="1" /></label>
+                <label>Aviso después del vencimiento (días)<input name="serviceAfterDays" type="number" min="0" max="365" step="1" /></label>
+                <label>Repetición de vencidos (días; 0: una vez)<input name="serviceRepeatDays" type="number" min="0" max="365" step="1" /></label>
+                <label class="checkbox-line"><input name="serviceInternal" type="checkbox" />Avisos de servicios en el buzón de la app</label>
+                <label class="checkbox-line"><input name="serviceEmail" type="checkbox" />Avisos de servicios por email a destinatarios con el canal habilitado</label>
+
+                <p class="form-section-title full">Plantilla de email de avisos de cobro</p>
+                <label class="full">Asunto del email<input name="feeEmailSubject" maxlength="200" /></label>
+                <label class="full">Texto del email<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
+                <p class="form-intro full">Se usa para cuotas, derramas y servicios. Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
+              </div>
+            </div>
+            <div id="settings-inquilinos-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Autorizaciones de inquilinos</p>
+                <p class="form-intro full">Definí qué autorizaciones puede conceder cada comunidad. Estas opciones aparecen en la pestaña «Comunidad» de la ficha del inquilino. Si una comunidad no tiene una lista propia, se usan las opciones predeterminadas.</p>
+                <label class="full">Comunidad
+                  <select id="tenant-authorization-community"></select>
+                </label>
+                <input type="hidden" name="tenantAuthorizationsState" />
+                <div id="tenant-authorizations-editor" class="full"></div>
+                <div class="heading-actions full">
+                  <button type="button" class="secondary-button" id="add-tenant-authorization">Agregar autorización</button>
+                  <button type="button" class="secondary-button" id="reset-tenant-authorizations">Restaurar predeterminadas</button>
+                </div>
               </div>
             </div>
             <div id="settings-sistema-panel" hidden>
@@ -1893,11 +1923,8 @@
           <p class="form-section-title full">Autorizaciones concedidas</p>
           <fieldset class="full tenant-authorizations">
             <legend>Autorizaciones concedidas</legend>
-            <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
-            <label><input type="checkbox" name="authorizations" value="community_communications"
-                id="tenant-auth-comm" /> Recibir comunicaciones de la comunidad</label>
-            <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de
-              la unidad</label>
+            <div id="tenant-authorizations-list" class="full"></div>
+            <p class="field-hint full" id="tenant-authorizations-hint">Las opciones se configuran por comunidad en Configuración → Inquilinos.</p>
           </fieldset>
           <label class="full">Canal preferente de notificaciones (LPH art. 9) (opcional)
             <select name="notificationPreference">

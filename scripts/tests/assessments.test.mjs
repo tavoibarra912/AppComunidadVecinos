@@ -317,6 +317,22 @@ test("derramas: valida importes, selección, acuerdos, reparto y vencimientos an
   assert.equal(fees.assessments(c.id).length, 0);
 });
 
+test("derramas: sin pestaña de avisos conserva los recordatorios guardados y no los copia en las nuevas", () => {
+  const c = create({ reminders: { ...defaults.reminders, beforeDays: 12 } });
+  assert.equal(c.assessment.reminders.beforeDays, 12);
+  const withoutReminders = { ...defaults };
+  delete withoutReminders.reminders;
+  const edited = fees.saveAssessment(
+    c.id,
+    withoutReminders,
+    actor,
+    c.assessment.id,
+  );
+  assert.equal(edited.reminders.beforeDays, 12);
+  const fresh = fees.saveAssessment(c.id, withoutReminders, actor);
+  assert.deepEqual(fresh.reminders, {});
+});
+
 test("derramas: congela inmuebles, coeficientes e importes aunque cambien el censo y los coeficientes", () => {
   const c = create();
   const original = fees.previewAssessment(c.assessment.id, 1);

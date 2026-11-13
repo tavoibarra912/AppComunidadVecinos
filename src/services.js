@@ -16,7 +16,7 @@ import {
   receiptById,
   receiptConcept,
   receiptView,
-  reminderSettings,
+  noticeDefaults,
   formatMoney,
 } from "./fees.js";
 
@@ -55,6 +55,23 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS service_attachments_bill ON service_attachments(serviceBillId);
 `);
+
+// Fotos de contadores: se guardan como adjuntos del servicio, separados de la
+// factura mediante `kind` y vinculados al inmueble con `propertyId`.
+for (const [column, definition] of [
+  ["kind", "TEXT NOT NULL DEFAULT 'invoice'"],
+  ["propertyId", "TEXT NOT NULL DEFAULT ''"],
+]) {
+  if (
+    !db
+      .prepare("PRAGMA table_info(service_attachments)")
+      .all()
+      .some((item) => item.name === column)
+  )
+    db.exec(
+      `ALTER TABLE service_attachments ADD COLUMN ${column} ${definition}`,
+    );
+}
 
 if (
   !db
@@ -132,7 +149,7 @@ function readingValue(value, label) {
 }
 
 function serviceReminders(input) {
-  const defaults = reminderSettings({ reminders: {} }),
+  const defaults = noticeDefaults("service"),
     reminders = {};
   for (const [key, max] of [
     ["beforeDays", 60],
@@ -458,7 +475,10 @@ export function saveService(communityId, input, actor, id = "") {
     omitted,
     warnings,
     subset: selected.length < all.length,
-    reminders: serviceReminders(input),
+    // Sin pestaña propia de avisos: si el cliente no envía recordatorios, los
+    // servicios nuevos usan los valores generales de Notificaciones y los
+    // existentes conservan los que ya tenían guardados.
+    reminders: input.reminders === undefined ? null : serviceReminders(input),
   };
 
   return transaction(() => {
@@ -479,6 +499,8 @@ export function saveService(communityId, input, actor, id = "") {
           "El servicio ya fue emitido o repartido. Para cambiarlo, anulalo y creá uno nuevo.",
           409,
         );
+      if (data.reminders === null)
+        data.reminders = JSON.parse(row.data).reminders || {};
       db.prepare(
         `UPDATE service_bills SET service=?,supplier=?,invoiceNumber=?,period=?,issueDate=?,dueDate=?,totalAmount=?,data=? WHERE id=?`,
       ).run(
@@ -501,6 +523,7 @@ export function saveService(communityId, input, actor, id = "") {
       return serviceView(serviceBillById(id));
     }
     const serviceId = crypto.randomUUID();
+    if (data.reminders === null) data.reminders = {};
     db.prepare(
       `INSERT INTO service_bills(id,communityId,service,supplier,invoiceNumber,period,issueDate,dueDate,totalAmount,data,createdAt,actorId) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
     ).run(
@@ -543,7 +566,7 @@ export function serviceConcept(row) {
 export function serviceAttachments(serviceBillId) {
   return db
     .prepare(
-      "SELECT id,serviceBillId,fileName,mime,createdAt,actorId FROM service_attachments WHERE serviceBillId=? ORDER BY createdAt DESC",
+      "SELECT id,serviceBillId,fileName,mime,kind,propertyId,createdAt,actorId FROM service_attachments WHERE serviceBillId=? ORDER BY createdAt DESC",
     )
     .all(serviceBillId);
 }
@@ -595,12 +618,14 @@ export function informativeServicesFor(ownerIds, communityId = "") {
       legalBasis: data.legalBasis,
       notes: data.notes,
       warnings: data.warnings || [],
-      attachments: serviceAttachments(row.id).map((attachment) => ({
-        id: attachment.id,
-        fileName: attachment.fileName,
-        mime: attachment.mime,
-        createdAt: attachment.createdAt,
-      })),
+      attachments: serviceAttachments(row.id)
+        .filter((attachment) => attachment.kind !== "reading")
+        .map((attachment) => ({
+          id: attachment.id,
+          fileName: attachment.fileName,
+          mime: attachment.mime,
+          createdAt: attachment.createdAt,
+        })),
       properties: mine.map((property) => {
         const item = breakdown.get(property.id) || {};
         return {
@@ -681,7 +706,9 @@ export function serviceView(row, date = today()) {
     subset: !!data.subset,
     reminders: data.reminders,
     receiptCount: receipts.length,
-    attachmentCount: serviceAttachments(row.id).length,
+    attachmentCount: serviceAttachments(row.id).filter(
+      (attachment) => attachment.kind !== "reading",
+    ).length,
     totals: {
       total: row.totalAmount,
       issued: issuedAmount,

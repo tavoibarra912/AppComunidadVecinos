@@ -865,6 +865,71 @@ test("configuración: valida rangos y tipos antes de guardar", async () => {
   assert.equal(settings.data.duracionSesionHoras, 8);
   assert.equal(settings.data.nombreAsociacion, "Asociación Peñarrubia");
 });
+test("configuración: autorizaciones de inquilinos y avisos por tipo de recibo", async () => {
+  for (const [payload, pattern] of [
+    [{ tenantAuthorizations: [] }, /no son válidas/],
+    [{ tenantAuthorizations: { "com-seed-1": [] } }, /al menos una autorización/],
+    [
+      {
+        tenantAuthorizations: {
+          "com-seed-1": [
+            { id: "zona", label: "Zona" },
+            { id: "zona", label: "Otra" },
+          ],
+        },
+      },
+      /duplicadas/,
+    ],
+    [
+      { tenantAuthorizations: { "com-seed-1": [{ id: "id inválido", label: "Zona" }] } },
+      /identificador/,
+    ],
+    [
+      { tenantAuthorizations: { "com-seed-1": [{ id: "zona", label: " " }] } },
+      /nombre/,
+    ],
+    [{ assessmentBeforeDays: -1 }, /assessmentBeforeDays/],
+    [{ serviceRepeatDays: 1.5 }, /serviceRepeatDays/],
+    [{ serviceEmail: "yes" }, /booleanos/],
+  ]) {
+    const response = await admin("/admin/settings", "PUT", payload);
+    assert.equal(response.status, 400, JSON.stringify(payload));
+    assert.match(response.data.error, pattern);
+  }
+  const saved = await admin("/admin/settings", "PUT", {
+    tenantAuthorizations: {
+      "com-seed-1": [
+        { id: "common_areas", label: "Acceso a zonas comunes" },
+        { id: "custom_piscina", label: "Uso de la piscina" },
+      ],
+    },
+    assessmentBeforeDays: 5,
+    assessmentEmail: true,
+    serviceBeforeDays: 4,
+    serviceRepeatDays: 2,
+    serviceEmail: true,
+  });
+  assert.equal(saved.status, 200, JSON.stringify(saved.data));
+  assert.deepEqual(saved.data.tenantAuthorizations, {
+    "com-seed-1": [
+      { id: "common_areas", label: "Acceso a zonas comunes" },
+      { id: "custom_piscina", label: "Uso de la piscina" },
+    ],
+  });
+  assert.equal(saved.data.assessmentBeforeDays, 5);
+  assert.equal(saved.data.assessmentEmail, true);
+  assert.equal(saved.data.serviceBeforeDays, 4);
+  assert.equal(saved.data.serviceRepeatDays, 2);
+  assert.equal(saved.data.serviceEmail, true);
+  assert.equal((await admin("/admin/settings", "PUT", {
+    tenantAuthorizations: {},
+    assessmentBeforeDays: 3,
+    assessmentEmail: false,
+    serviceBeforeDays: 3,
+    serviceRepeatDays: 0,
+    serviceEmail: false,
+  })).status, 200);
+});
 test("configuración: registro y recuperación se pueden deshabilitar", async () => {
   assert.equal((await admin("/admin/settings", "PUT", { permitirRegistro: false, permitirRecuperacion: false })).status, 200);
   const signup = await client()("/auth/signup", "POST", {

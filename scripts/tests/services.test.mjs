@@ -752,6 +752,87 @@ test("servicios: adjunta la factura, descarga y protege los justificantes emitid
   );
 });
 
+test("servicios: sin pestaña de avisos conserva los recordatorios guardados y no los copia en los nuevos", () => {
+  const c = community(),
+    withReminders = services.saveService(
+      c.id,
+      { ...defaults, reminders: { ...defaults.reminders, beforeDays: 12 } },
+      actor,
+    );
+  assert.equal(withReminders.reminders.beforeDays, 12);
+  const withoutReminders = { ...defaults };
+  delete withoutReminders.reminders;
+  const edited = services.saveService(
+    c.id,
+    withoutReminders,
+    actor,
+    withReminders.id,
+  );
+  assert.equal(edited.reminders.beforeDays, 12);
+  const fresh = services.saveService(c.id, withoutReminders, actor);
+  assert.deepEqual(fresh.reminders, {});
+});
+
+test("servicios: fotos de contadores se guardan por inmueble y sobreviven a la emisión", async () => {
+  const c = community(),
+    route = `/fees/communities/${c.id}/services`,
+    service = await ok(staff, route, "POST", defaults, 201);
+  const bad = new FormData();
+  bad.append("file", new Blob(["no es una foto"]), "contador.txt");
+  assert.equal(
+    (
+      await staff(
+        `/fees/services/${service.id}/reading-photos/${c.properties[0]}`,
+        "POST",
+        bad,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await staff(
+        `/fees/services/${service.id}/reading-photos/otro-inmueble`,
+        "POST",
+        new FormData(),
+      )
+    ).status,
+    400,
+  );
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]);
+  const form = new FormData();
+  form.append("file", new Blob([png], { type: "image/png" }), "contador.png");
+  const photo = await ok(
+    staff,
+    `/fees/services/${service.id}/reading-photos/${c.properties[0]}`,
+    "POST",
+    form,
+    201,
+  );
+  assert.equal(photo.kind, "reading");
+  assert.equal(photo.propertyId, c.properties[0]);
+  const saved = detail(service.id);
+  assert.equal(
+    saved.attachments.filter((item) => item.kind === "reading").length,
+    1,
+  );
+  assert.equal(saved.attachmentCount, 0, "las fotos no cuentan como facturas");
+  const download = await fetch(
+    `${base}/fees/service-attachments/${photo.id}/download`,
+    { headers: { Cookie: staff.cookie || "" } },
+  );
+  assert.equal(download.status, 200);
+  assert.match(download.headers.get("content-type"), /image\/png/);
+  await ok(staff, `/fees/services/${service.id}/issue`, "POST", {
+    token: preview(service.id).token,
+  }, 201);
+  assert.equal(
+    (await staff(`/fees/service-attachments/${photo.id}`, "DELETE")).status,
+    200,
+  );
+  assert.equal(detail(service.id).attachments.length, 0);
+});
+
 test("servicios: no permite borrar ni mover inmuebles incluidos en un reparto vigente", async () => {
   const c = create();
   const property = c.properties[0];

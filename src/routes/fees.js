@@ -471,7 +471,7 @@ router.post("/services/:serviceId/attachments", (req, res, next) => {
       if (
         db
           .prepare(
-            "SELECT COUNT(*) AS n FROM service_attachments WHERE serviceBillId=?",
+            "SELECT COUNT(*) AS n FROM service_attachments WHERE serviceBillId=? AND kind <> 'reading'",
           )
           .get(row.id).n >= 10
       )
@@ -521,6 +521,111 @@ router.post("/services/:serviceId/attachments", (req, res, next) => {
     }
   });
 });
+router.post(
+  "/services/:serviceId/reading-photos/:propertyId",
+  (req, res, next) => {
+    let row;
+    try {
+      row = service(req);
+      if (row.cancelledAt) throw problem("El servicio está anulado.");
+      const data = JSON.parse(row.data),
+        propertyId = req.params.propertyId;
+      if (!(data.propertyIds || []).includes(propertyId))
+        throw problem("El inmueble no participa en este servicio.");
+      if (
+        !listProperties().some(
+          (property) =>
+            property.id === propertyId &&
+            property.communityId === row.communityId,
+        )
+      )
+        throw problem("Inmueble no encontrado.", 404);
+    } catch (error) {
+      return next(error);
+    }
+    serviceUpload(req, res, (error) => {
+      if (error)
+        return next(
+          problem(
+            error.code === "LIMIT_FILE_SIZE"
+              ? "La foto supera 10 MB."
+              : "Subí una única foto sin campos adicionales.",
+          ),
+        );
+      let diskPath;
+      try {
+        const file = req.file;
+        if (!file) throw problem("Adjuntá una foto del contador en PNG, JPG o WebP.");
+        const b = file.buffer;
+        const mime =
+          b
+            .subarray(0, 8)
+            .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+            ? "image/png"
+            : b[0] === 255 && b[1] === 216 && b[2] === 255
+              ? "image/jpeg"
+              : b.subarray(0, 4).toString() === "RIFF" &&
+                  b.subarray(8, 12).toString() === "WEBP"
+                ? "image/webp"
+                : "";
+        if (!mime)
+          throw problem("La foto debe ser PNG, JPG o WebP.");
+        const propertyId = req.params.propertyId;
+        if (
+          db
+            .prepare(
+              "SELECT COUNT(*) AS n FROM service_attachments WHERE serviceBillId=? AND kind='reading' AND propertyId=?",
+            )
+            .get(row.id, propertyId).n >= 6
+        )
+          throw problem("Ese contador ya tiene 6 fotos de referencia.");
+        const id = crypto.randomUUID(),
+          originalName =
+            path
+              .basename(file.originalname)
+              .replace(/[\x00-\x1f\x7f]/g, "")
+              .slice(0, 140) || "contador";
+        const extension = {
+          "image/png": ".png",
+          "image/jpeg": ".jpg",
+          "image/webp": ".webp",
+        }[mime];
+        const fileName = originalName.toLowerCase().endsWith(extension)
+          ? originalName
+          : originalName + extension;
+        fs.mkdirSync(serviceFilesDir, { recursive: true });
+        diskPath = path.join(serviceFilesDir, id);
+        fs.writeFileSync(diskPath, b, { flag: "wx" });
+        transaction(() => {
+          db.prepare(
+            "INSERT INTO service_attachments(id,serviceBillId,fileName,diskName,mime,kind,propertyId,createdAt,actorId) VALUES(?,?,?,?,?,?,?,?,?)",
+          ).run(
+            id,
+            row.id,
+            fileName,
+            id,
+            mime,
+            "reading",
+            propertyId,
+            new Date().toISOString(),
+            req.user.id,
+          );
+          recordAudit({
+            actor: req.user,
+            action: "fee.service.reading_photo",
+            resourceType: "fee",
+            resourceId: row.id,
+            details: { attachmentId: id, propertyId },
+          });
+        });
+        res.status(201).json({ id, fileName, mime, kind: "reading", propertyId });
+      } catch (failure) {
+        if (diskPath && fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+        next(failure);
+      }
+    });
+  },
+);
 router.get(
   "/service-attachments/:attachmentId/download",
   wrap((req, res) => {
@@ -547,7 +652,7 @@ router.delete(
     const attachment = serviceAttachmentById(req.params.attachmentId),
       row = serviceBillById(attachment.serviceBillId);
     manage(req, row.communityId);
-    if (row.issuedAt)
+    if (row.issuedAt && attachment.kind !== "reading")
       throw problem(
         "El servicio ya fue emitido. Los adjuntos se conservan como justificante.",
         409,
