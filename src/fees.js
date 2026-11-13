@@ -202,8 +202,32 @@ export function feeDefaults() {
       "{{mensaje}}\nConsultá el tab Financiero de tu ficha de propietario.",
   };
 }
-export function reminderSettings(plan) {
-  const defaults = feeDefaults(),
+/**
+ * Valores generales de avisos por tipo de recibo. Cuotas, derramas y servicios
+ * comparten la plantilla de email, pero cada uno puede definir sus propios
+ * plazos y canales en Configuración → Notificaciones.
+ */
+export function noticeDefaults(kind = "fee") {
+  const s = getSettings(),
+    fee = feeDefaults(),
+    prefix =
+      kind === "assessment" ? "assessment" : kind === "service" ? "service" : "";
+  if (!prefix) return fee;
+  const days = (key, fallback) =>
+    Number.isInteger(s[`${prefix}${key}`]) ? s[`${prefix}${key}`] : fallback;
+  const channel = (key, fallback) =>
+    typeof s[`${prefix}${key}`] === "boolean" ? s[`${prefix}${key}`] : fallback;
+  return {
+    ...fee,
+    beforeDays: days("BeforeDays", fee.beforeDays),
+    afterDays: days("AfterDays", fee.afterDays),
+    repeatDays: days("RepeatDays", fee.repeatDays),
+    internal: channel("Internal", fee.internal),
+    email: channel("Email", fee.email),
+  };
+}
+export function reminderSettings(plan, kind = "fee") {
+  const defaults = noticeDefaults(kind),
     saved = plan?.reminders || {};
   const bounded = (value, fallback, max) =>
     Number.isInteger(value) && value >= 0 && value <= max ? value : fallback;
@@ -217,15 +241,21 @@ export function reminderSettings(plan) {
   };
 }
 export function validateFeeDefaults(data) {
-  for (const [key, max] of [
-    ["feeBeforeDays", 60],
-    ["feeAfterDays", 365],
-    ["feeRepeatDays", 365],
-  ])
-    if (data[key] !== undefined) integer(data[key], 0, max, key);
-  for (const key of ["feeInternal", "feeEmail"])
-    if (data[key] !== undefined && typeof data[key] !== "boolean")
-      throw problem("Los canales de cuotas deben ser booleanos.");
+  for (const prefix of ["fee", "assessment", "service"])
+    for (const [key, max] of [
+      ["BeforeDays", 60],
+      ["AfterDays", 365],
+      ["RepeatDays", 365],
+    ])
+      if (data[`${prefix}${key}`] !== undefined)
+        integer(data[`${prefix}${key}`], 0, max, `${prefix}${key}`);
+  for (const prefix of ["fee", "assessment", "service"])
+    for (const key of ["Internal", "Email"])
+      if (
+        data[`${prefix}${key}`] !== undefined &&
+        typeof data[`${prefix}${key}`] !== "boolean"
+      )
+        throw problem(`Los canales de avisos (${prefix}) deben ser booleanos.`);
   for (const [key, max] of [
     ["feeEmailSubject", 200],
     ["feeEmailBody", 3000],
@@ -287,18 +317,24 @@ export function reminderSettingsForReceipt(row) {
       .prepare("SELECT data FROM service_bills WHERE id=?")
       .get(row.serviceBillId);
     if (service)
-      return reminderSettings({
-        reminders: JSON.parse(service.data).reminders || {},
-      });
+      return reminderSettings(
+        {
+          reminders: JSON.parse(service.data).reminders || {},
+        },
+        "service",
+      );
   }
   if (row.assessmentId) {
     const assessment = db
       .prepare("SELECT data FROM fee_assessments WHERE id=?")
       .get(row.assessmentId);
     if (assessment)
-      return reminderSettings({
-        reminders: JSON.parse(assessment.data).reminders || {},
-      });
+      return reminderSettings(
+        {
+          reminders: JSON.parse(assessment.data).reminders || {},
+        },
+        "assessment",
+      );
   }
   return reminderSettings(
     plans(row.communityId).find((plan) => plan.id === row.planId),
@@ -904,7 +940,7 @@ export function selectedChargeProperties(communityId, input) {
   return { all, selected, entries };
 }
 function assessmentReminders(input) {
-  const defaults = feeDefaults(),
+  const defaults = noticeDefaults("assessment"),
     reminders = {};
   for (const [key, max] of [
     ["beforeDays", 60],
@@ -1047,7 +1083,10 @@ export function saveAssessment(communityId, input, actor, id = "") {
         weight: allocations[entry.property.id],
       })),
     ),
-    reminders: assessmentReminders(input),
+    // Sin pestaña propia de avisos: si el cliente no envía recordatorios, las
+    // derramas nuevas usan los valores generales de Notificaciones y las
+    // existentes conservan los que ya tenían guardados.
+    reminders: input.reminders === undefined ? null : assessmentReminders(input),
   };
   return transaction(() => {
     if (id) {
@@ -1069,6 +1108,8 @@ export function saveAssessment(communityId, input, actor, id = "") {
           "La derrama tiene plazos anulados. Para cambiarla, anulala y creá una nueva.",
           409,
         );
+      if (data.reminders === null)
+        data.reminders = assessmentPayload(row).reminders || {};
       db.prepare(
         "UPDATE fee_assessments SET name=?,totalAmount=?,data=? WHERE id=?",
       ).run(name, totalAmount, JSON.stringify(data), id);
@@ -1080,6 +1121,7 @@ export function saveAssessment(communityId, input, actor, id = "") {
       return assessmentView(assessmentById(id));
     }
     const assessmentId = crypto.randomUUID();
+    if (data.reminders === null) data.reminders = {};
     db.prepare(
       "INSERT INTO fee_assessments(id,communityId,name,totalAmount,data,createdAt,actorId) VALUES(?,?,?,?,?,?,?)",
     ).run(

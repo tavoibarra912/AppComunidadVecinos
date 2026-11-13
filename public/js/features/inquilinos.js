@@ -1,7 +1,7 @@
 import { sanitizeHtml, escapeHtml, richTextHtml } from "../html.js";
 import { api } from "../api.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
-import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, tenantAuthorizationCatalog, tenantAuthorizationLabel, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, isValidEmail, isValidDateInput, isValidIdentityDocument, formatContractDate, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { createDataTable } from "../table.js";
 import { createRichText } from "../rich-text.js";
@@ -118,7 +118,9 @@ function tenantUpdateCanalOptions() {
 function syncTenantNotificationPreference() {
   const select = tenantForm.elements.notificationPreference;
   if (!select) return;
-  const checkbox = document.querySelector("#tenant-auth-comm");
+  const checkbox = tenantForm.querySelector(
+    'input[name="authorizations"][value="community_communications"]',
+  );
   select.disabled = tenantDialogReadOnly || !(checkbox && checkbox.checked);
 }
 
@@ -185,6 +187,56 @@ export function renderTenants() {
   }
 }
 
+function tenantCommunityId() {
+  return (
+    state.properties.find((property) => property.id === editingTenantPropertyId)
+      ?.communityId || ""
+  );
+}
+
+function selectedTenantAuthorizations() {
+  return [
+    ...tenantForm.querySelectorAll('input[name="authorizations"]:checked'),
+  ].map((input) => input.value);
+}
+
+/** Pinta las autorizaciones configuradas para la comunidad del inmueble. */
+function renderTenantAuthorizations(selectedValues = []) {
+  const box = document.querySelector("#tenant-authorizations-list");
+  if (!box) return;
+  const communityId = tenantCommunityId();
+  const catalog = tenantAuthorizationCatalog(communityId);
+  const selected = new Set(selectedValues);
+  box.replaceChildren();
+  if (!catalog.length) {
+    const empty = document.createElement("p");
+    empty.className = "form-intro";
+    empty.textContent =
+      "Esta comunidad todavía no tiene autorizaciones configuradas.";
+    box.append(empty);
+    return;
+  }
+  for (const item of catalog) {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = "authorizations";
+    input.value = item.id;
+    input.checked = selected.has(item.id);
+    label.append(input, document.createTextNode(` ${item.label}`));
+    box.append(label);
+  }
+  const hint = document.querySelector("#tenant-authorizations-hint");
+  if (hint) {
+    const community = state.communities.find(
+      (item) => item.id === communityId,
+    );
+    hint.textContent = community
+      ? `Opciones configuradas para ${community.name}. Se administran en Configuración → Inquilinos.`
+      : "Las opciones se configuran por comunidad en Configuración → Inquilinos.";
+  }
+}
+
 export function updateTenantPropertyOptions(ownerId, selectedPropertyId = "") {
   if (!tenantPropertySelect) return;
   tenantPropertySelect.replaceChildren(new Option("Selecciona un inmueble…", ""));
@@ -242,13 +294,14 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
     ["name","surname","documentType","documentId","contractType","monthlyRent","deposit","emergencyPhone","phone","email","contractStart","contractEnd","authorizationNotes"].forEach(key => {
       if (tenantForm.elements[key]) tenantForm.elements[key].value = tenant[key] || "";
     });
-    const authorizations = new Set(Array.isArray(tenant.authorizations) ? tenant.authorizations : []);
-    Array.from(tenantForm.elements.authorizations).forEach(input => { input.checked = authorizations.has(input.value); });
   } else {
     tenantForm.elements.contractStart.value = getLocalDateInputValue();
     tenantForm.elements.documentType.value = "DNI";
   }
   tenantNotes?.setValue(tenantForm.elements.authorizationNotes.value || "");
+  renderTenantAuthorizations(
+    Array.isArray(tenant?.authorizations) ? tenant.authorizations : [],
+  );
 
   updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
   renderTenantPropertyTab();
@@ -324,7 +377,7 @@ function renderTenantPropertyTab() {
   const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${property.plot}`, `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`);
   viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
   const unlinkBtn = iconBtn("btn-delete", "Desvincular", `Desvincular ${property.plot}`, `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path></svg>`);
-  unlinkBtn.addEventListener("click", () => { editingTenantPropertyId = null; renderTenantPropertyTab(); });
+  unlinkBtn.addEventListener("click", () => { editingTenantPropertyId = null; renderTenantPropertyTab(); renderTenantAuthorizations(selectedTenantAuthorizations()); });
   actions.append(viewBtn, unlinkBtn);
   card.append(info, actions);
   list.append(card);
@@ -512,14 +565,14 @@ if (tenantEmergencyPhoneInput) tenantEmergencyPhoneInput.addEventListener("input
   tenantEmergencyPhoneInput.value = (tenantEmergencyPhoneInput.value || "").replace(/\D/g, "").slice(0, 9);
 });
 
-// notification channel gating by checkbox
-const tenantAuthCommCheckbox = document.querySelector("#tenant-auth-comm");
-if (tenantAuthCommCheckbox) {
-  tenantAuthCommCheckbox.addEventListener("change", () => {
-    if (tenantAuthCommCheckbox.checked) tenantUpdateCanalOptions();
+// notification channel gating by checkbox (la lista es dinámica por comunidad)
+const tenantAuthorizationsList = document.querySelector("#tenant-authorizations-list");
+tenantAuthorizationsList?.addEventListener("change", event => {
+  if (event.target?.matches?.('input[name="authorizations"]')) {
+    if (event.target.checked) tenantUpdateCanalOptions();
     syncTenantNotificationPreference();
-  });
-}
+  }
+});
 
 // Tabs
 document.querySelectorAll("#tenant-dialog [data-tenant-tab]").forEach(btn => {
@@ -554,6 +607,7 @@ if (btnTenantConfirmProperty) btnTenantConfirmProperty.addEventListener("click",
   const panel = document.querySelector("#tenant-property-link-panel");
   if (panel) panel.hidden = true;
   renderTenantPropertyTab();
+  renderTenantAuthorizations(selectedTenantAuthorizations());
 });
 const btnTenantCancelProperty = document.querySelector("#btn-tenant-cancel-property");
 if (btnTenantCancelProperty) btnTenantCancelProperty.addEventListener("click", () => {
@@ -653,6 +707,7 @@ tenantOwnerSelect.addEventListener("change", () => {
   updateTenantPropertyOptions(tenantOwnerSelect.value);
   editingTenantPropertyId = null;
   renderTenantPropertyTab();
+  renderTenantAuthorizations(selectedTenantAuthorizations());
 });
 
 newTenantBtn.addEventListener("click", () => openTenantEditor(null, ""));
@@ -702,8 +757,14 @@ tenantForm.addEventListener("submit", async event => {
     return;
   }
   const submittedAuthorizations = formData.getAll("authorizations");
-  if (submittedAuthorizations.some(v => !Object.hasOwn(TENANT_AUTHORIZATION_LABELS, v))) {
-    tenantFormError.textContent = "Selecciona únicamente autorizaciones disponibles.";
+  const allowedAuthorizations = new Set(
+    tenantAuthorizationCatalog(tenantCommunityId()).map(item => item.id),
+  );
+  if (submittedAuthorizations.some(v => !allowedAuthorizations.has(v))) {
+    showValidationErrors(
+      ["Selecciona únicamente autorizaciones disponibles para esta comunidad."],
+      "Revisá las autorizaciones",
+    );
     return;
   }
   const tenantId = state.ui.editingTenantId || crypto.randomUUID();
@@ -781,7 +842,9 @@ export function openTenantDetail(ownerId, tenantId) {
   if (emergencyPhoneEl) emergencyPhoneEl.textContent = tenant.emergencyPhone || "—";
   const authorizations = document.querySelector("#tenant-detail-authorizations");
   authorizations.replaceChildren();
-  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map(v => TENANT_AUTHORIZATION_LABELS[v] || v);
+  const tenantCommunity =
+    state.properties.find(item => item.id === tenant.propertyId)?.communityId || "";
+  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map(v => tenantAuthorizationLabel(v, tenantCommunity));
   if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
   labels.forEach(label => { const item = document.createElement("li"); item.textContent = label; authorizations.append(item); });
   const tenantNotesEl = document.querySelector("#tenant-detail-authorization-notes");

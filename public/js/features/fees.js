@@ -504,6 +504,13 @@ function info(parent, text, alert = false) {
   parent.append(p);
   return p;
 }
+/** Texto enriquecido ya saneado (observaciones de servicios y derramas). */
+function richInfo(parent, html) {
+  const node = el("div", undefined, "form-intro");
+  node.innerHTML = richTextHtml(html);
+  parent.append(node);
+  return node;
+}
 
 /**
  * Guía visual del circuito de cuotas. Muestra en qué paso está la comunidad
@@ -1631,7 +1638,7 @@ function showInformativeService(service) {
   body.append(totals);
   if (service.legalBasis)
     info(body, `Base legal o acuerdo: ${service.legalBasis}`);
-  if (service.notes) info(body, service.notes);
+  if (service.notes) richInfo(body, service.notes);
   body.append(el("h3", "Tu reparto"));
   body.append(serviceRowsTable(mine, service.method));
   for (const warning of service.warnings || [])
@@ -1752,7 +1759,7 @@ async function showService(id) {
     );
     if (service.legalBasis)
       info(overview, `Base legal o acuerdo: ${service.legalBasis}`);
-    if (service.notes) info(overview, service.notes);
+    if (service.notes) richInfo(overview, service.notes);
     if (service.canEdit)
       overview.append(
         button("Editar servicio", async () => {
@@ -1814,6 +1821,33 @@ async function showService(id) {
       );
     for (const omitted of service.omitted || [])
       info(split, `${omitted.plot}: ${omitted.reason}.`, true);
+    const readingPhotos = (service.attachments || []).filter(
+      (attachment) => attachment.kind === "reading",
+    );
+    if (readingPhotos.length) {
+      split.append(el("h3", "Fotos de contadores"));
+      info(
+        split,
+        "Fotos aportadas como referencia de las lecturas. No alteran los importes del reparto.",
+      );
+      const plots = new Map(
+        (service.breakdown || []).map((item) => [
+          item.propertyId,
+          item.plot || item.snapshot?.property || item.propertyId,
+        ]),
+      );
+      for (const photo of readingPhotos) {
+        const row = el("div", undefined, "fee-proof"),
+          link = el("a", photo.fileName);
+        link.href = `/api/fees/service-attachments/${encodeURIComponent(photo.id)}/download`;
+        link.download = photo.fileName;
+        row.append(
+          el("span", plots.get(photo.propertyId) || photo.propertyId),
+          link,
+        );
+        split.append(row);
+      }
+    }
     if (service.receipts.length) {
       receipts.append(el("h3", "Recibos generados"));
       receipts.append(
@@ -1853,6 +1887,7 @@ async function showService(id) {
       "Podés adjuntar la foto o el PDF de la factura. Los adjuntos se conservan como justificante del reparto.",
     );
     for (const attachment of service.attachments || []) {
+      if (attachment.kind === "reading") continue;
       const row = el("div", undefined, "fee-proof"),
         link = el("a", attachment.fileName);
       link.href = `/api/fees/service-attachments/${encodeURIComponent(attachment.id)}/download`;
@@ -1999,7 +2034,6 @@ function configuration(ctx) {
     "Cada acuerdo queda guardado como una versión. La fecha debe ser posterior a los periodos ya emitidos. Los cambios generales no modifican estos acuerdos.",
   );
   const last = data.plans[0],
-    defaults = last?.reminders || data.defaults,
     grid = el("div", undefined, "fee-form-grid");
   body.append(grid);
   const annual = euroField(
@@ -2073,31 +2107,6 @@ function configuration(ctx) {
   };
   mode.addEventListener("change", toggle);
   toggle();
-  body.append(el("h3", "Avisos de esta comunidad"));
-  const noticeGrid = el("div", undefined, "fee-form-grid");
-  body.append(noticeGrid);
-  const before = field(
-    noticeGrid,
-    "Días antes del vencimiento (0 desactiva)",
-    "number",
-    defaults.beforeDays,
-  );
-  const after = field(
-    noticeGrid,
-    "Días después del vencimiento",
-    "number",
-    defaults.afterDays,
-  );
-  const repeat = field(
-    noticeGrid,
-    "Repetir aviso vencido cada N días (0: una vez)",
-    "number",
-    defaults.repeatDays,
-  );
-  for (const x of [before, after, repeat]) x.min = "0";
-  before.max = "60";
-  after.max = repeat.max = "365";
-  for (const x of [before, after, repeat]) x.required = true;
   if (data.receipts.length) {
     const latest = data.receipts
       .filter(
@@ -2112,18 +2121,6 @@ function configuration(ctx) {
       from.min = end.toISOString().slice(0, 7);
     }
   }
-  const internal = field(
-    noticeGrid,
-    "Avisos en el buzón de la app",
-    "checkbox",
-    defaults.internal,
-  );
-  const email = field(
-    noticeGrid,
-    "Avisos por email a quienes habiliten el canal",
-    "checkbox",
-    defaults.email,
-  );
   body.append(
     button(
       "Guardar nuevo acuerdo",
@@ -2141,13 +2138,6 @@ function configuration(ctx) {
               input.value,
             ]),
           ),
-          reminders: {
-            beforeDays: Number(before.value),
-            afterDays: Number(after.value),
-            repeatDays: Number(repeat.value),
-            internal: internal.checked,
-            email: email.checked,
-          },
         });
         dialog.close();
         await reloadAll();

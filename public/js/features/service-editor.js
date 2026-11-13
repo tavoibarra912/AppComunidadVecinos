@@ -1,6 +1,7 @@
 import { api } from "../api.js";
 import { state } from "../state.js";
-import { toast, makeSelectSearchable } from "../utils.js";
+import { toast, makeSelectSearchable, showValidationErrors } from "../utils.js";
+import { createRichText } from "../rich-text.js";
 
 export function buildServiceEditor(ctx, service, ui) {
   const {
@@ -63,7 +64,6 @@ export function buildServiceEditor(ctx, service, ui) {
     ["general", "General"],
     ["split", "Reparto"],
     ["readings", "Lecturas"],
-    ["notices", "Avisos"],
   ];
   const nav = tabBar(
     form,
@@ -90,9 +90,7 @@ export function buildServiceEditor(ctx, service, ui) {
           ? "Datos de la factura"
           : label === "Reparto"
             ? "Inmuebles y criterio de reparto"
-            : label === "Lecturas"
-              ? "Lecturas de contador"
-              : "Avisos y recordatorios",
+            : "Lecturas de contador",
       ),
     );
     panes.set(id, pane);
@@ -219,22 +217,63 @@ export function buildServiceEditor(ctx, service, ui) {
   );
   const centralHeating = field(
     grid,
-    "Calefacción o refrigeración centralizada (opcional)",
+    "¿Es calefacción o refrigeración centralizada? (opcional)",
     "checkbox",
     service?.centralHeating === true,
   );
   hint(
     centralHeating,
-    "Si la factura corresponde a calefacción o refrigeración centralizada, se avisará si la parte variable queda fuera del 60–75 % recomendado por el RD 736/2020.",
+    "Marcá esta casilla solo si la factura corresponde al sistema centralizado del edificio (no a un equipo individual de la vivienda). No cambia el reparto: activa un aviso si la parte variable queda fuera del 60–75 % recomendado por el RD 736/2020.",
   );
-  const notes = field(
-    grid,
-    "Notas internas (opcional)",
-    "textarea",
-    service?.notes || "",
+  const notesWrap = el("div", undefined, "fee-field fee-field-wide rich-text-field");
+  const notesLabel = el(
+    "span",
+    "Observaciones (opcional)",
+    "rich-text-label",
   );
+  notesLabel.id = `${sectionId}-notes-label`;
+  const notesEditorBox = el("div", undefined, "rich-text-editor");
+  const notesToolbar = el("div", undefined, "rich-text-toolbar");
+  notesToolbar.setAttribute("role", "toolbar");
+  notesToolbar.setAttribute("aria-label", "Formato de las observaciones");
+  for (const [command, label, html] of [
+    ["bold", "Negrita", "<strong>B</strong>"],
+    ["italic", "Cursiva", "<em>I</em>"],
+    ["underline", "Subrayado", "<u>U</u>"],
+    ["insertUnorderedList", "Lista con viñetas", "• Lista"],
+    ["insertOrderedList", "Lista numerada", "1. Lista"],
+    ["createLink", "Insertar enlace", "Enlace"],
+    ["removeFormat", "Quitar formato", "Limpiar"],
+  ]) {
+    const control = el("button");
+    control.type = "button";
+    control.dataset.richCommand = command;
+    control.title = label;
+    control.setAttribute("aria-label", label);
+    control.innerHTML = html;
+    notesToolbar.append(control);
+  }
+  const notesEditor = el("div", undefined, "rich-text-content");
+  notesEditor.id = `${sectionId}-notes-editor`;
+  notesEditor.contentEditable = "true";
+  notesEditor.setAttribute("role", "textbox");
+  notesEditor.setAttribute("aria-multiline", "true");
+  notesEditor.setAttribute("aria-labelledby", notesLabel.id);
+  notesEditor.dataset.placeholder = "Escribí observaciones sobre este servicio…";
+  notesEditor.dataset.maxlength = "2000";
+  notesEditorBox.append(notesToolbar, notesEditor);
+  const notes = el("textarea");
+  notes.name = "notes";
+  notes.hidden = true;
   notes.maxLength = 2000;
-  notes.closest(".fee-field").classList.add("fee-field-wide");
+  notesWrap.append(notesLabel, notesEditorBox, notes);
+  grid.append(notesWrap);
+  const notesRich = createRichText({
+    editor: notesEditor,
+    input: notes,
+    toolbar: notesToolbar,
+  });
+  notesRich?.setValue(service?.notes || "");
   info(
     general,
     "El reparto queda congelado al guardar: los cambios posteriores de coeficientes, censo o titulares no alteran los importes aprobados.",
@@ -503,6 +542,8 @@ export function buildServiceEditor(ctx, service, ui) {
   const readingsSummary = el("p", undefined, "fee-selection-summary");
   readingsSummary.setAttribute("aria-live", "polite");
   readingsPane.append(readingsBox, readingsSummary);
+  // Fotos elegidas en esta edición y todavía no subidas (se envían al guardar).
+  const pendingReadingPhotos = new Map();
   function renderReadings() {
     readingsBox.replaceChildren();
     readingsIntro.replaceChildren();
@@ -586,6 +627,111 @@ export function buildServiceEditor(ctx, service, ui) {
       previous.addEventListener("input", updateReading);
       current.addEventListener("input", updateReading);
       card.append(consumption);
+
+      const photos = el("div", undefined, "fee-reading-photos");
+      photos.append(
+        el(
+          "span",
+          "Fotos del contador (opcional)",
+          "fee-field-label",
+        ),
+        el(
+          "span",
+          "Adjuntá una o más fotos como referencia de la lectura. Máximo 6 por inmueble y 10 MB por archivo.",
+          "fee-field-hint",
+        ),
+      );
+      const existingPhotos = (service?.attachments || []).filter(
+        (attachment) =>
+          attachment.kind === "reading" &&
+          attachment.propertyId === property.id,
+      );
+      for (const photo of existingPhotos) {
+        const row = el("div", undefined, "fee-proof");
+        const link = el("a", photo.fileName);
+        link.href = `/api/fees/service-attachments/${encodeURIComponent(photo.id)}/download`;
+        link.download = photo.fileName;
+        row.append(link);
+        row.append(
+          button("Quitar", async () => {
+            await api.fees(
+              `/service-attachments/${encodeURIComponent(photo.id)}`,
+              "DELETE",
+            );
+            service.attachments = (service.attachments || []).filter(
+              (item) => item.id !== photo.id,
+            );
+            renderReadings();
+            toast("Foto del contador eliminada.");
+          }),
+        );
+        photos.append(row);
+      }
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/png,image/jpeg,image/webp";
+      fileInput.multiple = true;
+      fileInput.id = `service-reading-photos-${property.id}`;
+      const fileLabel = el("label", undefined, "fee-field");
+      const fileCaption = el(
+        "span",
+        "Agregar fotos",
+        "fee-field-label",
+      );
+      fileCaption.htmlFor = fileInput.id;
+      fileLabel.append(fileCaption, fileInput);
+      const pendingList = el("ul", undefined, "fee-reading-photo-list");
+      function renderPending() {
+        pendingList.replaceChildren();
+        for (const [index, file] of (
+          pendingReadingPhotos.get(property.id) || []
+        ).entries()) {
+          const item = el("li", file.name);
+          const remove = el("button", "Quitar", "text-link-button");
+          remove.type = "button";
+          remove.addEventListener("click", () => {
+            const list = pendingReadingPhotos.get(property.id) || [];
+            list.splice(index, 1);
+            if (list.length) pendingReadingPhotos.set(property.id, list);
+            else pendingReadingPhotos.delete(property.id);
+            renderPending();
+          });
+          item.append(" ", remove);
+          pendingList.append(item);
+        }
+      }
+      fileInput.addEventListener("change", () => {
+        const list = pendingReadingPhotos.get(property.id) || [];
+        const existingCount = (service?.attachments || []).filter(
+          (attachment) =>
+            attachment.kind === "reading" &&
+            attachment.propertyId === property.id,
+        ).length;
+        let total = existingCount + list.length;
+        for (const file of fileInput.files || []) {
+          if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+            toast(`"${file.name}" no es una imagen PNG, JPG o WebP.`);
+            continue;
+          }
+          if (file.size > 10 * 1024 * 1024) {
+            toast(`"${file.name}" supera 10 MB y no se agregó.`);
+            continue;
+          }
+          if (total >= 6) {
+            toast("Cada contador admite hasta 6 fotos de referencia.");
+            break;
+          }
+          list.push(file);
+          total += 1;
+        }
+        if (list.length) pendingReadingPhotos.set(property.id, list);
+        fileInput.value = "";
+        renderPending();
+        dirty = true;
+      });
+      photos.append(fileLabel, pendingList);
+      card.append(photos);
+
       readingsBox.append(card);
       updateReading();
     }
@@ -608,61 +754,6 @@ export function buildServiceEditor(ctx, service, ui) {
     }
     return "";
   }
-
-  const noticesPane = panes.get("notices");
-  info(
-    noticesPane,
-    "Opcional: elegí los canales y ajustá los recordatorios. Si no cambiás nada se usan los valores iniciales de la comunidad.",
-  );
-  const defaults = {
-    beforeDays: 3,
-    afterDays: 7,
-    repeatDays: 0,
-    internal: true,
-    email: false,
-    ...(ctx.data.defaults || {}),
-    ...(service?.reminders || {}),
-  };
-  const channels = el("div", undefined, "fee-notice-channels");
-  noticesPane.append(channels);
-  const internal = field(
-    channels,
-    "Avisos en el buzón de la app (opcional)",
-    "checkbox",
-    defaults.internal,
-  );
-  const email = field(
-    channels,
-    "Avisos por email a quienes habiliten el canal (opcional)",
-    "checkbox",
-    defaults.email,
-  );
-  const noticeGrid = el("div", undefined, "fee-form-grid");
-  noticesPane.append(noticeGrid);
-  const before = field(
-    noticeGrid,
-    "Días antes del vencimiento (opcional)",
-    "number",
-    defaults.beforeDays,
-  );
-  const after = field(
-    noticeGrid,
-    "Días después del vencimiento (opcional)",
-    "number",
-    defaults.afterDays,
-  );
-  const repeat = field(
-    noticeGrid,
-    "Repetir cada N días (opcional)",
-    "number",
-    defaults.repeatDays,
-  );
-  before.min = after.min = repeat.min = "0";
-  before.max = "60";
-  after.max = repeat.max = "365";
-  hint(before, "0 desactiva el aviso previo.");
-  hint(after, "0 avisa al día siguiente de vencer.");
-  hint(repeat, "0 envía un único aviso de vencimiento.");
 
   const footer = el("div", undefined, "fee-editor-footer");
   const footerSummary = el("p", undefined, "fee-editor-summary");
@@ -794,18 +885,30 @@ export function buildServiceEditor(ctx, service, ui) {
               ];
             }),
           ),
-          reminders: {
-            beforeDays:
-              before.value === "" ? defaults.beforeDays : Number(before.value),
-            afterDays:
-              after.value === "" ? defaults.afterDays : Number(after.value),
-            repeatDays:
-              repeat.value === "" ? defaults.repeatDays : Number(repeat.value),
-            internal: internal.checked,
-            email: email.checked,
-          },
         },
       );
+      const photoErrors = [];
+      for (const [propertyId, files] of pendingReadingPhotos) {
+        // Si el inmueble se quitó del reparto, sus fotos ya no aplican.
+        if (!selected.has(propertyId)) continue;
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("file", file);
+          try {
+            await api.fees(
+              `/services/${encodeURIComponent(saved.id)}/reading-photos/${encodeURIComponent(propertyId)}`,
+              "POST",
+              formData,
+            );
+          } catch (failure) {
+            const plot =
+              state.properties.find((property) => property.id === propertyId)
+                ?.plot || propertyId;
+            photoErrors.push(`${plot} · ${file.name}: ${failure.message}`);
+          }
+        }
+      }
+      pendingReadingPhotos.clear();
       ctx.serviceEditor = null;
       await reloadAll();
       toast(
@@ -814,8 +917,16 @@ export function buildServiceEditor(ctx, service, ui) {
           : "Servicio guardado. Todavía no se emitieron recibos.",
       );
       showService(saved.id);
+      if (photoErrors.length)
+        showValidationErrors(
+          photoErrors,
+          "El servicio se guardó, pero algunas fotos no se pudieron subir",
+        );
     } catch (failure) {
-      fail(failure.message);
+      showValidationErrors(
+        [failure.message],
+        "No se pudo guardar el servicio",
+      );
     } finally {
       saving = false;
       save.disabled = close.disabled = back.disabled = false;

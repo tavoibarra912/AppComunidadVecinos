@@ -929,7 +929,7 @@ test("derramas UI: valida campos requeridos en pestañas ocultas y conserva el m
     const name = control(f.w, "Nombre de la derrama");
     assert.equal(name.required, true);
     name.value = "";
-    click(f.w, "Avisos", form);
+    click(f.w, "Plazos", form);
     click(f.w, "Guardar cambios");
     await flush();
     assert.equal(
@@ -1223,6 +1223,62 @@ test("servicios UI: carga lecturas, propone la anterior, calcula consumo y guard
       f.w.document.querySelector("#fee-dialog h2").textContent,
       /Servicio de Agua/,
     );
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("servicios UI: observaciones con formato y fotos de contador se envían al guardar", async () => {
+  const f = serviceFixture();
+  try {
+    await openServices(f);
+    click(f.w, "Abrir servicio");
+    await flush();
+    click(f.w, "Editar servicio");
+    await flush();
+    const form = f.w.document.querySelector(".fee-service-form");
+    const rich = form.querySelector(".rich-text-content");
+    assert.ok(rich, "faltó el editor de observaciones");
+    rich.innerHTML = "<p>Revisión <strong>anual</strong></p>";
+    rich.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    click(f.w, "Reparto", form);
+    const method = control(f.w, "Criterio de reparto");
+    method.value = "reading";
+    method.dispatchEvent(new f.w.Event("change", { bubbles: true }));
+    click(f.w, "Lecturas", form);
+    const row = form.querySelector(".fee-reading-row");
+    assert.ok(row);
+    const previous = row.querySelector('[data-reading="previous"]');
+    previous.value = "100";
+    previous.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    const current = row.querySelector('[data-reading="current"]');
+    current.value = "120";
+    current.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    const fileInput = row.querySelector('input[type="file"]');
+    assert.equal(fileInput.multiple, true);
+    const photo = new f.w.File(
+      [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
+      "contador.png",
+      { type: "image/png" },
+    );
+    Object.defineProperty(fileInput, "files", {
+      value: [photo],
+      configurable: true,
+    });
+    fileInput.dispatchEvent(new f.w.Event("change", { bubbles: true }));
+    click(f.w, "Guardar cambios");
+    await flush();
+    const put = f.calls.find(
+      (call) => call[0] === "/services/s1" && call[1] === "PUT",
+    );
+    assert.ok(put, "No se guardó el servicio");
+    assert.match(put[2].notes, /<strong>anual<\/strong>/);
+    const upload = f.calls.find(
+      (call) => call[0] === "/services/s1/reading-photos/p1",
+    );
+    assert.ok(upload, "No se subió la foto del contador");
+    assert.equal(upload[1], "POST");
+    assert.ok(upload[2] instanceof f.w.FormData);
   } finally {
     f.dom.window.close();
   }

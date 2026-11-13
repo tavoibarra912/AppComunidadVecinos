@@ -515,12 +515,36 @@ test("cuotas: protege historial y valida la configuración general", async () =>
   await ok(admin, "/admin/settings", "PUT", {
     feeBeforeDays: 5,
     feeEmail: false,
+    assessmentBeforeDays: 6,
+    assessmentEmail: true,
+    serviceBeforeDays: 4,
+    serviceEmail: true,
   });
   assert.equal(
     (await ok(staff, `/fees/communities/${c1}`)).plans[0].reminders.beforeDays,
     3,
     "Los acuerdos existentes no cambian",
   );
+  assert.equal(fees.noticeDefaults("fee").beforeDays, 5);
+  assert.equal(fees.noticeDefaults("assessment").beforeDays, 6);
+  assert.equal(fees.noticeDefaults("assessment").email, true);
+  assert.equal(fees.noticeDefaults("service").beforeDays, 4);
+  assert.equal(fees.noticeDefaults("service").email, true);
+  assert.equal(fees.reminderSettings({ reminders: {} }, "service").beforeDays, 4);
+  assert.equal(
+    fees.reminderSettings(
+      { reminders: { beforeDays: 2, email: false } },
+      "assessment",
+    ).beforeDays,
+    2,
+  );
+  await ok(admin, "/admin/settings", "PUT", {
+    feeBeforeDays: 3,
+    assessmentBeforeDays: 3,
+    assessmentEmail: false,
+    serviceBeforeDays: 3,
+    serviceEmail: false,
+  });
 });
 test("cuotas: una comunidad que no usa euros no puede configurar, previsualizar ni emitir", async () => {
   const id = "fee-community-non-eur";
