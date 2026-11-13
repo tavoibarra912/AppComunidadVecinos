@@ -62,14 +62,28 @@ export const api = {
   deleteTenant: id => request(`/tenants/${id}`, { method: "DELETE" }),
 
   // --- Documentos genéricos (comunidades, inmuebles e inquilinos) ---
-  uploadDocuments: (files, entityType, entityId) => {
+  uploadDocuments: (files, entityType, entityId, options = {}) => {
     const formData = new FormData();
     formData.append("entityType", entityType);
     formData.append("entityId", entityId);
+    if (options.folderId) formData.append("folderId", options.folderId);
+    if (options.category) formData.append("category", options.category);
     [...files].forEach(file => formData.append("files", file));
     return request("/documents", { method: "POST", body: formData });
   },
+  listDocuments: (entityType, entityId, category = "document") =>
+    request(`/documents?${new URLSearchParams({ entityType, entityId, category })}`),
+  updateDocument: (id, payload) => request(`/documents/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  replaceDocument: (id, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request(`/documents/${id}/replace`, { method: "POST", body: formData });
+  },
   deleteDocument: id => request(`/documents/${id}`, { method: "DELETE" }),
+  createDocumentFolder: payload => request("/documents/folders", { method: "POST", body: JSON.stringify(payload) }),
+  updateDocumentFolder: (id, payload) => request(`/documents/folders/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteDocumentFolder: (id, confirm = false) =>
+    request(`/documents/folders/${id}${confirm ? "?confirm=1" : ""}`, { method: "DELETE" }),
 
   // --- Administración: usuarios, roles y configuración ---
   listUsers: () => request("/admin/users"),

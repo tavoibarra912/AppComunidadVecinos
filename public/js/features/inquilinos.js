@@ -7,6 +7,7 @@ import { createDataTable } from "../table.js";
 import { createRichText } from "../rich-text.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
+import { createDocumentLibrary } from "../document-library.js";
 
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
@@ -48,11 +49,61 @@ makeSelectSearchable(tenantPropertySelect, "Buscar inmueble…");
 makeSelectSearchable(document.querySelector("#tenant-user-select"), "Buscar cuenta de usuario…");
 const tenantDetailDialog = document.querySelector("#tenant-detail-dialog");
 const tenantDeleteDialog = document.querySelector("#tenant-delete-dialog");
+const tenantDocumentLibraryHost = document.querySelector("#tenant-document-library");
+const tenantDetailDocumentLibraryHost = document.querySelector("#tenant-detail-document-library");
 
 let tenantTable = null;
 let tenantEditingDocs = {};
 let editingTenantPropertyId = null;
 let tenantDialogReadOnly = false;
+
+function tenantLibraryData(tenantId) {
+  const tenant = state.tenants.find(item => item.id === tenantId);
+  return {
+    documents: tenant?.libraryDocuments || [],
+    folders: tenant?.documentFolders || []
+  };
+}
+
+async function refreshTenantLibraries() {
+  await refreshState();
+  tenantDocumentsLibrary?.refresh();
+  tenantDetailDocumentsLibrary?.refresh();
+}
+
+const tenantDocumentsLibrary = tenantDocumentLibraryHost
+  ? createDocumentLibrary({
+      container: tenantDocumentLibraryHost,
+      entityType: "tenant",
+      category: "document",
+      getEntityId: () => state.ui.editingTenantId,
+      getData: () => tenantLibraryData(state.ui.editingTenantId),
+      settings: () => state.settings,
+      countEl: "#tenant-doc-count",
+      canWrite: () =>
+        !tenantDialogReadOnly &&
+        !!state.ui.editingTenantId &&
+        hasPermission("tenant:manage", state.ui.editingTenantId) &&
+        hasPermission("document:upload", state.ui.editingTenantId),
+      onChange: refreshTenantLibraries,
+      emptyText:
+        "Subí documentación adicional del inquilino y organizala en carpetas."
+    })
+  : null;
+
+const tenantDetailDocumentsLibrary = tenantDetailDocumentLibraryHost
+  ? createDocumentLibrary({
+      container: tenantDetailDocumentLibraryHost,
+      entityType: "tenant",
+      category: "document",
+      getEntityId: () => state.ui.viewingTenantId,
+      getData: () => tenantLibraryData(state.ui.viewingTenantId),
+      settings: () => state.settings,
+      countEl: "#tenant-detail-library-count",
+      canWrite: () => false,
+      emptyText: "No hay archivos adicionales cargados."
+    })
+  : null;
 
 const tenantPhoneVerifyStatus = document.querySelector("#tenant-phone-verify-status");
 const tenantEmailVerifyStatus = document.querySelector("#tenant-email-verify-status");
@@ -313,6 +364,7 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
   syncTenantNotificationPreference();
   if (tenantForm.elements.userId) tenantForm.elements.userId.disabled = readonly || !hasPermission("admin:users");
   armarGuardia(tenantForm, tenantDialog);
+  tenantDocumentsLibrary?.setEntity(id);
   if (!tenantDialog.open) tenantDialog.showModal();
 }
 
@@ -339,6 +391,7 @@ export function closeTenantEditor() {
   state.ui.editingTenantId = null;
   tenantEditingDocs = {};
   editingTenantPropertyId = null;
+  tenantDocumentsLibrary?.setEntity("");
 }
 
 function renderTenantPropertyTab() {
@@ -900,6 +953,7 @@ export function openTenantDetail(ownerId, tenantId) {
   const viewPropertyButton = document.querySelector("#tenant-detail-view-property");
   viewPropertyButton.hidden = !property;
   viewPropertyButton.onclick = () => { if (property) openPropertyDetail(property.id); };
+  tenantDetailDocumentsLibrary?.setEntity(tenantId);
   document.querySelector("#tenant-detail-edit-btn").hidden = !hasPermission("tenant:manage", owner.id);
   if (!tenantDetailDialog.open) tenantDetailDialog.showModal();
 }
