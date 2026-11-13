@@ -270,13 +270,23 @@ export function readFileAsDataUrl(file) {
   });
 }
 
-export function validateDocumentFiles(files) {
+const DEFAULT_DOCUMENT_TYPES = ["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"];
+
+export function validateDocumentFiles(files, settings = {}) {
   const messages = [];
+  const configured = Array.isArray(settings?.documentosTiposPermitidos)
+    ? settings.documentosTiposPermitidos
+    : DEFAULT_DOCUMENT_TYPES;
+  const allowed = configured.map(type => String(type).toLowerCase().replace(/^\./, ""));
+  const maxMb = Math.min(50, Math.max(1, Number(settings?.documentosMaxSizeMb) || 15));
   [...files].forEach(file => {
     const extension = file.name.split(".").pop().toLowerCase();
-    const allowed = ["pdf", "jpg", "jpeg", "png", "webp"].includes(extension);
-    if (!allowed) messages.push(`El archivo "${file.name}" debe ser PDF, JPG, PNG o WEBP.`);
-    if (file.size > 15 * 1024 * 1024) messages.push(`El archivo "${file.name}" supera el límite de 15 MB.`);
+    if (!allowed.includes(extension)) {
+      messages.push(`El archivo "${file.name}" debe ser ${allowed.map(type => type.toUpperCase()).join(", ")}.`);
+    }
+    if (file.size > maxMb * 1024 * 1024) {
+      messages.push(`El archivo "${file.name}" supera el límite de ${maxMb} MB.`);
+    }
   });
   return messages;
 }
@@ -680,7 +690,7 @@ export function setFormReadonly(form, readonly) {
   // Solo controles de valor: los botones (tabs, cierres) deben seguir
   // siendo operables en modo lectura
   form.querySelectorAll("input, select, textarea, [contenteditable]").forEach(element => {
-    if (element.type === "submit" || element.closest(".dialog-actions")) return;
+    if (element.type === "submit" || element.closest(".dialog-actions") || element.closest(".doc-library")) return;
     // El buscador del combo se sincroniza desde su <select> real: si ese
     // select está deshabilitado por otra regla, debe seguir bloqueado.
     if (element.classList.contains("combo-box-input")) return;

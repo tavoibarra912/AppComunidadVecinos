@@ -21,7 +21,13 @@ import {
 } from "../security.js";
 import { resourceAccess, notificationAccess } from "../access.js";
 import { recordAudit } from "../audit.js";
-import { listAdminEmails, listOwnerNotifications, listDocuments, getSettings } from "../db.js";
+import {
+  listAdminEmails,
+  listOwnerNotifications,
+  listDocuments,
+  listDocumentFolders,
+  getSettings,
+} from "../db.js";
 
 const router = Router();
 router.use(auditRequests);
@@ -68,17 +74,42 @@ router.use(resourceAccess);
 
 router.get("/bootstrap", (req, res) => {
   const visible = visibleData(req.user);
+  const canReadDocuments = (entityId) =>
+    allowed(req.user, "document:read", entityId);
   res.json({
     communities: visible.communities.map((community) => ({
       ...community,
-      documents: listDocuments("community", community.id),
+      documents: canReadDocuments(community.id)
+        ? listDocuments("community", community.id)
+        : [],
+      statutes: canReadDocuments(community.id)
+        ? listDocuments("community", community.id, "statutes")
+        : [],
+      documentFolders: canReadDocuments(community.id)
+        ? listDocumentFolders("community", community.id)
+        : [],
     })),
     owners: visible.owners,
     properties: visible.properties.map((property) => ({
       ...property,
-      documents: listDocuments("property", property.id),
+      documents: canReadDocuments(property.id)
+        ? listDocuments("property", property.id)
+        : [],
+      documentFolders: canReadDocuments(property.id)
+        ? listDocumentFolders("property", property.id)
+        : [],
     })),
-    tenants: visible.tenants,
+    tenants: visible.tenants.map((tenant) => ({
+      ...tenant,
+      // `documents` contiene el expediente fijo (DNI, contrato…); la
+      // biblioteca genérica con carpetas se expone aparte.
+      libraryDocuments: canReadDocuments(tenant.id)
+        ? listDocuments("tenant", tenant.id)
+        : [],
+      documentFolders: canReadDocuments(tenant.id)
+        ? listDocumentFolders("tenant", tenant.id)
+        : [],
+    })),
     adminEmails: allowed(req.user, "admin_notification:read")
       ? listAdminEmails().filter((n) =>
           allowed(req.user, "owner:read", n.ownerId),

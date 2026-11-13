@@ -1,8 +1,8 @@
-import { sanitizeHtml, escapeHtml, richTextHtml } from "../html.js";
-import { openDocViewer, DocumentValidator } from "../docs-engine.js";
+import { sanitizeHtml, richTextHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, refreshState, ownerProperties, ownerTenants, tenantsForProperty, getTenantContractStatus, propertyOwnerIds, PROPERTY_TYPE_LABELS, PROPERTY_USE_LABELS, getCurrencies, hasPermission, requirePermission } from "../state.js";
-import { toast, validateDocumentFiles, setupGenericFileDropzone, isValidCadastralRef, isValidDecimal, makeSelectSearchable, showValidationErrors, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { toast, isValidCadastralRef, isValidDecimal, makeSelectSearchable, showValidationErrors, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
+import { createDocumentLibrary } from "../document-library.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { createRichText } from "../rich-text.js";
@@ -30,8 +30,6 @@ const propertyNotes = createRichText({
   toolbar: document.querySelector("#property-notes-toolbar"),
 });
 const propertyFormError = document.querySelector("#property-form-error");
-const propertyDocumentInput = document.querySelector("#property-document-input");
-let pendingPropertyFiles = [];
 const propertyDocumentList = document.querySelector("#property-document-list");
 const propertyDetailDialog = document.querySelector("#property-detail-dialog");
 const propertyDetailDocuments = document.querySelector("#property-detail-documents");
@@ -526,85 +524,56 @@ export function updatePropertyPeopleSelectors(selectedOwnerIds = [], selectedTen
   if (tenantPanel) tenantPanel.hidden = true;
 }
 
-function getFormPropertyContext() {
-  const property = state.properties.find(item => item.id === state.ui.editingPropertyId);
-  return {
-    plot: propertyForm.elements.plot.value.trim() || property?.plot || "Inmueble",
-    communityName: property?.communityName || (state.communities.find(c => c.id === propertyForm.elements.communityId.value)?.name) || "Comunidad",
-    address: propertyForm.elements.address.value.trim() || property?.address || "",
-    cadastralRef: propertyForm.elements.cadastralRef.value.trim() || property?.cadastralRef || ""
-  };
-}
+const propertyDocumentsLibrary = propertyDocumentList
+  ? createDocumentLibrary({
+      container: propertyDocumentList,
+      entityType: "property",
+      category: "document",
+      getEntityId: () => state.ui.editingPropertyId,
+      getData: () => {
+        const property = state.properties.find(item => item.id === state.ui.editingPropertyId);
+        return {
+          documents: property?.documents || [],
+          folders: property?.documentFolders || []
+        };
+      },
+      settings: () => state.settings,
+      countEl: "#property-doc-count",
+      canWrite: () =>
+        !propertyDialogReadOnly &&
+        !!state.ui.editingPropertyId &&
+        hasPermission("property:manage", state.ui.editingPropertyId) &&
+        hasPermission("document:upload", state.ui.editingPropertyId),
+      onChange: refreshPropertyLibraries,
+      emptyText:
+        "Subí escrituras, certificados energéticos u otros archivos y organizalos en carpetas."
+    })
+  : null;
 
-/* Misma tarjeta de documento que usan comunidad y el motor de propietarios */
-function docFileCard({ name, size, doc, isPending, removeAttrs, entityContext, readOnly = false }) {
-  const card = document.createElement("div");
-  card.className = "doc-upload-card is-valid";
-  const header = document.createElement("div");
-  header.className = "doc-validation-header";
-  header.style.marginBottom = "0";
-  header.style.paddingBottom = "0";
-  header.style.borderBottom = "none";
-  header.innerHTML = sanitizeHtml(`
-    <div class="doc-file-meta">
-      <span class="doc-file-icon">📄</span>
-      <div>
-        <p class="doc-file-name">${escapeHtml(name)}</p>
-        <p class="doc-file-size">${escapeHtml(size)}${isPending ? " · Nuevo (pendiente de guardar)" : (doc?.uploadedAt ? ` · Subido el ${escapeHtml(doc.uploadedAt)}` : "")}</p>
-      </div>
-    </div>
-    <div class="doc-file-actions">
-      <button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button>
-      ${readOnly ? "" : '<button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>'}
-    </div>
-  `);
-  header.querySelector('[data-action="view"]').addEventListener("click", () => {
-    openDocViewer(entityContext, doc?.id || name, doc || { fileName: name, fileSize: 0, url: "", dataUrl: doc?.dataUrl });
-  });
-  const removeBtn = header.querySelector('[data-action="remove"]');
-  if (removeBtn) {
-    Object.entries(removeAttrs).forEach(([attr, value]) => { removeBtn.dataset[attr] = value; });
-  }
-  card.append(header);
-  return card;
-}
+const propertyDetailDocumentsLibrary = propertyDetailDocuments
+  ? createDocumentLibrary({
+      container: propertyDetailDocuments,
+      entityType: "property",
+      category: "document",
+      getEntityId: () => state.ui.viewingPropertyId,
+      getData: () => {
+        const property = state.properties.find(item => item.id === state.ui.viewingPropertyId);
+        return {
+          documents: property?.documents || [],
+          folders: property?.documentFolders || []
+        };
+      },
+      settings: () => state.settings,
+      countEl: "#property-detail-doc-count",
+      canWrite: () => false,
+      emptyText: "No hay documentación cargada."
+    })
+  : null;
 
-export function renderPropertyDocumentList() {
-  propertyDocumentList.replaceChildren();
-  const countEl = document.querySelector("#property-doc-count");
-  if (countEl) countEl.textContent = String(state.ui.propertyDocuments.length + pendingPropertyFiles.length);
-  if (state.ui.propertyDocuments.length === 0 && pendingPropertyFiles.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "form-intro";
-    empty.textContent = "No hay documentos cargados para este inmueble.";
-    propertyDocumentList.append(empty);
-    return;
-  }
-
-  const context = getFormPropertyContext();
-  state.ui.propertyDocuments.forEach(documentRecord => {
-    propertyDocumentList.append(docFileCard({
-      name: documentRecord.fileName,
-      size: `${Math.ceil((documentRecord.fileSize || 0) / 1024)} KB`,
-      doc: documentRecord,
-      isPending: false,
-      removeAttrs: { removePropertyDocument: documentRecord.id },
-      entityContext: context,
-      readOnly: propertyDialogReadOnly
-    }));
-  });
-
-  pendingPropertyFiles.forEach((file, index) => {
-    propertyDocumentList.append(docFileCard({
-      name: file.name,
-      size: `${Math.ceil(file.size / 1024)} KB`,
-      doc: { fileName: file.name, fileSize: file.size, dataUrl: file.dataUrl, fileType: file.type || "application/pdf" },
-      isPending: true,
-      removeAttrs: { pendingPropertyFile: String(index) },
-      entityContext: context,
-      readOnly: propertyDialogReadOnly
-    }));
-  });
+async function refreshPropertyLibraries() {
+  await refreshState();
+  propertyDocumentsLibrary?.refresh();
+  propertyDetailDocumentsLibrary?.refresh();
 }
 
 /** Oculta todo lo que implique modificar o navegar desde el inmueble. */
@@ -617,10 +586,6 @@ function applyPropertyEditorReadOnly(readonly) {
     const panel = document.querySelector(selector);
     if (panel) panel.hidden = true;
   });
-  const dropzone = document.querySelector("#property-doc-dropzone");
-  if (dropzone) dropzone.hidden = readonly;
-  const sampleBar = document.querySelector("#property-dialog .doc-sample-bar");
-  if (sampleBar) sampleBar.hidden = readonly;
 }
 
 export function openPropertyEditor(id = null, defaultTab = "general", readonly = false) {
@@ -636,7 +601,6 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   const ownerIds = propertyOwnerIds(property);
   const tenantIds = property?.tenantIds || (property?.tenantId ? [property.tenantId] : []);
   updatePropertyPeopleSelectors(ownerIds, tenantIds, property?.ownerPercentages || {});
-  state.ui.propertyDocuments = property?.documents ? property.documents.map(item => ({ ...item })) : [];
   propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
   propertyForm.elements.receiptStatus.closest("label").hidden = !!property?.hasFeeReceipts;
   propertyForm.elements.communityFee.closest("label").hidden = !!property?.hasFeeReceipts;
@@ -661,7 +625,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   document.querySelector("#property-dialog-title").textContent = property ? (readonly ? `Ver inmueble: ${property.plot}` : "Editar inmueble") : "Nuevo inmueble";
   setFormReadonly(propertyForm, readonly);
   applyPropertyEditorReadOnly(readonly);
-  renderPropertyDocumentList();
+  propertyDocumentsLibrary?.setEntity(state.ui.editingPropertyId);
   propertyDialog.showModal();
   if (!readonly) {
     propertyForm.elements.plot.focus();
@@ -672,7 +636,7 @@ export function closePropertyEditor() {
   propertyDialog.close();
   propertyDialogReadOnly = false;
   state.ui.editingPropertyId = null;
-  state.ui.propertyDocuments = [];
+  propertyDocumentsLibrary?.setEntity("");
 }
 
 export function visibleProperties() {
@@ -922,22 +886,7 @@ export function openPropertyDetail(id) {
     });
   }
 
-  propertyDetailDocuments.replaceChildren();
-  if (!property.documents.length) {
-    const empty = document.createElement("p");
-    empty.textContent = "No hay documentación cargada.";
-    propertyDetailDocuments.append(empty);
-  } else {
-    property.documents.forEach(documentRecord => {
-      const link = document.createElement("a");
-      link.textContent = documentRecord.fileName;
-      link.href = documentRecord.url || documentRecord.dataUrl || "#";
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.download = documentRecord.fileName;
-      propertyDetailDocuments.append(link);
-    });
-  }
+  propertyDetailDocumentsLibrary?.setEntity(id);
 
   document.querySelector("#property-detail-edit-btn").hidden = !hasPermission("property:manage");
   if (!propertyDetailDialog.open) propertyDetailDialog.showModal();
@@ -996,12 +945,6 @@ document.querySelector("#property-detail-edit-btn").addEventListener("click", ()
   closePropertyDetail();
   if (targetId) openPropertyEditor(targetId);
 });
-propertyDocumentList.addEventListener("click", event => {
-  const button = event.target.closest("[data-remove-property-document]");
-  if (!button) return;
-  state.ui.propertyDocuments = state.ui.propertyDocuments.filter(documentRecord => documentRecord.id !== button.dataset.removePropertyDocument);
-  renderPropertyDocumentList();
-});
 
 // Select de comunidad con buscador integrado
 if (propertyForm.elements.communityId) {
@@ -1030,43 +973,6 @@ if (propertyAreaInput) {
 
 // La sincronización municipio/provincia/código postal la gestiona
 // territory.js (setupTerritory): búsqueda, autocompletado y validación.
-
-// Archivos pendientes del tab Documentación
-if (propertyDocumentInput) {
-  setupGenericFileDropzone(document.querySelector("#property-doc-dropzone"), propertyDocumentInput);
-  propertyDocumentInput.addEventListener("change", () => {
-    const messages = validateDocumentFiles(propertyDocumentInput.files);
-    if (messages.length) {
-      toast(messages.join(" "));
-      return;
-    }
-    pendingPropertyFiles.push(...propertyDocumentInput.files);
-    propertyDocumentInput.value = "";
-    renderPropertyDocumentList();
-  });
-  propertyDocumentList.addEventListener("click", event => {
-    const pendingBtn = event.target.closest("[data-pending-property-file]");
-    if (!pendingBtn) return;
-    pendingPropertyFiles.splice(Number(pendingBtn.dataset.pendingPropertyFile), 1);
-    renderPropertyDocumentList();
-  });
-}
-
-// Documento de ejemplo (certificado energético) con el mismo motor que comunidad
-const btnSamplePropertyDoc = document.querySelector("#btn-sample-property-doc");
-if (btnSamplePropertyDoc) {
-  btnSamplePropertyDoc.addEventListener("click", () => {
-    const sample = DocumentValidator.generateSampleDocument("energyCertificate", getFormPropertyContext());
-    if (!sample) return;
-    const svgText = decodeURIComponent(sample.dataUrl.split(",")[1]);
-    const blob = new Blob([svgText], { type: "image/svg+xml" });
-    const file = new File([blob], sample.fileName, { type: "image/svg+xml" });
-    file.dataUrl = sample.dataUrl;
-    pendingPropertyFiles.push(file);
-    toast("Documento oficial de prueba cargado y validado automáticamente.");
-    renderPropertyDocumentList();
-  });
-}
 
 propertyForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -1146,13 +1052,6 @@ propertyForm.addEventListener("submit", async event => {
     messages.push("El coeficiente debe ser un porcentaje decimal entre 0,0001 y 100.");
   }
 
-  const selectedFiles = [...pendingPropertyFiles];
-  selectedFiles.forEach(file => {
-    const extension = file.name.split(".").pop().toLowerCase();
-    const allowed = ["pdf", "jpg", "jpeg", "png", "webp"].includes(extension);
-    if (!allowed) messages.push(`El archivo "${file.name}" debe ser PDF, JPG, PNG o WEBP.`);
-    if (file.size > 15 * 1024 * 1024) messages.push(`El archivo "${file.name}" supera el límite de 15 MB.`);
-  });
   if (messages.length) {
     showValidationErrors(messages, "Revisa los datos del inmueble");
     return;
@@ -1195,11 +1094,6 @@ propertyForm.addEventListener("submit", async event => {
       await api.updateProperty(propertyId, payload);
     } else {
       await api.createProperty(payload);
-    }
-    if (selectedFiles.length) {
-      await api.uploadDocuments(selectedFiles, "property", propertyId);
-      pendingPropertyFiles = [];
-      await refreshState();
     }
   } catch (error) {
     propertyFormError.textContent = error.message;

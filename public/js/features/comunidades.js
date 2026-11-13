@@ -1,19 +1,18 @@
-import { sanitizeHtml, escapeHtml, richTextHtml, htmlToText } from "../html.js";
+import { sanitizeHtml, richTextHtml, htmlToText } from "../html.js";
 import { api } from "../api.js";
 import { mountFeeShortcut } from "./fees.js";
 import { state, refreshState, requirePermission, hasPermission, propertyOwnerIds, ownerProperties, PROPERTY_TYPE_LABELS, getCurrencies } from "../state.js";
-import { toast, validateDocumentFiles, setupGenericFileDropzone, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif, normalizeIdentityDocument } from "../utils.js";
+import { toast, makeSelectSearchable, showValidationErrors, fieldLabel, mensajeDeValidez, maskIbanField, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly, isValidCommunityNif, normalizeIdentityDocument } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
-import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
 import { createRichText } from "../rich-text.js";
+import { createDocumentLibrary } from "../document-library.js";
 
 let editingCommunityId = null;
 let deletingCommunityId = null;
 let communityTable = null;
-let pendingCommunityFiles = [];
 let communityReadonly = false;
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
@@ -94,7 +93,7 @@ const communityNotes = createRichText({
 function applyCommunityReadonly() {
   if (!communityReadonly) return;
   communityForm.querySelectorAll("input,select,textarea,button,a,[tabindex],[role=combobox],[role=button],[contenteditable]").forEach(element => {
-    const allowed = element.closest("#community-editor-fees") || element.matches("button[data-community-tab],#close-dialog") || (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
+    const allowed = element.closest("#community-editor-fees") || element.closest(".doc-library") || element.matches("button[data-community-tab],#close-dialog") || (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
     if (!allowed && "disabled" in element && !element.disabled) { if (element.matches("button")) element.dataset.communityReadonlyDisabled = "true"; element.disabled = true; }
     if (!allowed && element.hasAttribute("contenteditable")) {
       if (!element.dataset.communityReadonlyEditable) element.dataset.communityReadonlyEditable = element.getAttribute("contenteditable") || "true";
@@ -112,7 +111,7 @@ function applyCommunityReadonly() {
 new MutationObserver(applyCommunityReadonly).observe(communityForm, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
 communityForm.addEventListener("click", event => {
   if (!communityReadonly) return;
-  const allowed = event.target.closest('button[data-community-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees');
+  const allowed = event.target.closest('button[data-community-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees,.doc-library');
   if (!allowed) {
     event.preventDefault(); event.stopImmediatePropagation();
   }
@@ -256,7 +255,6 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   });
   communityForm.reset();
   communityError.textContent = "";
-  pendingCommunityFiles = [];
   communityContactVerify.phone.verified = false;
   communityContactVerify.email.verified = false;
   communitySetVerifyStatus("phone", "pending", "Pendiente de verificación");
@@ -290,7 +288,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
     if (panel) panel.hidden = true;
   }
   communityNotes?.setValue(c?.notes || "");
-  renderCommunityDocumentList(c);
+  syncCommunityLibraries();
   populateCommunityCurrencySelect(c?.currency || "EUR");
   updateCommunityAdminSelect(c?.adminUserId || "");
   applyCommunityReadonly();
@@ -523,166 +521,113 @@ communityForm.elements.email?.addEventListener("input", e => {
   verificadorCommunity.cambiarValor("email", e.target.value);
 });
 
-const communityDocumentInput = document.querySelector("#community-document-input");
 const communityDocumentList = document.querySelector("#community-document-list");
+const communityStatutesList = document.querySelector("#community-statutes-list");
+const communityDetailDocumentsList = document.querySelector("#community-detail-documents");
+const communityDetailStatutesList = document.querySelector("#community-detail-statutes");
 
-function getFormCommunityContext() {
-  return {
-    id: editingCommunityId,
-    name: communityForm.elements.name.value.trim() || "Comunidad de Propietarios",
-    nif: communityForm.elements.nif.value.trim() || "H12345674",
-    communityName: communityForm.elements.name.value.trim() || "Comunidad de Propietarios"
-  };
+function communityLibraryData(category = "document") {
+  const community = state.communities.find(item => item.id === editingCommunityId);
+  return category === "statutes"
+    ? { documents: community?.statutes || [], folders: [] }
+    : {
+        documents: community?.documents || [],
+        folders: community?.documentFolders || []
+      };
 }
 
-function docFileCard({ name, size, doc, isPending, removeAttrs, entityContext }) {
-  const card = document.createElement("div");
-  card.className = "doc-upload-card is-valid";
-  const header = document.createElement("div");
-  header.className = "doc-validation-header";
-  header.style.marginBottom = "0";
-  header.style.paddingBottom = "0";
-  header.style.borderBottom = "none";
-  header.innerHTML = sanitizeHtml(`
-    <div class="doc-file-meta">
-      <span class="doc-file-icon">📄</span>
-      <div>
-        <p class="doc-file-name">${escapeHtml(name)}</p>
-        <p class="doc-file-size">${escapeHtml(size)}${isPending ? " · Nuevo (pendiente de guardar)" : (doc?.uploadedAt ? ` · Subido el ${escapeHtml(doc.uploadedAt)}` : "")}</p>
-      </div>
-    </div>
-    <div class="doc-file-actions">
-      <button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button>
-      <button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>
-    </div>
-  `);
-
-  header.querySelector('[data-action="view"]').addEventListener("click", () => {
-    openDocViewer(entityContext, doc?.id || name, doc || { fileName: name, fileSize: 0, url: "", dataUrl: doc?.dataUrl });
-  });
-
-  const removeBtn = header.querySelector('[data-action="remove"]');
-  Object.entries(removeAttrs).forEach(([attr, value]) => { removeBtn.dataset[attr] = value; });
-
-  card.append(header);
-  return card;
+async function refreshCommunityLibraries() {
+  await refreshState();
+  communityDocumentsLibrary?.refresh();
+  communityStatutesLibrary?.refresh();
+  communityDetailDocumentsLibrary?.refresh();
+  communityDetailStatutesLibrary?.refresh();
 }
 
-function renderCommunityDocumentList(c) {
-  if (!communityDocumentList) return;
-  const community = c || state.communities.find(item => item.id === editingCommunityId);
-  const existing = community ? community.documents || [] : [];
-  const totalCount = existing.length + pendingCommunityFiles.length;
-  const countEl = document.querySelector("#community-doc-count");
-  if (countEl) countEl.textContent = String(totalCount);
+const communityDocumentsLibrary = communityDocumentList
+  ? createDocumentLibrary({
+      container: communityDocumentList,
+      entityType: "community",
+      category: "document",
+      getEntityId: () => editingCommunityId,
+      getData: () => communityLibraryData("document"),
+      settings: () => state.settings,
+      countEl: "#community-doc-count",
+      canWrite: () =>
+        !communityReadonly &&
+        !!editingCommunityId &&
+        hasPermission("community:manage", editingCommunityId) &&
+        hasPermission("document:upload", editingCommunityId),
+      onChange: refreshCommunityLibraries,
+      emptyText:
+        "Subí actas, contratos, certificados u otros archivos y organizalos en carpetas."
+    })
+  : null;
 
-  const statusEl = document.querySelector("#community-docs-summary-status");
-  const subtextEl = document.querySelector("#community-docs-summary-subtext");
-  const summaryBar = document.querySelector("#community-docs-summary-bar");
-  if (statusEl) statusEl.textContent = `${totalCount} ${totalCount === 1 ? "documento adjunto" : "documentos adjuntos"}`;
-  if (summaryBar) {
-    if (totalCount > 0) {
-      if (subtextEl) subtextEl.textContent = "Archivos listos. Al pulsar Guardar se sincronizarán con el servidor.";
-      summaryBar.style.background = "#f0fdf4";
-      summaryBar.style.borderColor = "#86efac";
-    } else {
-      if (subtextEl) subtextEl.textContent = "Adjunta la documentación oficial para archivar en el expediente de la comunidad.";
-      summaryBar.style.background = "#f1f5f9";
-      summaryBar.style.borderColor = "#e2e8f0";
-    }
-  }
+const communityStatutesLibrary = communityStatutesList
+  ? createDocumentLibrary({
+      container: communityStatutesList,
+      entityType: "community",
+      category: "statutes",
+      getEntityId: () => editingCommunityId,
+      getData: () => communityLibraryData("statutes"),
+      settings: () => state.settings,
+      countEl: "#community-statutes-count",
+      canWrite: () =>
+        !communityReadonly &&
+        !!editingCommunityId &&
+        hasPermission("community:manage", editingCommunityId) &&
+        hasPermission("document:upload", editingCommunityId),
+      onChange: refreshCommunityLibraries,
+      emptyText:
+        "Cargá los estatutos de la comunidad en PDF, imagen o Word para que todos los vecinos puedan consultarlos."
+    })
+  : null;
 
-  communityDocumentList.replaceChildren();
-
-  if (totalCount === 0) {
-    const empty = document.createElement("p");
-    empty.className = "form-intro";
-    empty.textContent = "No hay documentos cargados para esta comunidad.";
-    communityDocumentList.append(empty);
-    return;
-  }
-
-  const context = getFormCommunityContext();
-
-  existing.forEach(doc => {
-    communityDocumentList.append(docFileCard({
-      name: doc.fileName,
-      size: `${Math.ceil((doc.fileSize || 0) / 1024)} KB`,
-      doc,
-      isPending: false,
-      removeAttrs: { communityDocumentId: doc.id },
-      entityContext: context
-    }));
-  });
-
-  pendingCommunityFiles.forEach((file, index) => {
-    communityDocumentList.append(docFileCard({
-      name: file.name,
-      size: `${Math.ceil(file.size / 1024)} KB`,
-      doc: {
-        fileName: file.name,
-        fileSize: file.size,
-        dataUrl: file.dataUrl,
-        fileType: file.type || "application/pdf"
+const communityDetailDocumentsLibrary = communityDetailDocumentsList
+  ? createDocumentLibrary({
+      container: communityDetailDocumentsList,
+      entityType: "community",
+      category: "document",
+      getEntityId: () => state.ui.viewingCommunityId,
+      getData: () => {
+        const community = state.communities.find(
+          item => item.id === state.ui.viewingCommunityId
+        );
+        return {
+          documents: community?.documents || [],
+          folders: community?.documentFolders || []
+        };
       },
-      isPending: true,
-      removeAttrs: { pendingCommunityFile: String(index) },
-      entityContext: context
-    }));
-  });
-}
+      settings: () => state.settings,
+      countEl: "#community-detail-doc-count",
+      canWrite: () => false,
+      emptyText: "No hay documentos cargados para esta comunidad."
+    })
+  : null;
 
-const btnSampleCommunityDoc = document.querySelector("#btn-sample-community-doc");
-if (btnSampleCommunityDoc) {
-  btnSampleCommunityDoc.addEventListener("click", () => {
-    const context = getFormCommunityContext();
-    const sample = DocumentValidator.generateSampleDocument("communityMinute", context);
-    if (!sample) return;
-    const svgText = decodeURIComponent(sample.dataUrl.split(",")[1]);
-    const blob = new Blob([svgText], { type: "image/svg+xml" });
-    const file = new File([blob], sample.fileName, { type: "image/svg+xml" });
-    file.dataUrl = sample.dataUrl;
-    pendingCommunityFiles.push(file);
-    toast("Documento oficial de prueba cargado y validado automáticamente.");
-    renderCommunityDocumentList();
-  });
-}
+const communityDetailStatutesLibrary = communityDetailStatutesList
+  ? createDocumentLibrary({
+      container: communityDetailStatutesList,
+      entityType: "community",
+      category: "statutes",
+      getEntityId: () => state.ui.viewingCommunityId,
+      getData: () => {
+        const community = state.communities.find(
+          item => item.id === state.ui.viewingCommunityId
+        );
+        return { documents: community?.statutes || [], folders: [] };
+      },
+      settings: () => state.settings,
+      countEl: "#community-detail-statutes-count",
+      canWrite: () => false,
+      emptyText: "Esta comunidad todavía no publicó sus estatutos."
+    })
+  : null;
 
-if (communityDocumentInput) {
-  setupGenericFileDropzone(document.querySelector("#community-doc-dropzone"), communityDocumentInput);
-  communityDocumentInput.addEventListener("change", () => {
-    const messages = validateDocumentFiles(communityDocumentInput.files);
-    if (messages.length) {
-      toast(messages.join(" "));
-      return;
-    }
-    pendingCommunityFiles.push(...communityDocumentInput.files);
-    communityDocumentInput.value = "";
-    renderCommunityDocumentList();
-  });
-}
-
-if (communityDocumentList) {
-  communityDocumentList.addEventListener("click", async event => {
-    const removeBtn = event.target.closest("[data-community-document-id]");
-    if (removeBtn) {
-      try {
-        await api.deleteDocument(removeBtn.dataset.communityDocumentId);
-      } catch (error) {
-        toast(error.message);
-        return;
-      }
-      await refreshState();
-      renderCommunityDocumentList();
-      toast("Documento eliminado.");
-      return;
-    }
-    const pendingBtn = event.target.closest("[data-pending-community-file]");
-    if (pendingBtn) {
-      pendingCommunityFiles.splice(Number(pendingBtn.dataset.pendingCommunityFile), 1);
-      renderCommunityDocumentList();
-    }
-  });
+function syncCommunityLibraries() {
+  communityDocumentsLibrary?.setEntity(editingCommunityId);
+  communityStatutesLibrary?.setEntity(editingCommunityId);
 }
 
 export function closeCommunityEditor() {
@@ -691,12 +636,12 @@ export function closeCommunityEditor() {
   state.ui.communityEditorPropertyContext = null;
 }
 
-export function openCommunityDetail(id) {
+export function openCommunityDetail(id, defaultTab = "general") {
   if (!requirePermission("community:read", id)) return;
   const c = state.communities.find(item => item.id === id);
   if (!c) return;
   state.ui.viewingCommunityId = id;
-  switchCommunityDetailTab("general");
+  switchCommunityDetailTab(defaultTab);
 
   const communityPropertyIds = new Set(
     state.properties.filter(property => property.communityId === c.id).map(property => property.id)
@@ -746,7 +691,8 @@ export function openCommunityDetail(id) {
 
   // Inmuebles vinculados a la comunidad (1-n) (Requisito 5)
   renderCommunityPropertiesSection(c);
-  renderCommunityDetailDocs(c);
+  communityDetailDocumentsLibrary?.refresh();
+  communityDetailStatutesLibrary?.refresh();
 
   // Ocultar datos de contacto y botón de edición en modo propietario
   if (detailItemPhone) detailItemPhone.style.display = isOwner ? "none" : "";
@@ -767,41 +713,6 @@ function switchCommunityDetailTab(tab) {
   });
   document.querySelectorAll("#detail-dialog [data-cd-pane]").forEach(pane => {
     pane.hidden = pane.dataset.cdPane !== tab;
-  });
-}
-
-function renderCommunityDetailDocs(c) {
-  const listEl = document.querySelector("#community-detail-docs");
-  if (!listEl) return;
-  const countEl = document.querySelector("#community-detail-doc-count");
-  const docs = c.documents || [];
-  if (countEl) countEl.textContent = String(docs.length);
-  listEl.replaceChildren();
-  if (docs.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "form-intro";
-    empty.textContent = "No hay documentos cargados para esta comunidad.";
-    listEl.append(empty);
-    return;
-  }
-  docs.forEach(doc => {
-    const row = document.createElement("div");
-    row.className = "doc-file-row";
-    const icon = document.createElement("span");
-    icon.className = "doc-file-icon";
-    icon.innerHTML = sanitizeHtml(`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`);
-    const info = document.createElement("div");
-    info.className = "doc-file-info";
-    const link = document.createElement("a");
-    link.className = "doc-file-name";
-    link.textContent = doc.fileName;
-    if (doc.url) { link.href = doc.url; link.target = "_blank"; link.rel = "noopener"; }
-    const size = document.createElement("span");
-    size.className = "doc-file-size";
-    size.textContent = `${Math.ceil((doc.fileSize || 0) / 1024)} KB`;
-    info.append(link, size);
-    row.append(icon, info);
-    listEl.append(row);
   });
 }
 
@@ -962,16 +873,8 @@ async function persistCommunityDraft() {
   }
 
   await refreshState();
-  if (pendingCommunityFiles.length > 0) {
-    try {
-      await api.uploadDocuments(pendingCommunityFiles, "community", communityId);
-      pendingCommunityFiles = [];
-      await refreshState();
-    } catch (error) {
-      toast(error.message);
-    }
-  }
   editingCommunityId = communityId;
+  syncCommunityLibraries();
   return communityId;
 }
 
@@ -985,7 +888,7 @@ async function ensureCommunitySavedForProperties() {
   if (id) {
     const saved = state.communities.find(item => item.id === id);
     renderCommunityEditorProperties(saved);
-    renderCommunityDocumentList(saved);
+    syncCommunityLibraries();
     toast("Comunidad guardada. Ahora puedes asociar inmuebles.");
     switchCommunityEditorTab("properties");
   }

@@ -27,8 +27,46 @@ export const PROPERTY_USE_LABELS = {
 export const TENANT_AUTHORIZATION_LABELS = {
   common_areas: "Acceso a zonas comunes",
   community_communications: "Recibir comunicaciones de la comunidad",
-  incident_management: "Gestionar incidencias de la unidad"
+  incident_management: "Gestionar incidencias de la unidad",
+  meeting_attendance: "Asistir a reuniones de la comunidad",
+  pool_access: "Uso de piscina",
+  gym_access: "Uso de gimnasio",
+  parking_access: "Acceso a garaje o aparcamiento",
+  storage_access: "Acceso a trasteros",
+  package_reception: "Recibir paquetería",
+  key_duplicate: "Solicitar duplicado de llaves",
+  work_authorization: "Autorizar obras o reformas en la unidad",
+  pet_registration: "Registrar mascotas",
+  community_app: "Uso de la app de la comunidad"
 };
+
+/**
+ * Catálogo inicial de autorizaciones. Cada comunidad puede personalizarlo
+ * desde Configuración → Inquilinos; si no lo hace, se usa esta lista.
+ */
+export const DEFAULT_TENANT_AUTHORIZATIONS = Object.entries(
+  TENANT_AUTHORIZATION_LABELS,
+).map(([id, label]) => ({ id, label }));
+
+/** Autorizaciones vigentes para una comunidad (o las predeterminadas). */
+export function tenantAuthorizationCatalog(communityId = "") {
+  const saved = communityId
+    ? state.settings?.tenantAuthorizations?.[communityId]
+    : null;
+  return Array.isArray(saved) && saved.length
+    ? saved
+    : DEFAULT_TENANT_AUTHORIZATIONS;
+}
+
+/** Etiqueta visible de una autorización guardada en un inquilino. */
+export function tenantAuthorizationLabel(id, communityId = "") {
+  return (
+    tenantAuthorizationCatalog(communityId).find((item) => item.id === id)
+      ?.label ||
+    TENANT_AUTHORIZATION_LABELS[id] ||
+    id
+  );
+}
 
 export const CURRENCY_CATALOG = [
   { code: "EUR", name: "Euro (EUR)" },

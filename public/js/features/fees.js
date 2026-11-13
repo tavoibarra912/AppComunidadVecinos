@@ -5,7 +5,9 @@ import {
   hasPermission,
   refreshState,
 } from "../state.js";
-import { escapeHtml as esc } from "../html.js";
+import { escapeHtml as esc, richTextHtml, htmlToText } from "../html.js";
+import { buildAssessmentEditor } from "./assessment-editor.js";
+import { buildServiceEditor } from "./service-editor.js";
 import { toast, hayCambiosSinGuardar } from "../utils.js";
 
 const money = (cents) =>
@@ -22,12 +24,101 @@ const labels = {
   pending: "Pendiente",
   cancelled: "Anulado",
 };
+const assessmentLabels = {
+  draft: "Borrador",
+  active: "En curso",
+  collected: "Cobrada",
+  cancelled: "Anulada",
+};
+const installmentLabels = {
+  pending: "Sin emitir",
+  issued: "Emitido",
+  partial: "Pago parcial",
+  paid: "Pagado",
+  overdue: "Vencido",
+  cancelled: "Anulado",
+};
+const serviceLabels = {
+  luz: "Luz",
+  agua: "Agua",
+  gas: "Gas",
+  gasoleo: "Gasóleo",
+};
+const serviceMethods = {
+  coefficient: "Por coeficiente de participación",
+  reading: "Por lecturas de contador",
+  mixed: "Mixto: parte fija y parte variable",
+  manual: "Importes manuales por inmueble",
+};
+const serviceBillings = {
+  receipts: "Emitir un recibo por inmueble",
+  informative: "Solo reparto informativo, sin deuda",
+};
+const serviceStatusLabels = {
+  draft: "Borrador",
+  issued: "Emitido",
+  informative: "Solo reparto",
+  partial: "Pago parcial",
+  paid: "Pagado",
+  overdue: "Vencido",
+  cancelled: "Anulado",
+};
 const methods = {
   transfer: "Transferencia",
   deposit: "Ingreso en cuenta",
   direct_debit: "Domiciliación confirmada",
 };
 const contexts = new Map();
+const icons = {
+  close: '<path d="m18 6-12 12M6 6l12 12"/>',
+  add: '<path d="M12 5v14M5 12h14"/>',
+  remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  save: '<path d="m5 12 4 4L19 6"/>',
+};
+function iconButton(label, action, kind = "add", icon = kind) {
+  const node = button("", action);
+  node.className = `icon-action-btn btn-${kind}`;
+  node.title = label;
+  node.setAttribute("aria-label", label);
+  node.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[icon]}</svg>`;
+  return node;
+}
+function tabBar(parent, items, active, select, label) {
+  const nav = el("nav", undefined, "community-editor-tabs fee-tabs");
+  nav.setAttribute("role", "tablist");
+  nav.setAttribute("aria-label", label);
+  const controls = items.map(([id, label]) => {
+    const node = button(label, () => select(id));
+    node.className = `community-editor-tab${id === active ? " active" : ""}`;
+    node.setAttribute("role", "tab");
+    node.setAttribute("aria-selected", String(id === active));
+    node.tabIndex = id === active ? 0 : -1;
+    node.dataset.tab = id;
+    nav.append(node);
+    return node;
+  });
+  nav.addEventListener("keydown", (event) => {
+    const index = controls.indexOf(event.target);
+    if (
+      index < 0 ||
+      !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+    )
+      return;
+    event.preventDefault();
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? controls.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + controls.length) %
+            controls.length;
+    controls[next].click();
+    parent.querySelector(`[role="tab"][data-tab="${items[next][0]}"]`)?.focus();
+  });
+  parent.append(nav);
+  return nav;
+}
 let dialog = null,
   dialogVersion = 0;
 let fieldSequence = 0,
@@ -163,7 +254,7 @@ export function renderFeesPage() {
     el(
       "p",
       kind === "community"
-        ? "Gestiona las cuotas ordinarias de cada comunidad, sus recibos y cobros."
+        ? "Gestiona las cuotas ordinarias, derramas y servicios de cada comunidad, sus recibos y cobros."
         : kind === "owner" && !ownProfile
           ? "Consulta los recibos, pagos y justificantes del propietario seleccionado."
           : "Consulta tus recibos, pagos, vencimientos y justificantes.",
@@ -302,7 +393,7 @@ function button(text, action, primary = false) {
       if (!node.closest("#fee-dialog") || version === dialogVersion)
         errorMessage(error.message);
     } finally {
-      node.disabled = false;
+      node.disabled = node.dataset.feeDisabled === "true";
       if (mutation && version === dialogVersion) {
         dialog.dataset.busy = "false";
         dialog.querySelector("[data-fee-close]").disabled = false;
@@ -317,8 +408,7 @@ function ensureDialog() {
   dialog = document.createElement("dialog");
   dialog.id = "fee-dialog";
   dialog.setAttribute("aria-labelledby", "fee-dialog-title");
-  dialog.innerHTML =
-    '<div class="dialog-content fee-dialog-content"><div class="dialog-header"><h2 id="fee-dialog-title"></h2><button type="button" class="secondary-button" data-fee-close>Cerrar</button></div><p class="fee-error" data-fee-error role="alert" tabindex="-1" hidden></p><form id="fee-dialog-body" novalidate></form></div>';
+  dialog.innerHTML = `<div class="dialog-content fee-dialog-content"><div class="dialog-header"><h2 id="fee-dialog-title"></h2><button type="button" class="icon-action-btn btn-cancel btn-lg" data-fee-close aria-label="Cerrar" title="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons.close}</svg></button></div><p class="fee-error" data-fee-error role="alert" tabindex="-1" hidden></p><form id="fee-dialog-body" novalidate></form></div>`;
   dialog
     .querySelector("[data-fee-close]")
     .addEventListener("click", () => dialog.close());
@@ -414,20 +504,34 @@ function info(parent, text, alert = false) {
   parent.append(p);
   return p;
 }
+/** Texto enriquecido ya saneado (observaciones de servicios y derramas). */
+function richInfo(parent, html) {
+  const node = el("div", undefined, "form-intro");
+  node.innerHTML = richTextHtml(html);
+  parent.append(node);
+  return node;
+}
 
 /**
  * Guía visual del circuito de cuotas. Muestra en qué paso está la comunidad
  * para que quede claro qué hacer primero y qué falta después.
  */
 function guide(root, data, manage) {
-  const active = data.receipts.filter((r) => !r.cancelledAt);
+  const active = data.receipts.filter(
+    (r) => !r.cancelledAt && (r.kind || "ordinary") === "ordinary",
+  );
   const issued = active.reduce((sum, r) => sum + r.amount, 0);
   const paid = active.reduce((sum, r) => sum + r.paid, 0);
   const percent = issued ? Math.round((paid / issued) * 100) : 0;
   const configured = data.plans.length > 0;
   const plan = data.plans[0];
-  const periodsPerYear = plan ? Math.max(1, Math.round(12 / Math.max(1, Number(plan.months) || 1))) : 0;
-  const periodLabel = { 1: "mensual", 3: "trimestral", 6: "semestral", 12: "anual" }[Number(plan?.months)] || `cada ${plan?.months || 1} meses`;
+  const periodsPerYear = plan
+    ? Math.max(1, Math.round(12 / Math.max(1, Number(plan.months) || 1)))
+    : 0;
+  const periodLabel =
+    { 1: "mensual", 3: "trimestral", 6: "semestral", 12: "anual" }[
+      Number(plan?.months)
+    ] || `cada ${plan?.months || 1} meses`;
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
   const steps = [
     {
@@ -544,6 +648,8 @@ async function reloadAll() {
 export function mountFees(root, kind, id, options = {}) {
   if (!root) return;
   const ctx = {
+    root,
+    tab: "ordinary",
     kind,
     id,
     readonly: !!options.readonly,
@@ -595,27 +701,64 @@ async function load(root, ctx) {
 function renderPanel(root, ctx) {
   const data = ctx.data,
     manage = data.canManage && !ctx.readonly;
+  const assessmentTab = ctx.tab === "assessments";
+  const serviceTab = ctx.tab === "services";
+  const receipts = data.receipts.filter((r) => {
+    const kind = r.kind || "ordinary";
+    return serviceTab
+      ? kind === "service"
+      : assessmentTab
+        ? kind === "assessment"
+        : kind !== "assessment" && kind !== "service";
+  });
   const feeCurrency =
     ctx.kind === "community"
-      ? (
-          state.communities.find((c) => c.id === ctx.id)?.currency || "EUR"
-        )
+      ? (state.communities.find((c) => c.id === ctx.id)?.currency || "EUR")
           .trim()
           .toUpperCase()
       : "EUR";
   const canConfigure = feeCurrency === "EUR";
-  root.replaceChildren(
-    el(
-      "h3",
-      root.classList.contains("fee-panel-standalone")
-        ? "Recibos de cuotas ordinarias"
-        : panelTitle(ctx.kind, ctx.id),
-    ),
+  root.replaceChildren();
+  tabBar(
+    root,
+    [
+      ["ordinary", "Cuotas ordinarias"],
+      ["assessments", "Derramas"],
+      ["services", "Servicios"],
+    ],
+    ctx.tab,
+    (tab) => {
+      ctx.tab = tab;
+      ctx.period = ctx.status = ctx.search = ctx.property = "";
+      ctx.page = 1;
+      renderPanel(root, ctx);
+    },
+    "Tipo de cuotas",
   );
+  if (assessmentTab && ctx.assessmentEditor) {
+    root.append(ctx.assessmentEditor);
+    return;
+  }
+  if (serviceTab && ctx.serviceEditor) {
+    root.append(ctx.serviceEditor);
+    return;
+  }
+  if ((!assessmentTab && !serviceTab) || !manage)
+    root.append(
+      el(
+        "h3",
+        serviceTab
+          ? "Servicios"
+          : assessmentTab
+            ? "Derramas"
+            : "Cuotas ordinarias",
+      ),
+    );
   const tools = el("div", undefined, "fee-toolbar");
-  if (ctx.kind === "community" && canConfigure) guide(root, data, manage);
+  if (!assessmentTab && !serviceTab && ctx.kind === "community" && canConfigure)
+    guide(root, data, manage);
   if (ctx.kind === "community" && data.canManage) {
-    if (canConfigure)
+    if (canConfigure && !assessmentTab && !serviceTab)
       tools.append(
         button(
           "1 · Configurar acuerdo",
@@ -624,25 +767,34 @@ function renderPanel(root, ctx) {
         ),
       );
     if (manage) {
-      if (canConfigure) {
+      if (canConfigure && !assessmentTab && !serviceTab) {
         const emit = button("2 · Emitir recibos", () => emission(ctx), true);
         emit.disabled = !data.plans.length || !data.properties.length;
         tools.append(emit);
       }
       tools.append(
-        button("3 · Registrar cobro o anticipo", () => paymentForm(ctx)),
+        button(
+          !assessmentTab && !serviceTab
+            ? "3 · Registrar cobro o anticipo"
+            : "Registrar cobro o anticipo",
+          () => paymentForm(ctx),
+        ),
       );
     }
   }
   tools.append(button("Actualizar", () => load(root, ctx)));
   root.append(tools);
+  if (!assessmentTab && !serviceTab && !manage)
+    informativeServiceNotice(root, ctx, data);
   if (ctx.kind === "community" && data.canManage && !canConfigure)
     info(
       root,
-      `Las cuotas solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambia su moneda en la ficha de la comunidad para poder configurar o emitir cuotas.`,
+      serviceTab
+        ? `Los servicios solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambia su moneda en la ficha de la comunidad para poder repartir facturas.`
+        : `Las cuotas solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambia su moneda en la ficha de la comunidad para poder configurar o emitir cuotas.`,
       true,
     );
-  if (manage && canConfigure && !data.plans.length)
+  if (!assessmentTab && !serviceTab && manage && canConfigure && !data.plans.length)
     info(
       root,
       "Para emitir las primeras cuotas, guarda primero el importe aprobado, el reparto y la periodicidad en Configuración y acuerdos.",
@@ -650,12 +802,46 @@ function renderPanel(root, ctx) {
   if (manage && canConfigure && !data.properties.length)
     info(
       root,
-      "Asocia inmuebles con sus titulares a esta comunidad antes de emitir cuotas.",
+      "Asocia inmuebles con sus titulares a esta comunidad antes de emitir cuotas o repartir servicios."
     );
+  if (
+    assessmentTab &&
+    ctx.kind === "community" &&
+    data.canManage &&
+    canConfigure &&
+    !ctx.readonly
+  )
+    assessmentSection(root, ctx);
+  if (
+    serviceTab &&
+    ctx.kind === "community" &&
+    data.canManage &&
+    canConfigure &&
+    !ctx.readonly
+  )
+    serviceSection(root, ctx);
+  if (serviceTab && !manage) informativeServiceSection(root, data);
+  if (assessmentTab && manage && !receipts.length) {
+    info(
+      root,
+      "Los recibos de derramas aparecerán aquí cuando emitas el primer plazo.",
+    );
+    return;
+  }
+  if (serviceTab && manage && !receipts.length) {
+    info(
+      root,
+      "Los recibos de servicios aparecerán aquí cuando emitas el primer reparto con recibos. Los repartos informativos quedan en la lista de servicios.",
+    );
+    return;
+  }
+  if (serviceTab && !manage && !receipts.length) {
+    if (!(data.informativeServices || []).length)
+      info(root, "No tenés recibos ni repartos informativos de servicios.");
+    return;
+  }
   const filters = el("div", undefined, "fee-filters");
-  const periods = [...new Set(data.receipts.map((r) => r.period))]
-    .sort()
-    .reverse();
+  const periods = [...new Set(receipts.map((r) => r.period))].sort().reverse();
   const period = field(filters, "Periodo", "select", ctx.period, [
     ["", "Todos los periodos"],
     ...periods.map((p) => [p, p]),
@@ -664,7 +850,7 @@ function renderPanel(root, ctx) {
   if (ctx.kind === "owner" || ctx.kind === "mine") {
     const communities = [
       ...new Map(
-        data.receipts.map((r) => [r.communityId, r.snapshot.community]),
+        receipts.map((r) => [r.communityId, r.snapshot.community]),
       ).entries(),
     ];
     if (communities.length > 1) {
@@ -681,7 +867,7 @@ function renderPanel(root, ctx) {
     }
     const properties = [
       ...new Map(
-        data.receipts
+        receipts
           .filter((r) => !ctx.community || r.communityId === ctx.community)
           .map((r) => [r.propertyId, r.snapshot.property]),
       ).entries(),
@@ -712,7 +898,7 @@ function renderPanel(root, ctx) {
   root.append(results);
   function updateReceipts() {
     const query = ctx.search.trim().toLocaleLowerCase("es");
-    const rows = data.receipts.filter(
+    const rows = receipts.filter(
       (r) =>
         (!ctx.period || r.period === ctx.period) &&
         (!ctx.community || r.communityId === ctx.community) &&
@@ -724,7 +910,7 @@ function renderPanel(root, ctx) {
               ? r.outstanding > 0 && r.dueDate < madridDate()
               : r.status === ctx.status)) &&
         (!query ||
-          `${r.snapshot.property} ${r.snapshot.community} ${r.snapshot.owners.map((o) => o.name).join(" ")} ${r.period} ${r.id}`
+          `${r.snapshot.property} ${r.snapshot.community} ${r.snapshot.owners.map((o) => o.name).join(" ")} ${r.period} ${r.concept || ""} ${r.id}`
             .toLocaleLowerCase("es")
             .includes(query)),
     );
@@ -760,7 +946,7 @@ function renderPanel(root, ctx) {
     if (!rows.length)
       info(
         results,
-        data.receipts.length
+        receipts.length
           ? "No hay recibos que coincidan con estos filtros."
           : "Todavía no hay recibos emitidos.",
       );
@@ -769,7 +955,7 @@ function renderPanel(root, ctx) {
         table(
           [
             "Comunidad / inmueble",
-            "Periodo / vencimiento",
+            "Concepto / vencimiento",
             "Importe",
             "Pendiente",
             "Estado",
@@ -779,7 +965,7 @@ function renderPanel(root, ctx) {
             .slice((ctx.page - 1) * ctx.pageSize, ctx.page * ctx.pageSize)
             .map((r) => [
               `<strong>${esc(r.snapshot.property)}</strong><small>${esc(r.snapshot.community)}</small>`,
-              `${esc(r.period)}<small>${esc(date(r.dueDate))}</small>`,
+              `${esc(r.concept || r.period)}<small>${esc(date(r.dueDate))}</small>`,
               money(r.amount),
               money(r.outstanding),
               status(r),
@@ -887,6 +1073,933 @@ function renderPanel(root, ctx) {
     "Los importes corresponden al inmueble completo. Los porcentajes de titularidad no duplican la cuota entre copropietarios.",
   );
 }
+function parseMoneyInput(value) {
+  const text = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+  return /^\d{1,9}(\.\d{1,2})?$/.test(text)
+    ? Math.round(Number(text) * 100)
+    : null;
+}
+function parseReadingInput(value) {
+  const text = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+  if (!/^\d{1,7}(\.\d{1,3})?$/.test(text)) return null;
+  const result = Math.round(Number(text) * 1000);
+  return Number.isSafeInteger(result) && result >= 0 ? result : null;
+}
+function formatReading(value) {
+  return (Number(value || 0) / 1000)
+    .toLocaleString("es-ES", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3,
+    })
+    .replace(/\u00a0/g, " ");
+}
+function defaultAssessmentDueDate() {
+  const due = new Date(`${madridDate()}T12:00:00Z`);
+  due.setUTCDate(due.getUTCDate() + 30);
+  return due.toISOString().slice(0, 10);
+}
+function assessmentStatus(a) {
+  return `<span class="fee-status fee-status-${esc(a.status)}">${esc(assessmentLabels[a.status] || a.status)}</span>`;
+}
+function installmentStatus(installment) {
+  const label = installmentLabels[installment.status] || installment.status;
+  const overdue =
+    installment.status === "partial" && installment.dueDate < madridDate();
+  return `<span class="fee-status fee-status-${esc(installment.status)}">${esc(label)}</span>${overdue ? '<span class="fee-status fee-status-overdue">Vencido</span>' : ""}${installment.cancellationReason ? `<small>${esc(installment.cancellationReason)}</small>` : ""}`;
+}
+function assessmentSection(root, ctx) {
+  const data = ctx.data,
+    list = data.assessments || [];
+  const section = el("section", undefined, "fee-assessments");
+  section.setAttribute("aria-labelledby", "fee-assessments-title");
+  const heading = el("div", undefined, "fee-section-heading"),
+    copy = el("div");
+  copy.append(
+    el("h3", "Derramas", "fee-section-title"),
+    el(
+      "p",
+      "Cuotas extraordinarias con el reparto congelado al guardar. Cada plazo se emite por separado y usa los mismos recibos, cobros y justificantes que las cuotas ordinarias.",
+      "form-intro",
+    ),
+  );
+  copy.querySelector("h3").id = "fee-assessments-title";
+  heading.append(copy);
+  const create = button("Nueva derrama", () => assessmentForm(ctx), true);
+  create.disabled = !(data.properties || []).length;
+  heading.append(create);
+  section.append(heading);
+  if (!list.length)
+    info(
+      section,
+      "Todavía no hay derramas. Creá una para aprobar un gasto extraordinario y emitir sus plazos.",
+    );
+  else
+    section.append(
+      table(
+        ["Derrama", "Total", "Plazos", "Emitido / cobrado", "Estado", "Acción"],
+        list.map((a) => [
+          `<strong>${esc(a.name)}</strong><small>${esc(htmlToText(a.purpose) || a.agreement)}</small>`,
+          money(a.totalAmount),
+          `${a.installments.length} ${a.installments.length === 1 ? "plazo" : "plazos"}`,
+          `${money(a.totals.issued)}<small>Cobrado ${money(a.totals.paid)}</small>`,
+          assessmentStatus(a),
+          button("Abrir derrama", () => showAssessment(a.id)),
+        ]),
+      ),
+    );
+  root.append(section);
+}
+function assessmentForm(ctx, assessment = null) {
+  buildAssessmentEditor(ctx, assessment, {
+    el,
+    button,
+    iconButton,
+    tabBar,
+    field,
+    euroField,
+    hint,
+    info,
+    money,
+    amount,
+    parseMoneyInput,
+    defaultAssessmentDueDate,
+    renderPanel,
+    reloadAll,
+    showAssessment,
+  });
+}
+async function showAssessment(id) {
+  const body = open("Derrama"),
+    version = dialogVersion;
+  info(body, "Cargando derrama…");
+  try {
+    const a = await api.fees(`/assessments/${encodeURIComponent(id)}`);
+    if (version !== dialogVersion || !dialog.open) return;
+    body.replaceChildren();
+    dialog.querySelector("h2").textContent = a.name;
+    const header = el("div", undefined, "fee-receipt-header");
+    header.innerHTML = `<p>Acuerdo: ${esc(a.agreement)}</p><p>${assessmentStatus(a)}</p>`;
+    body.append(header);
+    const panes = new Map();
+    const detailTabs = tabBar(
+      body,
+      [
+        ["overview", "Resumen"],
+        ["schedule", "Plazos"],
+        ["receipts", "Recibos"],
+      ],
+      "overview",
+      (id) => {
+        for (const [key, pane] of panes) {
+          pane.hidden = key !== id;
+          const tab = detailTabs.querySelector('[data-tab="' + key + '"]');
+          tab.classList.toggle("active", key === id);
+          tab.setAttribute("aria-selected", String(key === id));
+          tab.tabIndex = key === id ? 0 : -1;
+        }
+      },
+      "Detalle de la derrama",
+    );
+    for (const id of ["overview", "schedule", "receipts"]) {
+      const pane = el("section", undefined, "fee-detail-pane");
+      pane.hidden = id !== "overview";
+      pane.setAttribute("role", "tabpanel");
+      pane.id = "fee-assessment-" + id;
+      const tab = detailTabs.querySelector('[data-tab="' + id + '"]');
+      tab.id = pane.id + "-tab";
+      tab.setAttribute("aria-controls", pane.id);
+      pane.setAttribute("aria-labelledby", tab.id);
+      panes.set(id, pane);
+      body.append(pane);
+    }
+    const overview = panes.get("overview"),
+      schedule = panes.get("schedule"),
+      receipts = panes.get("receipts");
+    if (a.purpose) {
+      const purpose = el("div", undefined, "fee-rich-content");
+      purpose.innerHTML = richTextHtml(a.purpose);
+      overview.append(purpose);
+    }
+    if (a.cancelledAt)
+      info(
+        overview,
+        `Anulada el ${date(a.cancelledAt)}. Motivo: ${a.cancellationReason}`,
+        true,
+      );
+    const totals = el("div", undefined, "fee-summary");
+    for (const [label, value] of [
+      ["Total", a.totals.total],
+      ["Emitido", a.totals.issued],
+      ["Cobrado", a.totals.paid],
+      ["Pendiente", a.totals.outstanding],
+      ["Sin emitir", a.totals.unissued],
+      ["Anulado", a.totals.cancelled],
+    ]) {
+      const cell = el("div");
+      cell.append(el("span", label), el("strong", money(value)));
+      totals.append(cell);
+    }
+    overview.append(totals);
+    info(
+      overview,
+      `Reparto ${a.mode === "coefficient" ? "por coeficiente de participación" : "con importes manuales por inmueble"}, congelado al guardar la derrama.`,
+    );
+    if (a.canEdit)
+      overview.append(
+        button("Editar derrama", async () => {
+          const current = dialogVersion;
+          const data = await api.fees(
+            `/communities/${encodeURIComponent(a.communityId)}`,
+          );
+          if (current === dialogVersion && dialog.open) {
+            const ctx = [...contexts.values()].find(
+              (ctx) =>
+                ctx.kind === "community" &&
+                ctx.id === a.communityId &&
+                ctx.root.isConnected,
+            );
+            if (ctx) {
+              ctx.data = data;
+              dialog.close();
+              assessmentForm(ctx, a);
+            }
+          }
+        }),
+      );
+    schedule.append(el("h3", "Plazos"));
+    schedule.append(
+      table(
+        [
+          "Plazo",
+          "Vencimiento",
+          "Importe",
+          "Emitido",
+          "Cobrado",
+          "Pendiente",
+          "Estado",
+          "Acción",
+        ],
+        a.installments.map((installment) => {
+          const actions = el("div", undefined, "fee-row-actions");
+          if (installment.status === "pending" && !a.cancelledAt)
+            actions.append(
+              button(`Emitir plazo ${installment.number}`, () =>
+                assessmentEmission(a.id, installment.number),
+              ),
+            );
+          if (
+            !a.cancelledAt &&
+            installment.status !== "cancelled" &&
+            installment.paid === 0
+          )
+            actions.append(
+              button("Anular plazo", () =>
+                reasonDialog(
+                  `Anular plazo ${installment.number}`,
+                  "El plazo quedará anulado y no podrá emitirse. Se anularán sus recibos si ya se emitieron. Si hay cobros aplicados, primero revertilos.",
+                  async (reason) => {
+                    await api.fees(
+                      `/assessments/${encodeURIComponent(a.id)}/cancel`,
+                      "POST",
+                      { reason, installment: installment.number },
+                    );
+                    dialog.close();
+                    await reloadAll();
+                    showAssessment(a.id);
+                  },
+                ),
+              ),
+            );
+          return [
+            String(installment.number),
+            date(installment.dueDate),
+            money(installment.amount),
+            installment.issued ? "Sí" : "No",
+            money(installment.paid),
+            money(installment.outstanding),
+            installmentStatus(installment),
+            actions.childNodes.length ? actions : "—",
+          ];
+        }),
+      ),
+    );
+    if (a.receipts.length) {
+      receipts.append(el("h3", "Recibos generados"));
+      receipts.append(
+        table(
+          [
+            "Inmueble",
+            "Titulares",
+            "Importe",
+            "Cobrado",
+            "Pendiente",
+            "Estado",
+            "Acción",
+          ],
+          a.receipts.map((r) => [
+            `${esc(r.snapshot.property)}<small>Plazo ${r.installment}</small>`,
+            esc(r.snapshot.owners.map((o) => o.name).join(", ")),
+            money(r.amount),
+            money(r.paid),
+            money(r.outstanding),
+            status(r),
+            button("Ver recibo", () => showReceipt(r.id)),
+          ]),
+        ),
+      );
+    }
+    if (!a.receipts.length)
+      info(receipts, "Todavía no hay recibos emitidos de esta derrama.");
+    if (!a.cancelledAt) {
+      if (a.totals.paid > 0)
+        info(
+          body,
+          "Para anular la derrama completa primero revertí los cobros aplicados. También podés anular un plazo sin cobros.",
+          true,
+        );
+      const cancel = button("Anular derrama completa", () =>
+        reasonDialog(
+          "Anular derrama completa",
+          "Se anularán todos los recibos activos de la derrama. Los cobros aplicados bloquean esta acción.",
+          async (reason) => {
+            await api.fees(
+              `/assessments/${encodeURIComponent(a.id)}/cancel`,
+              "POST",
+              { reason },
+            );
+            dialog.close();
+            await reloadAll();
+            showAssessment(a.id);
+          },
+        ),
+      );
+      cancel.disabled = a.totals.paid > 0;
+      overview.append(cancel);
+    }
+  } catch (error) {
+    if (version === dialogVersion) {
+      body.replaceChildren();
+      info(body, error.message, true);
+    }
+  }
+}
+async function assessmentEmission(id, number) {
+  const body = open(`Emitir plazo ${number}`),
+    version = dialogVersion;
+  info(body, "Calculando la vista previa del plazo…");
+  try {
+    const batch = await api.fees(
+      `/assessments/${encodeURIComponent(id)}/preview`,
+      "POST",
+      { installment: number },
+    );
+    if (version !== dialogVersion || !dialog.open) return;
+    body.replaceChildren();
+    body.append(
+      el(
+        "h3",
+        `Vista previa · plazo ${batch.installment}/${batch.installmentCount} · ${money(batch.total)}`,
+      ),
+    );
+    info(
+      body,
+      `Vencimiento ${date(batch.dueDate)}. Se crearán ${batch.rows.length} recibos y se avisará a sus titulares.`,
+    );
+    for (const warning of batch.warnings) info(body, warning, true);
+    body.append(
+      table(
+        ["Inmueble", "Titulares", "Coeficiente", "Importe"],
+        batch.rows.map((r) => [
+          esc(r.snapshot.property),
+          esc(r.snapshot.owners.map((o) => o.name).join(", ")),
+          `${esc(r.snapshot.coefficient)} %`,
+          money(r.amount),
+        ]),
+      ),
+    );
+    body.append(
+      button(
+        "Confirmar emisión del plazo",
+        async () => {
+          await api.fees(
+            `/assessments/${encodeURIComponent(id)}/issue`,
+            "POST",
+            { installment: number, token: batch.token },
+          );
+          dialog.close();
+          await reloadAll();
+          toast(
+            `Plazo ${number} emitido. Los recibos ya están disponibles para los propietarios.`,
+          );
+          showAssessment(id);
+        },
+        true,
+      ),
+    );
+  } catch (error) {
+    if (version === dialogVersion) {
+      body.replaceChildren();
+      info(body, error.message, true);
+    }
+  }
+}
+function serviceStatus(service) {
+  return `<span class="fee-status fee-status-${esc(service.status)}">${esc(serviceStatusLabels[service.status] || service.status)}</span>`;
+}
+function serviceSection(root, ctx) {
+  const data = ctx.data,
+    list = data.services || [];
+  const section = el("section", undefined, "fee-services");
+  section.setAttribute("aria-labelledby", "fee-services-title");
+  const heading = el("div", undefined, "fee-section-heading"),
+    copy = el("div");
+  copy.append(
+    el("h3", "Servicios y suministros", "fee-section-title"),
+    el(
+      "p",
+      "Facturas de luz, agua, gas o gasóleo repartidas por coeficiente, lecturas, reparto mixto o importes manuales. El reparto queda congelado al guardar y puede generar recibos o ser solo informativo.",
+      "form-intro",
+    ),
+  );
+  copy.querySelector("h3").id = "fee-services-title";
+  heading.append(copy);
+  const create = button("Nuevo servicio", () => serviceForm(ctx), true);
+  create.disabled = !(data.properties || []).length;
+  heading.append(create);
+  section.append(heading);
+  if (!list.length)
+    info(
+      section,
+      "Todavía no hay servicios. Creá una factura para repartir su importe entre los inmuebles.",
+    );
+  else
+    section.append(
+      table(
+        [
+          "Servicio",
+          "Periodo / vencimiento",
+          "Total",
+          "Reparto",
+          "Recibos",
+          "Estado",
+          "Acción",
+        ],
+        list.map((service) => [
+          `<strong>${esc(service.serviceLabel)}</strong><small>${esc(service.supplier || service.invoiceNumber || service.concept)}</small>`,
+          `${esc(service.period)}<small>Vence ${esc(date(service.dueDate))}</small>`,
+          money(service.totalAmount),
+          `${esc(serviceMethods[service.method] || service.method)}<small>${esc(serviceBillings[service.billing] || service.billing)}</small>`,
+          service.billing === "informative"
+            ? "Solo reparto"
+            : String(service.receiptCount),
+          serviceStatus(service),
+          button("Abrir servicio", () => showService(service.id)),
+        ]),
+      ),
+    );
+  root.append(section);
+}
+function serviceForm(ctx, service = null) {
+  buildServiceEditor(ctx, service, {
+    el,
+    button,
+    iconButton,
+    tabBar,
+    field,
+    euroField,
+    hint,
+    info,
+    money,
+    amount,
+    parseMoneyInput,
+    parseReadingInput,
+    formatReading,
+    madridDate,
+    serviceLabels,
+    serviceMethods,
+    serviceBillings,
+    renderPanel,
+    reloadAll,
+    showService,
+  });
+}
+function serviceRowsTable(items, method) {
+  const reading = method === "reading" || method === "mixed";
+  const headers = ["Inmueble", "Coeficiente"];
+  if (reading) headers.push("Lectura anterior", "Lectura actual", "Consumo");
+  if (method === "mixed") headers.push("Parte fija", "Parte variable");
+  headers.push("Importe");
+  return table(
+    headers,
+    items.map((item) => {
+      const previous = item.previous ?? item.reading?.previous,
+        current = item.current ?? item.reading?.current,
+        consumption = item.consumption ?? item.reading?.consumption,
+        coefficient =
+          item.effectiveCoefficient ??
+          item.snapshot?.coefficient ??
+          item.coefficient,
+        row = [
+          esc(item.plot || item.snapshot?.property || ""),
+          coefficient === null || coefficient === undefined
+            ? "—"
+            : `${Number(coefficient).toFixed(2)} %`,
+        ];
+      if (reading)
+        row.push(
+          previous === null || previous === undefined
+            ? "—"
+            : `${formatReading(previous)} m³`,
+          current === null || current === undefined
+            ? "—"
+            : `${formatReading(current)} m³`,
+          consumption === null || consumption === undefined
+            ? "—"
+            : `${formatReading(consumption)} m³`,
+        );
+      if (method === "mixed")
+        row.push(money(item.fixed || 0), money(item.variable || 0));
+      row.push(money(item.amount));
+      return row;
+    }),
+  );
+}
+function informativeServiceSection(root, data) {
+  const list = data.informativeServices || [];
+  if (!list.length) return;
+  const section = el(
+    "section",
+    undefined,
+    "fee-services fee-informative-services",
+  );
+  const heading = el("div", undefined, "fee-section-heading"),
+    copy = el("div");
+  copy.append(
+    el("h3", "Repartos informativos", "fee-section-title"),
+    el(
+      "p",
+      "Facturas de servicios repartidas solo a efectos informativos. No generan recibos ni deuda.",
+      "form-intro",
+    ),
+  );
+  heading.append(copy);
+  section.append(heading);
+  section.append(
+    table(
+      ["Servicio", "Periodo", "Total factura", "Tu parte", "Adjuntos", "Acción"],
+      list.map((service) => {
+        const mine = (service.properties || []).reduce(
+          (sum, property) => sum + property.amount,
+          0,
+        );
+        return [
+          `<strong>${esc(service.serviceLabel)}</strong><small>${esc(service.supplier || service.invoiceNumber || service.concept)}</small>`,
+          `${esc(service.period)}<small>Vence ${esc(date(service.dueDate))}</small>`,
+          money(service.totalAmount),
+          `${money(mine)}<small>${esc(
+            (service.properties || []).map((property) => property.plot).join(", "),
+          )}</small>`,
+          String((service.attachments || []).length || "—"),
+          button("Ver reparto", () => showInformativeService(service)),
+        ];
+      }),
+    ),
+  );
+  root.append(section);
+}
+function showInformativeService(service) {
+  const body = open("Reparto informativo");
+  dialog.querySelector("h2").textContent =
+    `Servicio de ${service.serviceLabel} · ${service.period}`;
+  const header = el("div", undefined, "fee-receipt-header");
+  header.innerHTML = `<h3>${esc(service.concept)}</h3><p>${esc(service.supplier || "Sin proveedor indicado")}${service.invoiceNumber ? ` · Factura ${esc(service.invoiceNumber)}` : ""} · Vence ${esc(date(service.dueDate))}</p><p><span class="fee-status fee-status-informative">Solo reparto informativo</span></p>`;
+  body.append(header);
+  info(
+    body,
+    "Este reparto no genera recibos ni deuda. El importe se muestra únicamente a efectos informativos.",
+  );
+  const mine = service.properties || [];
+  const totals = el("div", undefined, "fee-summary");
+  for (const [label, value] of [
+    ["Total factura", service.totalAmount],
+    [
+      "Tu parte",
+      mine.reduce((sum, property) => sum + property.amount, 0),
+    ],
+  ]) {
+    const cell = el("div");
+    cell.append(el("span", label), el("strong", money(value)));
+    totals.append(cell);
+  }
+  body.append(totals);
+  if (service.legalBasis)
+    info(body, `Base legal o acuerdo: ${service.legalBasis}`);
+  if (service.notes) richInfo(body, service.notes);
+  body.append(el("h3", "Tu reparto"));
+  body.append(serviceRowsTable(mine, service.method));
+  for (const warning of service.warnings || [])
+    info(body, warning, true);
+  if ((service.attachments || []).length) {
+    body.append(el("h3", "Factura adjunta"));
+    for (const attachment of service.attachments) {
+      const row = el("div", undefined, "fee-proof"),
+        link = el("a", attachment.fileName);
+      link.href = `/api/fees/service-attachments/${encodeURIComponent(attachment.id)}/download`;
+      link.download = attachment.fileName;
+      row.append(link, el("span", date(attachment.createdAt)));
+      body.append(row);
+    }
+  }
+}
+function informativeServiceNotice(root, ctx, data) {
+  const count = (data.informativeServices || []).length;
+  if (!count) return;
+  const notice = el("div", undefined, "fee-informative-notice");
+  notice.append(
+    el(
+      "p",
+      `Tenés ${count} ${
+        count === 1 ? "reparto informativo" : "repartos informativos"
+      } de servicios sin deuda.`,
+    ),
+    button("Ver repartos informativos", () => {
+      ctx.tab = "services";
+      renderPanel(root, ctx);
+    }),
+  );
+  root.append(notice);
+}
+async function showService(id) {
+  const body = open("Servicio"),
+    version = dialogVersion;
+  info(body, "Cargando servicio…");
+  try {
+    const service = await api.fees(`/services/${encodeURIComponent(id)}`);
+    if (version !== dialogVersion || !dialog.open) return;
+    body.replaceChildren();
+    dialog.querySelector("h2").textContent =
+      `Servicio de ${service.serviceLabel} · ${service.period}`;
+    const header = el("div", undefined, "fee-receipt-header");
+    header.innerHTML = `<h3>${esc(service.concept)}</h3><p>${esc(service.supplier || "Sin proveedor indicado")}${service.invoiceNumber ? ` · Factura ${esc(service.invoiceNumber)}` : ""} · Vence ${esc(date(service.dueDate))}</p><p>${serviceStatus(service)}</p>`;
+    body.append(header);
+    const panes = new Map();
+    const detailTabs = tabBar(
+      body,
+      [
+        ["overview", "Resumen"],
+        ["split", "Reparto"],
+        ["receipts", "Recibos"],
+        ["attachments", "Adjuntos"],
+      ],
+      "overview",
+      (selected) => {
+        for (const [key, pane] of panes) {
+          pane.hidden = key !== selected;
+          const tab = detailTabs.querySelector(`[data-tab="${key}"]`);
+          tab.classList.toggle("active", key === selected);
+          tab.setAttribute("aria-selected", String(key === selected));
+          tab.tabIndex = key === selected ? 0 : -1;
+        }
+      },
+      "Detalle del servicio",
+    );
+    for (const paneId of [
+      "overview",
+      "split",
+      "receipts",
+      "attachments",
+    ]) {
+      const pane = el("section", undefined, "fee-detail-pane");
+      pane.hidden = paneId !== "overview";
+      pane.setAttribute("role", "tabpanel");
+      pane.id = `fee-service-${paneId}`;
+      const tab = detailTabs.querySelector(`[data-tab="${paneId}"]`);
+      tab.id = `${pane.id}-tab`;
+      tab.setAttribute("aria-controls", pane.id);
+      pane.setAttribute("aria-labelledby", tab.id);
+      panes.set(paneId, pane);
+      body.append(pane);
+    }
+    const overview = panes.get("overview"),
+      split = panes.get("split"),
+      receipts = panes.get("receipts"),
+      attachments = panes.get("attachments");
+    if (service.cancelledAt)
+      info(
+        overview,
+        `Anulado el ${date(service.cancelledAt)}. Motivo: ${service.cancellationReason}`,
+        true,
+      );
+    for (const warning of service.warnings || [])
+      info(overview, warning, true);
+    const totals = el("div", undefined, "fee-summary");
+    for (const [label, value] of [
+      ["Total", service.totals.total],
+      ["Emitido", service.totals.issued],
+      ["Cobrado", service.totals.paid],
+      ["Pendiente", service.totals.outstanding],
+      ["Anulado", service.totals.cancelled],
+    ]) {
+      const cell = el("div");
+      cell.append(el("span", label), el("strong", money(value)));
+      totals.append(cell);
+    }
+    overview.append(totals);
+    info(
+      overview,
+      `Reparto ${serviceMethods[service.method] || service.method}. ${
+        service.billing === "informative"
+          ? "Solo reparto informativo: no genera recibos ni deuda."
+          : "Cada inmueble recibe un recibo con su parte del reparto."
+      }`,
+    );
+    if (service.legalBasis)
+      info(overview, `Base legal o acuerdo: ${service.legalBasis}`);
+    if (service.notes) richInfo(overview, service.notes);
+    if (service.canEdit)
+      overview.append(
+        button("Editar servicio", async () => {
+          const current = dialogVersion;
+          const data = await api.fees(
+            `/communities/${encodeURIComponent(service.communityId)}`,
+          );
+          if (current === dialogVersion && dialog.open) {
+            const ctx = [...contexts.values()].find(
+              (context) =>
+                context.kind === "community" &&
+                context.id === service.communityId &&
+                context.root.isConnected,
+            );
+            if (ctx) {
+              ctx.data = data;
+              dialog.close();
+              serviceForm(ctx, service);
+            }
+          }
+        }),
+      );
+    if (!service.cancelledAt && service.status === "draft")
+      overview.append(
+        button("Revisar y emitir", () => serviceEmission(service.id), true),
+      );
+    if (!service.cancelledAt) {
+      if (service.totals.paid > 0)
+        info(
+          overview,
+          "Para anular el servicio primero revertí los cobros aplicados.",
+          true,
+        );
+      const cancel = button("Anular servicio", () =>
+        reasonDialog(
+          "Anular servicio",
+          "Se anularán los recibos activos del servicio. Los cobros aplicados bloquean esta acción.",
+          async (reason) => {
+            await api.fees(
+              `/services/${encodeURIComponent(service.id)}/cancel`,
+              "POST",
+              { reason },
+            );
+            dialog.close();
+            await reloadAll();
+            showService(service.id);
+          },
+        ),
+      );
+      cancel.disabled = service.totals.paid > 0;
+      overview.append(cancel);
+    }
+    split.append(el("h3", "Reparto congelado"));
+    split.append(serviceRowsTable(service.breakdown || [], service.method));
+    if (service.subset)
+      info(
+        split,
+        "El reparto incluye una selección de inmuebles; los coeficientes se renormalizaron entre los incluidos.",
+      );
+    for (const omitted of service.omitted || [])
+      info(split, `${omitted.plot}: ${omitted.reason}.`, true);
+    const readingPhotos = (service.attachments || []).filter(
+      (attachment) => attachment.kind === "reading",
+    );
+    if (readingPhotos.length) {
+      split.append(el("h3", "Fotos de contadores"));
+      info(
+        split,
+        "Fotos aportadas como referencia de las lecturas. No alteran los importes del reparto.",
+      );
+      const plots = new Map(
+        (service.breakdown || []).map((item) => [
+          item.propertyId,
+          item.plot || item.snapshot?.property || item.propertyId,
+        ]),
+      );
+      for (const photo of readingPhotos) {
+        const row = el("div", undefined, "fee-proof"),
+          link = el("a", photo.fileName);
+        link.href = `/api/fees/service-attachments/${encodeURIComponent(photo.id)}/download`;
+        link.download = photo.fileName;
+        row.append(
+          el("span", plots.get(photo.propertyId) || photo.propertyId),
+          link,
+        );
+        split.append(row);
+      }
+    }
+    if (service.receipts.length) {
+      receipts.append(el("h3", "Recibos generados"));
+      receipts.append(
+        table(
+          [
+            "Inmueble",
+            "Titulares",
+            "Importe",
+            "Cobrado",
+            "Pendiente",
+            "Estado",
+            "Acción",
+          ],
+          service.receipts.map((receipt) => [
+            esc(receipt.snapshot.property),
+            esc(
+              receipt.snapshot.owners.map((owner) => owner.name).join(", "),
+            ),
+            money(receipt.amount),
+            money(receipt.paid),
+            money(receipt.outstanding),
+            status(receipt),
+            button("Ver recibo", () => showReceipt(receipt.id)),
+          ]),
+        ),
+      );
+    } else
+      info(
+        receipts,
+        service.billing === "informative"
+          ? "Este servicio es solo informativo y no genera recibos."
+          : "Todavía no hay recibos emitidos de este servicio.",
+      );
+    attachments.append(el("h3", "Factura y adjuntos"));
+    info(
+      attachments,
+      "Podés adjuntar la foto o el PDF de la factura. Los adjuntos se conservan como justificante del reparto.",
+    );
+    for (const attachment of service.attachments || []) {
+      if (attachment.kind === "reading") continue;
+      const row = el("div", undefined, "fee-proof"),
+        link = el("a", attachment.fileName);
+      link.href = `/api/fees/service-attachments/${encodeURIComponent(attachment.id)}/download`;
+      link.download = attachment.fileName;
+      row.append(link, el("span", date(attachment.createdAt)));
+      if (service.canEdit)
+        row.append(
+          button("Eliminar adjunto", async () => {
+            await api.fees(
+              `/service-attachments/${encodeURIComponent(attachment.id)}`,
+              "DELETE",
+            );
+            await reloadAll();
+            await showService(service.id);
+            toast("Adjunto eliminado.");
+          }),
+        );
+      attachments.append(row);
+    }
+    if (service.canEdit) {
+      const file = field(
+        attachments,
+        "Adjuntar factura (PDF, JPG, PNG o WebP; máximo 10 MB)",
+        "file",
+      );
+      file.accept = ".pdf,.jpg,.jpeg,.png,.webp";
+      attachments.append(
+        button(
+          "Subir adjunto",
+          async () => {
+            if (!file.files[0]) throw new Error("Seleccioná un archivo.");
+            if (file.files[0].size > 10 * 1024 * 1024)
+              throw new Error("El archivo supera 10 MB.");
+            const formData = new FormData();
+            formData.append("file", file.files[0]);
+            await api.fees(
+              `/services/${encodeURIComponent(service.id)}/attachments`,
+              "POST",
+              formData,
+            );
+            await reloadAll();
+            await showService(service.id);
+            toast("Adjunto guardado.");
+          },
+          true,
+        ),
+      );
+    }
+  } catch (error) {
+    if (version === dialogVersion) {
+      body.replaceChildren();
+      info(body, error.message, true);
+    }
+  }
+}
+async function serviceEmission(id) {
+  const body = open("Emitir servicio"),
+    version = dialogVersion;
+  info(body, "Calculando la vista previa del reparto…");
+  try {
+    const batch = await api.fees(
+      `/services/${encodeURIComponent(id)}/preview`,
+      "POST",
+    );
+    if (version !== dialogVersion || !dialog.open) return;
+    body.replaceChildren();
+    body.append(
+      el(
+        "h3",
+        `Vista previa · ${batch.serviceLabel} · ${batch.period} · ${money(batch.total)}`,
+      ),
+    );
+    info(
+      body,
+      `Vencimiento ${date(batch.dueDate)}. ${
+        batch.billing === "receipts"
+          ? `Se crearán ${batch.rows.length} recibos, uno por inmueble, y se avisará a sus titulares.`
+          : "Es un reparto informativo: no se crearán recibos ni deuda."
+      }`,
+    );
+    for (const warning of batch.warnings) info(body, warning, true);
+    body.append(serviceRowsTable(batch.rows, batch.method));
+    body.append(
+      button(
+        batch.billing === "receipts"
+          ? "Confirmar emisión de recibos"
+          : "Confirmar reparto informativo",
+        async () => {
+          await api.fees(
+            `/services/${encodeURIComponent(id)}/issue`,
+            "POST",
+            { token: batch.token },
+          );
+          dialog.close();
+          await reloadAll();
+          toast(
+            batch.billing === "receipts"
+              ? "Servicio emitido. Los recibos ya están disponibles para los propietarios."
+              : "Reparto informativo guardado. No se generó deuda.",
+          );
+          showService(id);
+        },
+        true,
+      ),
+    );
+  } catch (error) {
+    if (version === dialogVersion) {
+      body.replaceChildren();
+      info(body, error.message, true);
+    }
+  }
+}
 function ownerName(id, data) {
   const owner = state.owners.find((o) => o.id === id);
   return owner
@@ -921,7 +2034,6 @@ function configuration(ctx) {
     "Cada acuerdo queda guardado como una versión. La fecha debe ser posterior a los periodos ya emitidos. Los cambios generales no modifican estos acuerdos.",
   );
   const last = data.plans[0],
-    defaults = last?.reminders || data.defaults,
     grid = el("div", undefined, "fee-form-grid");
   body.append(grid);
   const annual = euroField(
@@ -964,7 +2076,10 @@ function configuration(ctx) {
   const agreement = field(grid, "Referencia del acuerdo de Junta", "text", "");
   agreement.maxLength = 300;
   agreement.required = true;
-  hint(agreement, "Número de acta o fecha del acuerdo que respalda estos importes.");
+  hint(
+    agreement,
+    "Número de acta o fecha del acuerdo que respalda estos importes.",
+  );
   const computeAmount = () => {
     const total = Number(annual.value.replace(",", "."));
     const count = Number(months.value);
@@ -992,34 +2107,11 @@ function configuration(ctx) {
   };
   mode.addEventListener("change", toggle);
   toggle();
-  body.append(el("h3", "Avisos de esta comunidad"));
-  const noticeGrid = el("div", undefined, "fee-form-grid");
-  body.append(noticeGrid);
-  const before = field(
-    noticeGrid,
-    "Días antes del vencimiento (0 desactiva)",
-    "number",
-    defaults.beforeDays,
-  );
-  const after = field(
-    noticeGrid,
-    "Días después del vencimiento",
-    "number",
-    defaults.afterDays,
-  );
-  const repeat = field(
-    noticeGrid,
-    "Repetir aviso vencido cada N días (0: una vez)",
-    "number",
-    defaults.repeatDays,
-  );
-  for (const x of [before, after, repeat]) x.min = "0";
-  before.max = "60";
-  after.max = repeat.max = "365";
-  for (const x of [before, after, repeat]) x.required = true;
   if (data.receipts.length) {
     const latest = data.receipts
-      .filter((r) => !r.cancelledAt)
+      .filter(
+        (r) => !r.cancelledAt && (r.kind || "ordinary") === "ordinary",
+      )
       .map((r) => r.periodEnd || `${r.period}-28`)
       .sort()
       .at(-1);
@@ -1029,18 +2121,6 @@ function configuration(ctx) {
       from.min = end.toISOString().slice(0, 7);
     }
   }
-  const internal = field(
-    noticeGrid,
-    "Avisos en el buzón de la app",
-    "checkbox",
-    defaults.internal,
-  );
-  const email = field(
-    noticeGrid,
-    "Avisos por email a quienes habiliten el canal",
-    "checkbox",
-    defaults.email,
-  );
   body.append(
     button(
       "Guardar nuevo acuerdo",
@@ -1058,13 +2138,6 @@ function configuration(ctx) {
               input.value,
             ]),
           ),
-          reminders: {
-            beforeDays: Number(before.value),
-            afterDays: Number(after.value),
-            repeatDays: Number(repeat.value),
-            internal: internal.checked,
-            email: email.checked,
-          },
         });
         dialog.close();
         await reloadAll();
@@ -1169,7 +2242,7 @@ function receiptSelector(parent, receipts, checked = false) {
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))) {
     const input = field(
       parent,
-      `${r.snapshot.property} · ${r.period} · pendiente ${money(r.outstanding)}`,
+      `${r.snapshot.property} · ${r.concept || r.period} · pendiente ${money(r.outstanding)}`,
       "checkbox",
       checked,
     );
@@ -1367,16 +2440,75 @@ function reasonDialog(title, description, action) {
   );
 }
 export async function showReceipt(id) {
-  const body = open("Recibo de cuota ordinaria"),
+  const body = open("Recibo"),
     version = dialogVersion;
   info(body, "Cargando recibo…");
   try {
     const r = await api.fees(`/receipts/${encodeURIComponent(id)}`);
     if (version !== dialogVersion || !dialog.open) return;
     body.replaceChildren();
+    dialog.querySelector("h2").textContent =
+      r.kind === "service"
+        ? "Recibo de servicio"
+        : r.kind === "assessment"
+          ? "Recibo de derrama"
+          : "Recibo de cuota ordinaria";
     const header = el("div", undefined, "fee-receipt-header");
-    header.innerHTML = `<h3>${esc(r.snapshot.community)} · ${esc(r.snapshot.property)}</h3><p>Cuota ordinaria ${esc(r.period)} · Vencimiento ${esc(date(r.dueDate))}</p><p>${esc(r.snapshot.owners.map((o) => o.name).join(", "))}</p><p>${status(r)}</p>`;
+    header.innerHTML = `<h3>${esc(r.snapshot.community)} · ${esc(r.snapshot.property)}</h3><p>${esc(r.concept || `Cuota ${r.period}`)} · Vencimiento ${esc(date(r.dueDate))}</p><p>${esc(r.snapshot.owners.map((o) => o.name).join(", "))}</p><p>${status(r)}</p>`;
     body.append(header);
+    if (r.kind === "service") {
+      const detail = el("div", undefined, "fee-service-receipt");
+      detail.append(
+        el(
+          "p",
+          `${r.snapshot.serviceLabel || "Suministro"} · Periodo ${r.snapshot.servicePeriod || r.period}${
+            r.snapshot.serviceSupplier
+              ? ` · ${r.snapshot.serviceSupplier}`
+              : ""
+          }${
+            r.snapshot.serviceInvoice
+              ? ` · Factura ${r.snapshot.serviceInvoice}`
+              : ""
+          }`,
+        ),
+      );
+      if (
+        r.snapshot.serviceReadingPrevious !== null &&
+        r.snapshot.serviceReadingPrevious !== undefined &&
+        r.snapshot.serviceReadingCurrent !== null &&
+        r.snapshot.serviceReadingCurrent !== undefined
+      )
+        detail.append(
+          el(
+            "p",
+            `Lectura anterior: ${formatReading(r.snapshot.serviceReadingPrevious)} m³ · Lectura actual: ${formatReading(r.snapshot.serviceReadingCurrent)} m³${
+              r.snapshot.serviceReadingConsumption !== null &&
+              r.snapshot.serviceReadingConsumption !== undefined
+                ? ` · Consumo: ${formatReading(r.snapshot.serviceReadingConsumption)} m³`
+                : ""
+            }`,
+          ),
+        );
+      body.append(detail);
+      if ((r.serviceAttachments || []).length) {
+        const attachments = el("div", undefined, "fee-service-receipt");
+        attachments.append(el("strong", "Factura adjunta"));
+        for (const attachment of r.serviceAttachments) {
+          const row = el("div", undefined, "fee-proof"),
+            link = el("a", attachment.fileName);
+          link.href = `/api/fees/service-attachments/${encodeURIComponent(attachment.id)}/download`;
+          link.download = attachment.fileName;
+          row.append(link, el("span", date(attachment.createdAt)));
+          attachments.append(row);
+        }
+        body.append(attachments);
+      }
+    }
+    if (r.snapshot.assessmentPurpose) {
+      const purpose = el("div", undefined, "fee-rich-content");
+      purpose.innerHTML = richTextHtml(r.snapshot.assessmentPurpose);
+      body.append(purpose);
+    }
     const totals = el("div", undefined, "fee-summary");
     for (const [label, value] of [
       ["Importe", r.amount],
@@ -1535,6 +2667,39 @@ function downloadReceipt(r) {
     ["Inmueble", r.snapshot.property],
     ["Titulares", r.snapshot.owners.map((o) => o.name).join(" / ")],
     ["Recibo", r.id],
+    ["Concepto", r.concept || `Cuota ${r.period}`],
+    ...(r.snapshot.assessmentPurpose
+      ? [["Motivo de la derrama", htmlToText(r.snapshot.assessmentPurpose)]]
+      : []),
+    ...(r.kind === "service"
+      ? [
+          ["Servicio", r.snapshot.serviceLabel || ""],
+          ["Periodo del servicio", r.snapshot.servicePeriod || r.period],
+          ["Proveedor", r.snapshot.serviceSupplier || ""],
+          ["Factura", r.snapshot.serviceInvoice || ""],
+          [
+            "Lectura anterior (m³)",
+            r.snapshot.serviceReadingPrevious === null ||
+            r.snapshot.serviceReadingPrevious === undefined
+              ? ""
+              : formatReading(r.snapshot.serviceReadingPrevious),
+          ],
+          [
+            "Lectura actual (m³)",
+            r.snapshot.serviceReadingCurrent === null ||
+            r.snapshot.serviceReadingCurrent === undefined
+              ? ""
+              : formatReading(r.snapshot.serviceReadingCurrent),
+          ],
+          [
+            "Consumo (m³)",
+            r.snapshot.serviceReadingConsumption === null ||
+            r.snapshot.serviceReadingConsumption === undefined
+              ? ""
+              : formatReading(r.snapshot.serviceReadingConsumption),
+          ],
+        ]
+      : []),
     ["Periodo", r.period],
     ["Vencimiento", r.dueDate],
     ["Importe EUR", amount(r.amount)],
@@ -1542,7 +2707,10 @@ function downloadReceipt(r) {
     ["Pendiente EUR", amount(r.outstanding)],
     ["Estado", labels[r.status]],
     ["Acuerdo", r.snapshot.agreement],
-    ["IBAN para transferencia", r.snapshot.communityIban || community?.iban || ""],
+    [
+      "IBAN para transferencia",
+      r.snapshot.communityIban || community?.iban || "",
+    ],
     ["", ""],
     ["Fecha", "Método", "Aplicado EUR", "Estado"],
   ];
@@ -1574,7 +2742,13 @@ function downloadReceipt(r) {
     ),
     a = document.createElement("a");
   a.href = url;
-  a.download = `cuota-${r.period}-${r.id.slice(0, 8)}.csv`;
+  a.download = `${
+    r.kind === "service"
+      ? "servicio"
+      : r.kind === "assessment"
+        ? "derrama"
+        : "cuota"
+  }-${r.period}-${r.id.slice(0, 8)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

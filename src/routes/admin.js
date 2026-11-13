@@ -363,7 +363,7 @@ router.put("/settings", (req, res) => {
     )
       return res
         .status(400)
-        .json({ error: "Elige al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG o WebP)." });
+        .json({ error: "Elige al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG, WebP, DOC o DOCX)." });
     data.documentosTiposPermitidos = tipos;
   }
   if (
@@ -376,6 +376,51 @@ router.put("/settings", (req, res) => {
       .json({ error: "El mensaje de mantenimiento no puede superar los 300 caracteres." });
   const brandError = validateBrand(data.marca);
   if (brandError) return res.status(400).json({ error: brandError });
+  if (data.tenantAuthorizations !== undefined) {
+    if (
+      !data.tenantAuthorizations ||
+      typeof data.tenantAuthorizations !== "object" ||
+      Array.isArray(data.tenantAuthorizations)
+    )
+      return res
+        .status(400)
+        .json({ error: "Las autorizaciones de inquilinos no son válidas." });
+    const normalized = {};
+    for (const [communityId, list] of Object.entries(
+      data.tenantAuthorizations,
+    )) {
+      if (!Array.isArray(list) || !list.length)
+        return res.status(400).json({
+          error: "Cada comunidad debe tener al menos una autorización.",
+        });
+      if (list.length > 50)
+        return res.status(400).json({
+          error: "Una comunidad no puede tener más de 50 autorizaciones.",
+        });
+      const ids = new Set();
+      normalized[communityId] = [];
+      for (const item of list) {
+        const id = typeof item?.id === "string" ? item.id.trim() : "";
+        const label =
+          typeof item?.label === "string" ? item.label.trim() : "";
+        if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id))
+          return res.status(400).json({
+            error: "El identificador de una autorización no es válido.",
+          });
+        if (ids.has(id))
+          return res.status(400).json({
+            error: "Hay autorizaciones duplicadas en una comunidad.",
+          });
+        if (!label || label.length > 80)
+          return res.status(400).json({
+            error: "Cada autorización debe tener un nombre de hasta 80 caracteres.",
+          });
+        ids.add(id);
+        normalized[communityId].push({ id, label });
+      }
+    }
+    data.tenantAuthorizations = normalized;
+  }
   const current = getSettings();
   try { validateFeeDefaults(data); } catch (error) { return res.status(400).json({ error: error.message }); }
   const next = { ...current, ...data };

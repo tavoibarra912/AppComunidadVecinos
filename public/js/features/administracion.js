@@ -1,6 +1,6 @@
 import { sanitizeHtml } from "../html.js";
 import { api } from "../api.js";
-import { state, refreshState, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, hasPermission, requirePermission, DEFAULT_TENANT_AUTHORIZATIONS } from "../state.js";
 import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, makeSelectSearchable } from "../utils.js";
 import { createDataTable, aplicarFilasPorPagina } from "../table.js";
 import { textosDe } from "../textos-envio.js";
@@ -95,7 +95,7 @@ const SETTINGS_PANELS = {
   asociacion: "#settings-asociacion-panel",
   seguridad: "#settings-seguridad-panel",
   notificaciones: "#settings-notificaciones-panel",
-  cuotas: "#settings-cuotas-panel",
+  inquilinos: "#settings-inquilinos-panel",
   sistema: "#settings-sistema-panel",
   estilo: "#settings-estilo-panel",
   textos: "#settings-textos-panel",
@@ -639,6 +639,185 @@ const numericValue = (element, fallback, min, max) => {
   return Math.min(max, Math.max(min, Math.round(number)));
 };
 
+let tenantAuthDraft = {};
+let tenantAuthCommunityId = "";
+let tenantAuthTouched = new Set();
+
+function tenantAuthDefaults() {
+  return DEFAULT_TENANT_AUTHORIZATIONS.map((item) => ({ ...item }));
+}
+
+function markTenantAuthTouched() {
+  if (tenantAuthCommunityId) tenantAuthTouched.add(tenantAuthCommunityId);
+  syncTenantAuthGuard();
+}
+
+/** Refleja solo las comunidades editadas para que el guard detecte cambios. */
+function syncTenantAuthGuard() {
+  const field = settingsForm?.elements.tenantAuthorizationsState;
+  if (!field) return;
+  field.value = JSON.stringify(
+    Object.fromEntries(
+      [...tenantAuthTouched].map((id) => [id, tenantAuthDraft[id] || []]),
+    ),
+  );
+}
+
+function currentTenantAuthList() {
+  if (!tenantAuthCommunityId) return [];
+  if (!Array.isArray(tenantAuthDraft[tenantAuthCommunityId]))
+    tenantAuthDraft[tenantAuthCommunityId] = tenantAuthDefaults();
+  return tenantAuthDraft[tenantAuthCommunityId];
+}
+
+function renderTenantAuthorizationsEditor(focusIndex = -1) {
+  const box = document.querySelector("#tenant-authorizations-editor");
+  if (!box) return;
+  box.replaceChildren();
+  if (!tenantAuthCommunityId) {
+    box.append(
+      Object.assign(document.createElement("p"), {
+        className: "form-intro",
+        textContent: "No hay comunidades para configurar.",
+      }),
+    );
+    return;
+  }
+  const list = currentTenantAuthList();
+  if (!list.length)
+    box.append(
+      Object.assign(document.createElement("p"), {
+        className: "form-intro",
+        textContent:
+          "Esta comunidad no tiene autorizaciones. Agregá una o restaurá las predeterminadas.",
+      }),
+    );
+  list.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.className = "tenant-authorization-row";
+    const input = document.createElement("input");
+    input.name = "tenantAuthorizationLabel";
+    input.value = item.label || "";
+    input.maxLength = 80;
+    input.placeholder = "Ej.: Acceso a la piscina";
+    input.setAttribute(
+      "aria-label",
+      `Nombre de la autorización ${index + 1}`,
+    );
+    input.addEventListener("input", () => {
+      item.label = input.value;
+      markTenantAuthTouched();
+    });
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "icon-action-btn btn-delete";
+    remove.title = "Eliminar autorización";
+    remove.setAttribute("aria-label", "Eliminar autorización");
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      list.splice(index, 1);
+      markTenantAuthTouched();
+      renderTenantAuthorizationsEditor();
+    });
+    row.append(input, remove);
+    box.append(row);
+  });
+  if (focusIndex >= 0)
+    box.querySelectorAll("input")[focusIndex]?.focus();
+}
+
+function initTenantAuthorizations() {
+  const select = document.querySelector("#tenant-authorization-community");
+  if (!select) return;
+  const saved = state.settings?.tenantAuthorizations;
+  tenantAuthDraft =
+    saved && typeof saved === "object" && !Array.isArray(saved)
+      ? JSON.parse(JSON.stringify(saved))
+      : {};
+  tenantAuthTouched = new Set();
+  syncTenantAuthGuard();
+  select.replaceChildren();
+  state.communities.forEach((community) =>
+    select.add(new Option(community.name, community.id)),
+  );
+  tenantAuthCommunityId = state.communities[0]?.id || "";
+  select.value = tenantAuthCommunityId;
+  if (!select.dataset.wired) {
+    select.dataset.wired = "true";
+    select.addEventListener("change", () => {
+      tenantAuthCommunityId = select.value;
+      renderTenantAuthorizationsEditor();
+    });
+    document
+      .querySelector("#add-tenant-authorization")
+      ?.addEventListener("click", () => {
+        if (!tenantAuthCommunityId) return;
+        const list = currentTenantAuthList();
+        list.push({
+          id: `custom_${crypto.randomUUID()}`,
+          label: "",
+        });
+        markTenantAuthTouched();
+        renderTenantAuthorizationsEditor(list.length - 1);
+      });
+    document
+      .querySelector("#reset-tenant-authorizations")
+      ?.addEventListener("click", () => {
+        if (!tenantAuthCommunityId) return;
+        tenantAuthDraft[tenantAuthCommunityId] = tenantAuthDefaults();
+        markTenantAuthTouched();
+        renderTenantAuthorizationsEditor();
+        toast("Se restauraron las autorizaciones predeterminadas. Guardá para aplicarlas.");
+      });
+  }
+  renderTenantAuthorizationsEditor();
+}
+
+function tenantAuthorizationErrors() {
+  const errors = [];
+  for (const [communityId, list] of Object.entries(tenantAuthDraft)) {
+    const communityName =
+      state.communities.find((community) => community.id === communityId)
+        ?.name || communityId;
+    if (!Array.isArray(list) || !list.length) {
+      errors.push(
+        `${communityName}: agregá al menos una autorización o restaurá las predeterminadas.`,
+      );
+      continue;
+    }
+    const ids = new Set();
+    list.forEach((item, index) => {
+      const label = String(item?.label || "").trim();
+      if (!item?.id || typeof item.id !== "string")
+        errors.push(`${communityName}: la autorización ${index + 1} no es válida.`);
+      else if (ids.has(item.id))
+        errors.push(`${communityName}: hay autorizaciones duplicadas.`);
+      else ids.add(item.id);
+      if (!label)
+        errors.push(
+          `${communityName}: la autorización ${index + 1} no tiene nombre.`,
+        );
+      else if (label.length > 80)
+        errors.push(
+          `${communityName}: «${label.slice(0, 30)}…» supera los 80 caracteres.`,
+        );
+    });
+  }
+  return errors;
+}
+
+/** Solo guarda las comunidades con lista propia o con cambios en esta sesión. */
+function tenantAuthorizationsPayload() {
+  const saved = state.settings?.tenantAuthorizations;
+  return Object.fromEntries(
+    Object.entries(tenantAuthDraft).filter(
+      ([communityId]) =>
+        tenantAuthTouched.has(communityId) ||
+        (saved && Object.hasOwn(saved, communityId)),
+    ),
+  );
+}
+
 function renderSettings() {
   if (!settingsForm || !puedeAdministrar()) return;
   const s = state.settings || {};
@@ -663,6 +842,16 @@ function renderSettings() {
   settingsForm.elements.feeEmail.checked = s.feeEmail === true;
   settingsForm.elements.feeEmailSubject.value = s.feeEmailSubject || "{{titulo}} · {{comunidad}}";
   settingsForm.elements.feeEmailBody.value = s.feeEmailBody || "{{mensaje}}\nConsulta la pestaña Financiero de la ficha del propietario.";
+  settingsForm.elements.assessmentBeforeDays.value = s.assessmentBeforeDays ?? 3;
+  settingsForm.elements.assessmentAfterDays.value = s.assessmentAfterDays ?? 7;
+  settingsForm.elements.assessmentRepeatDays.value = s.assessmentRepeatDays ?? 0;
+  settingsForm.elements.assessmentInternal.checked = s.assessmentInternal !== false;
+  settingsForm.elements.assessmentEmail.checked = s.assessmentEmail === true;
+  settingsForm.elements.serviceBeforeDays.value = s.serviceBeforeDays ?? 3;
+  settingsForm.elements.serviceAfterDays.value = s.serviceAfterDays ?? 7;
+  settingsForm.elements.serviceRepeatDays.value = s.serviceRepeatDays ?? 0;
+  settingsForm.elements.serviceInternal.checked = s.serviceInternal !== false;
+  settingsForm.elements.serviceEmail.checked = s.serviceEmail === true;
   settingsForm.elements.documentosMaxSizeMb.value = s.documentosMaxSizeMb ?? 15;
   settingsForm.elements.documentosMaxArchivos.value =
     s.documentosMaxArchivos ?? 20;
@@ -734,6 +923,7 @@ function renderSettings() {
     if (marca.logoDataUrl) preview.src = marca.logoDataUrl;
     else preview.removeAttribute("src");
   }
+  initTenantAuthorizations();
   armarGuardia(
     settingsForm,
     settingsForm.closest(".admin-pane") ||
@@ -786,6 +976,11 @@ function readMarca() {
 settingsForm?.addEventListener("submit", async event => {
   event.preventDefault();
   if (!requirePermission("admin:settings")) return;
+  const authErrors = tenantAuthorizationErrors();
+  if (authErrors.length) {
+    showValidationErrors(authErrors, "Revisá las autorizaciones de inquilinos");
+    return;
+  }
   const data = {
     nombreAsociacion: settingsForm.elements.nombreAsociacion.value.trim(),
     emailContacto: settingsForm.elements.emailContacto.value.trim(),
@@ -820,6 +1015,17 @@ settingsForm?.addEventListener("submit", async event => {
     feeEmail: settingsForm.elements.feeEmail.checked,
     feeEmailSubject: settingsForm.elements.feeEmailSubject.value.trim(),
     feeEmailBody: settingsForm.elements.feeEmailBody.value.trim(),
+    assessmentBeforeDays: Number(settingsForm.elements.assessmentBeforeDays.value),
+    assessmentAfterDays: Number(settingsForm.elements.assessmentAfterDays.value),
+    assessmentRepeatDays: Number(settingsForm.elements.assessmentRepeatDays.value),
+    assessmentInternal: settingsForm.elements.assessmentInternal.checked,
+    assessmentEmail: settingsForm.elements.assessmentEmail.checked,
+    serviceBeforeDays: Number(settingsForm.elements.serviceBeforeDays.value),
+    serviceAfterDays: Number(settingsForm.elements.serviceAfterDays.value),
+    serviceRepeatDays: Number(settingsForm.elements.serviceRepeatDays.value),
+    serviceInternal: settingsForm.elements.serviceInternal.checked,
+    serviceEmail: settingsForm.elements.serviceEmail.checked,
+    tenantAuthorizations: tenantAuthorizationsPayload(),
     documentosMaxSizeMb: numericValue(
       settingsForm.elements.documentosMaxSizeMb,
       15,

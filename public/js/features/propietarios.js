@@ -3,7 +3,7 @@ import { sanitizeHtml, escapeHtml, htmlToText } from "../html.js";
 import { api } from "../api.js";
 import { mountFeeShortcut } from "./fees.js";
 import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
-import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, makeSelectSearchable, showValidationErrors, intentarCerrar } from "../utils.js";
+import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { createRichText } from "../rich-text.js";
@@ -590,6 +590,9 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   resetContactVerification(o);
   applyOwnerDialogReadOnly(readOnly);
   switchOwnerDialogTab(defaultTab);
+  // La foto del formulario se toma una vez cargados todos los datos: así abrir
+  // el editor sin tocar nada no se interpreta como cambios pendientes.
+  armarGuardia(ownerForm, ownerDialog);
   if (!ownerDialog.open) ownerDialog.showModal();
   mountFeeShortcut(document.querySelector("#owner-editor-fees"), "owner", id);
   if (defaultTab === "general" && !readOnly) {
@@ -1408,6 +1411,7 @@ ownerForm.addEventListener("submit", async event => {
   }
   await refreshState();
 
+  limpiarGuardia(ownerForm);
   closeOwnerEditor();
   toast(isEditing ? "Propietario actualizado." : "Propietario creado.");
 

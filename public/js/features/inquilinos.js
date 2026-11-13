@@ -1,18 +1,20 @@
 import { sanitizeHtml, escapeHtml, richTextHtml } from "../html.js";
 import { api } from "../api.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
-import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, TENANT_AUTHORIZATION_LABELS, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
+import { state, refreshState, ownerProperties, ownerTenants, getTenantContractStatus, tenantAuthorizationCatalog, tenantAuthorizationLabel, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
 import { toast, isValidEmail, isValidDateInput, isValidIdentityDocument, formatContractDate, getLocalDateInputValue, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, setFormReadonly } from "../utils.js";
 import { createDataTable } from "../table.js";
 import { createRichText } from "../rich-text.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
+import { createDocumentLibrary } from "../document-library.js";
 
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>`;
+const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
 
 function iconBtn(className, title, ariaLabel, svg) {
   const btn = document.createElement("button");
@@ -47,11 +49,61 @@ makeSelectSearchable(tenantPropertySelect, "Buscar inmueble…");
 makeSelectSearchable(document.querySelector("#tenant-user-select"), "Buscar cuenta de usuario…");
 const tenantDetailDialog = document.querySelector("#tenant-detail-dialog");
 const tenantDeleteDialog = document.querySelector("#tenant-delete-dialog");
+const tenantDocumentLibraryHost = document.querySelector("#tenant-document-library");
+const tenantDetailDocumentLibraryHost = document.querySelector("#tenant-detail-document-library");
 
 let tenantTable = null;
 let tenantEditingDocs = {};
 let editingTenantPropertyId = null;
 let tenantDialogReadOnly = false;
+
+function tenantLibraryData(tenantId) {
+  const tenant = state.tenants.find(item => item.id === tenantId);
+  return {
+    documents: tenant?.libraryDocuments || [],
+    folders: tenant?.documentFolders || []
+  };
+}
+
+async function refreshTenantLibraries() {
+  await refreshState();
+  tenantDocumentsLibrary?.refresh();
+  tenantDetailDocumentsLibrary?.refresh();
+}
+
+const tenantDocumentsLibrary = tenantDocumentLibraryHost
+  ? createDocumentLibrary({
+      container: tenantDocumentLibraryHost,
+      entityType: "tenant",
+      category: "document",
+      getEntityId: () => state.ui.editingTenantId,
+      getData: () => tenantLibraryData(state.ui.editingTenantId),
+      settings: () => state.settings,
+      countEl: "#tenant-doc-count",
+      canWrite: () =>
+        !tenantDialogReadOnly &&
+        !!state.ui.editingTenantId &&
+        hasPermission("tenant:manage", state.ui.editingTenantId) &&
+        hasPermission("document:upload", state.ui.editingTenantId),
+      onChange: refreshTenantLibraries,
+      emptyText:
+        "Subí documentación adicional del inquilino y organizala en carpetas."
+    })
+  : null;
+
+const tenantDetailDocumentsLibrary = tenantDetailDocumentLibraryHost
+  ? createDocumentLibrary({
+      container: tenantDetailDocumentLibraryHost,
+      entityType: "tenant",
+      category: "document",
+      getEntityId: () => state.ui.viewingTenantId,
+      getData: () => tenantLibraryData(state.ui.viewingTenantId),
+      settings: () => state.settings,
+      countEl: "#tenant-detail-library-count",
+      canWrite: () => false,
+      emptyText: "No hay archivos adicionales cargados."
+    })
+  : null;
 
 const tenantPhoneVerifyStatus = document.querySelector("#tenant-phone-verify-status");
 const tenantEmailVerifyStatus = document.querySelector("#tenant-email-verify-status");
@@ -117,7 +169,9 @@ function tenantUpdateCanalOptions() {
 function syncTenantNotificationPreference() {
   const select = tenantForm.elements.notificationPreference;
   if (!select) return;
-  const checkbox = document.querySelector("#tenant-auth-comm");
+  const checkbox = tenantForm.querySelector(
+    'input[name="authorizations"][value="community_communications"]',
+  );
   select.disabled = tenantDialogReadOnly || !(checkbox && checkbox.checked);
 }
 
@@ -161,6 +215,10 @@ export function renderTenants() {
             const btnInfo=iconBtn("btn-info","Más info",`Ver información de ${tenant.name} ${tenant.surname}`,ICON_INFO);
             btnInfo.addEventListener("click",()=>openTenantEditor(tenant.id, owner.id, true));
             wrap.append(btnInfo);
+            const canManage = hasPermission("tenant:manage", tenant.id);
+            const btnDocs = iconBtn("btn-docs", canManage ? "Subir y gestionar documentación" : "Ver documentación", `Documentación de ${tenant.name} ${tenant.surname}`, ICON_DOCS);
+            btnDocs.addEventListener("click", () => openTenantEditor(tenant.id, owner.id, !canManage, "docs"));
+            wrap.append(btnDocs);
             if (hasPermission("tenant:manage", owner.id)) {
               const btnEdit=iconBtn("btn-edit","Editar",`Editar inquilino ${tenant.name} ${tenant.surname}`,ICON_EDIT);
               btnEdit.addEventListener("click",()=>openTenantEditor(tenant.id, owner.id));
@@ -177,6 +235,56 @@ export function renderTenants() {
     });
   } else {
     tenantTable.refresh();
+  }
+}
+
+function tenantCommunityId() {
+  return (
+    state.properties.find((property) => property.id === editingTenantPropertyId)
+      ?.communityId || ""
+  );
+}
+
+function selectedTenantAuthorizations() {
+  return [
+    ...tenantForm.querySelectorAll('input[name="authorizations"]:checked'),
+  ].map((input) => input.value);
+}
+
+/** Pinta las autorizaciones configuradas para la comunidad del inmueble. */
+function renderTenantAuthorizations(selectedValues = []) {
+  const box = document.querySelector("#tenant-authorizations-list");
+  if (!box) return;
+  const communityId = tenantCommunityId();
+  const catalog = tenantAuthorizationCatalog(communityId);
+  const selected = new Set(selectedValues);
+  box.replaceChildren();
+  if (!catalog.length) {
+    const empty = document.createElement("p");
+    empty.className = "form-intro";
+    empty.textContent =
+      "Esta comunidad todavía no tiene autorizaciones configuradas.";
+    box.append(empty);
+    return;
+  }
+  for (const item of catalog) {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = "authorizations";
+    input.value = item.id;
+    input.checked = selected.has(item.id);
+    label.append(input, document.createTextNode(` ${item.label}`));
+    box.append(label);
+  }
+  const hint = document.querySelector("#tenant-authorizations-hint");
+  if (hint) {
+    const community = state.communities.find(
+      (item) => item.id === communityId,
+    );
+    hint.textContent = community
+      ? `Opciones configuradas para ${community.name}. Se administran en Configuración → Inquilinos.`
+      : "Las opciones se configuran por comunidad en Configuración → Inquilinos.";
   }
 }
 
@@ -210,7 +318,7 @@ function switchTenantDialogTab(tab) {
   }
 }
 
-export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false) {
+export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, readonly = false, initialTab = "general") {
   const permission = readonly ? "tenant:read" : id ? "tenant:manage" : "tenant:create";
   if (!requirePermission(permission, id || ownerId || "")) return;
   const tenant = id ? state.tenants.find(item => item.id === id) : null;
@@ -237,17 +345,18 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
     ["name","surname","documentType","documentId","contractType","monthlyRent","deposit","emergencyPhone","phone","email","contractStart","contractEnd","authorizationNotes"].forEach(key => {
       if (tenantForm.elements[key]) tenantForm.elements[key].value = tenant[key] || "";
     });
-    const authorizations = new Set(Array.isArray(tenant.authorizations) ? tenant.authorizations : []);
-    Array.from(tenantForm.elements.authorizations).forEach(input => { input.checked = authorizations.has(input.value); });
   } else {
     tenantForm.elements.contractStart.value = getLocalDateInputValue();
     tenantForm.elements.documentType.value = "DNI";
   }
   tenantNotes?.setValue(tenantForm.elements.authorizationNotes.value || "");
+  renderTenantAuthorizations(
+    Array.isArray(tenant?.authorizations) ? tenant.authorizations : [],
+  );
 
   updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
   renderTenantPropertyTab();
-  switchTenantDialogTab("general");
+  switchTenantDialogTab(initialTab);
   updateTenantUserSelect(tenant?.userId || "");
   document.querySelector("#tenant-dialog-title").textContent = tenant ? (readonly ? `Ver inquilino: ${tenant.name} ${tenant.surname}` : "Editar inquilino") : "Nuevo inquilino";
   setFormReadonly(tenantForm, readonly);
@@ -255,6 +364,7 @@ export function openTenantEditor(id = null, ownerId = state.ui.viewingOwnerId, r
   syncTenantNotificationPreference();
   if (tenantForm.elements.userId) tenantForm.elements.userId.disabled = readonly || !hasPermission("admin:users");
   armarGuardia(tenantForm, tenantDialog);
+  tenantDocumentsLibrary?.setEntity(id);
   if (!tenantDialog.open) tenantDialog.showModal();
 }
 
@@ -281,6 +391,7 @@ export function closeTenantEditor() {
   state.ui.editingTenantId = null;
   tenantEditingDocs = {};
   editingTenantPropertyId = null;
+  tenantDocumentsLibrary?.setEntity("");
 }
 
 function renderTenantPropertyTab() {
@@ -319,7 +430,7 @@ function renderTenantPropertyTab() {
   const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${property.plot}`, `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`);
   viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
   const unlinkBtn = iconBtn("btn-delete", "Desvincular", `Desvincular ${property.plot}`, `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path></svg>`);
-  unlinkBtn.addEventListener("click", () => { editingTenantPropertyId = null; renderTenantPropertyTab(); });
+  unlinkBtn.addEventListener("click", () => { editingTenantPropertyId = null; renderTenantPropertyTab(); renderTenantAuthorizations(selectedTenantAuthorizations()); });
   actions.append(viewBtn, unlinkBtn);
   card.append(info, actions);
   list.append(card);
@@ -386,9 +497,11 @@ function renderTenantDocCard(key, ids) {
         openDocViewer(getFormTenantContext(), key, doc);
       });
       header.querySelector('[data-action="remove"]').addEventListener("click", () => {
+        if (tenantDialogReadOnly) return;
         delete tenantEditingDocs[key];
         renderTenantDialogDocs();
       });
+      header.querySelector('[data-action="remove"]').hidden = tenantDialogReadOnly;
     }
     if (dropzone) dropzone.style.display = "none";
   } else {
@@ -399,11 +512,14 @@ function renderTenantDocCard(key, ids) {
       result.hidden = true;
       result.replaceChildren();
     }
-    if (dropzone) dropzone.style.display = "block";
+    if (dropzone) dropzone.style.display = tenantDialogReadOnly ? "none" : "block";
   }
 }
 
 function renderTenantDialogDocs() {
+  document.querySelectorAll("#tenant-tab-docs .sample-doc-btn").forEach(button => {
+    button.hidden = tenantDialogReadOnly;
+  });
   renderTenantDocCard("dni", { cardId: "#tenant-card-doc-dni", badgeId: "#tenant-badge-doc-dni", dropzoneId: "#tenant-dropzone-dni", resultId: "#tenant-result-doc-dni", inputId: "#tenant-input-doc-dni" });
   renderTenantDocCard("contract", { cardId: "#tenant-card-doc-contract", badgeId: "#tenant-badge-doc-contract", dropzoneId: "#tenant-dropzone-contract", resultId: "#tenant-result-doc-contract", inputId: "#tenant-input-doc-contract" });
   const count = (tenantEditingDocs["dni"] ? 1 : 0) + (tenantEditingDocs["contract"] ? 1 : 0);
@@ -502,14 +618,14 @@ if (tenantEmergencyPhoneInput) tenantEmergencyPhoneInput.addEventListener("input
   tenantEmergencyPhoneInput.value = (tenantEmergencyPhoneInput.value || "").replace(/\D/g, "").slice(0, 9);
 });
 
-// notification channel gating by checkbox
-const tenantAuthCommCheckbox = document.querySelector("#tenant-auth-comm");
-if (tenantAuthCommCheckbox) {
-  tenantAuthCommCheckbox.addEventListener("change", () => {
-    if (tenantAuthCommCheckbox.checked) tenantUpdateCanalOptions();
+// notification channel gating by checkbox (la lista es dinámica por comunidad)
+const tenantAuthorizationsList = document.querySelector("#tenant-authorizations-list");
+tenantAuthorizationsList?.addEventListener("change", event => {
+  if (event.target?.matches?.('input[name="authorizations"]')) {
+    if (event.target.checked) tenantUpdateCanalOptions();
     syncTenantNotificationPreference();
-  });
-}
+  }
+});
 
 // Tabs
 document.querySelectorAll("#tenant-dialog [data-tenant-tab]").forEach(btn => {
@@ -544,6 +660,7 @@ if (btnTenantConfirmProperty) btnTenantConfirmProperty.addEventListener("click",
   const panel = document.querySelector("#tenant-property-link-panel");
   if (panel) panel.hidden = true;
   renderTenantPropertyTab();
+  renderTenantAuthorizations(selectedTenantAuthorizations());
 });
 const btnTenantCancelProperty = document.querySelector("#btn-tenant-cancel-property");
 if (btnTenantCancelProperty) btnTenantCancelProperty.addEventListener("click", () => {
@@ -643,6 +760,7 @@ tenantOwnerSelect.addEventListener("change", () => {
   updateTenantPropertyOptions(tenantOwnerSelect.value);
   editingTenantPropertyId = null;
   renderTenantPropertyTab();
+  renderTenantAuthorizations(selectedTenantAuthorizations());
 });
 
 newTenantBtn.addEventListener("click", () => openTenantEditor(null, ""));
@@ -692,8 +810,14 @@ tenantForm.addEventListener("submit", async event => {
     return;
   }
   const submittedAuthorizations = formData.getAll("authorizations");
-  if (submittedAuthorizations.some(v => !Object.hasOwn(TENANT_AUTHORIZATION_LABELS, v))) {
-    tenantFormError.textContent = "Selecciona únicamente autorizaciones disponibles.";
+  const allowedAuthorizations = new Set(
+    tenantAuthorizationCatalog(tenantCommunityId()).map(item => item.id),
+  );
+  if (submittedAuthorizations.some(v => !allowedAuthorizations.has(v))) {
+    showValidationErrors(
+      ["Selecciona únicamente autorizaciones disponibles para esta comunidad."],
+      "Revisá las autorizaciones",
+    );
     return;
   }
   const tenantId = state.ui.editingTenantId || crypto.randomUUID();
@@ -771,7 +895,9 @@ export function openTenantDetail(ownerId, tenantId) {
   if (emergencyPhoneEl) emergencyPhoneEl.textContent = tenant.emergencyPhone || "—";
   const authorizations = document.querySelector("#tenant-detail-authorizations");
   authorizations.replaceChildren();
-  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map(v => TENANT_AUTHORIZATION_LABELS[v] || v);
+  const tenantCommunity =
+    state.properties.find(item => item.id === tenant.propertyId)?.communityId || "";
+  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map(v => tenantAuthorizationLabel(v, tenantCommunity));
   if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
   labels.forEach(label => { const item = document.createElement("li"); item.textContent = label; authorizations.append(item); });
   const tenantNotesEl = document.querySelector("#tenant-detail-authorization-notes");
@@ -827,6 +953,7 @@ export function openTenantDetail(ownerId, tenantId) {
   const viewPropertyButton = document.querySelector("#tenant-detail-view-property");
   viewPropertyButton.hidden = !property;
   viewPropertyButton.onclick = () => { if (property) openPropertyDetail(property.id); };
+  tenantDetailDocumentsLibrary?.setEntity(tenantId);
   document.querySelector("#tenant-detail-edit-btn").hidden = !hasPermission("tenant:manage", owner.id);
   if (!tenantDetailDialog.open) tenantDetailDialog.showModal();
 }

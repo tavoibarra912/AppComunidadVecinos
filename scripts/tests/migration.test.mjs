@@ -68,6 +68,75 @@ test("migración: SSO no recibe contraseñas predecibles y revoca las antiguas",
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("migración: una base con documents antiguo añade columnas antes de crear el índice", () => {
+  const directory = mkdtempSync(
+    path.join(tmpdir(), "penarrubia-doc-migration-test-"),
+  );
+  const dbPath = path.join(directory, "penarrubia.db");
+  const legacy = new DatabaseSync(dbPath);
+  legacy.exec(`
+    CREATE TABLE documents (
+      id TEXT PRIMARY KEY,
+      entityType TEXT NOT NULL,
+      entityId TEXT NOT NULL,
+      fileName TEXT NOT NULL,
+      fileType TEXT NOT NULL DEFAULT '',
+      fileSize INTEGER NOT NULL DEFAULT 0,
+      uploadedAt TEXT NOT NULL DEFAULT '',
+      storedName TEXT NOT NULL
+    );
+    INSERT INTO documents (id,entityType,entityId,fileName,storedName)
+    VALUES ('legacy-doc','community','com-legacy','Acta.pdf','legacy.pdf');
+  `);
+  legacy.close();
+  const url = new URL("../../src/db.js", import.meta.url).href;
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `const {db}=await import(${JSON.stringify(url)});db.close();`,
+    ],
+    {
+      env: {
+        ...process.env,
+        APP_DATA_DIR: directory,
+        APP_UPLOADS_DIR: path.join(directory, "uploads"),
+      },
+      encoding: "utf8",
+    },
+  );
+  const check = new DatabaseSync(dbPath);
+  try {
+    assert.equal(result.status, 0, result.stderr);
+    const columns = check
+      .prepare("PRAGMA table_info(documents)")
+      .all()
+      .map((row) => row.name);
+    assert.ok(columns.includes("folderId"));
+    assert.ok(columns.includes("category"));
+    assert.ok(columns.includes("uploadedBy"));
+    assert.ok(columns.includes("uploadedByName"));
+    const row = check
+      .prepare("SELECT * FROM documents WHERE id='legacy-doc'")
+      .get();
+    assert.equal(row.fileName, "Acta.pdf");
+    assert.equal(row.folderId, "");
+    assert.equal(row.category, "document");
+    assert.ok(
+      check
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_documents_folder'",
+        )
+        .get(),
+    );
+  } finally {
+    check.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("migracion: corrige los NIF heredados de las comunidades demo sin tocar los validos", () => {
   const directory = mkdtempSync(
     path.join(tmpdir(), "penarrubia-community-nif-test-"),

@@ -418,8 +418,8 @@
             aria-selected="false">Acceso y seguridad</button>
           <button type="button" class="community-editor-tab" data-settings-tab="notificaciones"
             aria-selected="false">Notificaciones</button>
-          <button type="button" class="community-editor-tab" data-settings-tab="cuotas"
-            aria-selected="false">Cuotas</button>
+          <button type="button" class="community-editor-tab" data-settings-tab="inquilinos"
+            aria-selected="false">Inquilinos</button>
           <button type="button" class="community-editor-tab" data-settings-tab="sistema"
             aria-selected="false">Sistema</button>
           <button type="button" class="community-editor-tab" data-settings-tab="estilo" aria-selected="false">Estilo</button>
@@ -469,7 +469,7 @@
             </div>
             <div id="settings-notificaciones-panel" hidden>
               <div class="form-grid">
-                <p class="form-section-title full">Notificaciones</p>
+                <p class="form-section-title full">Avisos generales</p>
                 <label class="full checkbox-line">
                   <input type="checkbox" name="notificacionesEmail" />
                   Enviar por email los avisos de comunidad a quien tenga el canal habilitado
@@ -478,20 +478,50 @@
                   <input name="avisosCambiosEmail" maxlength="300" placeholder="asociacionpenarubia@gmail.com, otra@gmail.com" />
                 </label>
                 <p class="form-intro full">Separa varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Marca «Habilitar correo electrónico».</p>
-              </div>
-            </div>
-            <div id="settings-cuotas-panel" hidden>
-              <div class="form-grid">
-                <p class="form-section-title full">Cuotas ordinarias · valores iniciales</p>
-                <p class="form-intro full">Se copian al crear un acuerdo de comunidad. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
+
+                <p class="form-section-title full">Cuotas ordinarias</p>
+                <p class="form-intro full">Valores iniciales que se copian al crear un acuerdo de cuotas. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
                 <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="feeBeforeDays" type="number" min="0" max="60" step="1" /></label>
                 <label>Aviso después del vencimiento (días)<input name="feeAfterDays" type="number" min="0" max="365" step="1" /></label>
                 <label>Repetición de vencidos (días; 0: una vez)<input name="feeRepeatDays" type="number" min="0" max="365" step="1" /></label>
                 <label class="checkbox-line"><input name="feeInternal" type="checkbox" />Avisos de cuotas en el buzón de la app</label>
                 <label class="checkbox-line"><input name="feeEmail" type="checkbox" />Avisos de cuotas por email a destinatarios con el canal habilitado</label>
-                <label class="full">Asunto del email de cuotas<input name="feeEmailSubject" maxlength="200" /></label>
-                <label class="full">Texto del email de cuotas<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
-                <p class="form-intro full">Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
+
+                <p class="form-section-title full">Derramas</p>
+                <p class="form-intro full">Valores iniciales que se copian al crear una derrama. Se aplican a los recibos de derrama que no tengan una configuración propia guardada.</p>
+                <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="assessmentBeforeDays" type="number" min="0" max="60" step="1" /></label>
+                <label>Aviso después del vencimiento (días)<input name="assessmentAfterDays" type="number" min="0" max="365" step="1" /></label>
+                <label>Repetición de vencidos (días; 0: una vez)<input name="assessmentRepeatDays" type="number" min="0" max="365" step="1" /></label>
+                <label class="checkbox-line"><input name="assessmentInternal" type="checkbox" />Avisos de derramas en el buzón de la app</label>
+                <label class="checkbox-line"><input name="assessmentEmail" type="checkbox" />Avisos de derramas por email a destinatarios con el canal habilitado</label>
+
+                <p class="form-section-title full">Servicios y suministros</p>
+                <p class="form-intro full">Valores iniciales que se copian al crear un servicio. Se aplican a los recibos de servicios que no tengan una configuración propia guardada.</p>
+                <label>Aviso antes del vencimiento (días; 0 desactiva)<input name="serviceBeforeDays" type="number" min="0" max="60" step="1" /></label>
+                <label>Aviso después del vencimiento (días)<input name="serviceAfterDays" type="number" min="0" max="365" step="1" /></label>
+                <label>Repetición de vencidos (días; 0: una vez)<input name="serviceRepeatDays" type="number" min="0" max="365" step="1" /></label>
+                <label class="checkbox-line"><input name="serviceInternal" type="checkbox" />Avisos de servicios en el buzón de la app</label>
+                <label class="checkbox-line"><input name="serviceEmail" type="checkbox" />Avisos de servicios por email a destinatarios con el canal habilitado</label>
+
+                <p class="form-section-title full">Plantilla de email de avisos de cobro</p>
+                <label class="full">Asunto del email<input name="feeEmailSubject" maxlength="200" /></label>
+                <label class="full">Texto del email<textarea name="feeEmailBody" maxlength="3000" rows="3"></textarea></label>
+                <p class="form-intro full">Se usa para cuotas, derramas y servicios. Variables: {{titulo}}, {{mensaje}}, {{comunidad}}. El envío usa los proveedores y las preferencias de comunicación existentes.</p>
+              </div>
+            </div>
+            <div id="settings-inquilinos-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Autorizaciones de inquilinos</p>
+                <p class="form-intro full">Definí qué autorizaciones puede conceder cada comunidad. Estas opciones aparecen en la pestaña «Comunidad» de la ficha del inquilino. Si una comunidad no tiene una lista propia, se usan las opciones predeterminadas.</p>
+                <label class="full">Comunidad
+                  <select id="tenant-authorization-community"></select>
+                </label>
+                <input type="hidden" name="tenantAuthorizationsState" />
+                <div id="tenant-authorizations-editor" class="full"></div>
+                <div class="heading-actions full">
+                  <button type="button" class="secondary-button" id="add-tenant-authorization">Agregar autorización</button>
+                  <button type="button" class="secondary-button" id="reset-tenant-authorizations">Restaurar predeterminadas</button>
+                </div>
               </div>
             </div>
             <div id="settings-sistema-panel" hidden>
@@ -510,6 +540,8 @@
                   <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="jpeg" /> JPEG</label>
                   <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="png" /> PNG</label>
                   <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="webp" /> WebP</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="doc" /> DOC</label>
+                  <label class="checkbox-line"><input type="checkbox" name="documentosTiposPermitidos" value="docx" /> DOCX</label>
                 </fieldset>
 
                 <p class="form-section-title full">Contratos y vencimientos</p>
@@ -722,6 +754,8 @@
           aria-selected="false">Inmuebles (0)</button>
         <button class="community-editor-tab" type="button" data-community-tab="docs"
           aria-selected="false">Documentación</button>
+        <button class="community-editor-tab" type="button" data-community-tab="statutes"
+          aria-selected="false">Estatutos</button>
       </nav>
       <section class="community-editor-pane" id="community-tab-details" data-community-pane="details">
         <div class="form-grid">
@@ -889,36 +923,21 @@
         <div class="detail-section-heading">
           <div>
             <h3>Documentación de la comunidad (<span id="community-doc-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Adjunta actas, contratos, certificados u otros archivos. Se guardan al
-              pulsar Guardar.</p>
+            <p class="detail-section-subtitle">Actas, contratos, certificados y otros archivos, organizados en carpetas.
+              Los cambios se guardan al instante.</p>
           </div>
         </div>
-        <div class="doc-dropzone-compact" id="community-doc-dropzone">
-          <input id="community-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
-            class="doc-file-input" />
-          <div class="doc-dropzone-compact-content">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <p><strong>Arrastra archivos aquí</strong> o haz clic para seleccionar</p>
-            <span>PDF, JPG, PNG o WEBP · máximo 15 MB por archivo · se guardan al pulsar Guardar</span>
+        <div class="doc-library-host" id="community-document-list"></div>
+      </section>
+      <section class="community-editor-pane" id="community-tab-statutes" data-community-pane="statutes" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Estatutos de la comunidad (<span id="community-statutes-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Documentos vigentes para consulta de todos los vecinos. Solo los
+              administradores pueden subirlos, reemplazarlos, renombrarlos o eliminarlos.</p>
           </div>
         </div>
-        <div class="doc-sample-bar">
-          <button class="sample-doc-btn" type="button" id="btn-sample-community-doc">✨ Cargar acta de ejemplo (sin
-            validez)</button>
-        </div>
-        <div class="doc-file-list" id="community-document-list"></div>
-        <div class="docs-summary-bar" id="community-docs-summary-bar">
-          <div class="docs-summary-text">
-            <span id="community-docs-summary-status">0 documentos adjuntos</span>
-            <span class="docs-summary-subtext" id="community-docs-summary-subtext">Adjunta la documentación oficial para
-              archivar en el expediente de la comunidad.</span>
-          </div>
-        </div>
+        <div class="doc-library-host" id="community-statutes-list"></div>
       </section>
       <p class="form-error" id="form-error" role="alert"></p>
       <div class="dialog-actions">
@@ -971,6 +990,8 @@
           aria-selected="false">Inmuebles</button>
         <button class="community-editor-tab" type="button" data-cd-tab="docs"
           aria-selected="false">Documentación</button>
+        <button class="community-editor-tab" type="button" data-cd-tab="statutes"
+          aria-selected="false">Estatutos</button>
       </nav>
       <section class="community-editor-pane" data-cd-pane="general">
         <div class="detail-grid">
@@ -1073,7 +1094,16 @@
             <p class="detail-section-subtitle">Archivos adjuntos de la comunidad (solo lectura).</p>
           </div>
         </div>
-        <div class="doc-file-list" id="community-detail-docs"></div>
+        <div class="doc-library-host" id="community-detail-documents"></div>
+      </section>
+      <section class="community-editor-pane" data-cd-pane="statutes" hidden>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Estatutos (<span id="community-detail-statutes-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Documentos de consulta disponibles para todos los vecinos.</p>
+          </div>
+        </div>
+        <div class="doc-library-host" id="community-detail-statutes"></div>
       </section>
 
       <div class="dialog-actions">
@@ -1893,11 +1923,8 @@
           <p class="form-section-title full">Autorizaciones concedidas</p>
           <fieldset class="full tenant-authorizations">
             <legend>Autorizaciones concedidas</legend>
-            <label><input type="checkbox" name="authorizations" value="common_areas" /> Acceso a zonas comunes</label>
-            <label><input type="checkbox" name="authorizations" value="community_communications"
-                id="tenant-auth-comm" /> Recibir comunicaciones de la comunidad</label>
-            <label><input type="checkbox" name="authorizations" value="incident_management" /> Gestionar incidencias de
-              la unidad</label>
+            <div id="tenant-authorizations-list" class="full"></div>
+            <p class="field-hint full" id="tenant-authorizations-hint">Las opciones se configuran por comunidad en Configuración → Inquilinos.</p>
           </fieldset>
           <label class="full">Canal preferente de notificaciones (LPH art. 9) (opcional)
             <select name="notificationPreference">
@@ -2055,6 +2082,14 @@
               arrendamiento para completar el expediente.</span>
           </div>
         </div>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Archivos y carpetas (<span id="tenant-doc-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Documentación adicional del inquilino, organizada en carpetas. Los
+              cambios se guardan al instante.</p>
+          </div>
+        </div>
+        <div class="doc-library-host" id="tenant-document-library"></div>
       </section>
 
       <p class="form-error" id="tenant-form-error" role="alert"></p>
@@ -2181,6 +2216,10 @@
         <div class="detail-item full">
           <span class="detail-label">Documentación</span>
           <div class="doc-file-list" id="tenant-detail-docs-list"></div>
+        </div>
+        <div class="detail-item full">
+          <span class="detail-label">Archivos y carpetas (<span id="tenant-detail-library-count">0</span>)</span>
+          <div class="doc-library-host" id="tenant-detail-document-library"></div>
         </div>
         <div class="detail-item full">
           <span class="detail-label">Autorizaciones</span>
@@ -2533,29 +2572,11 @@
         <div class="detail-section-heading">
           <div>
             <h3>Documentación del inmueble (<span id="property-doc-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Adjunta escrituras, certificados energéticos u otros archivos. Se guardan
-              al pulsar Guardar.</p>
+            <p class="detail-section-subtitle">Escrituras, certificados energéticos y otros archivos organizados en
+              carpetas. Los cambios se guardan al instante.</p>
           </div>
         </div>
-        <div class="doc-dropzone-compact" id="property-doc-dropzone">
-          <input id="property-document-input" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp"
-            class="doc-file-input" />
-          <div class="doc-dropzone-compact-content">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <p><strong>Arrastra archivos aquí</strong> o haz clic para seleccionar</p>
-            <span>PDF, JPG, PNG o WEBP · máximo 15 MB por archivo · se guardan al pulsar Guardar</span>
-          </div>
-        </div>
-        <div class="doc-sample-bar">
-          <button class="sample-doc-btn" type="button" id="btn-sample-property-doc">✨ Cargar certificado energético de
-            ejemplo (sin validez)</button>
-        </div>
-        <div class="doc-file-list" id="property-document-list"></div>
+        <div class="doc-library-host" id="property-document-list"></div>
       </section>
       <p class="form-error" id="property-form-error" role="alert"></p>
       <div class="dialog-actions">
@@ -2688,10 +2709,13 @@
         </div>
       </section>
       <section class="community-editor-pane" data-pd-pane="docs" hidden>
-        <div class="detail-item full">
-          <span class="detail-label">Documentación</span>
-          <div class="property-detail-documents" id="property-detail-documents"></div>
+        <div class="detail-section-heading">
+          <div>
+            <h3>Documentación del inmueble (<span id="property-detail-doc-count">0</span>)</h3>
+            <p class="detail-section-subtitle">Archivos y carpetas del inmueble (sólo lectura).</p>
+          </div>
         </div>
+        <div class="doc-library-host" id="property-detail-documents"></div>
       </section>
       <div class="dialog-actions">
         <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-property-detail-btn" title="Cerrar"

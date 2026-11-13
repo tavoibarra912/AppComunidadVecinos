@@ -58,8 +58,148 @@ reintentan automáticamente; quedan en auditoría. La aceptación por el proveed
 confirma entrega. Los justificantes se guardan dentro de `uploads/fee-proofs/` y
 solo pueden descargarlos su autor y los gestores autorizados de la comunidad.
 
-Esta versión gestiona exclusivamente cuotas ordinarias. Los mandatos y remesas
-SEPA, las derramas, otros cargos y la contabilidad de suministros quedan fuera.
+## Derramas (cuotas extraordinarias)
+
+En **Cuotas** hay tres pestañas: **Cuotas ordinarias**, **Derramas** y
+**Servicios**, cada una con sus propios recibos y filtros. En **Derramas → Nueva
+derrama** se abre un editor integrado en la página, con secciones **General**,
+**Inmuebles**, **Plazos** y **Avisos**. Los campos obligatorios llevan `*`; el
+motivo y los ajustes de avisos son opcionales. El motivo admite texto enriquecido,
+listas y enlaces saneados.
+
+Indicar nombre, acuerdo de Junta e importe total. En **Inmuebles**, usar el botón
+de vincular para buscar y agregar inmuebles existentes, o **Agregar todos** para
+incluir toda la comunidad. Cada inmueble se puede quitar con su botón de papelera.
+Se puede repartir por coeficientes o importes manuales. Si se incluyen todos,
+los coeficientes deben sumar el 100 %; una selección se reparte proporcionalmente.
+Los importes manuales deben sumar el total. Solo se admiten comunidades en EUR.
+
+El reparto y los inmuebles incluidos quedan congelados al guardar: los cambios
+posteriores de coeficientes o las altas de inmuebles no recalculan la derrama.
+Cada plazo tiene importe y vencimiento propios; los vencimientos deben ser
+crecientes y los importes sumar el total. La vista previa muestra el reparto antes
+de confirmar la emisión de cada plazo. Los redondeos conservan tanto el total del
+plazo como el importe aprobado para cada inmueble. Los titulares se identifican al
+emitir el recibo, conservando los titulares históricos de los recibos anteriores.
+No se permite borrar o mover a otra comunidad un inmueble incluido en una derrama
+vigente. Todos los plazos deben asignar al menos un céntimo a cada inmueble;
+los repartos que no lo permiten se rechazan antes de guardar.
+En **Plazos**, el botón `+` agrega otro plazo y la papelera lo elimina, manteniendo
+al menos uno. El formulario muestra cuánto queda por distribuir y valida también
+los campos de las pestañas que no estén visibles. El detalle de la derrama separa
+**Resumen**, **Plazos** y **Recibos** en pestañas.
+
+Se puede editar el borrador antes de emitir o anular cualquier plazo; al editar se
+actualiza el reparto con los datos actuales. Después de la primera emisión no se
+permite editar, aunque se anulen todos los recibos. Se pueden anular plazos
+pendientes o emitidos y la derrama completa, indicando un motivo. Los cobros
+aplicados bloquean la anulación hasta revertirlos. Un plazo anulado no se vuelve
+a emitir: para sustituirlo hay que crear una nueva derrama.
+
+Las derramas usan el mismo libro de recibos, cobros, imputaciones, saldos a favor,
+justificantes privados y avisos que las cuotas ordinarias. Aparecen identificadas
+por nombre y plazo en **Mis cuotas**, el detalle y el CSV del recibo, y sus saldos
+se incluyen en el resumen de Inicio. Los canales y recordatorios se configuran
+para cada derrama. Las cuotas ordinarias y varias derramas pueden coexistir en
+el mismo mes sin duplicar un inmueble dentro del mismo plazo.
+
+Quedan fuera de esta versión el adjunto del acta a la derrama, los mandatos y
+remesas SEPA, los intereses, otros cargos y la contabilidad de gastos.
+
+## Servicios y suministros
+
+La pestaña **Servicios**, dentro de **Cuotas**, permite repartir facturas de luz,
+agua, gas o gasóleo entre los inmuebles de la comunidad. Se indican proveedor,
+número de factura, periodo, fecha de factura, vencimiento e importe total. La foto
+o el PDF de la factura se adjunta manualmente como justificante; todavía no hay OCR.
+También se pueden cargar a mano las lecturas de contador.
+
+Métodos de reparto disponibles:
+
+- **Coeficiente**: usa el coeficiente de participación de cada inmueble. Si se elige
+  un subconjunto, los coeficientes se renormalizan entre los incluidos y se muestra
+  el coeficiente efectivo.
+- **Lecturas**: reparte según el consumo del periodo. Las lecturas se guardan en
+  milésimos de m³; la lectura anterior se propone desde el último servicio emitido
+  del mismo suministro. Los inmuebles sin consumo no reciben recibo y se avisa.
+- **Mixto**: separa una parte fija por coeficiente y una parte variable por lecturas.
+  Para calefacción o refrigeración centralizada, si la parte variable queda fuera del
+  60–75 % se muestra la recomendación del RD 736/2020.
+- **Manual**: importes por inmueble que deben sumar exactamente el total de la factura.
+
+Cada factura elige entre **emitir un recibo por inmueble** o **solo reparto
+informativo**. El reparto y los inmuebles incluidos quedan congelados al guardar:
+los cambios posteriores del censo o de los coeficientes no lo recalculan. Los
+métodos distintos de coeficiente muestran una advertencia si falta la base legal o
+el acuerdo de Junta que los autoriza (LPH art. 9.1.e y 9.2; RD 736/2020 arts. 6.1
+y 6.4). Solo se admiten comunidades en EUR.
+
+Los recibos de servicio reutilizan el mismo libro de cobros, imputaciones, saldos a
+favor, justificantes y avisos que las cuotas ordinarias y las derramas. Aparecen
+identificados en **Mis cuotas**, el detalle del recibo, el CSV y el resumen de
+Inicio. En modo informativo no se crean recibos ni deuda: el propietario ve el
+reparto en la pestaña **Servicios** de **Mis cuotas**, con su parte, las lecturas y
+la factura adjunta. La descarga de la factura está disponible para gestión, para
+los titulares de recibos del servicio y para los propietarios actuales de los
+inmuebles incluidos. Los adjuntos admiten PDF, PNG, JPG o WebP de hasta 10 MB
+(máximo 10 por factura), se guardan en `uploads/service-bills/` y solo se pueden
+eliminar mientras la factura es borrador. No se puede borrar ni mover a otra
+comunidad un inmueble incluido en un servicio vigente.
+
+API de servicios (gestión: sesión y `fee:manage` en la comunidad):
+`GET/POST /api/fees/communities/:communityId/services`;
+`GET/PUT /api/fees/services/:serviceId`;
+`POST /api/fees/services/:serviceId/preview|issue|cancel`;
+`POST /api/fees/services/:serviceId/attachments`;
+`GET /api/fees/service-attachments/:attachmentId/download` y
+`DELETE /api/fees/service-attachments/:attachmentId`. La descarga también está
+disponible para los titulares de recibos y los propietarios incluidos; el borrado
+sigue reservado a gestión y solo en borrador.
+
+Quedan fuera de esta versión el OCR, las plantillas recurrentes, las facturas
+negativas o abonos, los métodos por igual/superficie/personas, SEPA, intereses y
+la contabilidad de gastos.
+
+## Estatutos y biblioteca documental
+
+Los estatutos de cada comunidad se gestionan en la pestaña **Estatutos** del
+editor y de la ficha de comunidad, y también desde el acceso directo **Estatutos
+de la comunidad** del inicio. Una comunidad puede tener uno o varios documentos
+vigentes o históricos. Todos los residentes con acceso a la comunidad pueden
+consultarlos, previsualizarlos y descargarlos; subirlos, reemplazarlos,
+renombrarlos o borrarlos requiere ser administrador de esa comunidad y tener los
+permisos documentales correspondientes. La ficha muestra nombre, tipo, tamaño,
+fecha de subida y la cuenta que subió cada archivo.
+
+La documentación general de comunidades, inmuebles e inquilinos usa una
+**biblioteca documental reutilizable** con carpetas:
+
+- Crear, renombrar y eliminar carpetas, con hasta **cinco niveles** de
+  anidamiento (la raíz no cuenta como nivel). Las carpetas y los archivos se
+  mueven con arrastrar y soltar o con **Mover a…**.
+- Navegación por migas de pan, búsqueda por nombre, orden por nombre, fecha o
+  tamaño y vistas de lista o cuadrícula.
+- Subida directa dentro de la carpeta abierta. Se mantienen los límites y
+  formatos configurados en Administración → Configuración (PDF, JPG, PNG, WebP,
+  DOC y DOCX; tamaño y cantidad máximos), con validación del contenido en el
+  servidor. Los formatos Word sólo se descargan, sin vista previa.
+- No se permiten dos carpetas con el mismo nombre en el mismo nivel ni dos
+  archivos con el mismo nombre en la misma carpeta, sin distinguir mayúsculas ni
+  acentos. Sí puede repetirse un nombre en carpetas distintas.
+- Al eliminar una carpeta con contenido se muestra primero el recuento de
+  carpetas y archivos afectados; tras confirmar, el borrado es en cascada y
+  elimina también los archivos físicos. Una carpeta no puede moverse dentro de
+  sí misma.
+- Los permisos existentes se aplican sin cambios: `document:read` para consultar,
+  y el permiso de gestión de la entidad más `document:upload` o
+  `document:delete` para escribir. Los administradores de comunidad sólo operan
+  sobre sus comunidades asignadas; los vecinos acceden en modo lectura a sus
+  comunidades, inmuebles e inquilinos.
+
+La migración `document-library-v1` añade las columnas y la tabla de carpetas sin
+mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
+su entidad. La categoría `statutes` separa los estatutos de la documentación
+general y no admite carpetas.
 
 ## Estatutos y biblioteca documental
 
@@ -168,9 +308,10 @@ src/
     owners.js             CRUD de propietarios (+ vínculo de inmueble transaccional)
     properties.js         CRUD de inmuebles
     tenants.js            CRUD de inquilinos (ownerId derivado del inmueble)
-    documents.js          Subida/descarga/borrado de archivos (multer, 15 MB)
+    documents.js          Documentos, estatutos y carpetas (multer, 15 MB)
     notifications.js      Buzón del administrador y del propietario
     verification.js       contacto (envío no configurado)
+  document-library.js     Servicio genérico de carpetas, jerarquía y permisos
 public/
   index.html · styles.css
   js/
@@ -180,6 +321,7 @@ public/
     utils.js              Formateadores, validadores y helpers de documentos
     territory.js          Catálogo INE (provincia → municipio → CP)
     docs-engine.js        Motor de validación del expediente de propietario
+    document-library.js   Componente de biblioteca documental (carpetas, DnD)
     municipios-ine.js     Catálogo territorial (8.132 municipios, script clásico)
     features/             navigation, home, comunidades, propietarios,
                           inquilinos, inmuebles, notificaciones
@@ -191,7 +333,8 @@ public/
 - `owners`: datos personales, verificación de contacto, IBAN y **expediente de documentación** (JSON del motor de validación client-side).
 - `properties`: inmuebles con **uno o más propietarios** (`ownerIds`, N:M) y **uno o más inquilinos** (`tenantIds`), pertenecientes a una única comunidad.
 - `tenants`: inquilinos con propietario e inmueble, contrato (tipo, renta, fianza, teléfono de emergencia) y autorizaciones.
-- `documents`: archivos subidos (por entidad: comunidad, inmueble o inquilino) con su archivo en disco.
+- `documents`: archivos subidos (por entidad: comunidad, inmueble o inquilino), con carpeta, categoría (`document` o `statutes`), autor de la subida y archivo en disco.
+- `document_folders`: carpetas por entidad, con jerarquía (`parentId`) y nombre normalizado para evitar duplicados por nivel.
 - `admin_emails` / `owner_notifications`: buzones del administrador y del propietario.
 
 ### Sesiones, roles y contraseñas
@@ -295,7 +438,9 @@ protección de sus copias de seguridad para producción.
 
 - `GET /api/bootstrap` — estado permitido para el usuario autenticado.
 - `POST/PUT/DELETE /api/{communities|owners|properties|tenants}` — CRUD; el servidor resuelve la reasignación de inmuebles entre propietarios y el rearme de relaciones.
-- `POST /api/documents` (multipart: `entityType`, `entityId`, `files[]`) · `DELETE /api/documents/:id` · `GET /api/documents/:id/download`.
+- `GET /api/documents?entityType=&entityId=&category=` — documentos y carpetas de la entidad.
+- `POST /api/documents` (multipart: `entityType`, `entityId`, `folderId`, `category`, `files[]`) · `PATCH /api/documents/:id` (renombrar o mover) · `POST /api/documents/:id/replace` · `DELETE /api/documents/:id` · `GET /api/documents/:id/download` · `GET /api/documents/:id/preview` (sólo PDF e imágenes).
+- `POST /api/documents/folders` · `PATCH /api/documents/folders/:id` (renombrar o mover) · `DELETE /api/documents/folders/:id?confirm=1` (cascada con confirmación).
 - `POST /api/owners/contact/{phone|email}/{send|confirm}` — responde con un aviso de servicio no configurado; no genera códigos de prueba.
 - `GET /api/notifications/*`, `POST /api/notifications/*` — buzones.
 - `GET /api/health`.
@@ -304,7 +449,7 @@ protección de sus copias de seguridad para producción.
 
 ### Inicio
 - Panel con métricas de los registros visibles para la cuenta, filtro de comunidad y actualización manual. Los inmuebles con varios titulares se cuentan una sola vez; el usuario ve sus vínculos reales, incluidas varias comunidades si corresponde.
-- Gráficos de documentación e inmuebles, avisos pendientes, agenda y últimas publicaciones. La documentación de ejemplo no acredita un expediente; los contratos sin fechas válidas se identifican aparte. Los accesos se muestran según permisos.
+- Gráficos de documentación e inmuebles, avisos pendientes, agenda y últimas publicaciones. La documentación de ejemplo no acredita un expediente; los contratos sin fechas válidas se identifican aparte. Los accesos se muestran según permisos, incluido el acceso directo a los estatutos de la comunidad.
 
 ### Comunidades
 - En **Ver**, solo están habilitados las pestañas, el cierre y la apertura de los adjuntos. No se puede editar, verificar contactos, asociar inmuebles ni abrir sus fichas desde esa vista. La edición se recupera al abrir **Editar**.
@@ -320,11 +465,11 @@ protección de sus copias de seguridad para producción.
 
 ### Inmuebles
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
-- Documentación con dropzone drag & drop.
+- Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
 ### Inquilinos
 - Alta/edición seleccionando **directamente el inmueble** (el propietario se deduce de él; si se cambia a un inmueble de otro dueño, el inquilino cambia de propietario).
-- Pestaña de documentación multi-archivo y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
+- Pestaña de documentación multi-archivo, biblioteca de archivos y carpetas, y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
 
 ### Comunicación: tablón, calendario y reuniones
 
