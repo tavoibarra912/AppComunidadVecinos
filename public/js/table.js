@@ -61,7 +61,7 @@ function crearInstancia(options) {
   if (!Array.isArray(columns) || columns.length === 0) throw new Error("createDataTable: faltan columnas.");
 
   // --- Estado ---
-  // Sólo son visibles por defecto las columnas con defaultVisible === true;
+  // Solo son visibles por defecto las columnas con defaultVisible === true;
   // las no ocultables (acciones) se fuerzan visibles.
   const visible = new Map(columns.map(col => [col.key, col.hideable === false ? true : col.defaultVisible === true]));
   const storageKey = options.storageKey ? `table-engine:${options.storageKey}` : null;
@@ -191,7 +191,7 @@ function crearInstancia(options) {
       }
       // Reordenar columnas arrastrando el encabezado
       th.draggable = true;
-      th.title = "Arrastrá para reordenar columnas";
+      th.title = "Arrastra para reordenar columnas";
       th.addEventListener("dragstart", event => {
         dragKey = col.key;
         event.dataTransfer.effectAllowed = "move";

@@ -62,7 +62,7 @@ function puedeAdministrar() {
   return Object.values(ADMIN_TABS).some(p => hasPermission(p)) || hasPermission("admin:providers");
 }
 
-// El tab de Configuración también lo ven quienes sólo administran proveedores.
+// El tab de Configuración también lo ven quienes solo administran proveedores.
 function conPermisoTab(tab) {
   return hasPermission(ADMIN_TABS[tab]) || (tab === "settings" && hasPermission("admin:providers"));
 }
@@ -154,7 +154,7 @@ function renderUsers() {
       entitySingular: "usuario",
       entityPlural: "usuarios",
       emptyTitle: "No hay usuarios",
-      emptyText: "Creá el primer usuario de la plataforma.",
+      emptyText: "Crea el primer usuario de la plataforma.",
       getRows: () => state.users,
       columns: [
         {
@@ -374,7 +374,7 @@ userForm?.addEventListener("submit", async event => {
     }
 
     if (savedUser.id === state.currentUserId && (data.password || !data.activo)) {
-      window.dispatchEvent(new Event("auth:expired")); toast("Volvé a iniciar sesión para continuar."); return;
+      window.dispatchEvent(new Event("auth:expired")); toast("Vuelve a iniciar sesión para continuar."); return;
     }
     // Sincronizar vinculaciones de perfiles (Propietario / Inquilino)
     // Los roles de administración no llevan perfiles: solo se desvinculan
@@ -414,7 +414,7 @@ async function deleteUser(id, usuario) {
   ].filter(Boolean);
   if (profiles.length) {
     showValidationErrors(
-      [`El usuario tiene un perfil de ${profiles.join(" y ")} asociado. Desvinculá el perfil antes de borrar la cuenta.`],
+      [`El usuario tiene un perfil de ${profiles.join(" y ")} asociado. Desvincula el perfil antes de borrar la cuenta.`],
       "No se puede eliminar el usuario"
     );
     return;
@@ -447,7 +447,7 @@ function renderRoles() {
       entitySingular: "rol",
       entityPlural: "roles",
       emptyTitle: "No hay roles",
-      emptyText: "Creá el primer rol de la plataforma.",
+      emptyText: "Crea el primer rol de la plataforma.",
       getRows: () => state.roles,
       columns: [
         {
@@ -841,7 +841,7 @@ function renderSettings() {
   settingsForm.elements.feeInternal.checked = s.feeInternal !== false;
   settingsForm.elements.feeEmail.checked = s.feeEmail === true;
   settingsForm.elements.feeEmailSubject.value = s.feeEmailSubject || "{{titulo}} · {{comunidad}}";
-  settingsForm.elements.feeEmailBody.value = s.feeEmailBody || "{{mensaje}}\nConsultá el tab Financiero de tu ficha de propietario.";
+  settingsForm.elements.feeEmailBody.value = s.feeEmailBody || "{{mensaje}}\nConsulta la pestaña Financiero de la ficha del propietario.";
   settingsForm.elements.assessmentBeforeDays.value = s.assessmentBeforeDays ?? 3;
   settingsForm.elements.assessmentAfterDays.value = s.assessmentAfterDays ?? 7;
   settingsForm.elements.assessmentRepeatDays.value = s.assessmentRepeatDays ?? 0;

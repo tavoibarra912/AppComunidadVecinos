@@ -45,7 +45,7 @@ export function accountView(data, roleLabels = {}) {
             ? "Perfil de inquilino"
             : "Administración de comunidad";
     communityMessage =
-      "Estas son las comunidades vinculadas a tu perfil. Podés consultar sus datos en modo de lectura.";
+      "Estas son las comunidades vinculadas a tu perfil. Puedes consultar sus datos en modo de lectura.";
   } else if (hasProfile) {
     communityTitle = "Sin comunidad asignada";
     communityMessage =

@@ -87,20 +87,20 @@ function community(req) {
   if (!db.prepare("SELECT 1 FROM communities WHERE id=?").get(id))
     throw problem("Comunidad no encontrada.", 404);
   if (!allowed(req.user, "fee:read", id) && !canManage(req.user, id))
-    throw problem("No tenés acceso a las cuotas de esta comunidad.", 403);
+    throw problem("No tienes acceso a las cuotas de esta comunidad.", 403);
   return id;
 }
 function manage(req, id) {
   if (!canManage(req.user, id))
     throw problem(
-      "No tenés permiso para gestionar cuotas de esta comunidad.",
+      "No tienes permiso para gestionar cuotas de esta comunidad.",
       403,
     );
 }
 function authorizedReceipt(req) {
   const row = receiptById(req.params.receiptId);
   if (!canReadReceipt(req.user, row))
-    throw problem("No tenés acceso a este recibo.", 403);
+    throw problem("No tienes acceso a este recibo.", 403);
   return row;
 }
 function payment(req) {
@@ -194,7 +194,7 @@ router.get(
   "/mine",
   wrap((req, res) => {
     if (!allowed(req.user, "fee:read"))
-      throw problem("No tenés permiso para consultar cuotas propias.", 403);
+      throw problem("No tienes permiso para consultar cuotas propias.", 403);
     const ids = listOwners()
       .filter((o) => o.userId === req.user.id)
       .map((o) => o.id);
@@ -228,13 +228,13 @@ router.get(
       !allowed(req.user, "fee:read", "", policyData()) &&
       !canManage(req.user, "")
     )
-      throw problem("No tenés permiso para consultar cuotas.", 403);
+      throw problem("No tienes permiso para consultar cuotas.", 403);
     if (
       communityId &&
       !allowed(req.user, "fee:read", communityId) &&
       !canManage(req.user, communityId)
     )
-      throw problem("No tenés acceso a las cuotas de esta comunidad.", 403);
+      throw problem("No tienes acceso a las cuotas de esta comunidad.", 403);
     res.json(feeSummary(req.user, communityId));
   }),
 );
@@ -280,7 +280,7 @@ router.get(
       !(owner.userId === req.user.id && allowed(req.user, "fee:read")) &&
       !allowed(req.user, "owner:read", owner.id)
     )
-      throw problem("No tenés acceso a este propietario.", 403);
+      throw problem("No tienes acceso a este propietario.", 403);
     const result = data(
       req.user,
       db
@@ -754,13 +754,13 @@ router.post("/receipts/:receiptId/proofs", (req, res, next) => {
         problem(
           error.code === "LIMIT_FILE_SIZE"
             ? "El justificante supera 10 MB."
-            : "Subí un único archivo sin campos adicionales.",
+            : "Sube un único archivo sin campos adicionales.",
         ),
       );
     let diskPath;
     try {
       const file = req.file;
-      if (!file) throw problem("Adjuntá un justificante PDF, PNG, JPG o WebP.");
+      if (!file) throw problem("Adjunta un justificante PDF, PNG, JPG o WebP.");
       const b = file.buffer;
       const mime =
         b.subarray(0, 5).toString() === "%PDF-"
@@ -851,7 +851,7 @@ router.get(
           .prepare("SELECT 1 FROM owners WHERE id=? AND userId=?")
           .get(proof.ownerId, req.user.id))
     )
-      throw problem("No tenés acceso al justificante.", 403);
+      throw problem("No tienes acceso al justificante.", 403);
     if (!/^[a-f0-9-]{36}$/.test(proof.diskName))
       throw problem("Archivo no válido.", 404);
     const file = path.join(filesDir, proof.diskName);
@@ -881,7 +881,7 @@ router.post(
       req.body.note.length > 500
     )
       throw problem(
-        "Elegí el resultado e indicá el motivo (máximo 500 caracteres).",
+        "Elige el resultado e indica el motivo (máximo 500 caracteres).",
       );
     transaction(() => {
       if (

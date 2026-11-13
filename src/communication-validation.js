@@ -6,7 +6,7 @@ const text = (value, max, label, required = false) => {
     value.trim().length > max ||
     (required && !value.trim())
   )
-    throw problem(`${label}: completá un texto de hasta ${max} caracteres.`);
+    throw problem(`${label}: completa un texto de hasta ${max} caracteres.`);
   return value.trim();
 };
 function date(value, label, required = false) {
@@ -16,7 +16,7 @@ function date(value, label, required = false) {
     !/^\d{4}-\d{2}-\d{2}T/.test(value) ||
     !Number.isFinite(Date.parse(value))
   )
-    throw problem(`${label}: indicá una fecha válida.`);
+    throw problem(`${label}: indica una fecha válida.`);
   return new Date(value).toISOString();
 }
 function ids(value = []) {
@@ -69,7 +69,7 @@ export function validatePost(input, existing, data) {
     throw problem("Una publicación enviada no puede volver a borrador.");
   if (existing && existing.distributed && p.publishAt !== existing.publishAt)
     throw problem(
-      "No se puede reprogramar una publicación enviada; cancelala y creá otra.",
+      "No se puede reprogramar una publicación enviada; cancélala y crea otra.",
     );
   if (p.endsAt && (!p.startsAt || p.endsAt <= p.startsAt))
     throw problem("El fin debe ser posterior al inicio.");
@@ -96,7 +96,7 @@ export function validatePost(input, existing, data) {
   p.channels = [...new Set(p.channels)];
   const a = p.audience;
   if (!a || !["all", "owners", "tenants", "selected"].includes(a.mode))
-    throw problem("Seleccioná los destinatarios.");
+    throw problem("Selecciona los destinatarios.");
   p.audience = {
     mode: a.mode,
     ownerIds: ids(a.ownerIds),
@@ -125,14 +125,14 @@ export function validatePost(input, existing, data) {
       ...p.audience.propertyIds,
     ].length
   )
-    throw problem("Seleccioná al menos un destinatario o inmueble.");
+    throw problem("Selecciona al menos un destinatario o inmueble.");
   if (
     existing &&
     existing.distributed &&
     JSON.stringify(p.audience) !== JSON.stringify(existing.audience)
   )
     throw problem(
-      "Los destinatarios quedan fijados al publicar. Creá otra publicación para cambiar el grupo.",
+      "Los destinatarios quedan fijados al publicar. Crea otra publicación para cambiar el grupo.",
     );
   if (p.type === "meeting") {
     const m = input.meeting || {};
@@ -153,7 +153,7 @@ export function validatePost(input, existing, data) {
         throw problem("El enlace de reunión debe utilizar HTTPS.");
     }
     if (!p.meeting.location && !p.meeting.url)
-      throw problem("Indicá un lugar o enlace para la reunión.");
+      throw problem("Indica un lugar o enlace para la reunión.");
     if (!Array.isArray(m.tasks || []) || (m.tasks || []).length > 50)
       throw problem("Se admiten hasta 50 acuerdos o tareas.");
     p.meeting.tasks = (m.tasks || []).map((t) => ({
@@ -208,7 +208,7 @@ export function validatePost(input, existing, data) {
       JSON.stringify(withoutClosed(existing.poll))
     )
       throw problem(
-        "La pregunta, opciones y reglas quedan fijadas al publicar. Solo podés cerrar o reabrir la consulta.",
+        "La pregunta, las opciones y las reglas quedan fijadas al publicar. Solo puedes cerrar o reabrir la consulta.",
       );
     if (existing.type !== p.type)
       throw problem("No se puede cambiar el tipo después de publicar.");

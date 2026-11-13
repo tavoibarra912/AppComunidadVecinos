@@ -46,7 +46,7 @@ const route = (fn) => (req, res, next) =>
 const adminOnly = (req) => {
   if (!allowed(req.user, "admin:providers", "", policyData()))
     throw problem(
-      "No tenés permiso para configurar los proveedores de comunicación.",
+      "No tienes permiso para configurar los proveedores de comunicación.",
       403,
     );
 };
@@ -90,7 +90,7 @@ router.post(
     if (!["email", "sms", "whatsapp"].includes(channel))
       throw problem("Canal no válido.");
     if (Date.now() - (testTimes.get(req.user.id) || 0) < 10000)
-      throw problem("Esperá 10 segundos antes de enviar otra prueba.", 429);
+      throw problem("Espera 10 segundos antes de enviar otra prueba.", 429);
     testTimes.set(req.user.id, Date.now());
     try {
       await sendMessage(
@@ -101,13 +101,13 @@ router.post(
       audit("providers", req.user.id, `test-${channel}-accepted`);
       res.json({
         message:
-          "El proveedor aceptó el mensaje de prueba. Revisá el destino; no implica confirmación de entrega.",
+          "El proveedor aceptó el mensaje de prueba. Revisa el destino; no implica confirmación de entrega.",
       });
     } catch (error) {
       throw problem(
         error.status
           ? error.message
-          : "No se pudo enviar la prueba. Revisá el proveedor, las credenciales y la conexión.",
+          : "No se pudo enviar la prueba. Revisa el proveedor, las credenciales y la conexión.",
         502,
       );
     }
@@ -129,10 +129,10 @@ router.put(
       whatsappEnabled: b.whatsappEnabled === true,
     };
     if ((p.email || p.emailEnabled) && !emailAddress(p.email))
-      throw problem("Indicá un email válido para recibir avisos.");
+      throw problem("Indica un email válido para recibir avisos.");
     if ((p.phone || p.smsEnabled || p.whatsappEnabled) && !phoneNumber(p.phone))
       throw problem(
-        "Indicá un teléfono internacional, por ejemplo +34600111222.",
+        "Indica un teléfono internacional, por ejemplo +34600111222.",
       );
     db.prepare(
       "INSERT INTO communication_preferences(userId,data) VALUES (?,?) ON CONFLICT(userId) DO UPDATE SET data=excluded.data",
@@ -203,7 +203,7 @@ router.post(
       throw problem("Publicación no encontrada o sin acceso.", 404);
     const p = validatePost(req.body, existing, data);
     if (!canPublish(req.user, p.communityId, data))
-      throw problem("No podés publicar en esta comunidad.", 403);
+      throw problem("No puedes publicar en esta comunidad.", 403);
     let { recipients, unlinked } = resolveAudience(
       p.communityId,
       p.audience,
@@ -253,7 +253,7 @@ router.post(
     const data = policyData(),
       p = validatePost(req.body, null, data);
     if (!canPublish(req.user, p.communityId, data))
-      throw problem("No podés publicar en esta comunidad.", 403);
+      throw problem("No puedes publicar en esta comunidad.", 403);
     const id = crypto.randomUUID(),
       now = new Date().toISOString();
     transaction(() => {
@@ -338,7 +338,7 @@ router.post(
       )
       .run(now, now, p.id, req.user.id);
     if (!result.changes)
-      throw problem("No sos destinatario de esta publicación.", 403);
+      throw problem("No eres destinatario de esta publicación.", 403);
     res.json({ ok: true });
   }),
 );
@@ -348,7 +348,7 @@ router.post(
     const p = find(req);
     mutable(p);
     if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
-      throw problem("No tenés permiso para participar en Comunicación (comentar).", 403);
+      throw problem("No tienes permiso para participar en Comunicación (comentar).", 403);
     if (!p.commentsEnabled)
       throw problem("Los comentarios están desactivados.", 409);
     const body = req.body?.body;
@@ -360,7 +360,7 @@ router.post(
       )
       .get(p.id, req.user.id);
     if (last && Date.now() - Date.parse(last.createdAt) < 2000)
-      throw problem("Esperá un momento antes de volver a comentar.", 429);
+      throw problem("Espera un momento antes de volver a comentar.", 429);
     db.prepare(
       "INSERT INTO communication_comments(id,postId,userId,body,createdAt) VALUES (?,?,?,?,?)",
     ).run(
@@ -384,7 +384,7 @@ router.delete(
       !comment ||
       (comment.userId !== req.user.id && !canModerate(req.user, p.communityId))
     )
-      throw problem("No podés eliminar este comentario.", 403);
+      throw problem("No puedes eliminar este comentario.", 403);
     transaction(() => {
       db.prepare(
         "UPDATE communication_comments SET deleted=1,body='' WHERE id=?",
@@ -399,10 +399,10 @@ router.post(
   route((req, res) => {
     const p = find(req);
     if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
-      throw problem("No tenés permiso para participar en Comunicación (votar).", 403);
+      throw problem("No tienes permiso para participar en Comunicación (votar).", 403);
     if (!mayVote(req.user, p))
       throw problem(
-        "No tenés derecho a voto en esta consulta: tu perfil no pertenece al electorado o el voto está suspendido.",
+        "No tienes derecho a voto en esta consulta: tu perfil no pertenece al electorado o el voto está suspendido.",
         403,
       );
     if (!pollOpen(p)) throw problem("La consulta está cerrada.", 409);
@@ -416,7 +416,7 @@ router.post(
         (c) => !Number.isInteger(c) || c < 0 || c >= p.poll.options.length,
       )
     )
-      throw problem("Seleccioná opciones válidas.");
+      throw problem("Selecciona opciones válidas.");
     if (
       db
         .prepare(
@@ -439,7 +439,7 @@ router.post(
   route((req, res) => {
     const p = find(req);
     if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
-      throw problem("No tenés permiso para participar en Comunicación (confirmar asistencia).", 403);
+      throw problem("No tienes permiso para participar en Comunicación (confirmar asistencia).", 403);
     mutable(p);
     if (p.type !== "meeting" || Date.now() >= Date.parse(p.endsAt))
       throw problem("La reunión no admite confirmaciones.", 409);
@@ -523,7 +523,7 @@ router.post(
       error
         ? res
             .status(400)
-            .json({ error: "Adjuntá un único PDF, JPG o PNG de hasta 10 MB." })
+            .json({ error: "Adjunta un único PDF, JPG o PNG de hasta 10 MB." })
         : next(),
     ),
   route((req, res) => {
@@ -606,7 +606,7 @@ router.post(
         .get(p.id)
     )
       throw problem(
-        "Publicá la convocatoria antes de distribuir el acta.",
+        "Publica la convocatoria antes de distribuir el acta.",
         409,
       );
     transaction(() => {
@@ -635,7 +635,7 @@ router.delete(
     if (!f) throw problem("Documento no encontrado.", 404);
     if (f.final)
       throw problem(
-        "El acta publicada se conserva. Subí una nueva versión para corregirla.",
+        "El acta publicada se conserva. Sube una nueva versión para corregirla.",
         409,
       );
     db.prepare("DELETE FROM communication_files WHERE id=?").run(

@@ -92,7 +92,7 @@ export async function processCommunications(send = sendMessage) {
         state = failure.status ? "failed" : "uncertain";
         error = failure.status
           ? failure.message
-          : "No se pudo confirmar la respuesta del proveedor. Revisá su panel antes de reintentar para evitar duplicados.";
+          : "No se pudo confirmar la respuesta del proveedor. Revisa su panel antes de reintentar para evitar duplicados.";
       }
       db.prepare(
         "UPDATE communication_outbox SET state=?,error=?,providerId=?,updatedAt=? WHERE id=?",
@@ -113,7 +113,7 @@ export function startCommunicationWorker() {
   recoverInterruptedMail();
   // Un envío interrumpido puede haber sido aceptado: no se reenvía automáticamente.
   db.prepare(
-    "UPDATE communication_outbox SET state='uncertain',error='El servidor se reinició durante el envío. Revisá el proveedor antes de reintentar.' WHERE state='sending'",
+    "UPDATE communication_outbox SET state='uncertain',error='El servidor se reinició durante el envío. Revisa el proveedor antes de reintentar.' WHERE state='sending'",
   ).run();
   const tick = () =>
     processRecoveryMail().then(() => processCommunications()).then(() => processFeeNotifications()).catch((error) =>

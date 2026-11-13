@@ -14,8 +14,8 @@ const TOAST_ICONOS = {
 
 /** Deduce el tipo de toast por el contenido del mensaje (para las 78 llamadas existentes). */
 function detectarTipoToast(mensaje) {
-  if (/no se pudo|inválid|incorrect|no coincide|no tenés permiso|no está permitido|ya existe|no es válid|no corresponde/i.test(mensaje)) return "error";
-  if (/no se puede|antes de|desvinculá|elimina los|reasigna|pendiente de verificación|esperá/i.test(mensaje)) return "warning";
+  if (/no se pudo|inválid|incorrect|no coincide|no tienes permiso|no está permitido|ya existe|no es válid|no corresponde/i.test(mensaje)) return "error";
+  if (/no se puede|antes de|desvincula|elimina los|reasigna|pendiente de verificación|espera/i.test(mensaje)) return "warning";
   if (/correcto|éxito|exitosamente|guardad|eliminad|cread|actualizad|registrad|enviad|verificado|cerrad|restablecid|sincronizad/i.test(mensaje)) return "success";
   return "info";
 }
@@ -85,7 +85,7 @@ export function fieldLabel(el) {
 }
 
 const MENSAJES_DE_VALIDEZ = {
-  valueMissing: "completá este campo",
+  valueMissing: "completa este campo",
   typeMismatch: "el formato no es válido",
   patternMismatch: "no cumple el formato pedido",
   tooShort: "es demasiado corto",
@@ -97,6 +97,9 @@ const MENSAJES_DE_VALIDEZ = {
 
 /** Traduce al español la razón de invalidez nativa del navegador. */
 export function mensajeDeValidez(element) {
+  // setCustomValidity() guarda el motivo exacto en validationMessage: es más
+  // útil que el mensaje genérico y evita perderlo al resumir los errores.
+  if (element.validity?.customError && element.validationMessage) return element.validationMessage;
   const razon = Object.keys(MENSAJES_DE_VALIDEZ).find(clave => element.validity?.[clave]);
   return razon ? MENSAJES_DE_VALIDEZ[razon] : "tiene un valor no válido";
 }
@@ -127,8 +130,16 @@ const CIF_LETTER_CONTROL = "PQRSNW";
 const CIF_DIGIT_CONTROL = "ABEH";
 const CIF_CONTROL_LETTERS = "JABCDEFGHI";
 
-function normalizeIdentityDocument(value) {
-  return String(value || "").trim().toUpperCase();
+/**
+ * Normaliza un documento identificativo: mayúsculas, sin espacios ni los
+ * separadores habituales (puntos, guiones o barras). Así «h-28.654.325» se
+ * valida igual que «H28654325».
+ */
+export function normalizeIdentityDocument(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s.\/-]+/g, "");
 }
 
 /** Valida un DNI español: 8 dígitos + letra de control (módulo 23). */
@@ -583,7 +594,7 @@ export function installSearchableSelects() {
 /**
  * Muestra un modal con TODOS los errores de validación juntos.
  */
-export function showValidationErrors(messages, title = "Revisá los siguientes datos") {
+export function showValidationErrors(messages, title = "Revisa los siguientes datos") {
   const dialog = document.querySelector("#validation-dialog");
   const list = document.querySelector("#validation-list");
   if (!dialog || !list) {
@@ -670,13 +681,13 @@ if (typeof document !== "undefined") (() => {
 })();
 
 /**
- * Pone todos los controles del formulario en modo sólo lectura y oculta
+ * Pone todos los controles del formulario en modo solo lectura y oculta
  * los botones de guardado/cancelación (modo "ver").
  */
 export function setFormReadonly(form, readonly) {
   if (!form) return;
   form.classList.toggle("is-readonly", readonly);
-  // Sólo controles de valor: los botones (tabs, cierres) deben seguir
+  // Solo controles de valor: los botones (tabs, cierres) deben seguir
   // siendo operables en modo lectura
   form.querySelectorAll("input, select, textarea, [contenteditable]").forEach(element => {
     if (element.type === "submit" || element.closest(".dialog-actions") || element.closest(".doc-library")) return;

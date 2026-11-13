@@ -403,6 +403,22 @@ if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'demo-identifiers-v
   }
   db.prepare("INSERT INTO schema_migrations (id) VALUES ('demo-identifiers-v1')").run();
 }
+// Comunidades sembradas con NIF de control incorrecto en versiones anteriores:
+// se corrigen solo si el valor sigue siendo exactamente el heredado, para no
+// pisar un NIF que la persona ya haya corregido.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'community-nif-v1'").get()) {
+  for (const [id, incorrecto, correcto] of [
+    ["com-seed-1", "H28654321", "H28654325"],
+    ["com-seed-3", "H03112233", "H03112232"],
+    ["com-seed-4", "H29987654", "H29987658"],
+    ["com-seed-5", "H41556677", "H41556671"],
+    ["com-seed-6", "H46123456", "H46123451"],
+    ["com-seed-7", "H50778899", "H50778893"],
+  ]) {
+    db.prepare("UPDATE communities SET nif = ? WHERE id = ? AND nif = ?").run(correcto, id, incorrecto);
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('community-nif-v1')").run();
+}
 // Retira únicamente las contraseñas de SSO generadas por la antigua migración.
 for (const user of db.prepare("SELECT id, usuario, passwordHash FROM users WHERE ssoProvider <> '' AND passwordHash <> ''").all()) {
   const [salt, hash] = user.passwordHash.split(":");
@@ -467,7 +483,7 @@ for (const [nombre, descripcion] of Object.entries(descripcionesSistema))
 
 if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
   if (process.env.NODE_ENV === "production" && (!process.env.APP_ADMIN_PASSWORD || process.env.APP_ADMIN_PASSWORD.length < 12)) {
-    throw new Error("Para inicializar producción, configurá APP_ADMIN_PASSWORD con al menos 12 caracteres.");
+    throw new Error("Para inicializar producción, configura APP_ADMIN_PASSWORD con al menos 12 caracteres.");
   }
   const insertUser = db.prepare("INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash) VALUES (?, ?, ?, ?, ?, ?, 1, ?)");
   const initialAdminPassword = process.env.APP_ADMIN_PASSWORD || "super_admin";
@@ -928,7 +944,7 @@ export function getSettings() {
     feeInternal: true,
     feeEmail: false,
     feeEmailSubject: "{{titulo}} · {{comunidad}}",
-    feeEmailBody: "{{mensaje}}\nConsultá el tab Financiero de tu ficha de propietario.",
+    feeEmailBody: "{{mensaje}}\nConsulta la pestaña Financiero de la ficha del propietario.",
     assessmentBeforeDays: 3,
     assessmentAfterDays: 7,
     assessmentRepeatDays: 0,
@@ -947,7 +963,7 @@ export function getSettings() {
     diasAvisoVencimientoContrato: 30,
     filasPorPagina: 10,
     mantenimiento: false,
-    mensajeMantenimiento: "La plataforma está en mantenimiento. Volvé a intentar en unos minutos."
+    mensajeMantenimiento: "La plataforma está en mantenimiento. Vuelve a intentar en unos minutos."
   };
   const saved = parseJson(row?.data, null);
   const settings = saved ? { ...defaults, ...saved, marca: { ...DEFAULT_BRAND, ...(saved.marca || {}) } } : { ...defaults, marca: { ...DEFAULT_BRAND } };

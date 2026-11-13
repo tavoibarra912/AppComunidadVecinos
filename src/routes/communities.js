@@ -1,7 +1,7 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, communityFromRow, listDocuments } from "../db.js";
-import { contactError, communityFinanceError, communityNifError } from "../validation.js";
+import { contactError, communityFinanceError, communityNifError, normalizeIdentityDocument } from "../validation.js";
 import { removeEntityFiles } from "./documents.js";
 import { sanitizeRichText } from "../rich-text.js";
 
@@ -9,7 +9,7 @@ const router = Router();
 router.use((req, res, next) => {
   if (["POST", "PUT"].includes(req.method)) {
     const data = req.body || {};
-    data.nif = String(data.nif || "").trim().toUpperCase();
+    data.nif = normalizeIdentityDocument(data.nif);
     const error = contactError(data) || communityFinanceError(data) || communityNifError(data.nif);
     if (error) return res.status(400).json({ error });
     if (data.notes !== undefined) data.notes = sanitizeRichText(data.notes);

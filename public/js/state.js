@@ -316,6 +316,6 @@ export function clearSession() {
 
 export function requirePermission(permission, resourceId = "") {
   if (hasPermission(permission, resourceId)) return true;
-  toast(`No tenés permiso para esta acción (requiere: ${etiquetaPermiso(permission)}).`, "warning");
+  toast(`No tienes permiso para esta acción (requiere: ${etiquetaPermiso(permission)}).`, "warning");
   return false;
 }

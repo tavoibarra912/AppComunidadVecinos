@@ -121,7 +121,7 @@ test("syncOwnerProperties: desvincula inmuebles eliminados de la lista", () => {
   createProperty("prop-4", "com-1");
   syncOwnerProperties("own-2", ["prop-3", "prop-4"]);
 
-  // Ahora sólo queda prop-3
+  // Ahora solo queda prop-3
   syncOwnerProperties("own-2", ["prop-3"]);
 
   assert.deepEqual(ownerIdsOf("prop-3"), ["own-2"]);

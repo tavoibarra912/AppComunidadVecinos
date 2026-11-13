@@ -171,7 +171,7 @@ export function mountFeeShortcut(root, kind, id) {
       if (!root.querySelector(".fee-warning"))
         info(
           root,
-          "Guardá o descartá los cambios de la ficha antes de abrir Cuotas.",
+          "Guarda o descarta los cambios de la ficha antes de abrir Cuotas.",
           true,
         );
       return;
@@ -254,10 +254,10 @@ export function renderFeesPage() {
     el(
       "p",
       kind === "community"
-        ? "Gestioná las cuotas ordinarias, derramas y servicios de cada comunidad, sus recibos y cobros."
+        ? "Gestiona las cuotas ordinarias, derramas y servicios de cada comunidad, sus recibos y cobros."
         : kind === "owner" && !ownProfile
-          ? "Consultá los recibos, pagos y justificantes del propietario seleccionado."
-          : "Consultá tus recibos, pagos, vencimientos y justificantes.",
+          ? "Consulta los recibos, pagos y justificantes del propietario seleccionado."
+          : "Consulta tus recibos, pagos, vencimientos y justificantes.",
       "subtitle",
     ),
   );
@@ -288,7 +288,7 @@ export function renderFeesPage() {
       "select",
       kind === "community" ? communityId : "",
       [
-        ["", "Elegí una comunidad para gestionar"],
+        ["", "Elige una comunidad para gestionar"],
         ...communities.map((c) => [c.id, c.name]),
       ],
     );
@@ -301,7 +301,7 @@ export function renderFeesPage() {
     info(
       root,
       requested
-        ? "No tenés acceso financiero a la comunidad indicada. Elegí una comunidad de la lista."
+        ? "No tienes acceso financiero a la comunidad indicada. Elige una comunidad de la lista."
         : "No hay comunidades asignadas a tu cuenta para gestionar cuotas.",
     );
     return;
@@ -345,13 +345,13 @@ function validateDialog() {
         /^\d{1,9}([.,]\d{1,2})?$/.test(text) &&
           Number(text.replace(",", ".")) > 0
           ? ""
-          : "Introducí un importe positivo con un máximo de dos decimales.",
+          : "Introduce un importe positivo con un máximo de dos decimales.",
       );
     }
     if (!input.checkValidity()) {
       input.setAttribute("aria-invalid", "true");
       errorMessage(
-        `${input.labels?.[0]?.textContent || "Revisá el campo"}: ${input.validationMessage}`,
+        `${input.labels?.[0]?.textContent || "Revisa el campo"}: ${input.validationMessage}`,
       );
       input.focus();
       return false;
@@ -536,7 +536,7 @@ function guide(root, data, manage) {
   const steps = [
     {
       done: configured,
-      title: "Configurá el acuerdo de cuotas",
+      title: "Configura el acuerdo de cuotas",
       state: configured
         ? `Acuerdo vigente: ${money(plan.annualAmount)} al año en ${plural(periodsPerYear, "periodo", "periodos")} (${periodLabel}), vence el día ${plan.dueDay}.`
         : "Pendiente: todavía no hay importe ni reparto aprobado.",
@@ -544,21 +544,21 @@ function guide(root, data, manage) {
     },
     {
       done: active.length > 0,
-      title: "Emití los recibos del periodo",
+      title: "Emite los recibos del periodo",
       state: active.length
         ? `${plural(active.length, "recibo emitido", "recibos emitidos")} por ${money(issued)}.`
         : configured
-          ? "Todo listo: el acuerdo está guardado, podés emitir el primer periodo."
-          : "Pendiente: primero guardá el acuerdo con el importe y el reparto.",
+          ? "Todo listo: el acuerdo está guardado, puedes emitir el primer periodo."
+          : "Pendiente: primero guarda el acuerdo con el importe y el reparto.",
       text: "Se genera un recibo por inmueble. Antes de confirmar ves una vista previa con importes y vencimiento; no se realiza ningún cargo automático.",
     },
     {
       done: active.length > 0 && percent >= 100,
-      title: "Registrá cobros y revisá justificantes",
+      title: "Registra cobros y revisa justificantes",
       state: active.length
         ? `${money(paid)} cobrado (${percent}% de lo emitido). Pendiente: ${money(Math.max(0, issued - paid))}.`
         : "Se habilita después de emitir el primer recibo.",
-      text: "Cargá transferencias, ingresos o anticipos. Los saldos a favor se aplican a otros recibos y podés revertir un cobro si fue un error.",
+      text: "Carga transferencias, ingresos o anticipos. Los saldos a favor se aplican a otros recibos y puedes revertir un cobro si fue un error.",
     },
   ];
   const details = el("details", undefined, "fee-guide");
@@ -669,7 +669,7 @@ export function mountFees(root, kind, id, options = {}) {
   root.classList.toggle("fee-panel-standalone", !!options.standalone);
   root.replaceChildren(el("h3", panelTitle(kind, id)));
   if (!id) {
-    info(root, "Guardá primero la ficha para consultar las cuotas.");
+    info(root, "Guarda primero la ficha para consultar las cuotas.");
     return;
   }
   info(root, "Cargando cuotas…");
@@ -790,19 +790,19 @@ function renderPanel(root, ctx) {
     info(
       root,
       serviceTab
-        ? `Los servicios solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambiá su moneda en la ficha de la comunidad para poder repartir facturas.`
-        : `Las cuotas solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambiá su moneda en la ficha de la comunidad para poder configurar o emitir cuotas.`,
+        ? `Los servicios solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambia su moneda en la ficha de la comunidad para poder repartir facturas.`
+        : `Las cuotas solo se gestionan en euros. Esta comunidad está configurada en ${feeCurrency}; cambia su moneda en la ficha de la comunidad para poder configurar o emitir cuotas.`,
       true,
     );
   if (!assessmentTab && !serviceTab && manage && canConfigure && !data.plans.length)
     info(
       root,
-      "Para emitir las primeras cuotas, guardá primero el importe aprobado, el reparto y la periodicidad en Configuración y acuerdos.",
+      "Para emitir las primeras cuotas, guarda primero el importe aprobado, el reparto y la periodicidad en Configuración y acuerdos.",
     );
   if (manage && canConfigure && !data.properties.length)
     info(
       root,
-      "Asociá inmuebles con sus titulares a esta comunidad antes de emitir cuotas o repartir servicios.",
+      "Asocia inmuebles con sus titulares a esta comunidad antes de emitir cuotas o repartir servicios."
     );
   if (
     assessmentTab &&
@@ -938,7 +938,7 @@ function renderPanel(root, ctx) {
     if (manage && pendingProofs)
       info(
         results,
-        `${pendingProofs} ${pendingProofs === 1 ? "justificante pendiente" : "justificantes pendientes"} de revisión. Abrí el recibo correspondiente.`,
+        `${pendingProofs} ${pendingProofs === 1 ? "justificante pendiente" : "justificantes pendientes"} de revisión. Abre el recibo correspondiente.`,
         true,
       );
     const pages = Math.max(1, Math.ceil(rows.length / ctx.pageSize));
@@ -2086,7 +2086,7 @@ function configuration(ctx) {
     const parts = total > 0 && count > 0 ? total / count : 0;
     hintLine.textContent = parts
       ? `Cada periodo se emitirá por ${money(Math.round(parts * 100))} en total (importe anual dividido en ${count} ${count === 1 ? "periodo" : "periodos"}).`
-      : "Completá el importe anual para ver cuánto se emitirá en cada periodo.";
+      : "Completa el importe anual para ver cuánto se emitirá en cada periodo.";
   };
   const hintLine = el("p", undefined, "form-intro full");
   body.append(hintLine);
@@ -2150,7 +2150,7 @@ function configuration(ctx) {
 function emission(ctx) {
   const body = open("Emitir cuotas de la comunidad");
   if (!ctx.data.plans.length) {
-    info(body, "Guardá primero la configuración de cuotas de esta comunidad.");
+    info(body, "Guarda primero la configuración de cuotas de esta comunidad.");
     return;
   }
   const month = field(
@@ -2216,7 +2216,7 @@ function emission(ctx) {
           if (month.value !== batch.period) {
             output.replaceChildren();
             throw new Error(
-              "El periodo cambió. Volvé a calcular la vista previa.",
+              "El periodo cambió. Vuelve a calcular la vista previa.",
             );
           }
           await api.fees(`/communities/${ctx.id}/issue`, "POST", {
@@ -2306,7 +2306,7 @@ function paymentForm(ctx, receipt = null) {
   duplicate.closest("label").hidden = true;
   info(
     body,
-    "Seleccioná los recibos a los que aplicar el cobro. Se cubren primero los más antiguos; cualquier sobrante queda a favor del pagador en esta comunidad.",
+    "Selecciona los recibos a los que aplicar el cobro. Se cubren primero los más antiguos; cualquier sobrante queda a favor del pagador en esta comunidad.",
   );
   const selection = el("div", undefined, "fee-receipt-selection");
   body.append(selection);
@@ -2321,8 +2321,8 @@ function paymentForm(ctx, receipt = null) {
       Number(text.replace(",", ".")) <= 0
     ) {
       distribution.textContent = text
-        ? "Revisá el importe: debe ser positivo y tener como máximo dos decimales."
-        : "Indicá el importe recibido para ver su reparto entre recibos y saldo a favor.";
+        ? "Revisa el importe: debe ser positivo y tener como máximo dos decimales."
+        : "Indica el importe recibido para ver su reparto entre recibos y saldo a favor.";
       return;
     }
     const entered = Number(text.replace(",", "."));
@@ -2405,7 +2405,7 @@ function creditForm(ctx, payment) {
     "Aplicar saldo",
     async () => {
       if (!ids().length)
-        throw new Error("Seleccioná al menos un recibo pendiente.");
+        throw new Error("Selecciona al menos un recibo pendiente.");
       await api.fees(`/payments/${payment.id}/allocate`, "POST", {
         receiptIds: ids(),
       });
@@ -2432,7 +2432,7 @@ function reasonDialog(title, description, action) {
     button(
       "Confirmar",
       async () => {
-        if (!reason.value.trim()) throw new Error("Indicá el motivo.");
+        if (!reason.value.trim()) throw new Error("Indica el motivo.");
         await action(reason.value);
       },
       true,
@@ -2596,7 +2596,7 @@ export async function showReceipt(id) {
             button(label, () =>
               reasonDialog(
                 label,
-                "Indicá el resultado de la revisión. El cobro se registra por separado.",
+                "Indica el resultado de la revisión. El cobro se registra por separado.",
                 async (note) => {
                   await api.fees(`/proofs/${proof.id}/review`, "POST", {
                     status,
@@ -2625,7 +2625,7 @@ export async function showReceipt(id) {
         button(
           "Enviar justificante para revisión",
           async () => {
-            if (!file.files[0]) throw new Error("Seleccioná un archivo.");
+            if (!file.files[0]) throw new Error("Selecciona un archivo.");
             if (file.files[0].size > 10 * 1024 * 1024)
               throw new Error("El archivo supera 10 MB.");
             const form = new FormData();

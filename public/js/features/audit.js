@@ -21,7 +21,7 @@ export async function renderAudit() {
   const id = ++requestId;
   results.replaceChildren();
   previous.disabled = next.disabled = true;
-  if (!hasPermission("audit:read")) { status.textContent = "No tenés permiso para consultar la auditoría."; return; }
+  if (!hasPermission("audit:read")) { status.textContent = "No tienes permiso para consultar la auditoría."; return; }
   status.textContent = "Cargando auditoría…";
   try {
     const page = await api.listAudit({ limit, offset, action: form.elements.action.value });

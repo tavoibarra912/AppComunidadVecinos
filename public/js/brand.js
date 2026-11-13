@@ -151,7 +151,7 @@ export function applyPublicSettings(settings = readInjectedPublicSettings()) {
     notice.hidden = !data.mantenimiento;
     notice.textContent = data.mantenimiento
       ? data.mensajeMantenimiento ||
-        "La plataforma está en mantenimiento. Volvé a intentar en unos minutos."
+        "La plataforma está en mantenimiento. Vuelve a intentar en unos minutos."
       : "";
   }
   const contact = document.getElementById("login-contact-info");

@@ -72,7 +72,7 @@ const upload = (req, res, done) =>
         ok
           ? null
           : new Error(
-              `Formato no permitido. Usá ${allowedLabels() || "PDF, JPG, JPEG, PNG, WebP, DOC o DOCX"}.`,
+              `Formato no permitido. Usa ${allowedLabels() || "PDF, JPG, JPEG, PNG, WebP, DOC o DOCX"}.`,
             ),
         ok,
       );
@@ -323,7 +323,7 @@ router.post("/", (req, res, next) =>
         removeFiles(files);
         return deny(
           res,
-          "No tenés permiso para adjuntar documentos a este registro.",
+          "No tienes permiso para adjuntar documentos a este registro.",
         );
       }
       if (
@@ -334,7 +334,7 @@ router.post("/", (req, res, next) =>
         )
       ) {
         removeFiles(files);
-        return deny(res, "No tenés permiso para subir documentos.");
+        return deny(res, "No tienes permiso para subir documentos.");
       }
       if (!validateFiles(res, files)) return;
       const types = files.map(contentType);
@@ -627,10 +627,10 @@ router.delete("/:id", (req, res) => {
   if (!canWrite(req.user, row.entityType, row.entityId))
     return deny(
       res,
-      "No tenés permiso para eliminar documentos de este registro.",
+      "No tienes permiso para eliminar documentos de este registro.",
     );
   if (!allowed(req.user, permissionFor("delete"), row.entityId))
-    return deny(res, "No tenés permiso para eliminar documentos.");
+    return deny(res, "No tienes permiso para eliminar documentos.");
   removeStoredFiles([row.storedName]);
   db.prepare("DELETE FROM documents WHERE id=?").run(row.id);
   res.json({ ok: true });
@@ -642,7 +642,7 @@ router.get("/:id/download", (req, res) => {
     .get(req.params.id);
   if (!row) return res.status(404).json({ error: "Documento no encontrado." });
   if (!canRead(req.user, row.entityType, row.entityId))
-    return deny(res, "No tenés acceso a este documento.");
+    return deny(res, "No tienes acceso a este documento.");
   if (!fs.existsSync(documentPath(row)))
     return res.status(404).json({ error: "El archivo no está disponible." });
   res.download(documentPath(row), row.fileName);

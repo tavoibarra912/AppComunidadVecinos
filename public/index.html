@@ -90,7 +90,7 @@
       <!-- Vista: Sign In -->
       <div id="login-view-signin" class="login-view">
         <h1>Iniciar sesión</h1>
-        <p class="login-sub">Accedé con tu cuenta para continuar.</p>
+        <p class="login-sub">Accede con tu cuenta para continuar.</p>
         <form id="login-signin-form" novalidate>
           <label>Usuario o Email *
             <input name="usuario" type="text" required autocomplete="username" placeholder="Usuario o Email" />
@@ -143,7 +143,7 @@
       <!-- Vista: Forgot Password -->
       <div id="login-view-forgot" class="login-view" hidden>
         <h1>Recuperar contraseña</h1>
-        <p class="login-sub">Indicá el email de tu cuenta. Si está registrada y activa, recibirás un enlace válido
+        <p class="login-sub">Indica el email de tu cuenta. Si está registrada y activa, recibirás un enlace válido
           durante 30 minutos.</p>
         <form id="login-forgot-form" novalidate>
           <label>Email *
@@ -154,7 +154,7 @@
           <button class="login-submit" type="submit">Enviar instrucciones</button>
         </form>
         <div id="login-reset-block" hidden>
-          <p class="form-intro">Token de recuperación recibido. Definí tu nueva contraseña:</p>
+          <p class="form-intro">Token de recuperación recibido. Define tu nueva contraseña:</p>
           <form id="login-reset-form" novalidate>
             <label>Nueva contraseña * (mín. 8)
               <input name="password" type="password" required minlength="8" autocomplete="new-password" />
@@ -360,7 +360,7 @@
         <div class="detail-section-heading">
           <div>
             <h3>Roles y permisos</h3>
-            <p class="detail-section-subtitle">Definí qué puede hacer cada rol. Los roles del sistema no se pueden
+            <p class="detail-section-subtitle">Define qué puede hacer cada rol. Los roles del sistema no se pueden
               eliminar.</p>
           </div>
           <div class="heading-actions">
@@ -477,7 +477,7 @@
                 <label class="full">Email(s) para avisar cambios de perfiles (opcional)
                   <input name="avisosCambiosEmail" maxlength="300" placeholder="asociacionpenarubia@gmail.com, otra@gmail.com" />
                 </label>
-                <p class="form-intro full">Separá varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Requiere tildar «Habilitar correo electrónico».</p>
+                <p class="form-intro full">Separa varias direcciones con comas. Vacío = desactivado. El envío usa el correo habilitado en Proveedores de comunicación. Marca «Habilitar correo electrónico».</p>
 
                 <p class="form-section-title full">Cuotas ordinarias</p>
                 <p class="form-intro full">Valores iniciales que se copian al crear un acuerdo de cuotas. Cambiarlos no modifica acuerdos ni recibos existentes. Zona horaria: Europe/Madrid.</p>
@@ -571,7 +571,7 @@
                   Modo mantenimiento (bloquea el acceso a usuarios no administradores)
                 </label>
                 <label class="full">Mensaje de mantenimiento (opcional)
-                  <textarea name="mensajeMantenimiento" rows="2" maxlength="300" placeholder="La plataforma está en mantenimiento. Volvé a intentar en unos minutos."></textarea>
+                  <textarea name="mensajeMantenimiento" rows="2" maxlength="300" placeholder="La plataforma está en mantenimiento. Vuelve a intentar en unos minutos."></textarea>
                 </label>
               </div>
             </div>
@@ -594,7 +594,7 @@
                 <img id="marca-logo-preview" class="marca-logo-preview" alt="Vista previa del logo" hidden />
 
                 <p class="form-section-title full">Colores de la interfaz</p>
-                <p class="form-intro full">Ajustá el fondo, las superficies, el texto y los bordes. El color principal sigue definiendo la barra superior y el acento los botones y enlaces.</p>
+                <p class="form-intro full">Ajusta el fondo, las superficies, el texto y los bordes. El color principal sigue definiendo la barra superior y el acento los botones y enlaces.</p>
                 <label>Fondo general (opcional)
                   <input name="marcaColorFondo" type="color" />
                 </label>
@@ -638,7 +638,7 @@
             </div>
             <div id="settings-textos-panel" hidden>
               <p class="form-section-title full">Textos de los envíos</p>
-              <p class="form-intro full">Personalizá los mensajes que envía la plataforma por correo, SMS y WhatsApp. Placeholders disponibles: <strong>{{plataforma}}</strong>, <strong>{{titulo}}</strong>, <strong>{{texto}}</strong>, <strong>{{comunidad}}</strong>, <strong>{{fecha}}</strong> y <strong>{{enlace}}</strong> (solo recuperación de contraseña).</p>
+              <p class="form-intro full">Personaliza los mensajes que envía la plataforma por correo, SMS y WhatsApp. Variables disponibles: <strong>{{plataforma}}</strong>, <strong>{{titulo}}</strong>, <strong>{{texto}}</strong>, <strong>{{comunidad}}</strong>, <strong>{{fecha}}</strong> y <strong>{{enlace}}</strong> (solo recuperación de contraseña).</p>
               <div class="form-grid">
                 <label class="full">Asunto del email de nueva publicación
                   <input name="texto_emailAvisoAsunto" data-texto="emailAvisoAsunto" maxlength="200" />
@@ -763,15 +763,15 @@
             <input name="name" maxlength="100" required />
           </label>
           <label>NIF *
-            <input name="nif" maxlength="9" required pattern="H[0-9]{7}[0-9A-J]" placeholder="H12345674"
-              title="CIF de comunidad: H + 7 dígitos + dígito o letra de control." />
+            <input name="nif" maxlength="14" required placeholder="H12345674"
+              title="CIF de comunidad: H + 7 dígitos + dígito de control numérico. Se admiten espacios, puntos y guiones." />
           </label>
           <label>Presidente (opcional)
             <input name="president" maxlength="100" placeholder="Nombre y teléfono" />
           </label>
           <label>Administrador de Fincas (opcional)
             <input name="administrator" maxlength="100" placeholder="Nombre / N.º colegiado" />
-            <span class="field-hint">Persona o empresa que administra la finca. Es un dato de contacto: no le da acceso a la app. Para dar acceso, usá «Administrador de Comunidad».</span>
+            <span class="field-hint">Persona o empresa que administra la finca. Es un dato de contacto: no le da acceso a la app. Para dar acceso, usa «Administrador de Comunidad».</span>
           </label>
           <label>Año de Constitución (opcional)
             <select name="constitutionYear"><option value="">Sin especificar</option></select>
@@ -797,7 +797,7 @@
               </div>
               <div class="rich-text-content" id="community-notes-editor" contenteditable="true" role="textbox"
                 aria-multiline="true" aria-labelledby="community-notes-label"
-                data-placeholder="Escribí observaciones sobre la comunidad…" data-maxlength="2000"></div>
+                data-placeholder="Escribe observaciones sobre la comunidad…" data-maxlength="2000"></div>
             </div>
             <textarea name="notes" id="community-notes-input" hidden></textarea>
           </div>
@@ -805,7 +805,7 @@
             <select name="adminUserId" id="community-admin-select">
               <option value="">Sin asignar (se completa manualmente en Presidente/Administrador)</option>
             </select>
-            <span class="field-hint">Asigná la cuenta de usuario que administra esta comunidad. Se completa también el
+            <span class="field-hint">Asigna la cuenta de usuario que administra esta comunidad. Se completa también el
               campo Administrador de fincas.</span>
           </label>
         </div>
@@ -977,7 +977,7 @@
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg></button>
       </div>
-      <p class="form-intro">Consulta detallada de la comunidad (sólo lectura; para modificar usá «Editar comunidad»).
+      <p class="form-intro">Consulta detallada de la comunidad (solo lectura; para modificar usa «Editar comunidad»).
       </p>
       <nav class="community-editor-tabs" aria-label="Secciones de la comunidad">
         <button class="community-editor-tab active" type="button" data-cd-tab="general"
@@ -1076,7 +1076,7 @@
         </div>
       </section>
       <section class="community-editor-pane" data-cd-pane="properties" hidden>
-        <!-- Inmuebles de la comunidad (sólo lectura; la edición se hace desde "Editar comunidad") -->
+        <!-- Inmuebles de la comunidad (solo lectura; la edición se hace desde "Editar comunidad") -->
         <div class="detail-section-heading">
           <div>
             <h3 id="community-detail-properties-heading">Inmuebles (<span id="community-detail-prop-count">0</span>)
@@ -1091,7 +1091,7 @@
         <div class="detail-section-heading">
           <div>
             <h3>Documentación (<span id="community-detail-doc-count">0</span>)</h3>
-            <p class="detail-section-subtitle">Archivos adjuntos de la comunidad (sólo lectura).</p>
+            <p class="detail-section-subtitle">Archivos adjuntos de la comunidad (solo lectura).</p>
           </div>
         </div>
         <div class="doc-library-host" id="community-detail-documents"></div>
@@ -1169,7 +1169,7 @@
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg></button>
       </div>
-      <p class="form-intro owner-readonly-note" id="owner-readonly-note" hidden>Ficha en modo lectura. Pulsá el lápiz
+      <p class="form-intro owner-readonly-note" id="owner-readonly-note" hidden>Ficha en modo lectura. Pulsa el lápiz
         para editar los datos.</p>
 
       <!-- Pestañas del formulario: General · Contacto y Domicilio · Comunidad y Notificaciones · Financiero · Inmueble · Documentación -->
@@ -1231,7 +1231,7 @@
               </div>
               <div class="rich-text-content" id="owner-notes-editor" contenteditable="true" role="textbox"
                 aria-multiline="true" aria-labelledby="owner-notes-label"
-                data-placeholder="Escribí observaciones sobre el propietario…" data-maxlength="500"></div>
+                data-placeholder="Escribe observaciones sobre el propietario…" data-maxlength="500"></div>
             </div>
             <textarea name="notes" id="owner-notes-input" hidden maxlength="500"></textarea>
           </div>
@@ -1239,7 +1239,7 @@
             <select name="userId" id="owner-user-select">
               <option value="">Sin cuenta de usuario</option>
             </select>
-            <span class="field-hint">Vinculá la cuenta con la que esta persona accede al sistema (opcional).</span>
+            <span class="field-hint">Vincula la cuenta con la que esta persona accede al sistema (opcional).</span>
           </label>
         </div>
       </section>
@@ -1601,7 +1601,7 @@
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg></button>
       </div>
-      <p class="form-intro">Ficha del propietario (sólo lectura; para modificar usá «Editar propietario»).</p>
+      <p class="form-intro">Ficha del propietario (solo lectura; para modificar usa «Editar propietario»).</p>
       <nav class="community-editor-tabs" aria-label="Secciones del propietario">
         <button class="community-editor-tab active" type="button" data-od-tab="general"
           aria-selected="true">General</button>
@@ -1877,7 +1877,7 @@
               </div>
               <div class="rich-text-content" id="tenant-notes-editor" contenteditable="true" role="textbox"
                 aria-multiline="true" aria-labelledby="tenant-notes-label"
-                data-placeholder="Escribí observaciones sobre el inquilino…" data-maxlength="500"></div>
+                data-placeholder="Escribe observaciones sobre el inquilino…" data-maxlength="500"></div>
             </div>
             <textarea name="authorizationNotes" id="tenant-notes-input" hidden maxlength="500"></textarea>
           </div>
@@ -1885,7 +1885,7 @@
             <select name="userId" id="tenant-user-select">
               <option value="">Sin cuenta de usuario</option>
             </select>
-            <span class="field-hint">Vinculá la cuenta con la que esta persona accede al sistema (opcional).</span>
+            <span class="field-hint">Vincula la cuenta con la que esta persona accede al sistema (opcional).</span>
           </label>
           <select name="ownerId" hidden></select>
         </div>
@@ -2384,7 +2384,7 @@
               </div>
               <div class="rich-text-content" id="property-notes-editor" contenteditable="true" role="textbox"
                 aria-multiline="true" aria-labelledby="property-notes-label"
-                data-placeholder="Escribí observaciones sobre el inmueble…" data-maxlength="500"></div>
+                data-placeholder="Escribe observaciones sobre el inmueble…" data-maxlength="500"></div>
             </div>
             <textarea name="notes" id="property-notes-input" hidden maxlength="500"></textarea>
           </div>
@@ -2615,7 +2615,7 @@
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg></button>
       </div>
-      <p class="form-intro">Consulta detallada del inmueble (sólo lectura; para modificar usá «Editar inmueble»).</p>
+      <p class="form-intro">Consulta detallada del inmueble (solo lectura; para modificar usa «Editar inmueble»).</p>
       <nav class="community-editor-tabs" aria-label="Secciones del inmueble">
         <button class="community-editor-tab active" type="button" data-pd-tab="general"
           aria-selected="true">General</button>
@@ -2783,11 +2783,11 @@
         <div class="admin-link-section" id="user-link-section">
           <label>Perfil Propietario (opcional)
             <select name="linkedOwnerId" id="user-linked-owner"></select>
-            <span class="field-hint">Vinculá el registro de propietario existente (por DNI, nombre o inmueble).</span>
+            <span class="field-hint">Vincula el registro de propietario existente (por DNI, nombre o inmueble).</span>
           </label>
           <label>Perfil Inquilino (opcional)
             <select name="linkedTenantId" id="user-linked-tenant"></select>
-            <span class="field-hint">Vinculá el registro de inquilino existente (por DNI, nombre o inmueble).</span>
+            <span class="field-hint">Vincula el registro de inquilino existente (por DNI, nombre o inmueble).</span>
           </label>
         </div>
         <p class="field-hint full" id="user-link-superadmin-hint" hidden>Los roles de administración de la plataforma
@@ -2957,7 +2957,7 @@
       <div class="success-next-steps">
         <div class="step-badge">
           <span class="step-num">1</span>
-          <span><strong>Registro único:</strong> Los documentos han quedado guardados y relacionados <em>sólo y
+          <span><strong>Registro único:</strong> Los documentos han quedado guardados y relacionados <em>solo y
               únicamente</em> para este usuario.</span>
         </div>
         <div class="step-badge highlight">
@@ -3084,7 +3084,7 @@
         <button class="community-editor-tab" type="button" data-notification-tab="owner" aria-selected="false" hidden>Mis avisos <span class="notification-tab-count" id="owner-tab-count" hidden>0</span></button>
       </nav>
       <section data-notification-pane="admin" hidden>
-        <p class="form-intro" id="admin-inbox-description">Documentación y gestiones de propietarios que requieren tu atención. Abrí un aviso para ver los documentos y acceder al expediente.</p>
+        <p class="form-intro" id="admin-inbox-description">Documentación y gestiones de propietarios que requieren tu atención. Abre un aviso para ver los documentos y acceder al expediente.</p>
         <div class="notification-inbox-summary" id="admin-inbox-summary" role="status" aria-live="polite"></div>
         <div class="notification-inbox-toolbar">
           <div class="notification-inbox-filters" role="group" aria-label="Filtrar avisos administrativos">
@@ -3271,7 +3271,7 @@
           </svg></span>
         <div>
           <p class="eyebrow">VALIDACIÓN</p>
-          <h2 id="validation-title">Revisá los siguientes datos</h2>
+          <h2 id="validation-title">Revisa los siguientes datos</h2>
         </div>
         <button class="icon-action-btn btn-cancel btn-lg" type="button" id="close-validation-dialog"
           aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -3280,7 +3280,7 @@
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg></button>
       </div>
-      <p class="form-intro">No se ha podido guardar. Corregí todos los puntos siguientes:</p>
+      <p class="form-intro">No se ha podido guardar. Corrige todos los puntos siguientes:</p>
       <ul class="validation-error-list" id="validation-list" aria-live="assertive"></ul>
       <div class="dialog-actions">
         <button class="primary-button" type="button" id="close-validation-btn">Entendido</button>
@@ -3332,7 +3332,7 @@
         <button class="icon-action-btn btn-cancel btn-lg" type="button" aria-label="Cerrar cambio de contraseña"
           data-close-account-dialog="account-password-dialog">×</button>
       </div>
-      <p class="form-intro" id="account-password-help">Usá entre 8 y 128 caracteres. Al guardar se cerrarán tus sesiones
+      <p class="form-intro" id="account-password-help">Usa entre 8 y 128 caracteres. Al guardar se cerrarán tus sesiones
         y tendrás que iniciar sesión con la nueva contraseña.</p>
       <div class="form-grid">
         <label class="full">Contraseña actual<input name="currentPassword" type="password"

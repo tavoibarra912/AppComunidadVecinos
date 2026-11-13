@@ -160,7 +160,7 @@ router.delete("/:id", (req, res) => {
     .all(`%"${existing.id}"%`);
   if (conInquilino.length > 0) {
     return res.status(409).json({
-      error: `No se puede eliminar el propietario: el inmueble «${conInquilino[0].plot}» tiene un inquilino asociado. Desvinculá primero al inquilino.`,
+      error: `No se puede eliminar el propietario: el inmueble «${conInquilino[0].plot}» tiene un inquilino asociado. Desvincula primero al inquilino.`,
     });
   }
   // Inmuebles sin inquilino: se desvincula al propietario (no se borran los inmuebles).

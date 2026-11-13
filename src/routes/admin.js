@@ -146,7 +146,7 @@ router.delete("/users/:id", (req, res) => {
   const profiles = linkedProfiles(user.id);
   if (profiles.length)
     return res.status(409).json({
-      error: `No se puede eliminar un usuario con perfil de ${profiles.join(" y ")} asociado. Desvinculá el perfil antes de borrar la cuenta.`,
+      error: `No se puede eliminar un usuario con perfil de ${profiles.join(" y ")} asociado. Desvincula el perfil antes de borrar la cuenta.`,
     });
   db.exec("BEGIN");
   try {
@@ -363,7 +363,7 @@ router.put("/settings", (req, res) => {
     )
       return res
         .status(400)
-        .json({ error: "Elegí al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG, WebP, DOC o DOCX)." });
+        .json({ error: "Elige al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG, WebP, DOC o DOCX)." });
     data.documentosTiposPermitidos = tipos;
   }
   if (

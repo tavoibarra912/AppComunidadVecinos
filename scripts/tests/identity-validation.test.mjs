@@ -54,7 +54,28 @@ test("NIF y NIF de comunidad", () => {
   assert.equal(isValidNif("B12345678"), false);
   assert.equal(isValidCommunityNif("H12345674"), true);
   assert.equal(isValidCommunityNif("H12345678"), false);
+  assert.equal(isValidCommunityNif("H0311223A"), false);
+  assert.equal(isValidCommunityNif("H03112232"), true);
   assert.equal(isValidCommunityNif("B12345674"), false);
+});
+
+test("documentos identificativos: se normalizan minúsculas, espacios y separadores", () => {
+  for (const value of [
+    "h28654325",
+    "H 28654325",
+    "H-28654325",
+    "H.286.543.25",
+    " h-28.654.325 ",
+  ]) {
+    assert.equal(isValidCommunityNif(value), true, value);
+  }
+  // El dígito de control sigue siendo obligatorio.
+  assert.equal(isValidCommunityNif("H28654321"), false);
+  assert.equal(isValidCommunityNif("H-2865432"), false);
+  assert.equal(isValidDni("12.345.678-Z"), true);
+  assert.equal(isValidNie("x-0000000-t"), true);
+  assert.equal(isValidCif("b 12345674"), true);
+  assert.equal(isValidCif("b-12345678"), false);
 });
 
 test("detección de tipo y validación por tipo declarado", () => {

@@ -201,6 +201,51 @@ mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
 su entidad. La categoría `statutes` separa los estatutos de la documentación
 general y no admite carpetas.
 
+## Estatutos y biblioteca documental
+
+Los estatutos de cada comunidad se gestionan en la pestaña **Estatutos** del
+editor y de la ficha de comunidad, y también desde el acceso directo **Estatutos
+de la comunidad** del inicio. Una comunidad puede tener uno o varios documentos
+vigentes o históricos. Todos los residentes con acceso a la comunidad pueden
+consultarlos, previsualizarlos y descargarlos; subirlos, reemplazarlos,
+renombrarlos o borrarlos requiere ser administrador de esa comunidad y tener los
+permisos documentales correspondientes. La ficha muestra nombre, tipo, tamaño,
+fecha de subida y la cuenta que subió cada archivo.
+
+La documentación general de comunidades, inmuebles e inquilinos usa una
+**biblioteca documental reutilizable** con carpetas:
+
+- Crear, renombrar y eliminar carpetas, con hasta **cinco niveles** de
+  anidamiento (la raíz no cuenta como nivel). Las carpetas y los archivos se
+  mueven con arrastrar y soltar o con **Mover a…**.
+- Navegación por migas de pan, búsqueda por nombre, orden por nombre, fecha o
+  tamaño y vistas de lista o cuadrícula.
+- Subida directa dentro de la carpeta abierta. Se mantienen los límites y
+  formatos configurados en Administración → Configuración (PDF, JPG, PNG, WebP,
+  DOC y DOCX; tamaño y cantidad máximos), con validación del contenido en el
+  servidor. Los formatos Word solo se descargan, sin vista previa.
+- No se permiten dos carpetas con el mismo nombre en el mismo nivel ni dos
+  archivos con el mismo nombre en la misma carpeta, sin distinguir mayúsculas ni
+  acentos. Sí puede repetirse un nombre en carpetas distintas.
+- Al eliminar una carpeta con contenido se muestra primero el recuento de
+  carpetas y archivos afectados; tras confirmar, el borrado es en cascada y
+  elimina también los archivos físicos. Una carpeta no puede moverse dentro de
+  sí misma.
+- Los permisos existentes se aplican sin cambios: `document:read` para consultar,
+  y el permiso de gestión de la entidad más `document:upload` o
+  `document:delete` para escribir. Los administradores de comunidad solo operan
+  sobre sus comunidades asignadas; los vecinos acceden en modo lectura a sus
+  comunidades, inmuebles e inquilinos.
+
+La migración `document-library-v1` añade las columnas y la tabla de carpetas sin
+mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
+su entidad. La categoría `statutes` separa los estatutos de la documentación
+general y no admite carpetas.
+
+La migración `community-nif-v1` corrige los NIF de demostración que quedaron con
+un dígito de control incorrecto en bases creadas con semillas antiguas; solo
+actúa si el valor guardado sigue siendo exactamente el heredado.
+
 ## Ejecución
 
 ```bash
@@ -210,7 +255,7 @@ npm run dev      # desarrollo con recarga (node --watch)
 npm run restart  # Windows: libera el puerto de la app y vuelve a arrancar
 ```
 
-Abrí **http://localhost:3000/** en Firefox (o el puerto configurado con `PORT`).
+Abre **http://localhost:3000/** en Firefox (o el puerto configurado con `PORT`).
 El frontend y la API deben salir del mismo servidor Node; Live Server de VS Code
 no sirve la API. Para los usuarios demo iniciales, el usuario y la contraseña
 coinciden (por ejemplo, `super_admin` / `super_admin`), salvo que hayas cambiado la contraseña.
@@ -230,7 +275,7 @@ Cuentas demo estándar (usuario = contraseña = email local = nombre):
 Permisos destacados configurables por rol (Administración → Roles):
 
 - **`owner:delete`** — eliminar un socio. Por defecto solo lo tiene `super_admin`;
-  otorgáselo al rol `administrator` si querés que el administrador general pueda
+  otorgáselo al rol `administrator` si quieres que el administrador general pueda
   hacerlo (el borrado se bloquea si el socio tiene un inmueble con inquilino).
 - **`comm:participacion`** — participar en Comunicación: comentar (con nombre),
   votar encuestas y confirmar asistencia a reuniones. Activado por defecto para
@@ -331,7 +376,7 @@ Nunca se usa el encabezado Host para construir enlaces.
 
 ### Recuperación de contraseña
 
-Desde «Olvidé mi contraseña», indicá el email de la cuenta. La respuesta es igual
+Desde «Olvidé mi contraseña», indica el email de la cuenta. La respuesta es igual
 para cuentas inexistentes, inactivas y activas; no contiene tokens. Se admite una
 solicitud por minuto por dirección, además del límite de intentos por IP. El correo
 se procesa desde una cola SQLite cada 30 segundos con el servidor encendido,
@@ -371,13 +416,13 @@ próxima recarga.
 ### Auditoría de seguridad
 
 **Administración → Auditoría** consulta el historial persistente de logins correctos
-y fallidos, cierres de sesión, accesos API denegados y altas/cambios/bajas de usuarios
+y fallidos, cierres de sesión, accesos a la API denegados y altas/cambios/bajas de usuarios
 y roles. Incluye fecha UTC (mostrada en horario local), actor, recurso, resultado,
 IP y valores anteriores/posteriores de campos administrativos permitidos. También
 registra solicitud, envío y finalización de recuperación. No guarda contraseñas,
 cookies, tokens, cuerpos completos ni parámetros de consulta.
 
-El tab es un permiso de rol: sólo se ve con «Ver auditoría» (`audit:read`), que
+El tab es un permiso de rol: solo se ve con «Ver auditoría» (`audit:read`), que
 se otorga o quita en el editor de roles; sin el permiso, el tab y su panel
 quedan ocultos aunque se force la URL, y la API responde 403. El rol
 `super_admin` lo trae siempre (acceso total).
@@ -409,7 +454,7 @@ protección de sus copias de seguridad para producción.
 ### Comunidades
 - En **Ver**, solo están habilitados las pestañas, el cierre y la apertura de los adjuntos. No se puede editar, verificar contactos, asociar inmuebles ni abrir sus fichas desde esa vista. La edición se recupera al abrir **Editar**.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
-- CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito o letra de control, teléfonos de 9 dígitos, email, CP contra catálogo INE con autocompletado municipio/provincia).
+- CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito numérico de control, teléfonos de 9 dígitos, correo electrónico, CP contra catálogo INE con autocompletado de municipio y provincia). El NIF se normaliza antes de validar y guardar: admite minúsculas y separadores habituales (espacios, puntos y guiones), y conserva la comprobación del dígito de control.
 - Documentación adjunta con biblioteca de archivos y carpetas, y ficha detallada con propietarios censados. Pestaña **Estatutos** independiente con consulta para residentes y gestión para administradores.
 
 ### Propietarios
@@ -443,7 +488,7 @@ comunicación** (sub-tab; ya no es un modal) y requiere el permiso de rol
 «Configurar proveedores de comunicación» (`admin:providers`), que se otorga en
 el editor de roles. Ese control también se aplica en la API y no depende de
 mostrar u ocultar botones; los accesos directos «Proveedores de envío»
-(Comunicación) llevan a esa pantalla sólo a quien tiene el permiso.
+(Comunicación) llevan a esa pantalla solo a quien tiene el permiso.
 
 - **SMTP:** servidor, puerto, TLS directo o STARTTLS obligatorio, usuario, contraseña y remitente. Implementado con [Nodemailer](https://nodemailer.com/smtp). No se desactiva la validación de certificados.
 - **SMS:** Twilio, con Account SID, Auth Token y teléfono emisor internacional.
@@ -463,7 +508,7 @@ bases y archivos dentro de directorios temporales y no usan los datos locales.
 
 ## Ejecución y datos existentes
 
-Por defecto, el servidor escucha sólo en 127.0.0.1. `HOST` permite elegir otra
+Por defecto, el servidor escucha solo en 127.0.0.1. `HOST` permite elegir otra
 interfaz de red. `PORT` cambia el puerto. `APP_DATA_DIR` y `APP_UPLOADS_DIR`
 permiten aislar la base y los archivos; sin configurarlos se conservan las rutas
 `data/penarrubia.db` y `uploads/`.

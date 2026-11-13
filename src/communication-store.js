@@ -39,6 +39,127 @@ CREATE TABLE IF NOT EXISTS communication_outbox (
 );
 `);
 
+const spanishDemoCopy = new Map([
+  [
+    "Torneo de pádel entre vecinos\u0000Inscripciones abiertas para el torneo de pádel (parejas mixtas, nivel libre). Pista del club de al lado, 16:00. Inscribite hasta el jueves respondiendo a este aviso.",
+    {
+      title: "Torneo de pádel entre vecinos",
+      body: "Inscripciones abiertas para el torneo de pádel (parejas mixtas, nivel libre). Pista del club de al lado, 16:00. Inscríbete antes del jueves respondiendo a este aviso.",
+    },
+  ],
+  [
+    "Clases de yoga gratuitas en el jardín\u0000Profesora voluntaria del edificio da clase de hatha yoga para principiantes. Traé toalla y ropa cómoda. Confirmá asistencia (botón de confirmación).",
+    {
+      title: "Clases de yoga gratuitas en el jardín",
+      body: "Profesora voluntaria del edificio da clase de hatha yoga para principiantes. Trae toalla y ropa cómoda. Confirma tu asistencia (botón de confirmación).",
+    },
+  ],
+  [
+    "Mercado solidario de segunda mano\u0000Traé lo que ya no uses y llevate lo que te guste. Lo recaudado va para la reforma del jardín de infancia del barrio.",
+    {
+      title: "Mercado solidario de segunda mano",
+      body: "Trae lo que ya no uses y llévate lo que te guste. Lo recaudado se destinará a la reforma de la escuela infantil del barrio.",
+    },
+  ],
+  [
+    "Junta general de propietarios — 2.º trimestre\u0000Convocatoria de la junta general. Si no podés asistir, delegá tu voto respondiendo a este aviso.",
+    {
+      title: "Junta general de propietarios — 2.º trimestre",
+      body: "Convocatoria de la junta general. Si no puedes asistir, delega tu voto respondiendo a este aviso.",
+    },
+  ],
+  [
+    "Encuesta: ¿qué actividades querés en el centro social?\u0000El centro social reabre el mes próximo y queremos programarlo con ustedes. Elegí las actividades que te interesan (podés marcar varias).",
+    {
+      title: "Encuesta: ¿qué actividades te gustaría hacer en el centro social?",
+      body: "El centro social reabre el mes próximo y queremos organizar el programa entre todos. Elige las actividades que te interesan (puedes marcar varias).",
+    },
+  ],
+  [
+    "¿Renovamos el contrato de la empresa de jardinería?\u0000El contrato de jardinería vence el mes próximo. Votá para que la junta tenga mandato claro en la negociación.",
+    {
+      title: "¿Renovamos el contrato de la empresa de jardinería?",
+      body: "El contrato de jardinería vence el mes próximo. Vota para que la junta tenga mandato claro en la negociación.",
+    },
+  ],
+  [
+    "Corte de agua programado el jueves de 9 a 13 h\u0000Por trabajos de mantenimiento de la red municipal, no habrá agua en todo el edificio el jueves de 9:00 a 13:00. Cerrá las llaves de paso antes de salir.",
+    {
+      title: "Corte de agua programado el jueves de 9 a 13 h",
+      body: "Por trabajos de mantenimiento de la red municipal, no habrá agua en todo el edificio el jueves de 9:00 a 13:00. Cierra las llaves de paso antes de salir.",
+    },
+  ],
+  [
+    "Encuesta: horario de la piscina\u0000Votá el horario de la piscina.",
+    {
+      title: "Encuesta: horario de la piscina",
+      body: "Vota el horario de la piscina.",
+      oldQuestion: "¿Qué horario preferís?",
+      question: "¿Qué horario prefieres?",
+    },
+  ],
+  [
+    "Bienvenida a la nueva plataforma de la comunidad\u0000Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo querés recibir los avisos.",
+    {
+      title: "Bienvenida a la nueva plataforma de la comunidad",
+      body: "Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo quieres recibir los avisos.",
+    },
+  ],
+  [
+    "Cena de vecinos en el jardín\u0000Cena de convivencia del sábado en el jardín. Cada uno trae algo para compartir. Inscribite respondiendo a este aviso.",
+    {
+      title: "Cena de vecinos en el jardín",
+      body: "Cena de convivencia del sábado en el jardín. Cada uno trae algo para compartir. Inscríbete respondiendo a este aviso.",
+    },
+  ],
+  [
+    "Encuesta: horario de la piscina en verano\u0000Definamos juntos el horario de la piscina para el verano. Votá hasta el cierre de la consulta.",
+    {
+      title: "Encuesta: horario de la piscina en verano",
+      body: "Definamos juntos el horario de la piscina para el verano. Vota hasta el cierre de la consulta.",
+      oldQuestion: "¿Qué horario preferís para la piscina en verano?",
+      question: "¿Qué horario prefieres para la piscina en verano?",
+    },
+  ],
+  [
+    "Taller de reciclaje\u0000Taller práctico de reciclaje doméstico en el hall.",
+    {
+      title: "Taller de reciclaje",
+      body: "Taller práctico de reciclaje doméstico en el vestíbulo.",
+    },
+  ],
+  [
+    "Taller de reciclaje para el edificio\u0000Taller práctico de reciclaje doméstico en el hall. Plazas limitadas.",
+    {
+      title: "Taller de reciclaje para el edificio",
+      body: "Taller práctico de reciclaje doméstico en el vestíbulo. Plazas limitadas.",
+    },
+  ],
+]);
+
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'spanish-demo-copy-v1'").get()) {
+  db.exec("BEGIN");
+  try {
+    const update = db.prepare("UPDATE communication_posts SET data = ?, version = version + 1 WHERE id = ?");
+    for (const row of db.prepare("SELECT id, data FROM communication_posts").all()) {
+      const post = JSON.parse(row.data);
+      const correction = spanishDemoCopy.get(`${post.title}\u0000${post.body}`);
+      if (!correction) continue;
+      post.title = correction.title;
+      post.body = correction.body;
+      if (correction.oldQuestion && post.poll?.question === correction.oldQuestion) {
+        post.poll.question = correction.question;
+      }
+      update.run(JSON.stringify(post), row.id);
+    }
+    db.prepare("INSERT INTO schema_migrations (id) VALUES ('spanish-demo-copy-v1')").run();
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 export function transaction(fn) {
   db.exec("BEGIN IMMEDIATE");
   try {

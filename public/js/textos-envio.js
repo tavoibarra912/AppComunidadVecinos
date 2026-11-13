@@ -3,13 +3,13 @@
 
 export const TEXTOS_DEFECTO = {
   emailAvisoAsunto: "Nueva publicación en {{plataforma}}",
-  emailAvisoCuerpo: "{{texto}}\n\nIngresá en {{plataforma}} y abrí Comunicación para consultar los detalles.",
-  smsAviso: "{{titulo}}. Ingresá en {{plataforma}} y abrí Comunicación para consultar los detalles.",
-  whatsappAviso: "{{titulo}}. Ingresá en {{plataforma}} y abrí Comunicación para consultar los detalles.",
+  emailAvisoCuerpo: "{{texto}}\n\nAccede a {{plataforma}} y abre Comunicación para consultar los detalles.",
+  smsAviso: "{{titulo}}. Accede en {{plataforma}} y abre Comunicación para consultar los detalles.",
+  whatsappAviso: "{{titulo}}. Accede en {{plataforma}} y abre Comunicación para consultar los detalles.",
   emailRecordatorioAsunto: "Recordatorio: {{titulo}}",
-  recordatorioTexto: "Recordatorio: {{titulo}} inicia el {{fecha}}. Ingresá en {{plataforma}} y abrí Comunicación para consultar los detalles.",
+  recordatorioTexto: "Recordatorio: {{titulo}} inicia el {{fecha}}. Accede en {{plataforma}} y abre Comunicación para consultar los detalles.",
   emailRecuperacionAsunto: "Recuperar tu contraseña de {{plataforma}}",
-  emailRecuperacionTexto: "Solicitaste recuperar tu contraseña de {{plataforma}}. Abrí este enlace (válido durante 30 minutos y para un solo uso):\n\n{{enlace}}\n\nSi no lo solicitaste, ignorá este correo. Tu contraseña no cambió.",
+  emailRecuperacionTexto: "Solicitaste recuperar tu contraseña de {{plataforma}}. Abre este enlace (válido durante 30 minutos y para un solo uso):\n\n{{enlace}}\n\nSi no lo solicitaste, ignora este correo. Tu contraseña no ha cambiado.",
   pruebaTexto: "Mensaje de prueba de la configuración de envíos de {{plataforma}}.",
   cambioAsunto: "Cambio en {{perfil}} — {{plataforma}}",
   cambioCuerpo: "El usuario {{usuario}} actualizó el perfil de {{perfil}} ({{comunidad}}) el {{fecha}}.\n\nCambios realizados:\n{{cambios}}\n\n— {{plataforma}}",

@@ -199,7 +199,7 @@ export function feeDefaults() {
     emailSubject: s.feeEmailSubject || "{{titulo}} · {{comunidad}}",
     emailBody:
       s.feeEmailBody ||
-      "{{mensaje}}\nConsultá el tab Financiero de tu ficha de propietario.",
+      "{{mensaje}}\nConsulta la pestaña Financiero de la ficha del propietario.",
   };
 }
 /**
@@ -551,7 +551,7 @@ export function feeCommunity(communityId) {
       .toUpperCase() !== "EUR"
   )
     throw problem(
-      "Las cuotas de comunidad se gestionan en euros. Revisá la moneda de la comunidad.",
+      "Las cuotas de comunidad se gestionan en euros. Revisa la moneda de la comunidad.",
     );
   return community;
 }
@@ -570,7 +570,7 @@ export function savePlan(communityId, input, actor) {
     !input.agreement.trim() ||
     input.agreement.length > 300
   )
-    throw problem("Indicá el acuerdo de Junta (máximo 300 caracteres).");
+    throw problem("Indica el acuerdo de Junta (máximo 300 caracteres).");
   if (!["coefficient", "manual"].includes(input.mode))
     throw problem("Criterio de reparto no válido.");
   const defaults = feeDefaults(),
@@ -624,7 +624,7 @@ export function savePlan(communityId, input, actor) {
       .get(communityId, input.effectiveFrom);
     if (same)
       throw problem(
-        "Ya existe un acuerdo con esa fecha. Creá una nueva versión con otra fecha de aplicación.",
+        "Ya existe un acuerdo con esa fecha. Crea una nueva versión con otra fecha de aplicación.",
         409,
       );
     const conflict = db
@@ -634,7 +634,7 @@ export function savePlan(communityId, input, actor) {
       .get(communityId, input.effectiveFrom);
     if (conflict)
       throw problem(
-        "La nueva configuración se solapa con recibos emitidos. Elegí una fecha posterior al último periodo emitido.",
+        "La nueva configuración se solapa con recibos emitidos. Elige una fecha posterior al último periodo emitido.",
         409,
       );
     const id = crypto.randomUUID();
@@ -681,12 +681,12 @@ export function distribute(total, entries) {
 export function preview(communityId, period) {
   feeCommunity(communityId);
   if (typeof period !== "string" || !/^20\d{2}-(0[1-9]|1[0-2])$/.test(period))
-    throw problem("Indicá un periodo válido (AAAA-MM).");
+    throw problem("Indica un periodo válido (AAAA-MM).");
   const plan = plans(communityId).find(
     (p) => p.effectiveFrom <= `${period}-01`,
   );
   if (!plan)
-    throw problem("Guardá primero una configuración aplicable al periodo.");
+    throw problem("Guarda primero una configuración aplicable al periodo.");
   const offset = monthIndex(period) - monthIndex(plan.effectiveFrom);
   if (offset % plan.months)
     throw problem(
@@ -736,7 +736,7 @@ export function preview(communityId, period) {
       weight = plan.manual[property.id];
       if (!Number.isSafeInteger(weight) || weight <= 0)
         throw problem(
-          `${property.plot}: falta su importe anual aprobado. Creá una nueva configuración.`,
+          `${property.plot}: falta su importe anual aprobado. Crea una nueva configuración.`,
         );
     }
     entries.push({
@@ -751,11 +751,11 @@ export function preview(communityId, period) {
   const weightSum = entries.reduce((s, e) => s + e.weight, 0);
   if (plan.mode === "coefficient" && weightSum !== 1000000)
     throw problem(
-      `Los coeficientes suman ${(weightSum / 10000).toFixed(4)} %. Deben sumar 100 %. Revisá los inmuebles.`,
+      `Los coeficientes suman ${(weightSum / 10000).toFixed(4)} %. Deben sumar 100 %. Revisa los inmuebles.`,
     );
   if (plan.mode === "manual" && weightSum !== plan.annualAmount)
     throw problem(
-      "El censo cambió y los importes no cuadran con el total aprobado. Revisá la configuración.",
+      "El censo cambió y los importes no cuadran con el total aprobado. Revisa la configuración.",
     );
   const cycle = offset % 12;
   const total =
@@ -778,7 +778,7 @@ export function preview(communityId, period) {
     e.amount -= before.get(e.property.id);
     if (e.amount <= 0)
       throw problem(
-        `${e.property.plot}: el recibo resultaría de cero euros. Revisá los importes.`,
+        `${e.property.plot}: el recibo resultaría de cero euros. Revisa los importes.`,
       );
     const previous = db
       .prepare(
@@ -852,7 +852,7 @@ export function issue(communityId, input, actor) {
     const batch = preview(communityId, input.period);
     if (input.token !== batch.token)
       throw problem(
-        "Los datos cambiaron. Volvé a revisar la vista previa antes de emitir.",
+        "Los datos cambiaron. Vuelve a revisar la vista previa antes de emitir.",
         409,
       );
     const ids = [];
@@ -1614,7 +1614,7 @@ export function recordPayment(communityId, input, actor) {
         .get(input.requestId)
     )
       throw problem(
-        "Este cobro ya fue registrado. Actualizá la vista antes de repetirlo.",
+        "Este cobro ya fue registrado. Actualiza la vista antes de repetirlo.",
         409,
       );
     const duplicate = db
@@ -1630,7 +1630,7 @@ export function recordPayment(communityId, input, actor) {
       );
     if (duplicate && input.confirmDuplicate !== true)
       throw problem(
-        "Posible cobro duplicado por pagador, importe, fecha y referencia. Revisalo y confirmá expresamente si es otro cobro.",
+        "Posible cobro duplicado por pagador, importe, fecha y referencia. Revísalo y confirma expresamente si es otro cobro.",
         409,
       );
     const row = {
@@ -1669,7 +1669,7 @@ export function allocateCredit(id, input, actor) {
 }
 export function reason(value) {
   if (typeof value !== "string" || !value.trim() || value.length > 500)
-    throw problem("Indicá el motivo (máximo 500 caracteres).");
+    throw problem("Indica el motivo (máximo 500 caracteres).");
   return value.trim();
 }
 export function reversePayment(id, input, actor) {
@@ -1702,7 +1702,7 @@ export function cancelReceipt(id, input, actor) {
     if (row.cancelledAt) throw problem("El recibo ya está anulado.", 409);
     if (view.paid > 0)
       throw problem(
-        "Primero revertí los cobros aplicados. No se puede anular un recibo con pagos.",
+        "Primero revierte los cobros aplicados. No se puede anular un recibo con pagos.",
         409,
       );
     db.prepare(

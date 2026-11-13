@@ -13,7 +13,7 @@ const deny = (res, motivo) =>
     .status(403)
     .json({
       error:
-        motivo || "No tenés acceso a estos datos o a esta operación.",
+        motivo || "No tienes acceso a estos datos o a esta operación.",
     });
 
 function safeDocuments(incoming, existing, approve) {
@@ -88,7 +88,7 @@ export function resourceAccess(req, res, next) {
   if (!permits(permission, id || req.body?.ownerId || "") && !ownEdit)
     return deny(
       res,
-      `No tenés permiso para esta operación (requiere: ${etiquetaPermiso(permission)}).`,
+      `No tienes permiso para esta operación (requiere: ${etiquetaPermiso(permission)}).`,
     );
   if (req.method === "DELETE") return next();
   if (!req.body || Array.isArray(req.body) || typeof req.body !== "object")
@@ -190,7 +190,7 @@ export function resourceAccess(req, res, next) {
     )
       return res.status(400).json({
         error:
-          "No se puede aprobar un documento sin archivo. Adjuntá el documento real.",
+          "No se puede aprobar un documento sin archivo. Adjunta el documento real.",
       });
     if (
       Object.values(req.body.documents || {}).some(
@@ -199,7 +199,7 @@ export function resourceAccess(req, res, next) {
     )
       return res.status(400).json({
         error:
-          "Los documentos de ejemplo no se pueden aprobar. Adjuntá el archivo real.",
+          "Los documentos de ejemplo no se pueden aprobar. Adjunta el archivo real.",
       });
     if (
       req.body.userId !== undefined &&

@@ -82,7 +82,7 @@ export function endSession(req, res) {
 export function requireSession(req, res, next) {
   req.user = sessionUser(req);
   if (!req.user)
-    return res.status(401).json({ error: "Iniciá sesión para continuar." });
+    return res.status(401).json({ error: "Inicia sesión para continuar." });
   next();
 }
 export function sameOrigin(req, res, next) {
@@ -105,7 +105,7 @@ export function requirePermission(permission) {
       ? next()
       : res
           .status(403)
-          .json({ error: "No tenés permiso para esta operación." });
+          .json({ error: "No tienes permiso para esta operación." });
 }
 
 export function visibleData(user) {

@@ -142,7 +142,7 @@ test("recuperación: reemplazo, caducidad, uso único y revocación de sesiones"
   clearRequests(); requestRecovery(user().email);
   const expired = pendingToken().token;
   db.prepare("UPDATE users SET resetTokenExpira='2000-01-01T00:00:00.000Z' WHERE id=?").run(user().id);
-  assert.throws(() => resetRecoveredPassword(expired, "other-password"), /venció/);
+  assert.throws(() => resetRecoveredPassword(expired, "other-password"), /caducado/);
 });
 test("recuperación: fallos e interrupciones no reenvían ni exponen secretos", async () => {
   clearRequests(); requestRecovery(user().email);

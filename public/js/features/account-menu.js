@@ -124,7 +124,7 @@ function openProfile() {
       : view.communityMessage
     : state.activeRole === "owner"
       ? view.communityMessage
-      : "Tu acceso a la aplicación depende de los permisos de tu rol. No necesitás un perfil de propietario o inquilino para administrar.";
+      : "Tu acceso a la aplicación depende de los permisos de tu rol. No necesitas un perfil de propietario o inquilino para administrar.";
   closeMenu();
   profileDialog.showModal();
 }
@@ -166,7 +166,7 @@ passwordForm.addEventListener("submit", async (event) => {
   const { currentPassword, newPassword, confirmPassword } =
     passwordForm.elements;
   if (!currentPassword.value) {
-    passwordError.textContent = "Indicá tu contraseña actual.";
+    passwordError.textContent = "Indica tu contraseña actual.";
     currentPassword.focus();
     return;
   }
@@ -191,7 +191,7 @@ passwordForm.addEventListener("submit", async (event) => {
     try {
       sessionStorage.setItem(
         "authNotice",
-        "Contraseña actualizada. Iniciá sesión con tu nueva contraseña.",
+        "Contraseña actualizada. Inicia sesión con tu nueva contraseña.",
       );
     } catch {}
     window.dispatchEvent(new Event("auth:expired"));
