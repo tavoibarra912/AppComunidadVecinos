@@ -201,47 +201,6 @@ mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
 su entidad. La categoría `statutes` separa los estatutos de la documentación
 general y no admite carpetas.
 
-## Estatutos y biblioteca documental
-
-Los estatutos de cada comunidad se gestionan en la pestaña **Estatutos** del
-editor y de la ficha de comunidad, y también desde el acceso directo **Estatutos
-de la comunidad** del inicio. Una comunidad puede tener uno o varios documentos
-vigentes o históricos. Todos los residentes con acceso a la comunidad pueden
-consultarlos, previsualizarlos y descargarlos; subirlos, reemplazarlos,
-renombrarlos o borrarlos requiere ser administrador de esa comunidad y tener los
-permisos documentales correspondientes. La ficha muestra nombre, tipo, tamaño,
-fecha de subida y la cuenta que subió cada archivo.
-
-La documentación general de comunidades, inmuebles e inquilinos usa una
-**biblioteca documental reutilizable** con carpetas:
-
-- Crear, renombrar y eliminar carpetas, con hasta **cinco niveles** de
-  anidamiento (la raíz no cuenta como nivel). Las carpetas y los archivos se
-  mueven con arrastrar y soltar o con **Mover a…**.
-- Navegación por migas de pan, búsqueda por nombre, orden por nombre, fecha o
-  tamaño y vistas de lista o cuadrícula.
-- Subida directa dentro de la carpeta abierta. Se mantienen los límites y
-  formatos configurados en Administración → Configuración (PDF, JPG, PNG, WebP,
-  DOC y DOCX; tamaño y cantidad máximos), con validación del contenido en el
-  servidor. Los formatos Word solo se descargan, sin vista previa.
-- No se permiten dos carpetas con el mismo nombre en el mismo nivel ni dos
-  archivos con el mismo nombre en la misma carpeta, sin distinguir mayúsculas ni
-  acentos. Sí puede repetirse un nombre en carpetas distintas.
-- Al eliminar una carpeta con contenido se muestra primero el recuento de
-  carpetas y archivos afectados; tras confirmar, el borrado es en cascada y
-  elimina también los archivos físicos. Una carpeta no puede moverse dentro de
-  sí misma.
-- Los permisos existentes se aplican sin cambios: `document:read` para consultar,
-  y el permiso de gestión de la entidad más `document:upload` o
-  `document:delete` para escribir. Los administradores de comunidad solo operan
-  sobre sus comunidades asignadas; los vecinos acceden en modo lectura a sus
-  comunidades, inmuebles e inquilinos.
-
-La migración `document-library-v1` añade las columnas y la tabla de carpetas sin
-mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
-su entidad. La categoría `statutes` separa los estatutos de la documentación
-general y no admite carpetas.
-
 La migración `community-nif-v1` corrige los NIF de demostración que quedaron con
 un dígito de control incorrecto en bases creadas con semillas antiguas; solo
 actúa si el valor guardado sigue siendo exactamente el heredado.
