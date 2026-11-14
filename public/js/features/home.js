@@ -93,11 +93,11 @@ function feeSummaryBody(personal) {
   if (feeSummaryKey !== feeKey() || !feeSummary)
     return `<div class="dashboard-finance-loading" role="status"><strong>Cargando la situación de cuotas…</strong><p>Consultando recibos, cobros y vencimientos del ámbito seleccionado.</p></div>`;
   if (!feeSummary.accessible || feeSummary.error)
-    return `<div class="dashboard-empty"><strong>No se pudo cargar la situación de cuotas</strong><p>Actualizá los datos del panel para volver a intentarlo.</p></div>`;
+    return `<div class="dashboard-empty"><strong>No se pudo cargar la situación de cuotas</strong><p>Actualiza los datos del panel para volver a intentarlo.</p></div>`;
   const totals = feeSummary.totals || {},
     counts = feeSummary.counts || {};
   if (!counts.receipts)
-    return `<div class="dashboard-empty"><strong>${personal ? "Todavía no tenés recibos emitidos" : "Todavía no hay recibos emitidos en este ámbito"}</strong><p>${personal ? "Cuando la administración emita una cuota, vas a poder consultarla acá y en Mis cuotas." : "Configurá el acuerdo de cuotas y emití el primer periodo para empezar a ver los importes."}</p></div>`;
+    return `<div class="dashboard-empty"><strong>${personal ? "Todavía no tienes recibos emitidos" : "Todavía no hay recibos emitidos en este ámbito"}</strong><p>${personal ? "Cuando la administración emita una cuota, podrás consultarla aquí y en Mis cuotas." : "Configura el acuerdo de cuotas y emite el primer periodo para empezar a ver los importes."}</p></div>`;
   if (personal) {
     const next = feeSummary.nextDue || feeSummary.oldestOverdue,
       oldest = feeSummary.oldestOverdue;

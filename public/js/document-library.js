@@ -117,7 +117,7 @@ function openTextDialog({ title, eyebrow = "BIBLIOTECA DOCUMENTAL", label, value
   const submit = async () => {
     const name = input.value.trim();
     if (!name) {
-      error.textContent = "Indicá un nombre.";
+      error.textContent = "Indica un nombre.";
       input.focus();
       return;
     }
@@ -181,7 +181,7 @@ function openMoveDialog({ itemLabel, folders, currentFolderId, excludeIds, onSub
   const dialog = makeDialog(
     "Mover a…",
     "BIBLIOTECA DOCUMENTAL",
-    `<p class="form-intro">Elegí la carpeta de destino para <strong>${h(itemLabel)}</strong>.</p>
+    `<p class="form-intro">Elige la carpeta de destino para <strong>${h(itemLabel)}</strong>.</p>
      <label class="full">Carpeta de destino<select name="library-target">${options}</select></label>
      <p class="form-error" role="alert"></p>`,
     `<button class="secondary-button" type="button" data-library-dialog-close>Cancelar</button>
@@ -455,7 +455,7 @@ export function createDocumentLibrary(options) {
     if (!folders.length && !documents.length) {
       const empty = document.createElement("div");
       empty.className = "doc-library-empty";
-      empty.innerHTML = `<strong>${view.search ? "Sin resultados" : "Todavía no hay archivos"}</strong><p>${view.search ? "Probá con otro nombre o limpiá la búsqueda." : h(options.emptyText || "Subí documentos o creá una carpeta para empezar a organizarlos.")}</p>`;
+      empty.innerHTML = `<strong>${view.search ? "Sin resultados" : "Todavía no hay archivos"}</strong><p>${view.search ? "Prueba con otro nombre o limpia la búsqueda." : h(options.emptyText || "Sube documentos o crea una carpeta para empezar a organizarlos.")}</p>`;
       content.append(empty);
     } else {
       if (folders.length) {
@@ -500,7 +500,7 @@ export function createDocumentLibrary(options) {
   const uploadFiles = async (files, folderId = view.currentFolderId) => {
     const entity = entityId();
     if (!entity) {
-      toast("Guardá el registro antes de subir documentos.");
+      toast("Guarda el registro antes de subir documentos.");
       return;
     }
     const messages = validateDocumentFiles(files, option("settings", null) || {});
@@ -550,7 +550,7 @@ export function createDocumentLibrary(options) {
       submitLabel: folder ? "Guardar" : "Crear",
       onSubmit: async (name) => {
         const entity = entityId();
-        if (!entity) throw new Error("Guardá el registro antes de crear carpetas.");
+        if (!entity) throw new Error("Guarda el registro antes de crear carpetas.");
         if (folder) {
           const updated = await api.updateDocumentFolder(folder.id, { name });
           const index = view.folders.findIndex((item) => item.id === folder.id);
@@ -734,7 +734,7 @@ export function createDocumentLibrary(options) {
     if (event.target === uploadInput) return;
     if (!canWrite()) {
       event.preventDefault();
-      toast("No tenés permiso para subir documentos.");
+      toast("No tienes permiso para subir documentos.");
       return;
     }
     uploadInput.dataset.replaceId = "";
@@ -806,7 +806,7 @@ export function createDocumentLibrary(options) {
       const folder = view.folders.find((entry) => entry.id === item.id);
       if (!folder || folder.parentId === folderId) return;
       if (folderId === folder.id || descendants(view.folders, folder.id).has(folderId)) {
-        toast("No podés mover una carpeta dentro de sí misma.");
+        toast("No puedes mover una carpeta dentro de sí misma.");
         return;
       }
       try {

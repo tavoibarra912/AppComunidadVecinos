@@ -62,14 +62,14 @@ const spanishDemoCopy = new Map([
     },
   ],
   [
-    "Junta general de propietarios — 2.º trimestre\u0000Convocatoria de la junta general. Si no podés asistir, delegá tu voto respondiendo a este aviso.",
+    "Junta general de propietarios — 2.º trimestre\u0000Convocatoria de la junta general. Si no puedes asistir, delega tu voto respondiendo a este aviso.",
     {
       title: "Junta general de propietarios — 2.º trimestre",
       body: "Convocatoria de la junta general. Si no puedes asistir, delega tu voto respondiendo a este aviso.",
     },
   ],
   [
-    "Encuesta: ¿qué actividades querés en el centro social?\u0000El centro social reabre el mes próximo y queremos programarlo con ustedes. Elegí las actividades que te interesan (podés marcar varias).",
+    "Encuesta: ¿qué actividades quieres en el centro social?\u0000El centro social reabre el mes próximo y queremos programarlo con ustedes. Elige las actividades que te interesan (puedes marcar varias).",
     {
       title: "Encuesta: ¿qué actividades te gustaría hacer en el centro social?",
       body: "El centro social reabre el mes próximo y queremos organizar el programa entre todos. Elige las actividades que te interesan (puedes marcar varias).",
@@ -99,7 +99,7 @@ const spanishDemoCopy = new Map([
     },
   ],
   [
-    "Bienvenida a la nueva plataforma de la comunidad\u0000Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo querés recibir los avisos.",
+    "Bienvenida a la nueva plataforma de la comunidad\u0000Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo quieres recibir los avisos.",
     {
       title: "Bienvenida a la nueva plataforma de la comunidad",
       body: "Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo quieres recibir los avisos.",

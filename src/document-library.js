@@ -314,7 +314,7 @@ export function updateFolder({
     const nextParentId = String(parentId || "");
     if (nextParentId === current.id)
       throw Object.assign(
-        new Error("No podés mover una carpeta dentro de sí misma."),
+        new Error("No puedes mover una carpeta dentro de sí misma."),
         { status: 400 },
       );
     if (
@@ -324,7 +324,7 @@ export function updateFolder({
       )
     )
       throw Object.assign(
-        new Error("No podés mover una carpeta dentro de una subcarpeta suya."),
+        new Error("No puedes mover una carpeta dentro de una subcarpeta suya."),
         { status: 400 },
       );
     const parent = nextParentId

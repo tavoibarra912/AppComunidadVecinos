@@ -837,7 +837,7 @@ function renderPanel(root, ctx) {
   }
   if (serviceTab && !manage && !receipts.length) {
     if (!(data.informativeServices || []).length)
-      info(root, "No tenés recibos ni repartos informativos de servicios.");
+      info(root, "No tienes recibos ni repartos informativos de servicios.");
     return;
   }
   const filters = el("div", undefined, "fee-filters");
@@ -1135,7 +1135,7 @@ function assessmentSection(root, ctx) {
   if (!list.length)
     info(
       section,
-      "Todavía no hay derramas. Creá una para aprobar un gasto extraordinario y emitir sus plazos.",
+      "Todavía no hay derramas. Crea una para aprobar un gasto extraordinario y emitir sus plazos.",
     );
   else
     section.append(
@@ -1358,7 +1358,7 @@ async function showAssessment(id) {
       if (a.totals.paid > 0)
         info(
           body,
-          "Para anular la derrama completa primero revertí los cobros aplicados. También podés anular un plazo sin cobros.",
+          "Para anular la derrama completa primero revierte los cobros aplicados. También puedes anular un plazo sin cobros.",
           true,
         );
       const cancel = button("Anular derrama completa", () =>
@@ -1474,7 +1474,7 @@ function serviceSection(root, ctx) {
   if (!list.length)
     info(
       section,
-      "Todavía no hay servicios. Creá una factura para repartir su importe entre los inmuebles.",
+      "Todavía no hay servicios. Crea una factura para repartir su importe entre los inmuebles.",
     );
   else
     section.append(
@@ -1662,7 +1662,7 @@ function informativeServiceNotice(root, ctx, data) {
   notice.append(
     el(
       "p",
-      `Tenés ${count} ${
+      `Tienes ${count} ${
         count === 1 ? "reparto informativo" : "repartos informativos"
       } de servicios sin deuda.`,
     ),
@@ -1790,7 +1790,7 @@ async function showService(id) {
       if (service.totals.paid > 0)
         info(
           overview,
-          "Para anular el servicio primero revertí los cobros aplicados.",
+          "Para anular el servicio primero revierte los cobros aplicados.",
           true,
         );
       const cancel = button("Anular servicio", () =>
@@ -1884,7 +1884,7 @@ async function showService(id) {
     attachments.append(el("h3", "Factura y adjuntos"));
     info(
       attachments,
-      "Podés adjuntar la foto o el PDF de la factura. Los adjuntos se conservan como justificante del reparto.",
+      "Puedes adjuntar la foto o el PDF de la factura. Los adjuntos se conservan como justificante del reparto.",
     );
     for (const attachment of service.attachments || []) {
       if (attachment.kind === "reading") continue;
@@ -2071,7 +2071,7 @@ function configuration(ctx) {
   ]);
   hint(
     mode,
-    "Coeficiente: reparte el importe anual según la participación de cada inmueble. Manual: fijás el importe anual de cada inmueble.",
+    "Coeficiente: reparte el importe anual según la participación de cada inmueble. Manual: fijas el importe anual de cada inmueble.",
   );
   const agreement = field(grid, "Referencia del acuerdo de Junta", "text", "");
   agreement.maxLength = 300;

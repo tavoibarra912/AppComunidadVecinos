@@ -410,7 +410,7 @@ test("servicios: reparte por coeficiente, congela el reparto, emite recibos y co
   assert.equal(partial.totals.paid, 5000);
   assert.throws(
     () => services.cancelService(c.service.id, { reason: "Prueba" }, actor),
-    /Revertí primero los cobros/i,
+    /Revierte primero los cobros/i,
   );
   fees.reversePayment(paid.id, { reason: "Devolución de prueba" }, actor);
   const returnNotice = db

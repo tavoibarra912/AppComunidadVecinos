@@ -43,7 +43,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   shell.append(header);
   info(
     shell,
-    "Los campos marcados con * son obligatorios. Completá las secciones y guardá el borrador antes de emitir recibos.",
+    "Los campos marcados con * son obligatorios. Completa las secciones y guarda el borrador antes de emitir recibos.",
   );
   const error = el("p", undefined, "fee-error");
   error.dataset.feeError = "";
@@ -126,7 +126,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   discard.hidden = true;
   discard.setAttribute("role", "alert");
   discard.append(
-    el("p", "Tenés cambios sin guardar. ¿Querés descartarlos?"),
+    el("p", "Tienes cambios sin guardar. ¿Quieres descartarlos?"),
     button("Seguir editando", () => {
       discard.hidden = true;
     }),
@@ -255,7 +255,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     selectedTitle,
     el(
       "p",
-      "Buscá y vinculá los inmuebles que participan en la derrama. Podés quitar cualquiera antes de guardar.",
+      "Busca y vincula los inmuebles que participan en la derrama. Puedes quitar cualquiera antes de guardar.",
       "detail-section-subtitle",
     ),
   );
@@ -288,7 +288,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     "Agregar inmueble seleccionado",
     () => {
       if (!select.value) {
-        fail("Elegí un inmueble en el buscador.", "properties");
+        fail("Elige un inmueble en el buscador.", "properties");
         return;
       }
       selected.add(select.value);
@@ -389,7 +389,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     if (!selected.size)
       info(
         propertyList,
-        "No hay inmuebles incluidos. Usá el botón de vincular o agregá todos los de la comunidad.",
+        "No hay inmuebles incluidos. Usa el botón de vincular o agrega todos los de la comunidad.",
       );
     updateSummary();
   }
@@ -401,7 +401,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   installmentCopy.append(
     el(
       "p",
-      "Definí el importe y el vencimiento de cada plazo. La suma debe coincidir con el total aprobado.",
+      "Define el importe y el vencimiento de cada plazo. La suma debe coincidir con el total aprobado.",
       "detail-section-subtitle",
     ),
   );
@@ -511,7 +511,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     add.disabled = rows.length >= 36;
     add.dataset.feeDisabled = String(rows.length >= 36);
     const balance = !expected
-      ? "Completá el importe total en General"
+      ? "Completa el importe total en General"
       : sum === expected
         ? "Correcto"
         : sum > expected
@@ -550,11 +550,11 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
         input.setCustomValidity(
           parseMoneyInput(input.value) > 0
             ? ""
-            : "Introducí un importe positivo con un máximo de dos decimales.",
+            : "Introduce un importe positivo con un máximo de dos decimales.",
         );
       if (!input.checkValidity())
         return fail(
-          `${input.labels?.[0]?.textContent || "Revisá el campo"}: ${input.validationMessage}`,
+          `${input.labels?.[0]?.textContent || "Revisa el campo"}: ${input.validationMessage}`,
           input.closest("[data-assessment-pane]")?.dataset.assessmentPane,
           input,
         );
@@ -566,7 +566,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
         editor,
       );
     if (!selected.size)
-      return fail("Elegí al menos un inmueble.", "properties");
+      return fail("Elige al menos un inmueble.", "properties");
     const expected = parseMoneyInput(total.value);
     const sum = rows.reduce(
       (sum, row) => sum + (parseMoneyInput(row.amount.value) || 0),

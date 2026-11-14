@@ -734,7 +734,7 @@ test("derramas UI: cobros aplicados bloquean la anulación del plazo y de la der
       ).disabled,
       true,
     );
-    assert.match(body.textContent, /primero revertí los cobros/);
+    assert.match(body.textContent, /primero revierte los cobros/);
   } finally {
     f.dom.window.close();
   }
@@ -1371,7 +1371,7 @@ test("servicios UI: el propietario ve repartos informativos sin deuda y sin gest
     f.w.feeTest.renderFeesPage();
     await flush();
     let page = f.w.document.querySelector("#fees-page");
-    assert.match(page.textContent, /Tenés 1 reparto informativo/);
+    assert.match(page.textContent, /Tienes 1 reparto informativo/);
     assert.equal(
       [...page.querySelectorAll("button")].some(
         (button) => button.textContent === "Nuevo servicio",

@@ -47,7 +47,7 @@ export function buildServiceEditor(ctx, service, ui) {
   shell.append(header);
   info(
     shell,
-    "Los campos marcados con * son obligatorios. Guardá el borrador y revisá la vista previa antes de emitir los recibos.",
+    "Los campos marcados con * son obligatorios. Guarda el borrador y revisa la vista previa antes de emitir los recibos.",
   );
   const error = el("p", undefined, "fee-error");
   error.dataset.feeError = "";
@@ -130,7 +130,7 @@ export function buildServiceEditor(ctx, service, ui) {
   discard.hidden = true;
   discard.setAttribute("role", "alert");
   discard.append(
-    el("p", "Tenés cambios sin guardar. ¿Querés descartarlos?"),
+    el("p", "Tienes cambios sin guardar. ¿Quieres descartarlos?"),
     button("Seguir editando", () => {
       discard.hidden = true;
     }),
@@ -213,7 +213,7 @@ export function buildServiceEditor(ctx, service, ui) {
   legalBasis.closest(".fee-field").classList.add("fee-field-wide");
   hint(
     legalBasis,
-    "Necesaria para repartos distintos del coeficiente. Indicá el acuerdo, la norma o el criterio aprobado.",
+    "Necesaria para repartos distintos del coeficiente. Indica el acuerdo, la norma o el criterio aprobado.",
   );
   const centralHeating = field(
     grid,
@@ -336,7 +336,7 @@ export function buildServiceEditor(ctx, service, ui) {
     selectedTitle,
     el(
       "p",
-      "Buscá y vinculá los inmuebles que participan en el servicio. Podés quitar cualquiera antes de guardar.",
+      "Busca y vincula los inmuebles que participan en el servicio. Puedes quitar cualquiera antes de guardar.",
       "detail-section-subtitle",
     ),
   );
@@ -369,7 +369,7 @@ export function buildServiceEditor(ctx, service, ui) {
     "Agregar inmueble seleccionado",
     () => {
       if (!select.value) {
-        fail("Elegí un inmueble en el buscador.", "split");
+        fail("Elige un inmueble en el buscador.", "split");
         return;
       }
       selected.add(select.value);
@@ -517,7 +517,7 @@ export function buildServiceEditor(ctx, service, ui) {
     if (!selected.size)
       info(
         propertyList,
-        "No hay inmuebles incluidos. Usá el botón de vincular o agregá todos los de la comunidad.",
+        "No hay inmuebles incluidos. Usa el botón de vincular o agrega todos los de la comunidad.",
       );
     updateSummary();
     renderReadings();
@@ -550,18 +550,18 @@ export function buildServiceEditor(ctx, service, ui) {
     if (!["reading", "mixed"].includes(method.value)) {
       info(
         readingsIntro,
-        "Este reparto no usa lecturas. Elegí «Por lecturas de contador» o «Mixto» en Reparto para cargar los contadores.",
+        "Este reparto no usa lecturas. Elige «Por lecturas de contador» o «Mixto» en Reparto para cargar los contadores.",
       );
       readingsSummary.textContent = "";
       return;
     }
     info(
       readingsIntro,
-      "La lectura anterior se propone desde la última factura del mismo suministro. Podés corregirla antes de guardar.",
+      "La lectura anterior se propone desde la última factura del mismo suministro. Puedes corregirla antes de guardar.",
     );
     const entries = properties.filter((property) => selected.has(property.id));
     if (!entries.length) {
-      info(readingsIntro, "Agregá inmuebles en Reparto para cargar sus lecturas.");
+      info(readingsIntro, "Agrega inmuebles en Reparto para cargar sus lecturas.");
       readingsSummary.textContent = "";
       return;
     }
@@ -824,16 +824,16 @@ export function buildServiceEditor(ctx, service, ui) {
         input.setCustomValidity(
           parseReadingInput(input.value) !== null
             ? ""
-            : "Introducí una lectura válida con hasta tres decimales.",
+            : "Introduce una lectura válida con hasta tres decimales.",
         );
       if (!input.checkValidity())
         return fail(
-          `${input.labels?.[0]?.textContent || "Revisá el campo"}: ${input.validationMessage}`,
+          `${input.labels?.[0]?.textContent || "Revisa el campo"}: ${input.validationMessage}`,
           input.closest("[data-service-pane]")?.dataset.servicePane,
           input,
         );
     }
-    if (!selected.size) return fail("Elegí al menos un inmueble.", "split");
+    if (!selected.size) return fail("Elige al menos un inmueble.", "split");
     const expected = parseMoneyInput(total.value);
     if (
       method.value === "manual" &&

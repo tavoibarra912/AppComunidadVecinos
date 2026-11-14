@@ -188,7 +188,7 @@ function canWrite(user, entityType, entityId) {
 function permissionFor(action) {
   return action === "delete" ? "document:delete" : "document:upload";
 }
-function deny(res, message = "No tenés permiso para esta operación.") {
+function deny(res, message = "No tienes permiso para esta operación.") {
   return res.status(403).json({ error: message });
 }
 function sendServiceError(res, error) {
@@ -286,7 +286,7 @@ router.get("/", (req, res) => {
   const error = validateTarget(res, { ...target, folderId: "" });
   if (error) return error;
   if (!canRead(req.user, target.entityType, target.entityId))
-    return deny(res, "No tenés acceso a la documentación de este registro.");
+    return deny(res, "No tienes acceso a la documentación de este registro.");
   res.json({
     documents: listDocuments(
       target.entityType,
@@ -403,9 +403,9 @@ router.post("/folders", (req, res, next) => {
         .status(400)
         .json({ error: "Los estatutos no se organizan en carpetas." });
     if (!canWrite(req.user, target.entityType, target.entityId))
-      return deny(res, "No tenés permiso para crear carpetas en este registro.");
+      return deny(res, "No tienes permiso para crear carpetas en este registro.");
     if (!allowed(req.user, permissionFor("upload"), target.entityId))
-      return deny(res, "No tenés permiso para gestionar documentos.");
+      return deny(res, "No tienes permiso para gestionar documentos.");
     const parentId = String(req.body?.parentId || "");
     if (parentId && !getFolderRow(target.entityType, target.entityId, parentId))
       return res
@@ -432,13 +432,13 @@ router.patch("/folders/:id", (req, res, next) => {
     if (!row)
       return res.status(404).json({ error: "Carpeta no encontrada." });
     if (!canWrite(req.user, row.entityType, row.entityId))
-      return deny(res, "No tenés permiso para editar carpetas en este registro.");
+      return deny(res, "No tienes permiso para editar carpetas en este registro.");
     if (!allowed(req.user, permissionFor("upload"), row.entityId))
-      return deny(res, "No tenés permiso para gestionar documentos.");
+      return deny(res, "No tienes permiso para gestionar documentos.");
     if (req.body?.name === undefined && req.body?.parentId === undefined)
       return res
         .status(400)
-        .json({ error: "Indicá el nuevo nombre o la carpeta de destino." });
+        .json({ error: "Indica el nuevo nombre o la carpeta de destino." });
     const folder = updateFolder({
       entityType: row.entityType,
       entityId: row.entityId,
@@ -466,10 +466,10 @@ router.delete("/folders/:id", (req, res, next) => {
     if (!canWrite(req.user, row.entityType, row.entityId))
       return deny(
         res,
-        "No tenés permiso para eliminar carpetas en este registro.",
+        "No tienes permiso para eliminar carpetas en este registro.",
       );
     if (!allowed(req.user, permissionFor("delete"), row.entityId))
-      return deny(res, "No tenés permiso para eliminar documentos.");
+      return deny(res, "No tienes permiso para eliminar documentos.");
     const folderIds = [
       row.id,
       ...folderDescendantIds(row.entityType, row.entityId, row.id),
@@ -484,7 +484,7 @@ router.delete("/folders/:id", (req, res, next) => {
       req.query.confirm === "1" || req.body?.confirm === true;
     if (!confirmed)
       return res.status(409).json({
-        error: "La carpeta contiene elementos. Confirmá el borrado en cascada.",
+        error: "La carpeta contiene elementos. Confirma el borrado en cascada.",
         requiresConfirmation: true,
         counts: { folders: folderIds.length, documents: documentCount },
       });
@@ -511,14 +511,14 @@ router.patch("/:id", (req, res, next) => {
     if (!canWrite(req.user, row.entityType, row.entityId))
       return deny(
         res,
-        "No tenés permiso para editar documentos de este registro.",
+        "No tienes permiso para editar documentos de este registro.",
       );
     if (!allowed(req.user, permissionFor("upload"), row.entityId))
-      return deny(res, "No tenés permiso para gestionar documentos.");
+      return deny(res, "No tienes permiso para gestionar documentos.");
     if (req.body?.name === undefined && req.body?.folderId === undefined)
       return res
         .status(400)
-        .json({ error: "Indicá el nuevo nombre o la carpeta de destino." });
+        .json({ error: "Indica el nuevo nombre o la carpeta de destino." });
     let document = documentFromRow(row);
     if (req.body?.name !== undefined)
       document = renameDocument({
@@ -564,12 +564,12 @@ router.post("/:id/replace", (req, res, next) =>
         removeFiles(file);
         return deny(
           res,
-          "No tenés permiso para reemplazar documentos de este registro.",
+          "No tienes permiso para reemplazar documentos de este registro.",
         );
       }
       if (!allowed(req.user, permissionFor("upload"), row.entityId)) {
         removeFiles(file);
-        return deny(res, "No tenés permiso para reemplazar documentos.");
+        return deny(res, "No tienes permiso para reemplazar documentos.");
       }
       if (!file.length || !validateFiles(res, file)) return;
       const fileType = contentType(file[0]);
@@ -654,7 +654,7 @@ router.get("/:id/preview", (req, res) => {
     .get(req.params.id);
   if (!row) return res.status(404).json({ error: "Documento no encontrado." });
   if (!canRead(req.user, row.entityType, row.entityId))
-    return deny(res, "No tenés acceso a este documento.");
+    return deny(res, "No tienes acceso a este documento.");
   if (
     !["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(
       row.fileType,

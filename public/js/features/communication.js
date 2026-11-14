@@ -650,7 +650,7 @@ async function openPost(id, tab = "publication") {
       if (!choices.length) throw new Error("Elige al menos una opción.");
       if (
         !window.confirm(
-          "¿Confirmás tu respuesta? Una vez enviada no se puede cambiar.",
+          "¿Confirmas tu respuesta? Una vez enviada no se puede cambiar.",
         )
       )
         return;

@@ -51,7 +51,7 @@ async function restart() {
   // La propia app identifica su proceso incluso si netstat no muestra el listener.
   const currentPid = await appPid(port);
   const listeners = pidsOnPort(port);
-  if (!currentPid && listeners.length) throw new Error(`El puerto ${port} está ocupado por un proceso que no se identifica como esta app. Detenelo manualmente antes de reiniciar.`);
+  if (!currentPid && listeners.length) throw new Error(`El puerto ${port} está ocupado por un proceso que no se identifica como esta app. Deténlo manualmente antes de reiniciar.`);
   const stale = currentPid ? [currentPid] : [];
   for (const pid of stale) {
     try {

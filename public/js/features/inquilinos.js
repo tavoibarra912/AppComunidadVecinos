@@ -816,7 +816,7 @@ tenantForm.addEventListener("submit", async event => {
   if (submittedAuthorizations.some(v => !allowedAuthorizations.has(v))) {
     showValidationErrors(
       ["Selecciona únicamente autorizaciones disponibles para esta comunidad."],
-      "Revisá las autorizaciones",
+      "Revisa las autorizaciones",
     );
     return;
   }

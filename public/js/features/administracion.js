@@ -689,7 +689,7 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
       Object.assign(document.createElement("p"), {
         className: "form-intro",
         textContent:
-          "Esta comunidad no tiene autorizaciones. Agregá una o restaurá las predeterminadas.",
+          "Esta comunidad no tiene autorizaciones. Agrega una o restaura las predeterminadas.",
       }),
     );
   list.forEach((item, index) => {
@@ -767,7 +767,7 @@ function initTenantAuthorizations() {
         tenantAuthDraft[tenantAuthCommunityId] = tenantAuthDefaults();
         markTenantAuthTouched();
         renderTenantAuthorizationsEditor();
-        toast("Se restauraron las autorizaciones predeterminadas. Guardá para aplicarlas.");
+        toast("Se restauraron las autorizaciones predeterminadas. Guarda para aplicarlas.");
       });
   }
   renderTenantAuthorizationsEditor();
@@ -781,7 +781,7 @@ function tenantAuthorizationErrors() {
         ?.name || communityId;
     if (!Array.isArray(list) || !list.length) {
       errors.push(
-        `${communityName}: agregá al menos una autorización o restaurá las predeterminadas.`,
+        `${communityName}: agrega al menos una autorización o restaura las predeterminadas.`,
       );
       continue;
     }
@@ -978,7 +978,7 @@ settingsForm?.addEventListener("submit", async event => {
   if (!requirePermission("admin:settings")) return;
   const authErrors = tenantAuthorizationErrors();
   if (authErrors.length) {
-    showValidationErrors(authErrors, "Revisá las autorizaciones de inquilinos");
+    showValidationErrors(authErrors, "Revisa las autorizaciones de inquilinos");
     return;
   }
   const data = {

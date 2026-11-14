@@ -284,7 +284,7 @@ router.put(
     const old = find(req, true),
       p = validatePost(req.body, old, policyData());
     if (req.body.version !== old.version)
-      throw problem("La publicación cambió. Recargala antes de guardar.", 409);
+      throw problem("La publicación cambió. Recárgala antes de guardar.", 409);
     transaction(() => {
       db.prepare(
         "UPDATE communication_posts SET data=?,updatedAt=?,version=version+1 WHERE id=?",

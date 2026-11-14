@@ -835,7 +835,7 @@ export function issueService(id, input, actor) {
     const row = serviceBillById(id);
     if (!canManage(actor, row.communityId))
       throw problem(
-        "No tenés permiso para emitir servicios de esta comunidad.",
+        "No tienes permiso para emitir servicios de esta comunidad.",
         403,
       );
     if (row.cancelledAt) throw problem("El servicio está anulado.", 409);
@@ -908,7 +908,7 @@ export function cancelService(id, input, actor) {
     const row = serviceBillById(id);
     if (!canManage(actor, row.communityId))
       throw problem(
-        "No tenés permiso para anular servicios de esta comunidad.",
+        "No tienes permiso para anular servicios de esta comunidad.",
         403,
       );
     if (row.cancelledAt) throw problem("El servicio ya está anulado.", 409);
@@ -920,7 +920,7 @@ export function cancelService(id, input, actor) {
     for (const receipt of receipts)
       if (receiptView(receipt).paid > 0)
         throw problem(
-          "Hay cobros aplicados a este servicio. Revertí primero los cobros y volvé a intentar.",
+          "Hay cobros aplicados a este servicio. Revierte primero los cobros y vuelve a intentarlo.",
           409,
         );
     const cancelledAt = now();

@@ -580,7 +580,7 @@ const communityStatutesLibrary = communityStatutesList
         hasPermission("document:upload", editingCommunityId),
       onChange: refreshCommunityLibraries,
       emptyText:
-        "Cargá los estatutos de la comunidad en PDF, imagen o Word para que todos los vecinos puedan consultarlos."
+        "Carga los estatutos de la comunidad en PDF, imagen o Word para que todos los vecinos puedan consultarlos."
     })
   : null;
 

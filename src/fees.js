@@ -912,7 +912,7 @@ export function selectedChargeProperties(communityId, input) {
   if (input.propertyIds !== undefined && !Array.isArray(input.propertyIds))
     throw problem("La selección de inmuebles no es válida.");
   if (Array.isArray(input.propertyIds) && !input.propertyIds.length)
-    throw problem("Elegí al menos un inmueble.");
+    throw problem("Elige al menos un inmueble.");
   const ids = input.propertyIds
     ? [...new Set(input.propertyIds)]
     : all.map((property) => property.id);
@@ -971,7 +971,7 @@ function assessmentSchedule(installments, entries) {
         const amount = entry.amount - (previous.get(entry.property.id) || 0);
         if (amount <= 0)
           throw problem(
-            `${entry.property.plot}: el plazo ${item.number} le asigna cero euros. Ajustá los importes o la cantidad de plazos.`,
+            `${entry.property.plot}: el plazo ${item.number} le asigna cero euros. Ajusta los importes o la cantidad de plazos.`,
           );
         return [entry.property.id, amount];
       }),
@@ -984,7 +984,7 @@ export function saveAssessment(communityId, input, actor, id = "") {
   feeCommunity(communityId);
   const name = typeof input.name === "string" ? input.name.trim() : "";
   if (!name || name.length > 120)
-    throw problem("Indicá un nombre de derrama (máximo 120 caracteres).");
+    throw problem("Indica un nombre de derrama (máximo 120 caracteres).");
   const rawPurpose =
     typeof input.purpose === "string" ? input.purpose.trim() : "";
   if (rawPurpose.length > 20000)
@@ -993,7 +993,7 @@ export function saveAssessment(communityId, input, actor, id = "") {
   const agreement =
     typeof input.agreement === "string" ? input.agreement.trim() : "";
   if (!agreement || agreement.length > 300)
-    throw problem("Indicá el acuerdo de Junta (máximo 300 caracteres).");
+    throw problem("Indica el acuerdo de Junta (máximo 300 caracteres).");
   const totalAmount = money(input.totalAmount, "El importe total");
   if (!["coefficient", "manual"].includes(input.mode))
     throw problem("Criterio de reparto no válido.");
@@ -1019,12 +1019,12 @@ export function saveAssessment(communityId, input, actor, id = "") {
     }
     if (selected.length === all.length && weightSum !== 1000000)
       throw problem(
-        `Los coeficientes suman ${(weightSum / 10000).toFixed(4)} %. Deben sumar 100 %. Revisá los inmuebles.`,
+        `Los coeficientes suman ${(weightSum / 10000).toFixed(4)} %. Deben sumar 100 %. Revisa los inmuebles.`,
       );
     for (const entry of distribute(totalAmount, entries)) {
       if (entry.amount <= 0)
         throw problem(
-          `${entry.property.plot}: el reparto le asigna cero euros. Ajustá la selección o el importe.`,
+          `${entry.property.plot}: el reparto le asigna cero euros. Ajusta la selección o el importe.`,
         );
       allocations[entry.property.id] = entry.amount;
     }
@@ -1044,7 +1044,7 @@ export function saveAssessment(communityId, input, actor, id = "") {
       );
   }
   if (!Array.isArray(input.installments) || input.installments.length < 1)
-    throw problem("Indicá al menos un plazo.");
+    throw problem("Indica al menos un plazo.");
   if (input.installments.length > 36)
     throw problem("La derrama no puede tener más de 36 plazos.");
   let previousDue = "";
@@ -1100,12 +1100,12 @@ export function saveAssessment(communityId, input, actor, id = "") {
           .get(id)
       )
         throw problem(
-          "La derrama ya tiene recibos emitidos. Para cambiarla, anulala y creá una nueva.",
+          "La derrama ya tiene recibos emitidos. Para cambiarla, anúlala y crea una nueva.",
           409,
         );
       if (assessmentPayload(row).installments.some((item) => item.cancelledAt))
         throw problem(
-          "La derrama tiene plazos anulados. Para cambiarla, anulala y creá una nueva.",
+          "La derrama tiene plazos anulados. Para cambiarla, anúlala y crea una nueva.",
           409,
         );
       if (data.reminders === null)
@@ -1353,7 +1353,7 @@ export function previewAssessment(id, number) {
   });
   if (rows.reduce((sum, item) => sum + item.amount, 0) !== installment.amount)
     throw problem(
-      "No se pudo repartir el importe del plazo. Revisá los importes.",
+      "No se pudo repartir el importe del plazo. Revisa los importes.",
     );
   const result = {
     assessmentId: row.id,
@@ -1378,13 +1378,13 @@ export function issueAssessment(id, input, actor) {
     const row = assessmentById(id);
     if (!canManage(actor, row.communityId))
       throw problem(
-        "No tenés permiso para emitir derramas de esta comunidad.",
+        "No tienes permiso para emitir derramas de esta comunidad.",
         403,
       );
     const batch = previewAssessment(id, Number(input.installment));
     if (input.token !== batch.token)
       throw problem(
-        "Los datos cambiaron. Volvé a revisar la vista previa antes de emitir.",
+        "Los datos cambiaron. Vuelve a revisar la vista previa antes de emitir.",
         409,
       );
     const ids = [];
@@ -1436,7 +1436,7 @@ export function cancelAssessment(id, input, actor) {
     const row = assessmentById(id);
     if (!canManage(actor, row.communityId))
       throw problem(
-        "No tenés permiso para anular derramas de esta comunidad.",
+        "No tienes permiso para anular derramas de esta comunidad.",
         403,
       );
     if (row.cancelledAt) throw problem("La derrama ya está anulada.", 409);
@@ -1466,7 +1466,7 @@ export function cancelAssessment(id, input, actor) {
     for (const receipt of receipts)
       if (receiptView(receipt).paid > 0)
         throw problem(
-          "Hay cobros aplicados a esta derrama. Revertí primero los cobros y volvé a intentar.",
+          "Hay cobros aplicados a esta derrama. Revierte primero los cobros y vuelve a intentar.",
           409,
         );
     const cancelledAt = now();

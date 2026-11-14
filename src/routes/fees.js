@@ -632,7 +632,7 @@ router.get(
     const attachment = serviceAttachmentById(req.params.attachmentId),
       row = serviceBillById(attachment.serviceBillId);
     if (!canReadServiceBill(req.user, row))
-      throw problem("No tenés acceso a la factura del servicio.", 403);
+      throw problem("No tienes acceso a la factura del servicio.", 403);
     if (!/^[a-f0-9-]{36}$/.test(attachment.diskName))
       throw problem("Archivo no válido.", 404);
     const file = path.join(serviceFilesDir, attachment.diskName);
