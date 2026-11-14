@@ -41,32 +41,25 @@ export const PERMISSIONS = [
 
 export function can(user, permission, resourceId = "", data) {
   if (!user?.activo || !PERMISSIONS.includes(permission)) return false;
-  const {
-    owners = [],
-    tenants = [],
-    properties = [],
-    communities = [],
-    roles = [],
-  } = data;
+  const { owners = [], tenants = [], properties = [], communities = [], roles = [] } = data;
   const role = roles.find((r) => r.id === user.rol || r.nombre === user.rol);
   if (!role) return false;
   if (role.nombre === "super_admin") return true;
   // The global security history is not a community-scoped resource.
   // Permisos globales: nunca para roles de comunidad o usuario final.
-  if (permission === "audit:read" || permission === "admin:providers") return !["user", "community_admin"].includes(role.nombre) && !!role.permisos?.includes(permission);
+  if (permission === "audit:read" || permission === "admin:providers")
+    return (
+      !["user", "community_admin"].includes(role.nombre) && !!role.permisos?.includes(permission)
+    );
   const ownOwners = owners.filter((o) => o.userId === user.id).map((o) => o.id);
   const ownTenants = tenants.filter((t) => t.userId === user.id);
   const ownedProperties = properties.filter((p) =>
     p.ownerIds?.some((id) => ownOwners.includes(id)),
   );
-  const assigned = communities
-    .filter((c) => c.adminUserId === user.id)
-    .map((c) => c.id);
+  const assigned = communities.filter((c) => c.adminUserId === user.id).map((c) => c.id);
   const ownCommunities = new Set([
     ...ownedProperties.map((p) => p.communityId),
-    ...ownTenants.map(
-      (t) => properties.find((p) => p.id === t.propertyId)?.communityId,
-    ),
+    ...ownTenants.map((t) => properties.find((p) => p.id === t.propertyId)?.communityId),
   ]);
   const owner = owners.find((o) => o.id === resourceId);
   const tenant = tenants.find((t) => t.id === resourceId);
@@ -76,18 +69,17 @@ export function can(user, permission, resourceId = "", data) {
     if (!role.permisos?.includes(permission)) return false;
     switch (permission) {
       case "fee:read":
-        return resourceId ? ownOwners.includes(resourceId) || ownedProperties.some(p => p.communityId === resourceId) : ownOwners.length > 0;
-      case "community:read":
         return resourceId
-          ? ownCommunities.has(resourceId)
-          : ownCommunities.size > 0;
+          ? ownOwners.includes(resourceId) ||
+              ownedProperties.some((p) => p.communityId === resourceId)
+          : ownOwners.length > 0;
+      case "community:read":
+        return resourceId ? ownCommunities.has(resourceId) : ownCommunities.size > 0;
       case "owner:read":
       case "owner:edit":
       case "owner:documents:submit":
       case "owner_notification:read":
-        return resourceId
-          ? ownOwners.includes(resourceId)
-          : ownOwners.length > 0;
+        return resourceId ? ownOwners.includes(resourceId) : ownOwners.length > 0;
       case "comm:participacion":
       case "comm:publicar":
       case "comm:moderar":
@@ -100,15 +92,12 @@ export function can(user, permission, resourceId = "", data) {
       case "tenant:read":
         return resourceId
           ? ownOwners.includes(resourceId) ||
-              (!!tenant &&
-                (ownOwners.includes(tenant.ownerId) ||
-                  tenant.userId === user.id))
+              (!!tenant && (ownOwners.includes(tenant.ownerId) || tenant.userId === user.id))
           : ownOwners.length > 0 || ownTenants.length > 0;
       case "tenant:manage":
       case "tenant:delete":
         return resourceId
-          ? ownOwners.includes(resourceId) ||
-              (!!tenant && ownOwners.includes(tenant.ownerId))
+          ? ownOwners.includes(resourceId) || (!!tenant && ownOwners.includes(tenant.ownerId))
           : ownOwners.length > 0;
       case "document:read": {
         const readablePropertyIds = new Set([
@@ -117,9 +106,7 @@ export function can(user, permission, resourceId = "", data) {
         ]);
         const readableTenantIds = new Set([
           ...ownTenants.map((t) => t.id),
-          ...tenants
-            .filter((t) => readablePropertyIds.has(t.propertyId))
-            .map((t) => t.id),
+          ...tenants.filter((t) => readablePropertyIds.has(t.propertyId)).map((t) => t.id),
         ]);
         return resourceId
           ? ownCommunities.has(resourceId) ||
@@ -148,10 +135,7 @@ export function can(user, permission, resourceId = "", data) {
       .filter((p) => p.ownerIds?.includes(owner.id))
       .map((p) => p.communityId);
   else if (property) communityIds = [property.communityId];
-  else if (tenant)
-    communityIds = [
-      properties.find((p) => p.id === tenant.propertyId)?.communityId,
-    ];
+  else if (tenant) communityIds = [properties.find((p) => p.id === tenant.propertyId)?.communityId];
   else return false;
   return communityIds.some((id) => assigned.includes(id));
 }

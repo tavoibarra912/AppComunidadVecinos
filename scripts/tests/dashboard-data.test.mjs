@@ -1,9 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  dashboardData,
-  ownerDocumentState,
-} from "../../public/js/dashboard-data.js";
+import { dashboardData, ownerDocumentState } from "../../public/js/dashboard-data.js";
 import { communityFinanceError } from "../../src/validation.js";
 
 const now = new Date("2026-11-09T12:00:00Z");
@@ -162,18 +159,9 @@ test("documentación: una aprobación sin archivo o un ejemplo no se cuenta como
     }),
     "none",
   );
-  assert.equal(
-    ownerDocumentState({ documents: { dni: { ...doc(), isSample: true } } }),
-    "none",
-  );
-  assert.equal(
-    ownerDocumentState({ documents: { ...docs(), dni: doc("rejected") } }),
-    "rejected",
-  );
-  assert.equal(
-    ownerDocumentState({ documents: { ...docs(), dni: doc("pending") } }),
-    "pending",
-  );
+  assert.equal(ownerDocumentState({ documents: { dni: { ...doc(), isSample: true } } }), "none");
+  assert.equal(ownerDocumentState({ documents: { ...docs(), dni: doc("rejected") } }), "rejected");
+  assert.equal(ownerDocumentState({ documents: { ...docs(), dni: doc("pending") } }), "pending");
 });
 test("contratos sin fechas válidas se muestran como desconocidos, sin asumir que están activos", () => {
   const f = fixture();
@@ -221,15 +209,7 @@ test("agenda y pendientes: respeta destinatario, comunidad, estado y fecha", () 
 test("año e importe: validación monetaria estricta, cero, decimales y año vigente", () => {
   for (const reserveFund of ["0", "1250", "1250.25", 0, 1250.25, ""])
     assert.equal(communityFinanceError({ reserveFund }, 2026), null);
-  for (const reserveFund of [
-    "abc",
-    "1e3",
-    "-1",
-    "12.345",
-    [],
-    {},
-    "9999999999999",
-  ])
+  for (const reserveFund of ["abc", "1e3", "-1", "12.345", [], {}, "9999999999999"])
     assert.ok(communityFinanceError({ reserveFund }, 2026));
   for (const constitutionYear of ["2026", "1996", "1000", ""])
     assert.equal(communityFinanceError({ constitutionYear }, 2026), null);

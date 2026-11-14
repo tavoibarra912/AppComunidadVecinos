@@ -34,29 +34,19 @@ export async function processFeeNotifications(send = sendMessage) {
       let state = "skipped",
         error = "";
       try {
-        const owner = db
-          .prepare("SELECT * FROM owners WHERE id=?")
-          .get(item.ownerId);
+        const owner = db.prepare("SELECT * FROM owners WHERE id=?").get(item.ownerId);
         const user = owner?.userId
-          ? db
-              .prepare("SELECT * FROM users WHERE id=? AND activo=1")
-              .get(owner.userId)
+          ? db.prepare("SELECT * FROM users WHERE id=? AND activo=1").get(owner.userId)
           : null;
         const row = receiptById(item.receiptId),
           view = receiptView(row);
         const reminder = ["due", "overdue"].includes(item.kind);
         const to = user ? destination(user, "email") : "";
-        if (
-          !getSettings().notificacionesEmail ||
-          !user ||
-          !to ||
-          !canReadReceipt(user, row)
-        )
+        if (!getSettings().notificacionesEmail || !user || !to || !canReadReceipt(user, row))
           error = "Canal deshabilitado o destinatario sin acceso.";
         else if (reminder && (row.cancelledAt || view.outstanding <= 0))
           error = "El recibo ya no está pendiente.";
-        else if (row.cancelledAt && item.kind !== "cancelled")
-          error = "Recibo anulado.";
+        else if (row.cancelledAt && item.kind !== "cancelled") error = "Recibo anulado.";
         else {
           const templates = feeDefaults(),
             values = {
@@ -67,10 +57,7 @@ export async function processFeeNotifications(send = sendMessage) {
               comunidad: view.snapshot.community,
             };
           const fill = (text) =>
-            text.replace(
-              /\{\{(titulo|mensaje|comunidad)\}\}/g,
-              (_, key) => values[key],
-            );
+            text.replace(/\{\{(titulo|mensaje|comunidad)\}\}/g, (_, key) => values[key]);
           await send(
             "email",
             to,
@@ -86,9 +73,12 @@ export async function processFeeNotifications(send = sendMessage) {
           ? failure.message
           : "Respuesta de envío no confirmada; no se reintenta automáticamente.";
       }
-      db.prepare(
-        "UPDATE fee_mail SET state=?,error=?,updatedAt=? WHERE eventId=?",
-      ).run(state, error.slice(0, 500), new Date().toISOString(), item.eventId);
+      db.prepare("UPDATE fee_mail SET state=?,error=?,updatedAt=? WHERE eventId=?").run(
+        state,
+        error.slice(0, 500),
+        new Date().toISOString(),
+        item.eventId,
+      );
       if (["failed", "uncertain"].includes(state))
         recordAudit({
           action: "fee.mail",

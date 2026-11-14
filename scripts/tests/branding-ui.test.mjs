@@ -5,12 +5,25 @@ import vm from "node:vm";
 
 function element(tag = "div", id = "") {
   return {
-    tagName: tag, id, hidden: false, childNodes: [], attributes: {},
+    tagName: tag,
+    id,
+    hidden: false,
+    childNodes: [],
+    attributes: {},
     textContent: "",
-    setAttribute(name, value) { this.attributes[name] = value; },
-    getAttribute(name) { return this.attributes[name] || null; },
-    removeAttribute(name) { delete this.src; delete this.attributes[name]; },
-    querySelector() { return null; },
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+    },
+    getAttribute(name) {
+      return this.attributes[name] || null;
+    },
+    removeAttribute(name) {
+      delete this.src;
+      delete this.attributes[name];
+    },
+    querySelector() {
+      return null;
+    },
   };
 }
 function textNode(value) {
@@ -18,14 +31,22 @@ function textNode(value) {
 }
 function fixture(brandJson = {}) {
   const elements = new Map();
-  const get = id => {
+  const get = (id) => {
     if (!elements.has(id)) elements.set(id, element("div", id));
     return elements.get(id);
   };
   const brandAnchor = element("a");
-  brandAnchor.childNodes = [element("img", "topbar-brand-logo"), textNode("peñarrubia"), element("span")];
+  brandAnchor.childNodes = [
+    element("img", "topbar-brand-logo"),
+    textNode("peñarrubia"),
+    element("span"),
+  ];
   const loginBrand = element("div");
-  loginBrand.childNodes = [element("img", "login-brand-logo"), textNode("peñarrubia"), element("span")];
+  loginBrand.childNodes = [
+    element("img", "login-brand-logo"),
+    textNode("peñarrubia"),
+    element("span"),
+  ];
   const meta = element("meta");
   const brandJsonEl = element("script", "brand-json");
   brandJsonEl.textContent = JSON.stringify(brandJson);
@@ -46,13 +67,24 @@ function fixture(brandJson = {}) {
     },
   };
   const context = { document };
-  const source = readFileSync(new URL("../../public/js/brand.js", import.meta.url), "utf8").replace(/^export /gm, "");
-  vm.runInNewContext(`${source}\nglobalThis.exposed = { readInjectedBrand, applyBrand, brandStyle };`, context);
+  const source = readFileSync(new URL("../../public/js/brand.js", import.meta.url), "utf8").replace(
+    /^export /gm,
+    "",
+  );
+  vm.runInNewContext(
+    `${source}\nglobalThis.exposed = { readInjectedBrand, applyBrand, brandStyle };`,
+    context,
+  );
   return { ...context.exposed, document, elements, brandAnchor, loginBrand, meta };
 }
 
 test("brand.js: aplica nombre, colores, título, descripción y saludo al boot", () => {
-  const fx = fixture({ nombre: "Vecinos del Parque", colorPrimario: "#0f3057", colorAcento: "#e8743b", logoDataUrl: "" });
+  const fx = fixture({
+    nombre: "Vecinos del Parque",
+    colorPrimario: "#0f3057",
+    colorAcento: "#e8743b",
+    logoDataUrl: "",
+  });
   const brand = fx.readInjectedBrand();
   assert.equal(brand.nombre, "Vecinos del Parque");
   fx.applyBrand(brand);
@@ -61,7 +93,10 @@ test("brand.js: aplica nombre, colores, título, descripción y saludo al boot",
   assert.equal(fx.brandAnchor.attributes["aria-label"], "Inicio de Vecinos del Parque");
   assert.equal(fx.document.title, "Vecinos del Parque");
   assert.match(fx.meta.attributes.content, /Asociación Vecinos del Parque/);
-  assert.equal(fx.elements.get("home-greeting-title").textContent, "Bienvenido a la gestión de Vecinos del Parque");
+  assert.equal(
+    fx.elements.get("home-greeting-title").textContent,
+    "Bienvenido a la gestión de Vecinos del Parque",
+  );
   assert.match(fx.elements.get("brand-vars").textContent, /--nav:#0f3057/);
   assert.match(fx.elements.get("brand-vars").textContent, /--brand:#e8743b/);
   assert.equal(fx.elements.get("topbar-brand-logo").hidden, true);

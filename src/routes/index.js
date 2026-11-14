@@ -67,21 +67,22 @@ router.use((req, res, next) => {
   });
 });
 router.get("/audit", requirePermission("audit:read"), (req, res, next) => {
-  try { res.json(listAudit(req.query)); }
-  catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }
+  try {
+    res.json(listAudit(req.query));
+  } catch (error) {
+    if (error.status) res.status(error.status).json({ error: error.message });
+    else next(error);
+  }
 });
 router.use(resourceAccess);
 
 router.get("/bootstrap", (req, res) => {
   const visible = visibleData(req.user);
-  const canReadDocuments = (entityId) =>
-    allowed(req.user, "document:read", entityId);
+  const canReadDocuments = (entityId) => allowed(req.user, "document:read", entityId);
   res.json({
     communities: visible.communities.map((community) => ({
       ...community,
-      documents: canReadDocuments(community.id)
-        ? listDocuments("community", community.id)
-        : [],
+      documents: canReadDocuments(community.id) ? listDocuments("community", community.id) : [],
       statutes: canReadDocuments(community.id)
         ? listDocuments("community", community.id, "statutes")
         : [],
@@ -92,9 +93,7 @@ router.get("/bootstrap", (req, res) => {
     owners: visible.owners,
     properties: visible.properties.map((property) => ({
       ...property,
-      documents: canReadDocuments(property.id)
-        ? listDocuments("property", property.id)
-        : [],
+      documents: canReadDocuments(property.id) ? listDocuments("property", property.id) : [],
       documentFolders: canReadDocuments(property.id)
         ? listDocumentFolders("property", property.id)
         : [],
@@ -103,17 +102,11 @@ router.get("/bootstrap", (req, res) => {
       ...tenant,
       // `documents` contiene el expediente fijo (DNI, contrato…); la
       // biblioteca genérica con carpetas se expone aparte.
-      libraryDocuments: canReadDocuments(tenant.id)
-        ? listDocuments("tenant", tenant.id)
-        : [],
-      documentFolders: canReadDocuments(tenant.id)
-        ? listDocumentFolders("tenant", tenant.id)
-        : [],
+      libraryDocuments: canReadDocuments(tenant.id) ? listDocuments("tenant", tenant.id) : [],
+      documentFolders: canReadDocuments(tenant.id) ? listDocumentFolders("tenant", tenant.id) : [],
     })),
     adminEmails: allowed(req.user, "admin_notification:read")
-      ? listAdminEmails().filter((n) =>
-          allowed(req.user, "owner:read", n.ownerId),
-        )
+      ? listAdminEmails().filter((n) => allowed(req.user, "owner:read", n.ownerId))
       : [],
     ownerNotifications: listOwnerNotifications().filter((n) =>
       allowed(req.user, "owner_notification:read", n.ownerId),
@@ -138,17 +131,12 @@ router.use(
   "/admin",
   (req, res, next) => {
     const section = req.path.split("/")[1];
-    if (
-      section === "roles" &&
-      req.method === "GET" &&
-      allowed(req.user, "admin:users")
-    )
+    if (section === "roles" && req.method === "GET" && allowed(req.user, "admin:users"))
       return next();
     return requirePermission(`admin:${section}`)(req, res, next);
   },
   adminRouter,
 );
-
 
 // Auditoría de errores: registra operaciones que terminan en error (4xx/5xx)
 router.use((req, res, next) => {
@@ -157,16 +145,19 @@ router.use((req, res, next) => {
     if (res.statusCode >= 400 && req.user) {
       try {
         recordAudit({
-          action: 'error.' + req.method.toLowerCase(),
-          outcome: 'failure',
+          action: "error." + req.method.toLowerCase(),
+          outcome: "failure",
           req,
           details: {
             ruta: req.path,
             estado: res.statusCode,
-            mensaje: typeof body === 'object' && body !== null ? body.error || body.message || '' : '',
+            mensaje:
+              typeof body === "object" && body !== null ? body.error || body.message || "" : "",
           },
         });
-      } catch { /* no bloquear la respuesta por un error de auditoría */ }
+      } catch {
+        /* no bloquear la respuesta por un error de auditoría */
+      }
     }
     return originalJson.call(this, body);
   };

@@ -6,9 +6,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import express from "express";
 
-const directory = mkdtempSync(
-  path.join(tmpdir(), "penarrubia-services-test-"),
-);
+const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-services-test-"));
 process.env.APP_DATA_DIR = directory;
 process.env.APP_UPLOADS_DIR = path.join(directory, "uploads");
 process.env.NODE_ENV = "test";
@@ -47,17 +45,11 @@ db.prepare("INSERT INTO fee_receipts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").run(
 const fees = await import("../../src/fees.js");
 const services = await import("../../src/services.js");
 const { default: router } = await import("../../src/routes/index.js");
-const actor = db
-  .prepare("SELECT * FROM users WHERE usuario='super_admin'")
-  .get();
-const manager = db
-  .prepare("SELECT * FROM users WHERE rol='community_admin' LIMIT 1")
-  .get();
+const actor = db.prepare("SELECT * FROM users WHERE usuario='super_admin'").get();
+const manager = db.prepare("SELECT * FROM users WHERE rol='community_admin' LIMIT 1").get();
 const owner1 = "own-seed-1",
   owner2 = "service-owner-2";
-db.prepare(
-  "INSERT INTO owners(id,name,surname,dni,userId) VALUES(?,?,?,?,?)",
-).run(
+db.prepare("INSERT INTO owners(id,name,surname,dni,userId) VALUES(?,?,?,?,?)").run(
   owner2,
   "Titular",
   "Servicios",
@@ -94,9 +86,7 @@ let sequence = 0,
   staff;
 function community(coefficients = ["25", "75"]) {
   const id = `service-community-${++sequence}`;
-  db.prepare(
-    "INSERT INTO communities(id,name,nif,adminUserId,currency) VALUES(?,?,?,?,?)",
-  ).run(
+  db.prepare("INSERT INTO communities(id,name,nif,adminUserId,currency) VALUES(?,?,?,?,?)").run(
     id,
     `Servicios ${sequence}`,
     `SERVICE-${sequence}`,
@@ -156,17 +146,10 @@ function client() {
     const response = await fetch(base + route, {
       method,
       headers: {
-        ...(body instanceof FormData
-          ? {}
-          : { "Content-Type": "application/json" }),
+        ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(cookie ? { Cookie: cookie } : {}),
       },
-      body:
-        body === undefined
-          ? undefined
-          : body instanceof FormData
-            ? body
-            : JSON.stringify(body),
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     });
     if (response.headers.get("set-cookie")) {
       cookie = response.headers.get("set-cookie").split(";")[0];
@@ -174,9 +157,7 @@ function client() {
     }
     return {
       status: response.status,
-      data: (response.headers.get("content-type") || "").includes(
-        "application/json",
-      )
+      data: (response.headers.get("content-type") || "").includes("application/json")
         ? await response.json()
         : await response.text(),
     };
@@ -192,9 +173,7 @@ before(async () => {
   const app = express();
   app.use(express.json());
   app.use("/api", router);
-  app.use((error, _req, res, _next) =>
-    res.status(500).json({ error: error.message }),
-  );
+  app.use((error, _req, res, _next) => res.status(500).json({ error: error.message }));
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -218,37 +197,21 @@ after(async () => {
 });
 
 test("servicios: migra recibos anteriores, crea índices independientes y es idempotente", async () => {
-  assert.equal(
-    fees.receiptById("legacy-service-receipt").serviceBillId,
-    "",
-  );
+  assert.equal(fees.receiptById("legacy-service-receipt").serviceBillId, "");
   const indexes = db
     .prepare(
       "SELECT name,sql FROM sqlite_master WHERE name IN ('fee_receipts_period','fee_receipts_assessment','fee_receipts_service')",
     )
     .all();
   assert.equal(indexes.length, 3);
-  assert.match(
-    indexes.find((x) => x.name === "fee_receipts_period").sql,
-    /serviceBillId=''/,
-  );
-  assert.match(
-    indexes.find((x) => x.name === "fee_receipts_service").sql,
-    /serviceBillId<>''/,
-  );
+  assert.match(indexes.find((x) => x.name === "fee_receipts_period").sql, /serviceBillId=''/);
+  assert.match(indexes.find((x) => x.name === "fee_receipts_service").sql, /serviceBillId<>''/);
   await import("../../src/services.js?restart-test");
   assert.equal(
-    db
-      .prepare(
-        "SELECT COUNT(*) n FROM schema_migrations WHERE id='service-bills-v1'",
-      )
-      .get().n,
+    db.prepare("SELECT COUNT(*) n FROM schema_migrations WHERE id='service-bills-v1'").get().n,
     1,
   );
-  assert.equal(
-    fees.receiptById("legacy-service-receipt").amount,
-    10000,
-  );
+  assert.equal(fees.receiptById("legacy-service-receipt").amount, 10000);
 });
 
 test("servicios API: exige sesión, gestión y comunidad asignada en todas las operaciones", async () => {
@@ -261,10 +224,7 @@ test("servicios API: exige sesión, gestión y comunidad asignada en todas las o
   }
   const service = await ok(staff, route, "POST", defaults, 201);
   assert.equal((await ok(staff, route)).services.length, 1);
-  assert.equal(
-    (await ok(owner, `/fees/communities/${c.id}`)).services.length,
-    0,
-  );
+  assert.equal((await ok(owner, `/fees/communities/${c.id}`)).services.length, 0);
   for (const request of [owner, tenant])
     for (const [suffix, method, body] of [
       ["", "GET"],
@@ -274,8 +234,7 @@ test("servicios API: exige sesión, gestión y comunidad asignada en todas las o
       ["/cancel", "POST", { reason: "Prueba" }],
     ])
       assert.equal(
-        (await request(`/fees/services/${service.id}${suffix}`, method, body))
-          .status,
+        (await request(`/fees/services/${service.id}${suffix}`, method, body)).status,
         403,
       );
   db.prepare("UPDATE communities SET adminUserId='' WHERE id=?").run(c.id);
@@ -334,10 +293,7 @@ test("servicios: valida factura, reparto, selección y lecturas antes de guardar
     );
   assert.equal(services.services(c.id).length, 0);
   const odd = community(["20", "70"]);
-  assert.throws(
-    () => services.saveService(odd.id, defaults, actor),
-    /Deben sumar 100/i,
-  );
+  assert.throws(() => services.saveService(odd.id, defaults, actor), /Deben sumar 100/i);
 });
 
 test("servicios: reparte por coeficiente, congela el reparto, emite recibos y cobra", () => {
@@ -356,18 +312,10 @@ test("servicios: reparte por coeficiente, congela el reparto, emite recibos y co
   assert.match(batch.token, /^[a-f0-9]{64}$/);
 
   // Cambiar el censo o los coeficientes no altera el reparto congelado.
-  db.prepare("UPDATE properties SET participationCoef='10' WHERE id=?").run(
-    c.properties[0],
-  );
+  db.prepare("UPDATE properties SET participationCoef='10' WHERE id=?").run(c.properties[0]);
   db.prepare(
     "INSERT INTO properties(id,communityId,plot,ownerIds,participationCoef) VALUES(?,?,?,?,?)",
-  ).run(
-    `${c.id}-new`,
-    c.id,
-    "Alta posterior",
-    JSON.stringify([owner2]),
-    "15",
-  );
+  ).run(`${c.id}-new`, c.id, "Alta posterior", JSON.stringify([owner2]), "15");
   const same = preview(c.service.id);
   assert.deepEqual(
     same.rows.map((row) => row.amount),
@@ -383,17 +331,11 @@ test("servicios: reparte por coeficiente, congela el reparto, emite recibos y co
   assert.equal(frozen.receipts.length, 2);
   assert.equal(frozen.receipts[0].kind, "service");
   assert.equal(frozen.receipts[0].serviceBillId, c.service.id);
-  assert.equal(
-    frozen.receipts[0].concept,
-    "Servicio de Agua · 2030-01",
-  );
+  assert.equal(frozen.receipts[0].concept, "Servicio de Agua · 2030-01");
   assert.equal(frozen.totals.issued, 20000);
   assert.equal(frozen.totals.outstanding, 20000);
   assert.throws(() => issue(c.service.id), /ya fue emitido/i);
-  assert.throws(
-    () => services.saveService(c.id, defaults, actor, c.service.id),
-    /ya fue emitido/i,
-  );
+  assert.throws(() => services.saveService(c.id, defaults, actor, c.service.id), /ya fue emitido/i);
 
   const first = detail(c.service.id).receipts.find(
     (receipt) => receipt.propertyId === c.properties[0],
@@ -421,13 +363,12 @@ test("servicios: reparte por coeficiente, congela el reparto, emite recibos y co
     .get(first.id);
   assert.match(returnNotice.message, /aplicado sobre el servicio de Agua/);
   assert.doesNotMatch(returnNotice.message, /a el servicio|servicio servicio/i);
-  const cancelled = services.cancelService(
-    c.service.id,
-    { reason: "Factura duplicada" },
-    actor,
-  );
+  const cancelled = services.cancelService(c.service.id, { reason: "Factura duplicada" }, actor);
   assert.equal(cancelled.status, "cancelled");
-  assert.equal(cancelled.receipts.every((receipt) => receipt.cancelledAt), true);
+  assert.equal(
+    cancelled.receipts.every((receipt) => receipt.cancelledAt),
+    true,
+  );
   assert.equal(cancelled.totals.outstanding, 0);
   const cancelNotice = db
     .prepare(
@@ -495,10 +436,7 @@ test("servicios: reparte por lecturas, omite consumos cero y conserva la última
     actor,
   );
   assert.equal(next.readings[c.properties[0]].previous, 120000);
-  assert.equal(
-    services.lastServiceReadings(c.id).agua[c.properties[0]].reading,
-    120000,
-  );
+  assert.equal(services.lastServiceReadings(c.id).agua[c.properties[0]].reading, 120000);
 });
 
 test("servicios: reparto mixto separa parte fija y variable y avisa por calefacción centralizada", () => {
@@ -520,9 +458,7 @@ test("servicios: reparto mixto separa parte fija y variable y avisa por calefacc
   );
   assert.equal(service.allocations[c.properties[0]], 2500);
   assert.equal(service.allocations[c.properties[1]], 7500);
-  const rows = new Map(
-    service.breakdown.map((row) => [row.propertyId, row]),
-  );
+  const rows = new Map(service.breakdown.map((row) => [row.propertyId, row]));
   assert.equal(rows.get(c.properties[0]).fixed, 1250);
   assert.equal(rows.get(c.properties[0]).variable, 1250);
   assert.equal(rows.get(c.properties[1]).fixed, 3750);
@@ -614,16 +550,11 @@ test("servicios: el modo informativo no crea recibos ni deuda", () => {
   assert.equal(stored.receipts.length, 0);
   assert.equal(stored.totals.issued, 0);
   assert.equal(
-    db
-      .prepare(
-        "SELECT COUNT(*) n FROM fee_receipts WHERE serviceBillId=?",
-      )
-      .get(c.service.id).n,
+    db.prepare("SELECT COUNT(*) n FROM fee_receipts WHERE serviceBillId=?").get(c.service.id).n,
     0,
   );
   assert.equal(
-    services.cancelService(c.service.id, { reason: "Sin efecto" }, actor)
-      .status,
+    services.cancelService(c.service.id, { reason: "Sin efecto" }, actor).status,
     "cancelled",
   );
 });
@@ -645,9 +576,7 @@ test("servicios: el reparto informativo se ve en Mis cuotas y solo para sus prop
     false,
   );
   const otherMine = await ok(other, "/fees/mine");
-  const otherEntry = otherMine.informativeServices.find(
-    (s) => s.id === c.service.id,
-  );
+  const otherEntry = otherMine.informativeServices.find((s) => s.id === c.service.id);
   assert.ok(otherEntry, "el copropietario también ve el reparto informativo");
   assert.equal(otherEntry.properties[0].propertyId, c.properties[1]);
   assert.equal(otherEntry.properties[0].amount, 15000);
@@ -656,10 +585,7 @@ test("servicios: el reparto informativo se ve en Mis cuotas y solo para sus prop
   const communityView = await ok(owner, `/fees/communities/${c.id}`);
   assert.equal(communityView.informativeServices.length, 1);
   assert.equal(communityView.informativeServices[0].id, c.service.id);
-  assert.equal(
-    communityView.informativeServices[0].properties[0].amount,
-    5000,
-  );
+  assert.equal(communityView.informativeServices[0].properties[0].amount, 5000);
 });
 
 test("servicios: adjunta la factura, descarga y protege los justificantes emitidos", async () => {
@@ -668,89 +594,51 @@ test("servicios: adjunta la factura, descarga y protege los justificantes emitid
   const service = await ok(staff, route, "POST", defaults, 201);
   const bad = new FormData();
   bad.append("file", new Blob(["no es una factura"]), "factura.txt");
-  assert.equal(
-    (await staff(`/fees/services/${service.id}/attachments`, "POST", bad))
-      .status,
-    400,
-  );
+  assert.equal((await staff(`/fees/services/${service.id}/attachments`, "POST", bad)).status, 400);
   const pdf = Buffer.from("%PDF-1.4\nfactura de prueba\n%%EOF");
   const form = new FormData();
   form.append("file", new Blob([pdf], { type: "application/pdf" }), "factura.pdf");
-  const attachment = await ok(
-    staff,
-    `/fees/services/${service.id}/attachments`,
-    "POST",
-    form,
-    201,
-  );
+  const attachment = await ok(staff, `/fees/services/${service.id}/attachments`, "POST", form, 201);
   assert.equal(attachment.fileName, "factura.pdf");
-  const anonymous = await fetch(
-    `${base}/fees/service-attachments/${attachment.id}/download`,
-  );
+  const anonymous = await fetch(`${base}/fees/service-attachments/${attachment.id}/download`);
   assert.equal(anonymous.status, 401);
-  const result = await fetch(
-    `${base}/fees/service-attachments/${attachment.id}/download`,
-    { headers: { Cookie: staff.cookie || "" } },
-  );
+  const result = await fetch(`${base}/fees/service-attachments/${attachment.id}/download`, {
+    headers: { Cookie: staff.cookie || "" },
+  });
   assert.equal(result.status, 200);
   assert.match(result.headers.get("content-type"), /application\/pdf/);
   assert.match(await result.text(), /factura de prueba/);
-  await ok(
-    staff,
-    `/fees/service-attachments/${attachment.id}`,
-    "DELETE",
-  );
+  await ok(staff, `/fees/service-attachments/${attachment.id}`, "DELETE");
   const second = new FormData();
   second.append("file", new Blob([pdf], { type: "application/pdf" }), "factura.pdf");
+  await ok(staff, `/fees/services/${service.id}/attachments`, "POST", second, 201);
   await ok(
     staff,
-    `/fees/services/${service.id}/attachments`,
+    `/fees/services/${service.id}/issue`,
     "POST",
-    second,
+    {
+      token: preview(service.id).token,
+    },
     201,
   );
-  await ok(staff, `/fees/services/${service.id}/issue`, "POST", {
-    token: preview(service.id).token,
-  }, 201);
   const receipts = db
-    .prepare(
-      "SELECT * FROM fee_receipts WHERE serviceBillId=? ORDER BY propertyId",
-    )
+    .prepare("SELECT * FROM fee_receipts WHERE serviceBillId=? ORDER BY propertyId")
     .all(service.id);
-  const ownerReceipt = receipts.find(
-    (receipt) => receipt.propertyId === c.properties[0],
-  );
-  const latest = services.serviceDetail(services.serviceBillById(service.id))
-    .attachments[0];
-  const receiptDetail = await ok(
-    owner,
-    `/fees/receipts/${ownerReceipt.id}`,
-  );
+  const ownerReceipt = receipts.find((receipt) => receipt.propertyId === c.properties[0]);
+  const latest = services.serviceDetail(services.serviceBillById(service.id)).attachments[0];
+  const receiptDetail = await ok(owner, `/fees/receipts/${ownerReceipt.id}`);
   assert.equal(receiptDetail.serviceAttachments.length, 1);
   assert.equal(receiptDetail.serviceAttachments[0].id, latest.id);
-  const ownerDownload = await fetch(
-    `${base}/fees/service-attachments/${latest.id}/download`,
-    { headers: { Cookie: owner.cookie || "" } },
-  );
+  const ownerDownload = await fetch(`${base}/fees/service-attachments/${latest.id}/download`, {
+    headers: { Cookie: owner.cookie || "" },
+  });
   assert.equal(ownerDownload.status, 200);
-  const tenantDownload = await fetch(
-    `${base}/fees/service-attachments/${latest.id}/download`,
-    { headers: { Cookie: tenant.cookie || "" } },
-  );
+  const tenantDownload = await fetch(`${base}/fees/service-attachments/${latest.id}/download`, {
+    headers: { Cookie: tenant.cookie || "" },
+  });
   assert.equal(tenantDownload.status, 403);
-  assert.equal(
-    (
-      await staff(
-        `/fees/service-attachments/${attachment.id}`,
-        "DELETE",
-      )
-    ).status,
-    404,
-  );
-  assert.equal(
-    (await staff(`/fees/service-attachments/${latest.id}`, "DELETE")).status,
-    409,
-  );
+  assert.equal((await staff(`/fees/service-attachments/${attachment.id}`, "DELETE")).status, 404);
+  assert.equal((await staff(`/fees/service-attachments/${latest.id}`, "DELETE")).status, 409);
 });
 
 test("servicios: sin pestaña de avisos conserva los recordatorios guardados y no los copia en los nuevos", () => {
@@ -763,12 +651,7 @@ test("servicios: sin pestaña de avisos conserva los recordatorios guardados y n
   assert.equal(withReminders.reminders.beforeDays, 12);
   const withoutReminders = { ...defaults };
   delete withoutReminders.reminders;
-  const edited = services.saveService(
-    c.id,
-    withoutReminders,
-    actor,
-    withReminders.id,
-  );
+  const edited = services.saveService(c.id, withoutReminders, actor, withReminders.id);
   assert.equal(edited.reminders.beforeDays, 12);
   const fresh = services.saveService(c.id, withoutReminders, actor);
   assert.deepEqual(fresh.reminders, {});
@@ -781,13 +664,8 @@ test("servicios: fotos de contadores se guardan por inmueble y sobreviven a la e
   const bad = new FormData();
   bad.append("file", new Blob(["no es una foto"]), "contador.txt");
   assert.equal(
-    (
-      await staff(
-        `/fees/services/${service.id}/reading-photos/${c.properties[0]}`,
-        "POST",
-        bad,
-      )
-    ).status,
+    (await staff(`/fees/services/${service.id}/reading-photos/${c.properties[0]}`, "POST", bad))
+      .status,
     400,
   );
   assert.equal(
@@ -813,24 +691,23 @@ test("servicios: fotos de contadores se guardan por inmueble y sobreviven a la e
   assert.equal(photo.kind, "reading");
   assert.equal(photo.propertyId, c.properties[0]);
   const saved = detail(service.id);
-  assert.equal(
-    saved.attachments.filter((item) => item.kind === "reading").length,
-    1,
-  );
+  assert.equal(saved.attachments.filter((item) => item.kind === "reading").length, 1);
   assert.equal(saved.attachmentCount, 0, "las fotos no cuentan como facturas");
-  const download = await fetch(
-    `${base}/fees/service-attachments/${photo.id}/download`,
-    { headers: { Cookie: staff.cookie || "" } },
-  );
+  const download = await fetch(`${base}/fees/service-attachments/${photo.id}/download`, {
+    headers: { Cookie: staff.cookie || "" },
+  });
   assert.equal(download.status, 200);
   assert.match(download.headers.get("content-type"), /image\/png/);
-  await ok(staff, `/fees/services/${service.id}/issue`, "POST", {
-    token: preview(service.id).token,
-  }, 201);
-  assert.equal(
-    (await staff(`/fees/service-attachments/${photo.id}`, "DELETE")).status,
-    200,
+  await ok(
+    staff,
+    `/fees/services/${service.id}/issue`,
+    "POST",
+    {
+      token: preview(service.id).token,
+    },
+    201,
   );
+  assert.equal((await staff(`/fees/service-attachments/${photo.id}`, "DELETE")).status, 200);
   assert.equal(detail(service.id).attachments.length, 0);
 });
 

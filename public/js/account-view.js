@@ -1,36 +1,22 @@
 // Datos de presentación derivados únicamente de la sesión y sus vínculos reales.
 export function accountView(data, roleLabels = {}) {
-  const user =
-    data.users.find((item) => item.id === data.currentUserId) || null;
+  const user = data.users.find((item) => item.id === data.currentUserId) || null;
   const displayName = user
     ? `${user.nombre || ""} ${user.apellido || ""}`.trim() || user.usuario
     : "";
-  const role = data.roles.find(
-    (item) => item.id === user?.rol || item.nombre === user?.rol,
-  );
-  const owners = user
-    ? data.owners.filter((item) => item.userId === user.id)
-    : [];
-  const tenants = user
-    ? data.tenants.filter((item) => item.userId === user.id)
-    : [];
+  const role = data.roles.find((item) => item.id === user?.rol || item.nombre === user?.rol);
+  const owners = user ? data.owners.filter((item) => item.userId === user.id) : [];
+  const tenants = user ? data.tenants.filter((item) => item.userId === user.id) : [];
   const ownerIds = new Set(owners.map((item) => item.id));
   const propertyIds = new Set(tenants.map((item) => item.propertyId));
   const communityIds = new Set(
     data.properties
-      .filter(
-        (item) =>
-          item.ownerIds?.some((id) => ownerIds.has(id)) ||
-          propertyIds.has(item.id),
-      )
+      .filter((item) => item.ownerIds?.some((id) => ownerIds.has(id)) || propertyIds.has(item.id))
       .map((item) => item.communityId),
   );
   for (const community of data.communities)
-    if (user && community.adminUserId === user.id)
-      communityIds.add(community.id);
-  const communities = data.communities.filter((item) =>
-    communityIds.has(item.id),
-  );
+    if (user && community.adminUserId === user.id) communityIds.add(community.id);
+  const communities = data.communities.filter((item) => communityIds.has(item.id));
   const hasProfile = owners.length > 0 || tenants.length > 0;
   let communityTitle = "Perfil pendiente de vinculación";
   let communityMessage =

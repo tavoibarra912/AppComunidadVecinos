@@ -28,7 +28,7 @@ const docsSummarySubtext = document.querySelector("#docs-summary-subtext");
 const ownerForm = document.querySelector("#owner-form");
 
 export function analyzeImageQuality(dataUrl) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       try {
@@ -81,7 +81,12 @@ export function analyzeImageQuality(dataUrl) {
 
         resolve({ score, status, width: img.width, height: img.height, avgLum, stdDev });
       } catch {
-        resolve({ score: 94, status: "Óptima (legibilidad verificada)", width: img.width, height: img.height });
+        resolve({
+          score: 94,
+          status: "Óptima (legibilidad verificada)",
+          width: img.width,
+          height: img.height,
+        });
       }
     };
     img.onerror = () => {
@@ -98,13 +103,21 @@ export function checkDocumentCorrespondence(fileName, docType) {
     propertyDeed: "Copia de escritura",
     contract: "Contrato de arrendamiento",
     communityMinute: "Acta de Junta de la Comunidad",
-    energyCertificate: "Certificado de Eficiencia Energética"
+    energyCertificate: "Certificado de Eficiencia Energética",
   };
-  return titles[docType] ? { isValid: true, title: titles[docType], typeVerified: "Pendiente de revisión administrativa", checks: [] } : { isValid: false, error: "Tipo de documento no reconocido." };
+  return titles[docType]
+    ? {
+        isValid: true,
+        title: titles[docType],
+        typeVerified: "Pendiente de revisión administrativa",
+        checks: [],
+      }
+    : { isValid: false, error: "Tipo de documento no reconocido." };
 }
 
 export function generateSampleDocumentData(docType, ownerContext = {}) {
-  const name = `${ownerContext.name || "Carlos"} ${ownerContext.surname || "Ruiz Mendoza"}`.toUpperCase();
+  const name =
+    `${ownerContext.name || "Carlos"} ${ownerContext.surname || "Ruiz Mendoza"}`.toUpperCase();
   const dni = (ownerContext.dni || "47895231P").toUpperCase();
   const iban = (ownerContext.iban || "ES66 2100 0418 4012 3456 7891").toUpperCase();
   const plot = ownerContext.plot || "Parcela 14";
@@ -155,7 +168,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       fileName: `DNI_${dni}_ambas_caras.pdf`,
       fileType: "application/pdf",
       fileSize: 485200,
-      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg),
     };
   }
 
@@ -183,7 +196,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       fileName: `Certificado_Titularidad_Bancaria_${dni}.pdf`,
       fileType: "application/pdf",
       fileSize: 312400,
-      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg),
     };
   }
 
@@ -209,7 +222,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       fileName: `Escritura_Propiedad_${plot.replace(/\s+/g, "_")}.pdf`,
       fileType: "application/pdf",
       fileSize: 1250300,
-      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg),
     };
   }
 
@@ -244,7 +257,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       fileName: `Contrato_Arrendamiento_${dni}.pdf`,
       fileType: "application/pdf",
       fileSize: 642100,
-      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg),
     };
   }
 
@@ -274,7 +287,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       fileName: `Acta_Junta_General_${cName.replace(/\s+/g, "_")}.pdf`,
       fileType: "application/pdf",
       fileSize: 524300,
-      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg),
     };
   }
 
@@ -305,7 +318,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       fileName: `Certificado_Eficiencia_Energetica_${plotName.replace(/\s+/g, "_")}.pdf`,
       fileType: "application/pdf",
       fileSize: 789400,
-      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg)
+      dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(svg),
     };
   }
 
@@ -320,20 +333,22 @@ export const DocumentValidator = {
     if (!isPdf && !isImage) {
       return {
         isValid: false,
-        error: "Formato no compatible. Por favor suba un PDF o una imagen en formato JPG, PNG o WEBP."
+        error:
+          "Formato no compatible. Por favor suba un PDF o una imagen en formato JPG, PNG o WEBP.",
       };
     }
 
     if (file.size > 15 * 1024 * 1024) {
       return {
         isValid: false,
-        error: "El archivo supera el límite de 15 MB."
+        error: "El archivo supera el límite de 15 MB.",
       };
     }
 
     const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
     const pdfHeader = String.fromCharCode(...header.slice(0, 5));
-    if (isPdf && pdfHeader !== "%PDF-") return { isValid: false, error: "El contenido no corresponde a un PDF." };
+    if (isPdf && pdfHeader !== "%PDF-")
+      return { isValid: false, error: "El contenido no corresponde a un PDF." };
     const dataUrl = await readFileAsDataUrl(file);
 
     let legibilityScore = 98;
@@ -350,7 +365,7 @@ export const DocumentValidator = {
           error: `Legibilidad insuficiente (${imageInfo.score}%). La imagen presenta baja resolución o desenfoque. Por favor, suba una fotografía nítida del documento original.`,
           legibilityScore,
           legibilityStatus,
-          dataUrl
+          dataUrl,
         };
       }
     } else {
@@ -365,13 +380,16 @@ export const DocumentValidator = {
         error: correspondence.error,
         legibilityScore,
         legibilityStatus,
-        dataUrl
+        dataUrl,
       };
     }
 
     const dateStr = new Date().toLocaleString("es-ES", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit"
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
 
     const docRecord = {
@@ -388,25 +406,25 @@ export const DocumentValidator = {
         legibilityStatus,
         typeVerified: correspondence.typeVerified,
         checks: correspondence.checks,
-        verifiedAt: new Date().toISOString()
+        verifiedAt: new Date().toISOString(),
       },
       adminApproval: {
         status: "pending",
         reviewedAt: null,
         reviewedBy: null,
-        notes: ""
-      }
+        notes: "",
+      },
     };
 
     return {
       isValid: true,
-      document: docRecord
+      document: docRecord,
     };
   },
 
   generateSampleDocument(docType, ownerContext = {}) {
     return generateSampleDocumentData(docType, ownerContext);
-  }
+  },
 };
 
 export function getFormOwnerContext() {
@@ -419,16 +437,36 @@ export function getFormOwnerContext() {
     dni: ownerForm.elements.dni.value.trim().toUpperCase() || "47895231P",
     plot: ownerForm.elements.plot?.value.trim() || "Inmueble",
     communityName: commName || "Residencial Peñarrubia",
-    iban: ownerForm.elements.iban.value.trim().toUpperCase() || "ES66 2100 0418 4012 3456 7891"
+    iban: ownerForm.elements.iban.value.trim().toUpperCase() || "ES66 2100 0418 4012 3456 7891",
   };
 }
 
-
 export function renderOwnerDialogDocs() {
   const docTypes = [
-    { key: "dni", dropzone: dropzoneDni, input: inputDocDni, result: resultDocDni, badge: badgeDocDni, card: document.querySelector("#card-doc-dni") },
-    { key: "bankReceipt", dropzone: dropzoneBank, input: inputDocBank, result: resultDocBank, badge: badgeDocBank, card: document.querySelector("#card-doc-bank") },
-    { key: "propertyDeed", dropzone: dropzoneDeed, input: inputDocDeed, result: resultDocDeed, badge: badgeDocDeed, card: document.querySelector("#card-doc-deed") }
+    {
+      key: "dni",
+      dropzone: dropzoneDni,
+      input: inputDocDni,
+      result: resultDocDni,
+      badge: badgeDocDni,
+      card: document.querySelector("#card-doc-dni"),
+    },
+    {
+      key: "bankReceipt",
+      dropzone: dropzoneBank,
+      input: inputDocBank,
+      result: resultDocBank,
+      badge: badgeDocBank,
+      card: document.querySelector("#card-doc-bank"),
+    },
+    {
+      key: "propertyDeed",
+      dropzone: dropzoneDeed,
+      input: inputDocDeed,
+      result: resultDocDeed,
+      badge: badgeDocDeed,
+      card: document.querySelector("#card-doc-deed"),
+    },
   ];
 
   let uploadedCount = 0;
@@ -473,7 +511,8 @@ export function renderOwnerDialogDocs() {
 
       const reviewNote = document.createElement("p");
       reviewNote.className = "form-intro";
-      reviewNote.textContent = "La identidad, titularidad y legibilidad requieren revisión administrativa.";
+      reviewNote.textContent =
+        "La identidad, titularidad y legibilidad requieren revisión administrativa.";
       result.append(validationHeader, reviewNote);
 
       validationHeader.querySelector('[data-action="view"]').addEventListener("click", () => {
@@ -498,11 +537,13 @@ export function renderOwnerDialogDocs() {
   tabDocsBadge.textContent = `${uploadedCount}/3`;
   docsSummaryStatus.textContent = `${uploadedCount} de 3 documentos recibidos`;
   if (uploadedCount === 3) {
-    docsSummarySubtext.textContent = "Archivos recibidos. Al guardar se remitirá un aviso al administrador para su revisión.";
+    docsSummarySubtext.textContent =
+      "Archivos recibidos. Al guardar se remitirá un aviso al administrador para su revisión.";
     docsSummaryBar.style.background = "#f0fdf4";
     docsSummaryBar.style.borderColor = "#86efac";
   } else {
-    docsSummarySubtext.textContent = "Sube la copia del DNI (ambas caras), el recibo bancario y la escritura para completar el expediente.";
+    docsSummarySubtext.textContent =
+      "Sube la copia del DNI (ambas caras), el recibo bancario y la escritura para completar el expediente.";
     docsSummaryBar.style.background = "#f1f5f9";
     docsSummaryBar.style.borderColor = "#e2e8f0";
   }
@@ -510,7 +551,9 @@ export function renderOwnerDialogDocs() {
 
 export async function handleDocFileUpload(file, docType) {
   if (!file) return;
-  const card = document.querySelector(`#card-doc-${docType === "bankReceipt" ? "bank" : (docType === "propertyDeed" ? "deed" : "dni")}`);
+  const card = document.querySelector(
+    `#card-doc-${docType === "bankReceipt" ? "bank" : docType === "propertyDeed" ? "deed" : "dni"}`,
+  );
   const badge = card.querySelector(".status-badge");
   badge.className = "status-badge doc-pending-admin";
   badge.textContent = "⚡ Analizando...";
@@ -541,7 +584,9 @@ export function handleDocSampleLoad(docType) {
   const sample = DocumentValidator.generateSampleDocument(docType, context);
   if (!sample) return;
 
-  const card = document.querySelector(`#card-doc-${docType === "bankReceipt" ? "bank" : (docType === "propertyDeed" ? "deed" : "dni")}`);
+  const card = document.querySelector(
+    `#card-doc-${docType === "bankReceipt" ? "bank" : docType === "propertyDeed" ? "deed" : "dni"}`,
+  );
   const badge = card.querySelector(".status-badge");
   badge.className = "status-badge doc-pending-admin";
   badge.textContent = "⚡ Analizando...";
@@ -549,8 +594,11 @@ export function handleDocSampleLoad(docType) {
   window.setTimeout(() => {
     const correspondence = checkDocumentCorrespondence(sample.fileName, docType, context);
     const dateStr = new Date().toLocaleString("es-ES", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit"
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
 
     editingDocs.current[docType] = {
@@ -564,18 +612,18 @@ export function handleDocSampleLoad(docType) {
       dataUrl: sample.dataUrl,
       autoValidation: {
         status: "passed",
-        legibilityScore: docType === "dni" ? 98 : (docType === "bankReceipt" ? 96 : 95),
+        legibilityScore: docType === "dni" ? 98 : docType === "bankReceipt" ? 96 : 95,
         legibilityStatus: "Óptima (alta resolución y contraste adecuado)",
         typeVerified: correspondence.typeVerified,
         checks: correspondence.checks,
-        verifiedAt: new Date().toISOString()
+        verifiedAt: new Date().toISOString(),
       },
       adminApproval: {
         status: "pending",
         reviewedAt: null,
         reviewedBy: null,
-        notes: ""
-      }
+        notes: "",
+      },
     };
 
     toast(`Documento oficial de prueba cargado y validado automáticamente.`);
@@ -583,19 +631,18 @@ export function handleDocSampleLoad(docType) {
   }, 350);
 }
 
-
 // Eventos de Subida de Archivos (Inputs)
-inputDocDni.addEventListener("change", e => {
+inputDocDni.addEventListener("change", (e) => {
   if (e.target.files && e.target.files[0]) {
     handleDocFileUpload(e.target.files[0], "dni");
   }
 });
-inputDocBank.addEventListener("change", e => {
+inputDocBank.addEventListener("change", (e) => {
   if (e.target.files && e.target.files[0]) {
     handleDocFileUpload(e.target.files[0], "bankReceipt");
   }
 });
-inputDocDeed.addEventListener("change", e => {
+inputDocDeed.addEventListener("change", (e) => {
   if (e.target.files && e.target.files[0]) {
     handleDocFileUpload(e.target.files[0], "propertyDeed");
   }
@@ -603,23 +650,23 @@ inputDocDeed.addEventListener("change", e => {
 
 // Drag and Drop en Dropzones
 export function setupDropzone(dropzoneEl, docType) {
-  ["dragenter", "dragover"].forEach(eventName => {
-    dropzoneEl.addEventListener(eventName, e => {
+  ["dragenter", "dragover"].forEach((eventName) => {
+    dropzoneEl.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
       dropzoneEl.classList.add("dragover");
     });
   });
 
-  ["dragleave", "drop"].forEach(eventName => {
-    dropzoneEl.addEventListener(eventName, e => {
+  ["dragleave", "drop"].forEach((eventName) => {
+    dropzoneEl.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
       dropzoneEl.classList.remove("dragover");
     });
   });
 
-  dropzoneEl.addEventListener("drop", e => {
+  dropzoneEl.addEventListener("drop", (e) => {
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       handleDocFileUpload(files[0], docType);
@@ -667,28 +714,34 @@ export function openDocViewer(entity, docKey, docObj = null) {
       titular = `${entity.name} ${entity.surname} (${entity.documentId || entity.dni || "Inquilino"})`;
     } else if (entity.name) {
       eyebrow = `EXPEDIENTE: ${entity.communityName || "ASOCIACIÓN"}`;
-      titular = `${entity.name} ${entity.surname || ""} ${entity.dni ? `(${entity.dni})` : ""}`.trim();
+      titular =
+        `${entity.name} ${entity.surname || ""} ${entity.dni ? `(${entity.dni})` : ""}`.trim();
     }
   }
 
   if (docViewerEyebrow) docViewerEyebrow.textContent = eyebrow;
   if (docViewerTitle) docViewerTitle.textContent = doc.title || doc.fileName || "Documento";
   if (docViewerOwner) docViewerOwner.textContent = titular || "Expediente general";
-  if (docViewerFilename) docViewerFilename.textContent = `${doc.fileName} (${Math.round((doc.fileSize || 0) / 1024)} KB)`;
-  if (docViewerDate) docViewerDate.textContent = doc.uploadedAt || new Date().toLocaleString("es-ES");
+  if (docViewerFilename)
+    docViewerFilename.textContent = `${doc.fileName} (${Math.round((doc.fileSize || 0) / 1024)} KB)`;
+  if (docViewerDate)
+    docViewerDate.textContent = doc.uploadedAt || new Date().toLocaleString("es-ES");
 
   const score = doc.autoValidation?.legibilityScore ?? (doc.isSample ? 98 : null);
   if (docViewerScoreBar) {
     docViewerScoreBar.style.width = score !== null ? `${score}%` : "0%";
   }
   if (docViewerScoreText) {
-    docViewerScoreText.textContent = doc.autoValidation?.legibilityStatus || (score !== null ? `${score}% (Óptima)` : "Revisión manual pendiente");
+    docViewerScoreText.textContent =
+      doc.autoValidation?.legibilityStatus ||
+      (score !== null ? `${score}% (Óptima)` : "Revisión manual pendiente");
   }
 
   if (checksListEl) {
     checksListEl.replaceChildren();
     const note = document.createElement("li");
-    note.textContent = "El sistema verifica el formato y legibilidad del archivo. La validación legal requiere revisión administrativa.";
+    note.textContent =
+      "El sistema verifica el formato y legibilidad del archivo. La validación legal requiere revisión administrativa.";
     checksListEl.append(note);
   }
 
@@ -696,8 +749,8 @@ export function openDocViewer(entity, docKey, docObj = null) {
     const isApproved = doc.adminApproval?.status === "approved";
     const isRejected = doc.adminApproval?.status === "rejected";
     approvalBox.innerHTML = sanitizeHtml(`
-      <span class="status-badge ${isApproved ? "doc-approved" : (isRejected ? "doc-rejected" : "doc-pending-admin")}">
-        ${isApproved ? "✓ Aprobado por Administrador" : (isRejected ? "✗ Rechazado" : "⏳ Pendiente de resolución administrativa")}
+      <span class="status-badge ${isApproved ? "doc-approved" : isRejected ? "doc-rejected" : "doc-pending-admin"}">
+        ${isApproved ? "✓ Aprobado por Administrador" : isRejected ? "✗ Rechazado" : "⏳ Pendiente de resolución administrativa"}
       </span>
     `);
   }
@@ -706,7 +759,9 @@ export function openDocViewer(entity, docKey, docObj = null) {
     previewPane.replaceChildren();
     const previewUrl = documentUrl(doc.dataUrl || doc.url);
     if (previewUrl) {
-      const isPdf = doc.fileType === "application/pdf" || (doc.fileName && doc.fileName.toLowerCase().endsWith(".pdf"));
+      const isPdf =
+        doc.fileType === "application/pdf" ||
+        (doc.fileName && doc.fileName.toLowerCase().endsWith(".pdf"));
       const el = document.createElement(isPdf ? "iframe" : "img");
       if (el.tagName === "IFRAME") {
         el.setAttribute("sandbox", "");
@@ -731,7 +786,8 @@ export function openDocViewer(entity, docKey, docObj = null) {
   }
 
   if (docViewerQuickApproveBtn) {
-    const canApprove = entity?.id && entity?.dni && hasPermission("document:approve", entity?.id) && !doc.isSample;
+    const canApprove =
+      entity?.id && entity?.dni && hasPermission("document:approve", entity?.id) && !doc.isSample;
     docViewerQuickApproveBtn.hidden = !canApprove;
     if (canApprove) {
       docViewerQuickApproveBtn.onclick = async () => {
@@ -740,12 +796,15 @@ export function openDocViewer(entity, docKey, docObj = null) {
           status: "approved",
           reviewedAt: new Date().toLocaleString("es-ES"),
           reviewedBy: "Administrador",
-          notes: "Aprobación individual desde visor."
+          notes: "Aprobación individual desde visor.",
         };
-        const savedOwner = state.owners.find(o => o.id === entity.id);
+        const savedOwner = state.owners.find((o) => o.id === entity.id);
         if (savedOwner) {
           try {
-            await api.updateOwner(entity.id, { ...savedOwner, documents: { ...savedOwner.documents, [docKey]: doc } });
+            await api.updateOwner(entity.id, {
+              ...savedOwner,
+              documents: { ...savedOwner.documents, [docKey]: doc },
+            });
             await refreshState();
           } catch (error) {
             toast(error.message);
@@ -766,7 +825,11 @@ export function openDocViewer(entity, docKey, docObj = null) {
 
 const closeDocViewerDialogBtn = document.querySelector("#close-doc-viewer-dialog");
 const closeDocViewerBtn = document.querySelector("#close-doc-viewer-btn");
-if (closeDocViewerDialogBtn) closeDocViewerDialogBtn.addEventListener("click", () => document.querySelector("#doc-viewer-dialog")?.close());
-if (closeDocViewerBtn) closeDocViewerBtn.addEventListener("click", () => document.querySelector("#doc-viewer-dialog")?.close());
-
-
+if (closeDocViewerDialogBtn)
+  closeDocViewerDialogBtn.addEventListener("click", () =>
+    document.querySelector("#doc-viewer-dialog")?.close(),
+  );
+if (closeDocViewerBtn)
+  closeDocViewerBtn.addEventListener("click", () =>
+    document.querySelector("#doc-viewer-dialog")?.close(),
+  );

@@ -31,9 +31,7 @@ const date = (value) =>
 const local = (value) => {
   if (!value) return "";
   const d = new Date(value);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 const iso = (value) => (value ? new Date(value).toISOString() : "");
 let metadata = null,
@@ -96,8 +94,7 @@ async function action(fn, button) {
   try {
     await fn();
   } catch (error) {
-    if ($("#comm-error") && dialog.open)
-      $("#comm-error").textContent = error.message;
+    if ($("#comm-error") && dialog.open) $("#comm-error").textContent = error.message;
     else toast(error.message);
   } finally {
     if (button) button.disabled = false;
@@ -105,14 +102,9 @@ async function action(fn, button) {
 }
 function updateBadge() {
   const count = posts.filter(
-    (p) =>
-      p.recipient &&
-      !p.recipient.readAt &&
-      !["draft", "scheduled"].includes(p.phase),
+    (p) => p.recipient && !p.recipient.readAt && !["draft", "scheduled"].includes(p.phase),
   ).length;
-  for (const el of document.querySelectorAll(
-    "[data-comm-unread],#communication-unread",
-  )) {
+  for (const el of document.querySelectorAll("[data-comm-unread],#communication-unread")) {
     el.textContent = count;
     el.hidden = count === 0;
   }
@@ -155,8 +147,7 @@ export function renderCommunication() {
   });
 }
 setInterval(() => {
-  if (state.currentUserId && !document.hidden)
-    refreshCommunication().catch(() => {});
+  if (state.currentUserId && !document.hidden) refreshCommunication().catch(() => {});
 }, 30000);
 window.addEventListener("focus", () => {
   if (state.currentUserId) refreshCommunication().catch(() => {});
@@ -172,8 +163,7 @@ function filtered() {
         (!community || p.communityId === community) &&
         (!type || p.type === type) &&
         (view !== "meetings" || p.type === "meeting") &&
-        (!search ||
-          `${p.title} ${p.body}`.toLocaleLowerCase().includes(search)) &&
+        (!search || `${p.title} ${p.body}`.toLocaleLowerCase().includes(search)) &&
         (status === "all" ||
           (status === "current" && ["active", "upcoming"].includes(p.phase)) ||
           (status === "unread" && p.recipient && !p.recipient.readAt) ||
@@ -181,8 +171,7 @@ function filtered() {
     )
     .sort(
       (a, b) =>
-        Number(b.pinned) - Number(a.pinned) ||
-        Date.parse(b.publishAt) - Date.parse(a.publishAt),
+        Number(b.pinned) - Number(a.pinned) || Date.parse(b.publishAt) - Date.parse(a.publishAt),
     );
 }
 function card(p) {
@@ -208,8 +197,7 @@ function calendar(list) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     const dayPosts = list.filter(
-      (p) =>
-        p.startsAt && new Date(p.startsAt).toDateString() === d.toDateString(),
+      (p) => p.startsAt && new Date(p.startsAt).toDateString() === d.toDateString(),
     );
     return `<div class="comm-calendar-day ${d.getMonth() !== month.getMonth() ? "comm-other-month" : ""}"><span>${d.getDate()}</span>${dayPosts.map((p) => `<button type="button" data-open-post="${h(p.id)}">${h(new Date(p.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }))} ${h(p.title)}</button>`).join("")}</div>`;
   });
@@ -239,17 +227,11 @@ $("#comm-content").addEventListener("click", (e) => {
   if (open) action(() => openPost(open.dataset.openPost), open);
   const move = e.target.closest("[data-month]");
   if (move) {
-    month = new Date(
-      month.getFullYear(),
-      month.getMonth() + Number(move.dataset.month),
-      1,
-    );
+    month = new Date(month.getFullYear(), month.getMonth() + Number(move.dataset.month), 1);
     draw();
   }
 });
-$("#comm-refresh").addEventListener("click", (e) =>
-  action(refreshCommunication, e.currentTarget),
-);
+$("#comm-refresh").addEventListener("click", (e) => action(refreshCommunication, e.currentTarget));
 $("#comm-new").addEventListener("click", () => openEditor());
 $("#comm-inbox-link").addEventListener("click", (e) => {
   e.preventDefault();
@@ -279,8 +261,7 @@ $("#comm-inbox-link").addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   const tabs = e.target.closest(".comm-tabs");
-  if (!tabs || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
-    return;
+  if (!tabs || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
   const buttons = [...tabs.querySelectorAll('[role="tab"]')];
   const index = buttons.indexOf(e.target);
   if (index < 0) return;
@@ -290,8 +271,7 @@ document.addEventListener("keydown", (e) => {
       ? 0
       : e.key === "End"
         ? buttons.length - 1
-        : (index + (e.key === "ArrowRight" ? 1 : -1) + buttons.length) %
-          buttons.length;
+        : (index + (e.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
   buttons[next].click();
   buttons[next].focus();
 });
@@ -327,9 +307,7 @@ function openEditor(post = null) {
     post ? "Editar publicación" : "Nueva publicación",
     `<form id="comm-editor" novalidate><ol class="comm-steps"><li data-step-label="0">1. Contenido</li><li data-step-label="1">2. Destinatarios</li><li data-step-label="2">3. Revisar y publicar</li></ol>
     <div data-editor-step="0"><div class="comm-form-grid"><label>Comunidad<select name="communityId" ${post ? "disabled" : ""}>${options(
-      metadata.communities
-        .filter((c) => c.canManage)
-        .map((c) => [c.id, c.name]),
+      metadata.communities.filter((c) => c.canManage).map((c) => [c.id, c.name]),
       communityId,
     )}</select></label><label>Tipo<select name="type">${options(Object.entries(types), post?.type || "notice")}</select></label>${input("title", "Título *", post?.title || "", "text", 'required maxlength="180"')}<label>Prioridad<select name="priority">${options(
       [
@@ -358,9 +336,7 @@ function openEditor(post = null) {
     <div class="comm-dialog-footer"><button type="button" class="secondary-button" id="comm-prev">Anterior</button><button type="button" class="primary-button" id="comm-next">Siguiente</button><button type="submit" class="primary-button" id="comm-save" hidden>Guardar publicación</button></div></form>`,
   );
   const form = $("#comm-editor");
-  form.elements.communityId.addEventListener("change", () =>
-    audienceSelectors(),
-  );
+  form.elements.communityId.addEventListener("change", () => audienceSelectors());
   form.elements.audienceMode.addEventListener("change", toggleEditorFields);
   for (const name of ["type", "hasPoll"])
     form.elements[name].addEventListener("change", toggleEditorFields);
@@ -423,29 +399,19 @@ function openEditor(post = null) {
       editorPost = null;
       await refreshCommunication();
       await openPost(result.id);
-      toast(
-        payload.status === "draft"
-          ? "Borrador guardado."
-          : "Publicación guardada.",
-      );
+      toast(payload.status === "draft" ? "Borrador guardado." : "Publicación guardada.");
     }, $("#comm-save"));
   });
   editorSnapshot = JSON.stringify(editorData());
 }
-function audienceSelectors(
-  a = { ownerIds: [], tenantIds: [], propertyIds: [] },
-) {
+function audienceSelectors(a = { ownerIds: [], tenantIds: [], propertyIds: [] }) {
   const selector = metadata.selectors.find(
     (s) => s.communityId === $("#comm-editor").elements.communityId.value,
   );
   $("#comm-audience-selectors").innerHTML = `<div class="comm-form-grid">${[
     ["ownerIds", "Propietarios", selector?.owners || []],
     ["tenantIds", "Inquilinos", selector?.tenants || []],
-    [
-      "propertyIds",
-      "Inmuebles (propietarios e inquilinos)",
-      selector?.properties || [],
-    ],
+    ["propertyIds", "Inmuebles (propietarios e inquilinos)", selector?.properties || []],
   ]
     .map(
       ([key, label, rows]) =>
@@ -466,8 +432,7 @@ function toggleEditorFields() {
   $("#comm-poll-fields").hidden = !f.elements.hasPoll.checked;
   for (const name of ["pollQuestion", "pollOptions", "pollClosesAt"])
     f.elements[name].required = f.elements.hasPoll.checked;
-  $("#comm-audience-selectors").hidden =
-    f.elements.audienceMode.value !== "selected";
+  $("#comm-audience-selectors").hidden = f.elements.audienceMode.value !== "selected";
 }
 function showStep(step) {
   editorStep = Math.max(0, Math.min(2, step));
@@ -489,8 +454,7 @@ function validateEditorStep() {
   for (const el of controls) {
     if (el.disabled || el.offsetParent === null || el.checkValidity()) continue;
     const campo = document.querySelector("#comm-error");
-    if (campo)
-      campo.textContent = `${fieldLabel(el)}: ${mensajeDeValidez(el)}.`;
+    if (campo) campo.textContent = `${fieldLabel(el)}: ${mensajeDeValidez(el)}.`;
     return false;
   }
   return true;
@@ -502,9 +466,9 @@ function editorData() {
     checked = (name) => f.elements[name].checked;
   const a = { mode: value("audienceMode") };
   for (const key of ["ownerIds", "tenantIds", "propertyIds"])
-    a[key] = [
-      ...f.querySelectorAll(`[data-audience-list="${key}"] input:checked`),
-    ].map((el) => el.value);
+    a[key] = [...f.querySelectorAll(`[data-audience-list="${key}"] input:checked`)].map(
+      (el) => el.value,
+    );
   return {
     ...(editorPost ? { id: editorPost.id, version: editorPost.version } : {}),
     communityId: value("communityId"),
@@ -513,9 +477,7 @@ function editorData() {
     body: value("body"),
     priority: value("priority"),
     status: value("status"),
-    publishAt: editorPost?.distributed
-      ? editorPost.publishAt
-      : iso(value("publishAt")),
+    publishAt: editorPost?.distributed ? editorPost.publishAt : iso(value("publishAt")),
     startsAt: iso(value("startsAt")),
     endsAt: iso(value("endsAt")),
     archiveAt: iso(value("archiveAt")),
@@ -616,9 +578,7 @@ async function openPost(id, tab = "publication") {
       el.hidden = el.dataset.detailPanel !== detailTab;
     });
   });
-  dialog
-    .querySelector("[data-edit-post]")
-    ?.addEventListener("click", () => openEditor(p));
+  dialog.querySelector("[data-edit-post]")?.addEventListener("click", () => openEditor(p));
   if (["cancelled", "archived"].includes(p.phase)) {
     const receipt = dialog.querySelector("[data-receipt]");
     if (receipt) {
@@ -626,10 +586,7 @@ async function openPost(id, tab = "publication") {
       receipt.textContent = "La recepción está cerrada";
     }
   }
-  if (
-    ["cancelled", "archived"].includes(p.phase) ||
-    Date.now() >= Date.parse(p.endsAt)
-  ) {
+  if (["cancelled", "archived"].includes(p.phase) || Date.now() >= Date.parse(p.endsAt)) {
     dialog.querySelectorAll("[data-rsvp]").forEach((button) => {
       button.disabled = true;
       button.title = "La reunión ya no admite confirmaciones.";
@@ -644,16 +601,11 @@ async function openPost(id, tab = "publication") {
   dialog.querySelector("#comm-ballot")?.addEventListener("submit", (e) => {
     e.preventDefault();
     action(async () => {
-      const choices = [
-        ...e.target.querySelectorAll('[name="choice"]:checked'),
-      ].map((el) => Number(el.value));
+      const choices = [...e.target.querySelectorAll('[name="choice"]:checked')].map((el) =>
+        Number(el.value),
+      );
       if (!choices.length) throw new Error("Elige al menos una opción.");
-      if (
-        !window.confirm(
-          "¿Confirmas tu respuesta? Una vez enviada no se puede cambiar.",
-        )
-      )
-        return;
+      if (!window.confirm("¿Confirmas tu respuesta? Una vez enviada no se puede cambiar.")) return;
       await request(`/posts/${p.id}/ballot`, "POST", { choices });
       await openPost(p.id, "participation");
     }, e.submitter);
@@ -671,10 +623,7 @@ async function openPost(id, tab = "publication") {
     b.addEventListener("click", () =>
       action(async () => {
         if (!window.confirm("¿Eliminar este comentario?")) return;
-        await request(
-          `/posts/${p.id}/comments/${b.dataset.deleteComment}`,
-          "DELETE",
-        );
+        await request(`/posts/${p.id}/comments/${b.dataset.deleteComment}`, "DELETE");
         await openPost(p.id, "participation");
       }, b),
     ),
@@ -704,8 +653,7 @@ async function openPost(id, tab = "publication") {
       action(async () => {
         const file = form.elements.file.files[0];
         if (!file) throw new Error("Selecciona un archivo.");
-        if (file.size > 10 * 1024 * 1024)
-          throw new Error("El archivo supera los 10 MB.");
+        if (file.size > 10 * 1024 * 1024) throw new Error("El archivo supera los 10 MB.");
         const payload = new FormData();
         payload.append("kind", form.dataset.uploadForm);
         payload.append("file", file);
@@ -723,11 +671,7 @@ async function openPost(id, tab = "publication") {
           )
         )
           return;
-        await request(
-          `/posts/${p.id}/files/${b.dataset.publishMinutes}/final`,
-          "POST",
-          {},
-        );
+        await request(`/posts/${p.id}/files/${b.dataset.publishMinutes}/final`, "POST", {});
         await refreshCommunication();
         await openPost(p.id, "meeting");
       }, b),
@@ -742,21 +686,19 @@ async function openPost(id, tab = "publication") {
       }, b),
     ),
   );
-  dialog
-    .querySelector("[data-retry-deliveries]")
-    ?.addEventListener("click", (e) =>
-      action(async () => {
-        if (
-          !window.confirm(
-            "Los envíos con respuesta incierta podrían haber llegado. Revisa el panel del proveedor antes de reintentar. ¿Reintentar los envíos fallidos, omitidos o inciertos?",
-          )
+  dialog.querySelector("[data-retry-deliveries]")?.addEventListener("click", (e) =>
+    action(async () => {
+      if (
+        !window.confirm(
+          "Los envíos con respuesta incierta podrían haber llegado. Revisa el panel del proveedor antes de reintentar. ¿Reintentar los envíos fallidos, omitidos o inciertos?",
         )
-          return;
-        const result = await request(`/posts/${p.id}/retry`, "POST", {});
-        toast(`${result.retried} envíos pendientes de reintento.`);
-        await openPost(p.id, "tracking");
-      }, e.currentTarget),
-    );
+      )
+        return;
+      const result = await request(`/posts/${p.id}/retry`, "POST", {});
+      toast(`${result.retried} envíos pendientes de reintento.`);
+      await openPost(p.id, "tracking");
+    }, e.currentTarget),
+  );
 }
 function uploadForm(kind) {
   return `<form data-upload-form="${kind}" class="comm-upload"><label>${kind === "minutes" ? "Subir una nueva versión del acta (borrador)" : "Adjuntar documento"}<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png" required></label><button class="secondary-button" type="submit">Subir archivo</button><small class="comm-muted">PDF, JPG o PNG · Hasta 10 MB por archivo.</small></form>`;
@@ -782,9 +724,7 @@ function puedeParticipar(p) {
 }
 
 function participationView(p) {
-  const interactive = !["draft", "scheduled", "cancelled", "archived"].includes(
-    p.phase,
-  );
+  const interactive = !["draft", "scheduled", "cancelled", "archived"].includes(p.phase);
   // La parte social (encuestas y comentarios con nombre) se controla con el
   // permiso comm:participacion; sin él la publicación es solo informativa.
   const participa = puedeParticipar(p);
@@ -919,9 +859,7 @@ export async function renderProvidersPanel(container) {
           token: value(`${c}Token`),
           from: value(`${c}From`),
           clearSecret: checked(`${c}Clear`),
-          ...(c === "whatsapp"
-            ? { contentSid: value("whatsappContentSid") }
-            : {}),
+          ...(c === "whatsapp" ? { contentSid: value("whatsappContentSid") } : {}),
         };
       await request("/providers", "PUT", payload);
       await renderProvidersPanel(container);

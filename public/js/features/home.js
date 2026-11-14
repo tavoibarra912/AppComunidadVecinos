@@ -137,9 +137,7 @@ function ensureFeeSummary() {
   const key = feeKey();
   if (feeSummaryKey === key) return;
   feeSummaryLoading = true;
-  const query = selectedCommunity
-    ? `?communityId=${encodeURIComponent(selectedCommunity)}`
-    : "";
+  const query = selectedCommunity ? `?communityId=${encodeURIComponent(selectedCommunity)}` : "";
   api
     .fees(`/summary${query}`)
     .then((data) => {
@@ -169,21 +167,16 @@ export function renderHomeDashboard() {
   }
   const snapshot = getCommunicationSnapshot();
   let d = dashboardData(state, snapshot, selectedCommunity);
-  if (
-    selectedCommunity &&
-    !d.availableCommunities.some((c) => c.id === selectedCommunity)
-  ) {
+  if (selectedCommunity && !d.availableCommunities.some((c) => c.id === selectedCommunity)) {
     selectedCommunity = "";
     d = dashboardData(state, snapshot);
   }
   const now = new Date(),
     brand = readInjectedBrand();
-  const canManage = d.communities.some((c) =>
-    hasPermission("community:manage", c.id) ||
-    hasPermission("comm:publicar", c.id),
+  const canManage = d.communities.some(
+    (c) => hasPermission("community:manage", c.id) || hasPermission("comm:publicar", c.id),
   );
-  const needsAttention =
-    d.ownerStates.none + d.ownerStates.incomplete + d.ownerStates.rejected;
+  const needsAttention = d.ownerStates.none + d.ownerStates.incomplete + d.ownerStates.rejected;
   const ownContractMode = d.personal && d.tenants.length > 0;
   const metrics = [
     metric(
@@ -206,11 +199,7 @@ export function renderHomeDashboard() {
           ownContractMode
             ? `${d.contracts.upcoming} próximos · ${d.contracts.ended} finalizados${d.contracts.unknown ? ` · ${d.contracts.unknown} sin fechas válidas` : ""}`
             : "Perfiles vinculados a tu cuenta",
-          ownContractMode
-            ? d.ownTenants.length
-              ? "contract"
-              : "tenants"
-            : "profile",
+          ownContractMode ? (d.ownTenants.length ? "contract" : "tenants") : "profile",
           ownContractMode || d.ownOwners.length > 0,
         )
       : metric(
@@ -222,9 +211,7 @@ export function renderHomeDashboard() {
         ),
     d.personal
       ? metric(
-          d.docOwners.length
-            ? "Expedientes por completar"
-            : "Documentos de contrato",
+          d.docOwners.length ? "Expedientes por completar" : "Documentos de contrato",
           d.docOwners.length ? needsAttention : d.tenantDocuments.length,
           d.docOwners.length
             ? "Sin archivos, incompletos o con correcciones"
@@ -257,25 +244,20 @@ export function renderHomeDashboard() {
     metric(
       "Comunicaciones sin leer",
       snapshot ? d.unreadPosts : "—",
-      snapshot
-        ? "Avisos dirigidos a tu cuenta"
-        : "Comunicaciones todavía sin cargar",
+      snapshot ? "Avisos dirigidos a tu cuenta" : "Comunicaciones todavía sin cargar",
       "communications",
     ),
   ];
   const actions = [];
   if (hasPermission("community:create"))
     actions.push(button("Nueva comunidad", "new-community", "", true));
-  if (hasPermission("owner:create"))
-    actions.push(button("Nuevo propietario", "new-owner"));
+  if (hasPermission("owner:create")) actions.push(button("Nuevo propietario", "new-owner"));
   if (canManage) actions.push(button("Nueva publicación", "new-post"));
   if (d.personal) {
     if (d.communities.length)
       actions.push(
         button(
-          d.communities.length === 1
-            ? "Ver mi comunidad"
-            : "Ver mis comunidades",
+          d.communities.length === 1 ? "Ver mi comunidad" : "Ver mis comunidades",
           "community-view",
           "",
           true,
@@ -283,8 +265,7 @@ export function renderHomeDashboard() {
       );
     if (d.ownOwners.length) actions.push(button("Mi expediente", "profile"));
     if (d.ownTenants.length) actions.push(button("Mi contrato", "contract"));
-    if (!actions.length)
-      actions.push(button("Ver mi cuenta", "account", "", true));
+    if (!actions.length) actions.push(button("Ver mi cuenta", "account", "", true));
   }
   const inboxAction = d.personal ? "owner-inbox" : "admin-inbox";
   const inboxAllowed = d.personal
@@ -334,8 +315,7 @@ root?.addEventListener("click", async (event) => {
         navigateToSection(d.personal ? "#cuotas?vista=personal" : "#cuotas");
         break;
       case "community-view":
-        if (d.communities.length === 1)
-          openCommunityEditor(d.communities[0].id, "details", true);
+        if (d.communities.length === 1) openCommunityEditor(d.communities[0].id, "details", true);
         else navigateToSection("#comunidades");
         break;
       case "properties":
@@ -351,9 +331,7 @@ root?.addEventListener("click", async (event) => {
         navigateToSection("#comunicacion");
         break;
       case "statutes": {
-        const community =
-          d.communities.find((c) => c.id === selectedCommunity) ||
-          d.communities[0];
+        const community = d.communities.find((c) => c.id === selectedCommunity) || d.communities[0];
         if (!community) navigateToSection("#comunidades");
         else if (hasPermission("community:manage", community.id))
           openCommunityEditor(community.id, "statutes");
@@ -375,10 +353,7 @@ root?.addEventListener("click", async (event) => {
       case "profile":
         if (d.ownOwners.length)
           openOwnerDetail(
-            (
-              d.owners.find((o) => o.userId === state.currentUserId) ||
-              d.ownOwners[0]
-            ).id,
+            (d.owners.find((o) => o.userId === state.currentUserId) || d.ownOwners[0]).id,
           );
         else navigateToSection("#propietarios");
         break;

@@ -62,12 +62,10 @@ test("los imports locales usan exports que existen", () => {
     for (const statement of ast.body) {
       if (statement.type === "ExportDefaultDeclaration") exports.add("default");
       if (statement.type === "ExportNamedDeclaration") {
-        if (statement.declaration?.id)
-          exports.add(statement.declaration.id.name);
+        if (statement.declaration?.id) exports.add(statement.declaration.id.name);
         for (const declaration of statement.declaration?.declarations || [])
           exports.add(declaration.id.name);
-        for (const specifier of statement.specifiers)
-          exports.add(specifier.exported.name);
+        for (const specifier of statement.specifiers) exports.add(specifier.exported.name);
       }
     }
     modules.set(path.resolve(file), { ast, exports });
@@ -75,8 +73,7 @@ test("los imports locales usan exports que existen", () => {
   const problems = [];
   for (const [file, { ast }] of modules) {
     for (const statement of ast.body.filter(
-      (node) =>
-        node.type === "ImportDeclaration" && node.source.value.startsWith("."),
+      (node) => node.type === "ImportDeclaration" && node.source.value.startsWith("."),
     )) {
       const target = path.resolve(path.dirname(file), statement.source.value);
       if (!modules.has(target)) {
@@ -86,9 +83,7 @@ test("los imports locales usan exports que existen", () => {
       for (const specifier of statement.specifiers) {
         if (specifier.type === "ImportNamespaceSpecifier") continue;
         const name =
-          specifier.type === "ImportDefaultSpecifier"
-            ? "default"
-            : specifier.imported.name;
+          specifier.type === "ImportDefaultSpecifier" ? "default" : specifier.imported.name;
         if (!modules.get(target).exports.has(name))
           problems.push(`${file}: falta export ${name} en ${target}`);
       }

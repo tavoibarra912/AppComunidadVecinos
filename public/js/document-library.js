@@ -5,16 +5,12 @@ import { toast, validateDocumentFiles } from "./utils.js";
 const ICONS = {
   folder:
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
-  file:
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
-  eye:
-    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+  file: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
+  eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
   download:
     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
-  edit:
-    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>',
-  move:
-    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>',
+  edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>',
+  move: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>',
   trash:
     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>',
   replace:
@@ -40,7 +36,10 @@ const formatDate = (value) => {
     : date.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 const extensionOf = (name) =>
-  String(name || "").split(".").pop()?.toUpperCase() || "ARCHIVO";
+  String(name || "")
+    .split(".")
+    .pop()
+    ?.toUpperCase() || "ARCHIVO";
 const typeLabel = (doc) => extensionOf(doc.fileName);
 
 function pathFor(folders, folderId) {
@@ -96,14 +95,23 @@ function makeDialog(title, eyebrow, contentHtml, footerHtml) {
     <div class="dialog-actions">${footerHtml}</div>
   </div>`;
   document.body.append(dialog);
-  dialog.querySelector("[data-library-dialog-close]")?.addEventListener("click", () => dialog.close());
+  dialog
+    .querySelector("[data-library-dialog-close]")
+    ?.addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", () => dialog.remove(), { once: true });
   closeOnBackdrop(dialog);
   dialog.showModal();
   return dialog;
 }
 
-function openTextDialog({ title, eyebrow = "BIBLIOTECA DOCUMENTAL", label, value = "", submitLabel = "Guardar", onSubmit }) {
+function openTextDialog({
+  title,
+  eyebrow = "BIBLIOTECA DOCUMENTAL",
+  label,
+  value = "",
+  submitLabel = "Guardar",
+  onSubmit,
+}) {
   const dialog = makeDialog(
     title,
     eyebrow,
@@ -131,9 +139,9 @@ function openTextDialog({ title, eyebrow = "BIBLIOTECA DOCUMENTAL", label, value
       button.disabled = false;
     }
   };
-  dialog.querySelectorAll("[data-library-dialog-close]").forEach((button) =>
-    button.addEventListener("click", () => dialog.close()),
-  );
+  dialog
+    .querySelectorAll("[data-library-dialog-close]")
+    .forEach((button) => button.addEventListener("click", () => dialog.close()));
   dialog.querySelector("[data-library-dialog-submit]").addEventListener("click", submit);
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -145,7 +153,12 @@ function openTextDialog({ title, eyebrow = "BIBLIOTECA DOCUMENTAL", label, value
   input.select();
 }
 
-function openConfirmDialog({ title, message, confirmLabel = "Eliminar", eyebrow = "CONFIRMAR ACCIÓN" }) {
+function openConfirmDialog({
+  title,
+  message,
+  confirmLabel = "Eliminar",
+  eyebrow = "CONFIRMAR ACCIÓN",
+}) {
   return new Promise((resolve) => {
     let confirmed = false;
     const dialog = makeDialog(
@@ -155,9 +168,9 @@ function openConfirmDialog({ title, message, confirmLabel = "Eliminar", eyebrow 
       `<button class="secondary-button" type="button" data-library-dialog-close>Cancelar</button>
        <button class="primary-button doc-library-danger-button" type="button" data-library-dialog-confirm>${h(confirmLabel)}</button>`,
     );
-    dialog.querySelectorAll("[data-library-dialog-close]").forEach((button) =>
-      button.addEventListener("click", () => dialog.close()),
-    );
+    dialog
+      .querySelectorAll("[data-library-dialog-close]")
+      .forEach((button) => button.addEventListener("click", () => dialog.close()));
     dialog.querySelector("[data-library-dialog-confirm]").addEventListener("click", () => {
       confirmed = true;
       dialog.close();
@@ -173,8 +186,7 @@ function openMoveDialog({ itemLabel, folders, currentFolderId, excludeIds, onSub
   const options = [`<option value="">Raíz</option>`]
     .concat(
       available.map(
-        (folder) =>
-          `<option value="${h(folder.id)}">${h(pathLabel(folders, folder.id))}</option>`,
+        (folder) => `<option value="${h(folder.id)}">${h(pathLabel(folders, folder.id))}</option>`,
       ),
     )
     .join("");
@@ -190,9 +202,9 @@ function openMoveDialog({ itemLabel, folders, currentFolderId, excludeIds, onSub
   const select = dialog.querySelector("[name=library-target]");
   select.value = currentFolderId || "";
   const error = dialog.querySelector(".form-error");
-  dialog.querySelectorAll("[data-library-dialog-close]").forEach((button) =>
-    button.addEventListener("click", () => dialog.close()),
-  );
+  dialog
+    .querySelectorAll("[data-library-dialog-close]")
+    .forEach((button) => button.addEventListener("click", () => dialog.close()));
   dialog.querySelector("[data-library-dialog-submit]").addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -219,9 +231,9 @@ function openPreviewDialog(doc) {
      <button class="primary-button" type="button" data-library-dialog-close>Cerrar</button>`,
   );
   dialog.classList.add("doc-preview-dialog");
-  dialog.querySelectorAll("[data-library-dialog-close]").forEach((button) =>
-    button.addEventListener("click", () => dialog.close()),
-  );
+  dialog
+    .querySelectorAll("[data-library-dialog-close]")
+    .forEach((button) => button.addEventListener("click", () => dialog.close()));
 }
 
 function documentMeta(doc) {
@@ -251,7 +263,8 @@ export function createDocumentLibrary(options) {
     return value === undefined ? fallback : value;
   };
   const entityId = () => {
-    const value = typeof options.getEntityId === "function" ? options.getEntityId() : options.entityId;
+    const value =
+      typeof options.getEntityId === "function" ? options.getEntityId() : options.entityId;
     return String(value || "");
   };
   const canWrite = () => !!option("canWrite", false) && !!entityId();
@@ -345,7 +358,7 @@ export function createDocumentLibrary(options) {
       if (view.sort === "date") {
         left = kind === "folder" ? a.createdAt : a.uploadedAt;
         right = kind === "folder" ? b.createdAt : b.uploadedAt;
-        return (String(left).localeCompare(String(right))) * factor;
+        return String(left).localeCompare(String(right)) * factor;
       }
       if (view.sort === "size") {
         left = kind === "folder" ? folderSize(a.id) : Number(a.fileSize || 0);
@@ -405,7 +418,10 @@ export function createDocumentLibrary(options) {
         return `<div class="doc-library-item-actions">${item.previewUrl ? `<button type="button" data-library-action="preview" title="Vista previa">${ICONS.eye}</button>` : ""}<a href="${h(item.url)}" title="Descargar" target="_blank" rel="noopener">${ICONS.download}</a></div>`;
       return "";
     }
-    const move = kind === "document" && !foldersEnabled ? "" : `<button type="button" data-library-action="move" title="Mover a…">${ICONS.move}</button>`;
+    const move =
+      kind === "document" && !foldersEnabled
+        ? ""
+        : `<button type="button" data-library-action="move" title="Mover a…">${ICONS.move}</button>`;
     return `<div class="doc-library-item-actions">
       ${kind === "document" && item.previewUrl ? `<button type="button" data-library-action="preview" title="Vista previa">${ICONS.eye}</button>` : ""}
       ${kind === "document" ? `<a href="${h(item.url)}" title="Descargar" target="_blank" rel="noopener">${ICONS.download}</a>` : ""}
@@ -437,7 +453,9 @@ export function createDocumentLibrary(options) {
     element.className = "doc-library-item doc-library-document";
     element.dataset.documentId = doc.id;
     element.draggable = canWrite() && foldersEnabled;
-    const location = view.search ? `<span class="doc-library-location">${h(pathLabel(view.folders, doc.folderId))}</span>` : "";
+    const location = view.search
+      ? `<span class="doc-library-location">${h(pathLabel(view.folders, doc.folderId))}</span>`
+      : "";
     element.innerHTML = `<button type="button" class="doc-library-item-main" data-library-open-document>
         <span class="doc-library-item-icon">${ICONS.file}</span>
         <span class="doc-library-item-text"><strong>${h(doc.fileName)}</strong><span>${h(documentMeta(doc))}${location}</span></span>
@@ -486,8 +504,7 @@ export function createDocumentLibrary(options) {
       ? `${total} ${total === 1 ? "resultado" : "resultados"}`
       : `${view.documents.length} ${view.documents.length === 1 ? "documento" : "documentos"} · ${view.folders.length} ${view.folders.length === 1 ? "carpeta" : "carpetas"}`;
     const countEl = option("countEl", null);
-    const countTarget =
-      typeof countEl === "string" ? document.querySelector(countEl) : countEl;
+    const countTarget = typeof countEl === "string" ? document.querySelector(countEl) : countEl;
     if (countTarget) countTarget.textContent = String(view.documents.length);
   };
 
@@ -577,8 +594,10 @@ export function createDocumentLibrary(options) {
       (doc) => doc.folderId === folder.id || childIds.has(doc.folderId),
     );
     const details = [];
-    if (childIds.size) details.push(`${childIds.size} ${childIds.size === 1 ? "subcarpeta" : "subcarpetas"}`);
-    if (documents.length) details.push(`${documents.length} ${documents.length === 1 ? "documento" : "documentos"}`);
+    if (childIds.size)
+      details.push(`${childIds.size} ${childIds.size === 1 ? "subcarpeta" : "subcarpetas"}`);
+    if (documents.length)
+      details.push(`${documents.length} ${documents.length === 1 ? "documento" : "documentos"}`);
     const message = details.length
       ? `La carpeta «${h(folder.name)}» contiene ${details.join(" y ")}. Si continuás, se eliminarán definitivamente.`
       : `¿Eliminar la carpeta «${h(folder.name)}»?`;
@@ -651,7 +670,13 @@ export function createDocumentLibrary(options) {
   };
 
   const askDeleteDocument = async (doc) => {
-    if (!(await openConfirmDialog({ title: "Eliminar documento", message: `¿Eliminar «${h(doc.fileName)}»? Esta acción no se puede deshacer.` }))) return;
+    if (
+      !(await openConfirmDialog({
+        title: "Eliminar documento",
+        message: `¿Eliminar «${h(doc.fileName)}»? Esta acción no se puede deshacer.`,
+      }))
+    )
+      return;
     try {
       await api.deleteDocument(doc.id);
       view.documents = view.documents.filter((item) => item.id !== doc.id);
@@ -698,8 +723,7 @@ export function createDocumentLibrary(options) {
     }
     if (event.target.closest("[data-library-open-folder]") && folder)
       return navigateFolder(folder.id);
-    if (event.target.closest("[data-library-open-document]") && doc)
-      return openDocument(doc);
+    if (event.target.closest("[data-library-open-document]") && doc) return openDocument(doc);
   });
   content.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -757,7 +781,9 @@ export function createDocumentLibrary(options) {
   // Drag & drop: mover carpetas/documentos o subir archivos a una carpeta.
   let draggedItem = null;
   const clearDropTargets = () =>
-    root.querySelectorAll(".is-drop-target").forEach((element) => element.classList.remove("is-drop-target"));
+    root
+      .querySelectorAll(".is-drop-target")
+      .forEach((element) => element.classList.remove("is-drop-target"));
   const dropTargetFolder = (target) => {
     const element = target.closest("[data-library-drop-folder]");
     return element ? element.dataset.libraryDropFolder || "" : null;
@@ -853,5 +879,12 @@ export function createDocumentLibrary(options) {
   };
 
   setEntity(entityId());
-  return { render, refresh, setEntity, get currentFolderId() { return view.currentFolderId; } };
+  return {
+    render,
+    refresh,
+    setEntity,
+    get currentFolderId() {
+      return view.currentFolderId;
+    },
+  };
 }

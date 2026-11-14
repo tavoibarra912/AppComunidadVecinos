@@ -8,17 +8,12 @@ import { spawnSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 
 test("migración: SSO no recibe contraseñas predecibles y revoca las antiguas", async () => {
-  const directory = mkdtempSync(
-    path.join(tmpdir(), "penarrubia-migration-test-"),
-  );
+  const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-migration-test-"));
   process.env.APP_DATA_DIR = directory;
   process.env.APP_UPLOADS_DIR = path.join(directory, "uploads");
   const { db } = await import("../../src/db.js");
   const salt = "0123456789abcdef0123456789abcdef";
-  const hash = crypto
-    .createHash("sha256")
-    .update(`${salt}:sso-legacy`)
-    .digest("hex");
+  const hash = crypto.createHash("sha256").update(`${salt}:sso-legacy`).digest("hex");
   db.prepare(
     "INSERT INTO users (id,usuario,rol,ssoProvider,passwordHash) VALUES ('sso-legacy','sso-legacy','user','gmail',?)",
   ).run(`${salt}:${hash}`);
@@ -32,47 +27,34 @@ test("migración: SSO no recibe contraseñas predecibles y revoca las antiguas",
   const url = new URL("../../src/db.js", import.meta.url).href;
   const result = spawnSync(
     process.execPath,
-    [
-      "--input-type=module",
-      "-e",
-      `const {db}=await import(${JSON.stringify(url)});db.close();`,
-    ],
+    ["--input-type=module", "-e", `const {db}=await import(${JSON.stringify(url)});db.close();`],
     { env: { ...process.env, APP_DATA_DIR: directory }, encoding: "utf8" },
   );
   const check = new DatabaseSync(path.join(directory, "penarrubia.db"));
   try {
     assert.equal(result.status, 0, result.stderr);
     assert.equal(
-      check.prepare("SELECT passwordHash FROM users WHERE id='sso-empty'").get()
-        .passwordHash,
+      check.prepare("SELECT passwordHash FROM users WHERE id='sso-empty'").get().passwordHash,
       "",
     );
     assert.equal(
-      check
-        .prepare("SELECT passwordHash FROM users WHERE id='sso-legacy'")
-        .get().passwordHash,
+      check.prepare("SELECT passwordHash FROM users WHERE id='sso-legacy'").get().passwordHash,
       "",
     );
     assert.equal(
-      check
-        .prepare("SELECT COUNT(*) AS n FROM sessions WHERE userId='sso-legacy'")
-        .get().n,
+      check.prepare("SELECT COUNT(*) AS n FROM sessions WHERE userId='sso-legacy'").get().n,
       0,
     );
   } finally {
     check.close();
     assert.equal(path.dirname(directory), path.resolve(tmpdir()));
-    assert.ok(
-      path.basename(directory).startsWith("penarrubia-migration-test-"),
-    );
+    assert.ok(path.basename(directory).startsWith("penarrubia-migration-test-"));
     rmSync(directory, { recursive: true, force: true });
   }
 });
 
 test("migración: una base con documents antiguo añade columnas antes de crear el índice", () => {
-  const directory = mkdtempSync(
-    path.join(tmpdir(), "penarrubia-doc-migration-test-"),
-  );
+  const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-doc-migration-test-"));
   const dbPath = path.join(directory, "penarrubia.db");
   const legacy = new DatabaseSync(dbPath);
   legacy.exec(`
@@ -93,11 +75,7 @@ test("migración: una base con documents antiguo añade columnas antes de crear 
   const url = new URL("../../src/db.js", import.meta.url).href;
   const result = spawnSync(
     process.execPath,
-    [
-      "--input-type=module",
-      "-e",
-      `const {db}=await import(${JSON.stringify(url)});db.close();`,
-    ],
+    ["--input-type=module", "-e", `const {db}=await import(${JSON.stringify(url)});db.close();`],
     {
       env: {
         ...process.env,
@@ -118,9 +96,7 @@ test("migración: una base con documents antiguo añade columnas antes de crear 
     assert.ok(columns.includes("category"));
     assert.ok(columns.includes("uploadedBy"));
     assert.ok(columns.includes("uploadedByName"));
-    const row = check
-      .prepare("SELECT * FROM documents WHERE id='legacy-doc'")
-      .get();
+    const row = check.prepare("SELECT * FROM documents WHERE id='legacy-doc'").get();
     assert.equal(row.fileName, "Acta.pdf");
     assert.equal(row.folderId, "");
     assert.equal(row.category, "document");
@@ -138,19 +114,13 @@ test("migración: una base con documents antiguo añade columnas antes de crear 
 });
 
 test("migracion: corrige los NIF heredados de las comunidades demo sin tocar los validos", () => {
-  const directory = mkdtempSync(
-    path.join(tmpdir(), "penarrubia-community-nif-test-"),
-  );
+  const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-community-nif-test-"));
   const dbPath = path.join(directory, "penarrubia.db");
   const url = new URL("../../src/db.js", import.meta.url).href;
   const runDb = () =>
     spawnSync(
       process.execPath,
-      [
-        "--input-type=module",
-        "-e",
-        `const {db}=await import(${JSON.stringify(url)});db.close();`,
-      ],
+      ["--input-type=module", "-e", `const {db}=await import(${JSON.stringify(url)});db.close();`],
       {
         env: {
           ...process.env,
@@ -183,11 +153,7 @@ test("migracion: corrige los NIF heredados de las comunidades demo sin tocar los
       check.prepare("SELECT nif FROM communities WHERE id='com-seed-2'").get().nif,
       "H19456789",
     );
-    assert.ok(
-      check
-        .prepare("SELECT id FROM schema_migrations WHERE id='community-nif-v1'")
-        .get(),
-    );
+    assert.ok(check.prepare("SELECT id FROM schema_migrations WHERE id='community-nif-v1'").get());
   } finally {
     check.close();
     rmSync(directory, { recursive: true, force: true });
@@ -195,19 +161,13 @@ test("migracion: corrige los NIF heredados de las comunidades demo sin tocar los
 });
 
 test("migración: adapta al español de España las publicaciones demo no editadas", () => {
-  const directory = mkdtempSync(
-    path.join(tmpdir(), "penarrubia-spanish-copy-test-"),
-  );
+  const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-spanish-copy-test-"));
   const dbPath = path.join(directory, "penarrubia.db");
   const storeUrl = new URL("../../src/communication-store.js", import.meta.url).href;
   const runStore = () =>
     spawnSync(
       process.execPath,
-      [
-        "--input-type=module",
-        "-e",
-        `await import(${JSON.stringify(storeUrl)});`,
-      ],
+      ["--input-type=module", "-e", `await import(${JSON.stringify(storeUrl)});`],
       {
         env: {
           ...process.env,
@@ -239,9 +199,7 @@ test("migración: adapta al español de España las publicaciones demo no editad
     "",
     "",
   );
-  setup
-    .prepare("DELETE FROM schema_migrations WHERE id='spanish-demo-copy-v1'")
-    .run();
+  setup.prepare("DELETE FROM schema_migrations WHERE id='spanish-demo-copy-v1'").run();
   setup.close();
 
   const second = runStore();
@@ -262,9 +220,7 @@ test("migración: adapta al español de España las publicaciones demo no editad
     );
     assert.equal(custom.body, oldBody);
     assert.ok(
-      check
-        .prepare("SELECT id FROM schema_migrations WHERE id='spanish-demo-copy-v1'")
-        .get(),
+      check.prepare("SELECT id FROM schema_migrations WHERE id='spanish-demo-copy-v1'").get(),
     );
   } finally {
     check.close();

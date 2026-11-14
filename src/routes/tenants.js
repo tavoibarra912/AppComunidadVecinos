@@ -12,17 +12,23 @@ router.use((req, res, next) => {
     const error = contactError(data);
     if (error) return res.status(400).json({ error });
     if (data.documentType !== undefined) {
-      data.documentType = String(data.documentType || "DNI").trim().toUpperCase();
+      data.documentType = String(data.documentType || "DNI")
+        .trim()
+        .toUpperCase();
     }
     if (data.documentId !== undefined) {
-      data.documentId = String(data.documentId || "").trim().toUpperCase();
+      data.documentId = String(data.documentId || "")
+        .trim()
+        .toUpperCase();
       if (data.documentId) {
         const documentError = identityDocumentError(data.documentId, data.documentType || "DNI");
         if (documentError) return res.status(400).json({ error: documentError });
       }
     }
-    if (dateError(data.contractStart) || data.contractEnd && dateError(data.contractEnd)) return res.status(400).json({ error: "Las fechas del contrato no son válidas." });
-    if (data.contractEnd && data.contractEnd < data.contractStart) return res.status(400).json({ error: "El fin de contrato no puede ser anterior al inicio." });
+    if (dateError(data.contractStart) || (data.contractEnd && dateError(data.contractEnd)))
+      return res.status(400).json({ error: "Las fechas del contrato no son válidas." });
+    if (data.contractEnd && data.contractEnd < data.contractStart)
+      return res.status(400).json({ error: "El fin de contrato no puede ser anterior al inicio." });
   }
   next();
 });
@@ -37,7 +43,13 @@ function tenantPayload(tenant) {
 }
 
 router.get("/", (req, res) => {
-  res.json(db.prepare("SELECT * FROM tenants ORDER BY surname, name").all().map(tenantFromRow).map(tenantPayload));
+  res.json(
+    db
+      .prepare("SELECT * FROM tenants ORDER BY surname, name")
+      .all()
+      .map(tenantFromRow)
+      .map(tenantPayload),
+  );
 });
 
 router.get("/:id", (req, res) => {
@@ -49,7 +61,9 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   const data = req.body || {};
   if (!data.name || !data.surname) {
-    return res.status(400).json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
+    return res
+      .status(400)
+      .json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
   }
   const id = data.id || crypto.randomUUID();
   try {
@@ -68,7 +82,9 @@ router.put("/:id", (req, res) => {
   if (!existing) return res.status(404).json({ error: "Inquilino no encontrado." });
   const data = req.body || {};
   if (!data.name || !data.surname) {
-    return res.status(400).json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
+    return res
+      .status(400)
+      .json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
   }
   try {
     db.exec("BEGIN");
@@ -87,8 +103,11 @@ router.delete("/:id", (req, res) => {
   db.exec("BEGIN");
   try {
     for (const property of db.prepare("SELECT id, tenantIds FROM properties").all()) {
-      const ids = JSON.parse(property.tenantIds || "[]").filter(id => id !== existing.id);
-      db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?").run(JSON.stringify(ids), property.id);
+      const ids = JSON.parse(property.tenantIds || "[]").filter((id) => id !== existing.id);
+      db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?").run(
+        JSON.stringify(ids),
+        property.id,
+      );
     }
     removeEntityFiles("tenant", existing.id);
     db.prepare("DELETE FROM tenants WHERE id = ?").run(existing.id);

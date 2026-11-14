@@ -47,9 +47,7 @@ const numberOr = (value, fallback, min, max) => {
 
 export function readInjectedBrand() {
   try {
-    const data = JSON.parse(
-      document.getElementById("brand-json")?.textContent || "{}",
-    );
+    const data = JSON.parse(document.getElementById("brand-json")?.textContent || "{}");
     return { ...FALLBACK, ...data };
   } catch {
     return { ...FALLBACK };
@@ -58,9 +56,7 @@ export function readInjectedBrand() {
 
 export function readInjectedPublicSettings() {
   try {
-    const data = JSON.parse(
-      document.getElementById("public-settings-json")?.textContent || "{}",
-    );
+    const data = JSON.parse(document.getElementById("public-settings-json")?.textContent || "{}");
     return { ...PUBLIC_FALLBACK, ...data };
   } catch {
     return { ...PUBLIC_FALLBACK };
@@ -80,9 +76,7 @@ export function brandStyle(brand = FALLBACK) {
 
 function setBrandText(root, name) {
   if (!root) return;
-  const textNode = [...root.childNodes].find(
-    (n) => n.nodeType === 3 && n.textContent.trim(),
-  );
+  const textNode = [...root.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
   if (textNode) textNode.textContent = name;
 }
 
@@ -110,9 +104,7 @@ export function applyBrand(brand = readInjectedBrand()) {
     colorTexto: hexOr(brand.colorTexto, FALLBACK.colorTexto),
     colorTextoSuave: hexOr(brand.colorTextoSuave, FALLBACK.colorTextoSuave),
     colorBorde: hexOr(brand.colorBorde, FALLBACK.colorBorde),
-    tipografia: Object.hasOwn(FONT_STACKS, brand.tipografia)
-      ? brand.tipografia
-      : "inter",
+    tipografia: Object.hasOwn(FONT_STACKS, brand.tipografia) ? brand.tipografia : "inter",
     tamanoBase: numberOr(brand.tamanoBase, FALLBACK.tamanoBase, 12, 18),
     radioBordes: numberOr(brand.radioBordes, FALLBACK.radioBordes, 0, 16),
     densidad: DENSITIES.includes(brand.densidad) ? brand.densidad : "normal",
@@ -125,10 +117,7 @@ export function applyBrand(brand = readInjectedBrand()) {
   document.title = name;
   document
     .querySelector('meta[name="description"]')
-    ?.setAttribute(
-      "content",
-      `Gestión de comunidades y propietarios de la Asociación ${name}`,
-    );
+    ?.setAttribute("content", `Gestión de comunidades y propietarios de la Asociación ${name}`);
   const greet = document.querySelector("#home-greeting-title");
   if (greet) greet.textContent = `Bienvenido a la gestión de ${name}`;
   const topBrand = document.querySelector(".brand");

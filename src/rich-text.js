@@ -74,9 +74,7 @@ export function sanitizeRichText(value, { maxLength = 20000 } = {}) {
       continue;
     }
     if (name === "a") {
-      const hrefMatch = attributes.match(
-        /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i,
-      );
+      const hrefMatch = attributes.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i);
       const href = safeHref(hrefMatch?.[1] ?? hrefMatch?.[2] ?? hrefMatch?.[3]);
       if (!href) continue;
       output += `<a href="${escapeAttribute(href)}" target="_blank" rel="noopener noreferrer">`;

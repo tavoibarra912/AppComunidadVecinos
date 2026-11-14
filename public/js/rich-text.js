@@ -82,14 +82,14 @@ export function createRichText({ editor, input, toolbar }) {
     lastValid = "";
     input.value = "";
   });
-  editor.addEventListener("paste", event => {
+  editor.addEventListener("paste", (event) => {
     event.preventDefault();
     const text = (event.clipboardData || window.clipboardData)?.getData("text/plain") || "";
     document.execCommand("insertText", false, text);
   });
 
-  toolbar?.querySelectorAll("[data-rich-command]").forEach(button => {
-    button.addEventListener("mousedown", event => event.preventDefault());
+  toolbar?.querySelectorAll("[data-rich-command]").forEach((button) => {
+    button.addEventListener("mousedown", (event) => event.preventDefault());
     button.addEventListener("click", () => applyCommand(button.dataset.richCommand));
   });
 

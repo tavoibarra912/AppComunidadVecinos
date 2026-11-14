@@ -2,13 +2,53 @@ import { sanitizeHtml, escapeHtml, htmlToText } from "../html.js";
 
 import { api } from "../api.js";
 import { mountFeeShortcut } from "./fees.js";
-import { state, refreshState, getCurrentOwnerProfileId, ownerProperties, ownerTenants, getTenantContractStatus, propertyOwnerIds, getCurrencies, PROPERTY_TYPE_LABELS, hasPermission, requirePermission } from "../state.js";
-import { toast, digitsOnly, digitsIban, formatPhone, formatIban, maskIbanField, isValidIdentityDocument, detectDocumentType, isValidIban, isValidPhone, isValidEmail, makeSelectSearchable, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar } from "../utils.js";
+import {
+  state,
+  refreshState,
+  getCurrentOwnerProfileId,
+  ownerProperties,
+  ownerTenants,
+  getTenantContractStatus,
+  propertyOwnerIds,
+  getCurrencies,
+  PROPERTY_TYPE_LABELS,
+  hasPermission,
+  requirePermission,
+} from "../state.js";
+import {
+  toast,
+  digitsOnly,
+  digitsIban,
+  formatPhone,
+  formatIban,
+  maskIbanField,
+  isValidIdentityDocument,
+  detectDocumentType,
+  isValidIban,
+  isValidPhone,
+  isValidEmail,
+  makeSelectSearchable,
+  showValidationErrors,
+  armarGuardia,
+  limpiarGuardia,
+  intentarCerrar,
+} from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { createRichText } from "../rich-text.js";
-import { editingDocs, renderOwnerDialogDocs, openDocViewer as engineOpenDocViewer } from "../docs-engine.js";
-import { getOwnerDocStatus, getDocBadgeClass, getDocBadgeText, addOwnerNotification, sendAdminEmailNotification, openAdminEmail } from "./notificaciones.js";
+import {
+  editingDocs,
+  renderOwnerDialogDocs,
+  openDocViewer as engineOpenDocViewer,
+} from "../docs-engine.js";
+import {
+  getOwnerDocStatus,
+  getDocBadgeClass,
+  getDocBadgeText,
+  addOwnerNotification,
+  sendAdminEmailNotification,
+  openAdminEmail,
+} from "./notificaciones.js";
 import { openTenantEditor, openTenantDetail, openTenantDelete } from "./inquilinos.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
 import { openCommunityEditor } from "./comunidades.js";
@@ -37,14 +77,14 @@ function iconBtn(className, title, ariaLabel, svg) {
 
 const contactVerify = {
   phone: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
-  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" }
+  email: { value: "", verified: false, pending: false, challengeId: "", verifiedAt: "" },
 };
 
 function populateCurrencySelect(selected) {
   const select = document.querySelector("#owner-form")?.elements.currency;
   if (!select) return;
   select.replaceChildren();
-  getCurrencies().forEach(c => select.add(new Option(c.name, c.code)));
+  getCurrencies().forEach((c) => select.add(new Option(c.name, c.code)));
   select.value = selected || state.settings?.monedaPorDefecto || "EUR";
 }
 
@@ -109,21 +149,31 @@ const cancelDocRejectBtn = document.querySelector("#cancel-doc-reject-btn");
 const docRejectReason = document.querySelector("#doc-reject-reason");
 
 export function visibleOwners() {
-  return state.owners.filter(owner => hasPermission("owner:read", owner.id));
+  return state.owners.filter((owner) => hasPermission("owner:read", owner.id));
 }
 
 function ownerCommunityNames(owner) {
   const linked = ownerProperties(owner);
-  const names = [...new Set(linked.map(property =>
-    property.communityName || state.communities.find(community => community.id === property.communityId)?.name || ""
-  ).filter(Boolean))];
+  const names = [
+    ...new Set(
+      linked
+        .map(
+          (property) =>
+            property.communityName ||
+            state.communities.find((community) => community.id === property.communityId)?.name ||
+            "",
+        )
+        .filter(Boolean),
+    ),
+  ];
   if (names.length === 0 && owner.communityName) names.push(owner.communityName);
   return names;
 }
 
 export function renderOwners() {
   const newOwnerBtn = document.querySelector("#new-owner");
-  if (newOwnerBtn) newOwnerBtn.hidden = state.activeRole === "owner" || !hasPermission("owner:create");
+  if (newOwnerBtn)
+    newOwnerBtn.hidden = state.activeRole === "owner" || !hasPermission("owner:create");
   if (!ownerTable) {
     ownerTable = createDataTable({
       mount: document.querySelector("#propietarios-table"),
@@ -139,9 +189,9 @@ export function renderOwners() {
         {
           key: "community",
           label: "Comunidad",
-          value: owner => ownerCommunityNames(owner).join(", ") || "Sin comunidad",
+          value: (owner) => ownerCommunityNames(owner).join(", ") || "Sin comunidad",
           defaultVisible: true,
-          render: owner => {
+          render: (owner) => {
             const names = ownerCommunityNames(owner);
             const cell = document.createElement("div");
             if (names.length === 0) {
@@ -150,7 +200,7 @@ export function renderOwners() {
             }
             names.forEach((name, idx) => {
               if (idx > 0) cell.append(", ");
-              const community = state.communities.find(item => item.name === name);
+              const community = state.communities.find((item) => item.name === name);
               if (!community) {
                 cell.append(name);
                 return;
@@ -159,18 +209,23 @@ export function renderOwners() {
               link.type = "button";
               link.className = "text-link-button";
               link.textContent = name;
-              link.addEventListener("click", () => openCommunityEditor(community.id, "details", true));
+              link.addEventListener("click", () =>
+                openCommunityEditor(community.id, "details", true),
+              );
               cell.append(link);
             });
             return cell;
-          }
+          },
         },
         {
           key: "properties",
           label: "Inmueble",
-          value: owner => ownerProperties(owner).map(property => property.plot).join(", ") || "Sin inmuebles",
+          value: (owner) =>
+            ownerProperties(owner)
+              .map((property) => property.plot)
+              .join(", ") || "Sin inmuebles",
           defaultVisible: true,
-          render: owner => {
+          render: (owner) => {
             const linkedProperties = ownerProperties(owner);
             const cell = document.createElement("div");
             if (linkedProperties.length === 0) {
@@ -183,18 +238,20 @@ export function renderOwners() {
               link.type = "button";
               link.className = "text-link-button";
               link.textContent = property.plot || "Inmueble";
-              link.addEventListener("click", () => openPropertyEditor(property.id, "general", true));
+              link.addEventListener("click", () =>
+                openPropertyEditor(property.id, "general", true),
+              );
               cell.append(link);
             });
             return cell;
-          }
+          },
         },
         {
           key: "name",
           label: "Propietario",
-          value: owner => `${owner.name} ${owner.surname}`,
+          value: (owner) => `${owner.name} ${owner.surname}`,
           defaultVisible: true,
-          render: owner => {
+          render: (owner) => {
             const wrap = document.createElement("div");
             const name = document.createElement("span");
             name.className = "community-name";
@@ -207,49 +264,54 @@ export function renderOwners() {
               wrap.append(notes);
             }
             return wrap;
-          }
+          },
         },
         {
           key: "dni",
           label: "DNI / NIE / CIF",
-          value: owner => owner.dni,
-          render: owner => {
+          value: (owner) => owner.dni,
+          render: (owner) => {
             const badge = document.createElement("span");
             badge.className = "dni-badge";
             badge.textContent = owner.dni;
             return badge;
-          }
+          },
         },
-        { key: "address", label: "Dirección", value: owner => owner.address, defaultVisible: true },
-        { key: "city", label: "Municipio", value: owner => owner.city, defaultVisible: true },
+        {
+          key: "address",
+          label: "Dirección",
+          value: (owner) => owner.address,
+          defaultVisible: true,
+        },
+        { key: "city", label: "Municipio", value: (owner) => owner.city, defaultVisible: true },
         {
           key: "member",
           label: "Condición",
-          value: owner => (owner.isMember ? "Asociado" : "No asociado"),
-          render: owner => {
+          value: (owner) => (owner.isMember ? "Asociado" : "No asociado"),
+          render: (owner) => {
             const badge = document.createElement("span");
             badge.className = `status-badge ${owner.isMember ? "member" : "non-member"}`;
             badge.textContent = owner.isMember ? "Asociado" : "No asociado";
             return badge;
-          }
+          },
         },
         {
           key: "docs",
           label: "Documentación",
-          value: owner => getDocBadgeText(getOwnerDocStatus(owner), owner),
-          render: owner => {
+          value: (owner) => getDocBadgeText(getOwnerDocStatus(owner), owner),
+          render: (owner) => {
             const docStatus = getOwnerDocStatus(owner);
             const badge = document.createElement("span");
             badge.className = `status-badge ${getDocBadgeClass(docStatus)}`;
             badge.textContent = getDocBadgeText(docStatus, owner);
             return badge;
-          }
+          },
         },
         {
           key: "contact",
           label: "Contacto",
-          value: owner => `${owner.phone || ""} ${owner.email || ""}`,
-          render: owner => {
+          value: (owner) => `${owner.phone || ""} ${owner.email || ""}`,
+          render: (owner) => {
             const cell = document.createElement("div");
             const phoneSpan = document.createElement("span");
             phoneSpan.textContent = owner.phone ? formatPhone(owner.phone) : "—";
@@ -261,7 +323,7 @@ export function renderOwners() {
               cell.append(emailSpan);
             }
             return cell;
-          }
+          },
         },
         {
           key: "actions",
@@ -272,44 +334,63 @@ export function renderOwners() {
           groupable: false,
           sortable: false,
           value: () => "",
-          render: owner => {
+          render: (owner) => {
             const isOwner = state.activeRole === "owner";
             const wrap = document.createElement("div");
             wrap.className = "row-actions";
-            const btnInfo = iconBtn("btn-info", isOwner ? "Ver mi expediente y documentos" : "Más info y aprobación", `Ficha detallada de ${owner.name} ${owner.surname}`, ICON_INFO);
+            const btnInfo = iconBtn(
+              "btn-info",
+              isOwner ? "Ver mi expediente y documentos" : "Más info y aprobación",
+              `Ficha detallada de ${owner.name} ${owner.surname}`,
+              ICON_INFO,
+            );
             btnInfo.addEventListener("click", () => openOwnerDetail(owner.id));
             wrap.append(btnInfo);
             const canEdit = hasPermission(isOwner ? "owner:edit" : "owner:manage", owner.id);
             if (canEdit) {
-              const btnDocs = iconBtn("btn-docs", isOwner ? "Gestionar / subir mi documentación" : "Subir y gestionar documentación", `Documentación de ${owner.name} ${owner.surname}`, ICON_DOCS);
+              const btnDocs = iconBtn(
+                "btn-docs",
+                isOwner ? "Gestionar / subir mi documentación" : "Subir y gestionar documentación",
+                `Documentación de ${owner.name} ${owner.surname}`,
+                ICON_DOCS,
+              );
               btnDocs.addEventListener("click", () => openOwnerEditor(owner.id, "docs"));
-              const btnEdit = iconBtn("btn-edit", isOwner ? "Editar mis datos personales" : "Editar datos personales", `Editar ${owner.name} ${owner.surname}`, ICON_EDIT);
+              const btnEdit = iconBtn(
+                "btn-edit",
+                isOwner ? "Editar mis datos personales" : "Editar datos personales",
+                `Editar ${owner.name} ${owner.surname}`,
+                ICON_EDIT,
+              );
               btnEdit.addEventListener("click", () => openOwnerEditor(owner.id, "general"));
               wrap.append(btnDocs, btnEdit);
             }
             if (!isOwner && hasPermission("owner:delete", owner.id)) {
-              const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${owner.name} ${owner.surname}`, ICON_DELETE);
+              const btnDelete = iconBtn(
+                "btn-delete",
+                "Eliminar",
+                `Eliminar ${owner.name} ${owner.surname}`,
+                ICON_DELETE,
+              );
               btnDelete.addEventListener("click", () => openOwnerDelete(owner.id));
               wrap.append(btnDelete);
             }
             return wrap;
-          }
-        }
-      ]
+          },
+        },
+      ],
     });
   } else {
     ownerTable.refresh();
   }
 }
 
-
 export function switchOwnerDialogTab(tab) {
-  ownerTabsRoot.forEach(btn => {
+  ownerTabsRoot.forEach((btn) => {
     const active = btn.dataset.ownerTab === tab;
     btn.classList.toggle("active", active);
     btn.setAttribute("aria-selected", String(active));
   });
-  ownerPanesRoot.forEach(pane => {
+  ownerPanesRoot.forEach((pane) => {
     pane.hidden = pane.dataset.ownerPane !== tab;
   });
   if (tab === "docs") {
@@ -344,11 +425,13 @@ function renderOwnerPropertiesTab() {
     return;
   }
 
-  editingOwnerProperties.forEach(propertyId => {
-    const property = state.properties.find(item => item.id === propertyId);
+  editingOwnerProperties.forEach((propertyId) => {
+    const property = state.properties.find((item) => item.id === propertyId);
     if (!property) return;
-    const communityName = property.communityName ||
-      state.communities.find(community => community.id === property.communityId)?.name || "Sin comunidad";
+    const communityName =
+      property.communityName ||
+      state.communities.find((community) => community.id === property.communityId)?.name ||
+      "Sin comunidad";
     const capacity = ownerPropertyCapacity(property);
     const currentPct = editingOwnerPropertyPercentages[propertyId] ?? capacity;
 
@@ -383,12 +466,16 @@ function renderOwnerPropertiesTab() {
       const previous = editingOwnerPropertyPercentages[propertyId] ?? capacity;
       if (!Number.isFinite(value) || value <= 0) {
         pctInput.value = String(previous);
-        toast("Un propietario vinculado debe tener un porcentaje de titularidad mayor a 0. Si no es titular, desvinculalo.");
+        toast(
+          "Un propietario vinculado debe tener un porcentaje de titularidad mayor a 0. Si no es titular, desvinculalo.",
+        );
         return;
       }
       if (value > capacity) {
         value = capacity;
-        toast(`El inmueble "${property.plot}" tiene ${capacity}% de titularidad disponible para este propietario.`);
+        toast(
+          `El inmueble "${property.plot}" tiene ${capacity}% de titularidad disponible para este propietario.`,
+        );
       }
       pctInput.value = String(value);
       editingOwnerPropertyPercentages[propertyId] = value;
@@ -399,14 +486,24 @@ function renderOwnerPropertiesTab() {
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
-    const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${property.plot}`, ICON_VIEW_SM);
+    const viewBtn = iconBtn(
+      "btn-info",
+      "Ver inmueble",
+      `Ver inmueble ${property.plot}`,
+      ICON_VIEW_SM,
+    );
     viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
 
     actions.append(viewBtn);
     if (!ownerDialogReadOnly) {
-      const unlinkBtn = iconBtn("btn-delete", "Desvincular de este propietario", `Desvincular ${property.plot}`, ICON_UNLINK_SM);
+      const unlinkBtn = iconBtn(
+        "btn-delete",
+        "Desvincular de este propietario",
+        `Desvincular ${property.plot}`,
+        ICON_UNLINK_SM,
+      );
       unlinkBtn.addEventListener("click", () => {
-        editingOwnerProperties = editingOwnerProperties.filter(id => id !== propertyId);
+        editingOwnerProperties = editingOwnerProperties.filter((id) => id !== propertyId);
         delete editingOwnerPropertyPercentages[propertyId];
         renderOwnerPropertiesTab();
       });
@@ -423,7 +520,7 @@ function renderOwnerPropertiesTab() {
  */
 function ownerPropertyCapacity(property) {
   const usedByOthers = propertyOwnerIds(property)
-    .filter(ownerId => ownerId !== state.ui.editingOwnerId)
+    .filter((ownerId) => ownerId !== state.ui.editingOwnerId)
     .reduce((sum, ownerId) => sum + (Number(property.ownerPercentages?.[ownerId]) || 0), 0);
   return Math.max(0, Math.round((100 - usedByOthers) * 10000) / 10000);
 }
@@ -434,25 +531,33 @@ function openOwnerPropertyLinkPanel() {
   if (!ownerPropertyLinkPanel.hidden) {
     ownerPropertyLinkSelect.replaceChildren();
     const available = state.properties
-      .filter(property => !editingOwnerProperties.includes(property.id))
-      .filter(property => ownerPropertyCapacity(property) > 0);
+      .filter((property) => !editingOwnerProperties.includes(property.id))
+      .filter((property) => ownerPropertyCapacity(property) > 0);
     const blocked = state.properties
-      .filter(property => !editingOwnerProperties.includes(property.id))
-      .filter(property => ownerPropertyCapacity(property) <= 0).length;
+      .filter((property) => !editingOwnerProperties.includes(property.id))
+      .filter((property) => ownerPropertyCapacity(property) <= 0).length;
     if (available.length === 0) {
-      ownerPropertyLinkSelect.add(new Option(
-        blocked > 0
-          ? "Los inmuebles disponibles ya alcanzaron el 100% de titularidad"
-          : "No hay más inmuebles disponibles",
-        ""
-      ));
+      ownerPropertyLinkSelect.add(
+        new Option(
+          blocked > 0
+            ? "Los inmuebles disponibles ya alcanzaron el 100% de titularidad"
+            : "No hay más inmuebles disponibles",
+          "",
+        ),
+      );
     } else {
       ownerPropertyLinkSelect.add(new Option("Selecciona un inmueble…", ""));
-      [...available].sort((a, b) => (a.plot || "").localeCompare(b.plot || "", "es")).forEach(property => {
-        const communityName = property.communityName ||
-          state.communities.find(community => community.id === property.communityId)?.name || "Sin comunidad";
-        ownerPropertyLinkSelect.add(new Option(`${property.plot} · ${communityName}`, property.id));
-      });
+      [...available]
+        .sort((a, b) => (a.plot || "").localeCompare(b.plot || "", "es"))
+        .forEach((property) => {
+          const communityName =
+            property.communityName ||
+            state.communities.find((community) => community.id === property.communityId)?.name ||
+            "Sin comunidad";
+          ownerPropertyLinkSelect.add(
+            new Option(`${property.plot} · ${communityName}`, property.id),
+          );
+        });
     }
   }
 }
@@ -466,11 +571,12 @@ export function addPropertyToOwnerEditor(ownerId, propertyId) {
   renderOwnerPropertiesTab();
 }
 
-
 export function clearOwnerFieldErrors() {
-  ownerForm.querySelectorAll("label.field-error").forEach(label => {
+  ownerForm.querySelectorAll("label.field-error").forEach((label) => {
     label.classList.remove("field-error");
-    label.querySelectorAll("[aria-invalid='true']").forEach(field => field.removeAttribute("aria-invalid"));
+    label
+      .querySelectorAll("[aria-invalid='true']")
+      .forEach((field) => field.removeAttribute("aria-invalid"));
   });
   ownerError.textContent = "";
 }
@@ -500,23 +606,29 @@ export function resetContactVerification(o) {
     verified: !!(o && o.phoneVerified && o.phoneVerifiedAt),
     pending: false,
     challengeId: "",
-    verifiedAt: o?.phoneVerifiedAt || ""
+    verifiedAt: o?.phoneVerifiedAt || "",
   };
   contactVerify.email = {
     value: email,
     verified: !!(o && o.emailVerified && o.emailVerifiedAt),
     pending: false,
     challengeId: "",
-    verifiedAt: o?.emailVerifiedAt || ""
+    verifiedAt: o?.emailVerifiedAt || "",
   };
-  setVerifyStatus("phone", contactVerify.phone.verified ? "verified" : "pending",
-    contactVerify.phone.verified ? "Teléfono verificado" : "Pendiente de verificación");
-  setVerifyStatus("email", contactVerify.email.verified ? "verified" : "pending",
-    contactVerify.email.verified ? "Correo verificado" : "Pendiente de verificación");
+  setVerifyStatus(
+    "phone",
+    contactVerify.phone.verified ? "verified" : "pending",
+    contactVerify.phone.verified ? "Teléfono verificado" : "Pendiente de verificación",
+  );
+  setVerifyStatus(
+    "email",
+    contactVerify.email.verified ? "verified" : "pending",
+    contactVerify.email.verified ? "Correo verificado" : "Pendiente de verificación",
+  );
 }
 
 export function propertiesForCommunity(communityId) {
-  return state.properties.filter(p => !communityId || p.communityId === communityId);
+  return state.properties.filter((p) => !communityId || p.communityId === communityId);
 }
 
 export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = false } = {}) {
@@ -524,7 +636,13 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   if (isOwner) {
     id = getCurrentOwnerProfileId();
   }
-  const permission = readOnly ? "owner:read" : isOwner ? "owner:edit" : id ? "owner:manage" : "owner:create";
+  const permission = readOnly
+    ? "owner:read"
+    : isOwner
+      ? "owner:edit"
+      : id
+        ? "owner:manage"
+        : "owner:create";
   if (!requirePermission(permission, id || "")) return;
   ownerDialogReadOnly = readOnly;
   state.ui.editingOwnerId = id;
@@ -532,7 +650,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   clearOwnerFieldErrors();
   populateCurrencySelect("EUR");
 
-  const o = state.owners.find(item => item.id === id);
+  const o = state.owners.find((item) => item.id === id);
   if (readOnly) {
     document.querySelector("#owner-dialog-title").textContent = "Ficha del propietario";
     ownerForm.elements.isMember.disabled = true;
@@ -540,13 +658,23 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     document.querySelector("#owner-dialog-title").textContent = "Editar mi perfil de propietario";
     ownerForm.elements.isMember.disabled = true;
   } else {
-    document.querySelector("#owner-dialog-title").textContent = o ? "Editar propietario" : "Nuevo propietario";
+    document.querySelector("#owner-dialog-title").textContent = o
+      ? "Editar propietario"
+      : "Nuevo propietario";
     ownerForm.elements.isMember.disabled = false;
   }
 
   if (o) {
     Object.entries(o).forEach(([key, value]) => {
-      if (ownerForm.elements[key] && key !== "city" && key !== "postalCode" && key !== "province" && key !== "phone" && key !== "otherPhone" && key !== "iban") {
+      if (
+        ownerForm.elements[key] &&
+        key !== "city" &&
+        key !== "postalCode" &&
+        key !== "province" &&
+        key !== "phone" &&
+        key !== "otherPhone" &&
+        key !== "iban"
+      ) {
         if (key === "isMember") {
           ownerForm.elements[key].value = String(value);
         } else {
@@ -561,9 +689,9 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     populateCurrencySelect(o.currency || "EUR");
     ownerTerritory?.set(o.city, o.province, o.postalCode);
     editingDocs.current = o.documents ? JSON.parse(JSON.stringify(o.documents)) : {};
-    editingOwnerProperties = ownerProperties(o).map(property => property.id);
+    editingOwnerProperties = ownerProperties(o).map((property) => property.id);
     editingOwnerPropertyPercentages = {};
-    ownerProperties(o).forEach(property => {
+    ownerProperties(o).forEach((property) => {
       editingOwnerPropertyPercentages[property.id] = property.ownerPercentages?.[o.id] ?? 100;
     });
     updateOwnerCommunitySelect(o.communityId || "");
@@ -576,7 +704,8 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   }
   ownerNotes?.setValue(ownerForm.elements.notes.value || "");
 
-  if (tabDocsBadge) tabDocsBadge.textContent = `${["dni", "bankReceipt", "propertyDeed"].filter(key => editingDocs.current[key]).length}/3`;
+  if (tabDocsBadge)
+    tabDocsBadge.textContent = `${["dni", "bankReceipt", "propertyDeed"].filter((key) => editingDocs.current[key]).length}/3`;
   updateOwnerUserSelect(o ? o.userId || "" : "");
   updateCommunityTabGating();
   updateOwnerLphFieldAccess();
@@ -606,14 +735,19 @@ function updateOwnerUserSelect(selectedUserId = "") {
   if (!select) return;
   const current = selectedUserId || ownerForm.elements.userId?.value || "";
   select.replaceChildren(new Option("Sin cuenta de usuario", ""));
-  state.users.filter(user => user.activo).forEach(user => {
-    const isFree = !state.owners.some(o => o.userId === user.id && o.id !== state.ui.editingOwnerId);
-    const label = `${user.nombre || user.usuario} (${user.usuario})${isFree ? "" : " · ya vinculado"}`;
-    const option = new Option(label, user.id);
-    if (!isFree && user.id !== current) option.disabled = true;
-    select.add(option);
-  });
-  if (current && ![...select.options].some(option => option.value === current)) select.add(new Option("Cuenta vinculada", current));
+  state.users
+    .filter((user) => user.activo)
+    .forEach((user) => {
+      const isFree = !state.owners.some(
+        (o) => o.userId === user.id && o.id !== state.ui.editingOwnerId,
+      );
+      const label = `${user.nombre || user.usuario} (${user.usuario})${isFree ? "" : " · ya vinculado"}`;
+      const option = new Option(label, user.id);
+      if (!isFree && user.id !== current) option.disabled = true;
+      select.add(option);
+    });
+  if (current && ![...select.options].some((option) => option.value === current))
+    select.add(new Option("Cuenta vinculada", current));
   if (current) select.value = current;
   select.disabled = !hasPermission("admin:users");
 }
@@ -635,7 +769,7 @@ export function closeOwnerEditor() {
  */
 function applyOwnerDialogReadOnly(readOnly) {
   ownerDialog.classList.toggle("is-readonly", readOnly);
-  ownerForm.querySelectorAll("input, select, textarea").forEach(control => {
+  ownerForm.querySelectorAll("input, select, textarea").forEach((control) => {
     if (control.closest(".fee-panel")) return;
     if (readOnly) {
       if (control.dataset.readonlyWasDisabled === undefined) {
@@ -644,7 +778,10 @@ function applyOwnerDialogReadOnly(readOnly) {
       if (control.dataset.readonlyWasReadOnly === undefined) {
         control.dataset.readonlyWasReadOnly = control.readOnly ? "1" : "0";
       }
-      const isChoice = control.tagName === "SELECT" || ["file", "checkbox", "radio"].includes(control.type) || control.classList.contains("combo-box-input");
+      const isChoice =
+        control.tagName === "SELECT" ||
+        ["file", "checkbox", "radio"].includes(control.type) ||
+        control.classList.contains("combo-box-input");
       if (isChoice) {
         control.disabled = true;
       } else {
@@ -674,7 +811,8 @@ function applyOwnerDialogReadOnly(readOnly) {
     cancelBtn.setAttribute("aria-label", readOnly ? "Cerrar" : "Cancelar");
   }
   if (readOnly && ownerPropertyLinkPanel) ownerPropertyLinkPanel.hidden = true;
-  if (ownerForm.elements.userId) ownerForm.elements.userId.disabled = readOnly || !hasPermission("admin:users");
+  if (ownerForm.elements.userId)
+    ownerForm.elements.userId.disabled = readOnly || !hasPermission("admin:users");
 }
 
 /** Selector único de comunidad del tab Comunidad. */
@@ -683,7 +821,7 @@ function updateOwnerCommunitySelect(selectedId = "") {
   if (!select) return;
   const current = selectedId || select.value;
   select.replaceChildren(new Option("Selecciona una comunidad…", ""));
-  state.communities.forEach(community => select.add(new Option(community.name, community.id)));
+  state.communities.forEach((community) => select.add(new Option(community.name, community.id)));
   if (current) select.value = current;
 }
 
@@ -701,7 +839,7 @@ function updateCommunityTabGating() {
 /** Los datos LPH los gestiona la administración; el propietario solo consulta los suyos. */
 function updateOwnerLphFieldAccess() {
   const locked = ownerDialogReadOnly || state.activeRole === "owner";
-  ["votingRights", "legalRepresentative", "notificationPreference"].forEach(name => {
+  ["votingRights", "legalRepresentative", "notificationPreference"].forEach((name) => {
     const field = ownerForm.elements[name];
     if (!field) return;
     field.disabled = locked;
@@ -719,23 +857,26 @@ function updateCanalOptions() {
   if (emailOption) {
     const verified = contactVerify.email.verified;
     emailOption.disabled = !verified;
-    emailOption.textContent = verified ? "Correo electrónico" : "Correo electrónico (pendiente de verificación)";
+    emailOption.textContent = verified
+      ? "Correo electrónico"
+      : "Correo electrónico (pendiente de verificación)";
     emailOption.style.color = verified ? "" : "#9aa7b5";
   }
   if (phoneOption) {
     const verified = contactVerify.phone.verified;
     phoneOption.disabled = !verified;
-    phoneOption.textContent = verified ? "Teléfono / Mensajería" : "Teléfono / Mensajería (pendiente de verificación)";
+    phoneOption.textContent = verified
+      ? "Teléfono / Mensajería"
+      : "Teléfono / Mensajería (pendiente de verificación)";
     phoneOption.style.color = verified ? "" : "#9aa7b5";
   }
   if (postalOption) postalOption.style.color = "";
   if (select.selectedOptions[0]?.disabled) select.value = "postal";
 }
 
-
 export function openOwnerDetail(id) {
   if (!requirePermission("owner:read", id)) return;
-  const o = state.owners.find(item => item.id === id);
+  const o = state.owners.find((item) => item.id === id);
   if (!o) return;
   state.ui.viewingOwnerId = id;
   // «Ver» abre el mismo diálogo de edición, pero en modo lectura.
@@ -744,17 +885,20 @@ export function openOwnerDetail(id) {
 
 export function renderOwnerPropertySelectors(owner) {
   const linkedProperties = ownerProperties(owner);
-  const communityIds = [...new Set(linkedProperties.map(property => property.communityId))];
+  const communityIds = [...new Set(linkedProperties.map((property) => property.communityId))];
   const currentCommunity = ownerDetailPropertyCommunity.value;
   ownerDetailPropertyCommunity.replaceChildren(new Option("Todas las comunidades", ""));
   state.communities
-    .filter(community => communityIds.includes(community.id))
-    .forEach(community => ownerDetailPropertyCommunity.add(new Option(community.name, community.id)));
-  if (communityIds.includes(currentCommunity)) ownerDetailPropertyCommunity.value = currentCommunity;
+    .filter((community) => communityIds.includes(community.id))
+    .forEach((community) =>
+      ownerDetailPropertyCommunity.add(new Option(community.name, community.id)),
+    );
+  if (communityIds.includes(currentCommunity))
+    ownerDetailPropertyCommunity.value = currentCommunity;
 
   const selectedCommunity = ownerDetailPropertyCommunity.value;
-  const availableProperties = linkedProperties.filter(property =>
-    !selectedCommunity || property.communityId === selectedCommunity
+  const availableProperties = linkedProperties.filter(
+    (property) => !selectedCommunity || property.communityId === selectedCommunity,
   );
   ownerDetailPropertySelect.replaceChildren();
   if (availableProperties.length === 0) {
@@ -762,9 +906,11 @@ export function renderOwnerPropertySelectors(owner) {
     ownerDetailPropertySelect.disabled = true;
     ownerDetailViewPropertyBtn.disabled = true;
   } else {
-    availableProperties.forEach(property => {
-      const communityName = property.communityName ||
-        state.communities.find(community => community.id === property.communityId)?.name || "Sin comunidad";
+    availableProperties.forEach((property) => {
+      const communityName =
+        property.communityName ||
+        state.communities.find((community) => community.id === property.communityId)?.name ||
+        "Sin comunidad";
       ownerDetailPropertySelect.add(new Option(`${property.plot} · ${communityName}`, property.id));
     });
     ownerDetailPropertySelect.disabled = false;
@@ -784,8 +930,8 @@ export function renderOwnerTenants(owner) {
     ? "Este propietario todavía no tiene inquilinos registrados."
     : "Asocia primero una unidad a este propietario para poder crear un inquilino.";
 
-  tenants.forEach(tenant => {
-    const property = linkedProperties.find(item => item.id === tenant.propertyId);
+  tenants.forEach((tenant) => {
+    const property = linkedProperties.find((item) => item.id === tenant.propertyId);
     const card = document.createElement("article");
     card.className = "tenant-card";
 
@@ -837,7 +983,10 @@ export function renderOwnerTenants(owner) {
       deleteButton.dataset.tenantAction = "delete";
       deleteButton.dataset.tenantId = tenant.id;
       deleteButton.title = "Eliminar";
-      deleteButton.setAttribute("aria-label", `Eliminar inquilino ${tenant.name} ${tenant.surname}`);
+      deleteButton.setAttribute(
+        "aria-label",
+        `Eliminar inquilino ${tenant.name} ${tenant.surname}`,
+      );
       deleteButton.innerHTML = sanitizeHtml(`
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 6h18"></path>
@@ -853,14 +1002,13 @@ export function renderOwnerTenants(owner) {
   });
 }
 
-
 export function renderDetailDocsGrid(o) {
   ownerDetailDocsGrid.replaceChildren();
   const docs = o.documents || {};
   const docKeys = [
     { key: "dni", title: "Copia de DNI (ambas caras)" },
     { key: "bankReceipt", title: "Recibo bancario o certificado de titularidad" },
-    { key: "propertyDeed", title: "Copia de la escritura del inmueble" }
+    { key: "propertyDeed", title: "Copia de la escritura del inmueble" },
   ];
 
   docKeys.forEach(({ key, title }) => {
@@ -871,8 +1019,10 @@ export function renderDetailDocsGrid(o) {
     if (doc) {
       const isApproved = doc.adminApproval?.status === "approved";
       const isRejected = doc.adminApproval?.status === "rejected";
-      let approvalBadge = '<span class="status-badge doc-pending-admin">⏳ Pendiente aprobación</span>';
-      if (isApproved) approvalBadge = '<span class="status-badge doc-approved">✓ Aprobado por Admin</span>';
+      let approvalBadge =
+        '<span class="status-badge doc-pending-admin">⏳ Pendiente aprobación</span>';
+      if (isApproved)
+        approvalBadge = '<span class="status-badge doc-approved">✓ Aprobado por Admin</span>';
       if (isRejected) approvalBadge = '<span class="status-badge doc-rejected">✗ Rechazado</span>';
 
       card.innerHTML = sanitizeHtml(`
@@ -951,7 +1101,8 @@ export function renderDetailApprovalPanel(o, docStatus) {
         </div>
       `);
     } else if (docStatus === "rejected") {
-      const reason = o.documents?.dni?.adminApproval?.notes || "Documentación no conforme o incompleta.";
+      const reason =
+        o.documents?.dni?.adminApproval?.notes || "Documentación no conforme o incompleta.";
       ownerDetailApprovalPanel.className = "admin-approval-panel rejected-box";
       ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
         <div class="approval-flex-row">
@@ -1001,7 +1152,9 @@ export function renderDetailApprovalPanel(o, docStatus) {
     `);
 
     ownerDetailApprovalPanel.querySelector("#btn-detail-approve").addEventListener("click", () => {
-      if (confirm(`¿Aprobar formalmente toda la documentación aportada por ${o.name} ${o.surname}?`)) {
+      if (
+        confirm(`¿Aprobar formalmente toda la documentación aportada por ${o.name} ${o.surname}?`)
+      ) {
         approveAllOwnerDocs(o.id);
       }
     });
@@ -1009,10 +1162,10 @@ export function renderDetailApprovalPanel(o, docStatus) {
     ownerDetailApprovalPanel.querySelector("#btn-detail-reject").addEventListener("click", () => {
       openDocRejectDialog(o.id);
     });
-
   } else if (docStatus === "approved") {
     const firstDoc = o.documents?.dni;
-    const reviewedDate = firstDoc?.adminApproval?.reviewedAt || new Date().toLocaleDateString("es-ES");
+    const reviewedDate =
+      firstDoc?.adminApproval?.reviewedAt || new Date().toLocaleDateString("es-ES");
     const reviewedBy = firstDoc?.adminApproval?.reviewedBy || "Administrador";
 
     ownerDetailApprovalPanel.className = "admin-approval-panel approved-box";
@@ -1033,9 +1186,9 @@ export function renderDetailApprovalPanel(o, docStatus) {
         reopenOwnerDocs(o.id);
       }
     });
-
   } else if (docStatus === "rejected") {
-    const reason = o.documents?.dni?.adminApproval?.notes || "Documentación no conforme o incompleta.";
+    const reason =
+      o.documents?.dni?.adminApproval?.notes || "Documentación no conforme o incompleta.";
     ownerDetailApprovalPanel.className = "admin-approval-panel rejected-box";
     ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
       <div class="approval-flex-row">
@@ -1052,7 +1205,6 @@ export function renderDetailApprovalPanel(o, docStatus) {
     ownerDetailApprovalPanel.querySelector("#btn-detail-reopen").addEventListener("click", () => {
       reopenOwnerDocs(o.id);
     });
-
   } else {
     ownerDetailApprovalPanel.className = "admin-approval-panel";
     ownerDetailApprovalPanel.innerHTML = sanitizeHtml(`
@@ -1067,18 +1219,20 @@ export function renderDetailApprovalPanel(o, docStatus) {
       </div>
     `);
 
-    ownerDetailApprovalPanel.querySelector("#btn-detail-subir-docs").addEventListener("click", () => {
-      closeOwnerDetail();
-      openOwnerEditor(o.id, "docs");
-    });
+    ownerDetailApprovalPanel
+      .querySelector("#btn-detail-subir-docs")
+      .addEventListener("click", () => {
+        closeOwnerDetail();
+        openOwnerEditor(o.id, "docs");
+      });
   }
 }
 
 async function applyOwnerDocsResolution(ownerId, resolution) {
-  const owner = state.owners.find(o => o.id === ownerId);
+  const owner = state.owners.find((o) => o.id === ownerId);
   if (!owner) return;
   const newDocs = { ...owner.documents };
-  ["dni", "bankReceipt", "propertyDeed"].forEach(k => {
+  ["dni", "bankReceipt", "propertyDeed"].forEach((k) => {
     if (newDocs[k]) {
       newDocs[k] = { ...newDocs[k], adminApproval: resolution };
     }
@@ -1095,15 +1249,18 @@ async function applyOwnerDocsResolution(ownerId, resolution) {
 export async function approveAllOwnerDocs(ownerId) {
   if (!requirePermission("document:approve")) return;
   const dateStr = new Date().toLocaleString("es-ES", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit"
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   await applyOwnerDocsResolution(ownerId, {
     status: "approved",
     reviewedAt: dateStr,
     reviewedBy: "Administrador",
-    notes: "Aprobado conforme a los requisitos de la asociación."
+    notes: "Aprobado conforme a los requisitos de la asociación.",
   });
 
   // Notificar al buzón personal del propietario
@@ -1111,7 +1268,8 @@ export async function approveAllOwnerDocs(ownerId) {
     ownerId,
     title: "Documentación oficial convalidada",
     type: "success",
-    message: "El Administrador ha verificado y aprobado formalmente toda tu documentación (DNI, domiciliación bancaria y escritura). Tu expediente está al corriente."
+    message:
+      "El Administrador ha verificado y aprobado formalmente toda tu documentación (DNI, domiciliación bancaria y escritura). Tu expediente está al corriente.",
   });
 
   openOwnerDetail(ownerId);
@@ -1124,7 +1282,7 @@ export async function reopenOwnerDocs(ownerId) {
     status: "pending",
     reviewedAt: null,
     reviewedBy: null,
-    notes: ""
+    notes: "",
   });
   openOwnerDetail(ownerId);
   toast("Expediente reabierto para revisión.");
@@ -1135,7 +1293,7 @@ export function openDocRejectDialog(ownerId) {
   docRejectReason.value = "";
   docRejectDialog.showModal();
 
-  docRejectForm.onsubmit = async e => {
+  docRejectForm.onsubmit = async (e) => {
     e.preventDefault();
     if (!requirePermission("document:approve")) {
       docRejectDialog.close();
@@ -1145,15 +1303,18 @@ export function openDocRejectDialog(ownerId) {
     if (!reason) return;
 
     const dateStr = new Date().toLocaleString("es-ES", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit"
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
 
     await applyOwnerDocsResolution(ownerId, {
       status: "rejected",
       reviewedAt: dateStr,
       reviewedBy: "Administrador",
-      notes: reason
+      notes: reason,
     });
 
     // Notificar al buzón personal del propietario
@@ -1161,7 +1322,7 @@ export function openDocRejectDialog(ownerId) {
       ownerId,
       title: "Requerimiento de subsanación documental",
       type: "warning",
-      message: `El Administrador ha revisado tu documentación y solicita subsanación: “${reason}”. Por favor, accede a tu perfil y vuelve a adjuntar los documentos solicitados.`
+      message: `El Administrador ha revisado tu documentación y solicita subsanación: “${reason}”. Por favor, accede a tu perfil y vuelve a adjuntar los documentos solicitados.`,
     });
 
     docRejectDialog.close();
@@ -1186,48 +1347,56 @@ export function closeOwnerDetail() {
 
 /** Tabs de la ficha de lectura de propietario (misma estructura que la edición). */
 function switchOwnerDetailTab(tab) {
-  document.querySelectorAll("#owner-detail-dialog [data-od-tab]").forEach(btn => {
+  document.querySelectorAll("#owner-detail-dialog [data-od-tab]").forEach((btn) => {
     const active = btn.dataset.odTab === tab;
     btn.classList.toggle("active", active);
     btn.setAttribute("aria-selected", String(active));
   });
-  document.querySelectorAll("#owner-detail-dialog [data-od-pane]").forEach(pane => {
+  document.querySelectorAll("#owner-detail-dialog [data-od-pane]").forEach((pane) => {
     pane.hidden = pane.dataset.odPane !== tab;
   });
 }
 
-document.querySelectorAll("#owner-detail-dialog [data-od-tab]").forEach(btn => {
+document.querySelectorAll("#owner-detail-dialog [data-od-tab]").forEach((btn) => {
   btn.addEventListener("click", () => switchOwnerDetailTab(btn.dataset.odTab));
 });
 
 export function openOwnerDelete(id) {
   if (!requirePermission("owner:delete", id)) return;
-  const o = state.owners.find(item => item.id === id);
+  const o = state.owners.find((item) => item.id === id);
   if (!o) return;
-  const conInquilino = ownerProperties(o).filter(property =>
-    state.tenants.some(tenant => tenant.propertyId === property.id)
+  const conInquilino = ownerProperties(o).filter((property) =>
+    state.tenants.some((tenant) => tenant.propertyId === property.id),
   );
   if (conInquilino.length > 0) {
-    toast(`No se puede eliminar a “${o.name} ${o.surname}”: el inmueble “${conInquilino[0].plot}” tiene un inquilino asociado. Desvincula primero al inquilino.`);
+    toast(
+      `No se puede eliminar a “${o.name} ${o.surname}”: el inmueble “${conInquilino[0].plot}” tiene un inquilino asociado. Desvincula primero al inquilino.`,
+    );
     return;
   }
   state.ui.deletingOwnerId = id;
-  document.querySelector("#owner-delete-message").textContent = `Vas a eliminar a “${o.name} ${o.surname}”. Esta acción no se puede deshacer.`;
+  document.querySelector("#owner-delete-message").textContent =
+    `Vas a eliminar a “${o.name} ${o.surname}”. Esta acción no se puede deshacer.`;
   ownerDeleteDialog.showModal();
 }
-
 
 export function collectOwnerErrors() {
   const errors = [];
   const marks = [];
-  const el = name => ownerForm.elements[name];
+  const el = (name) => ownerForm.elements[name];
 
   // 1. Identificación
   const nameVal = (el("name")?.value || "").trim();
-  if (!nameVal) { errors.push("El nombre es obligatorio."); marks.push("name"); }
+  if (!nameVal) {
+    errors.push("El nombre es obligatorio.");
+    marks.push("name");
+  }
 
   const surnameVal = (el("surname")?.value || "").trim();
-  if (!surnameVal) { errors.push("Los apellidos son obligatorios."); marks.push("surname"); }
+  if (!surnameVal) {
+    errors.push("Los apellidos son obligatorios.");
+    marks.push("surname");
+  }
 
   const docType = el("documentType")?.value || "DNI";
   const dniVal = (el("dni")?.value || "").trim().toUpperCase();
@@ -1237,24 +1406,33 @@ export function collectOwnerErrors() {
   } else if (!isValidIdentityDocument(dniVal, docType)) {
     errors.push(`El ${docType} "${dniVal}" no es válido según algoritmo oficial.`);
     marks.push("dni");
-  } else if (state.owners.some(o => (o.dni || "").trim().toUpperCase() === dniVal && o.id !== state.ui.editingOwnerId)) {
+  } else if (
+    state.owners.some(
+      (o) => (o.dni || "").trim().toUpperCase() === dniVal && o.id !== state.ui.editingOwnerId,
+    )
+  ) {
     errors.push("Ya existe otro propietario registrado con el documento " + dniVal + ".");
     marks.push("dni");
   }
 
   // 2. Inmuebles asociados (pestaña Inmueble, modelo N:M)
-  const invalidPropertyIds = editingOwnerProperties.filter(propertyId => !state.properties.find(property => property.id === propertyId));
+  const invalidPropertyIds = editingOwnerProperties.filter(
+    (propertyId) => !state.properties.find((property) => property.id === propertyId),
+  );
   if (invalidPropertyIds.length > 0) {
-    errors.push("Alguno de los inmuebles asociados ya no existe. Revísalos en la pestaña Inmueble.");
+    errors.push(
+      "Alguno de los inmuebles asociados ya no existe. Revísalos en la pestaña Inmueble.",
+    );
     marks.push("__tab:property");
   }
 
   // 3. Contacto y verificación
   const phoneVal = digitsOnly(el("phone")?.value || "", 9);
   if (!phoneVal || !isValidPhone(phoneVal)) {
-    errors.push("El teléfono principal es obligatorio y debe ser un número español válido de 9 dígitos.");
+    errors.push(
+      "El teléfono principal es obligatorio y debe ser un número español válido de 9 dígitos.",
+    );
     marks.push("phone");
-
   }
 
   const otherPhoneVal = digitsOnly(el("otherPhone")?.value || "", 9);
@@ -1305,17 +1483,24 @@ export function collectOwnerErrors() {
   // 5. Domiciliación e IBAN
   const ibanVal = digitsIban(el("iban")?.value || "");
   if (ibanVal && !isValidIban(ibanVal)) {
-    errors.push("El IBAN debe tener formato español y superar la validación de control (ES + 22 dígitos).");
+    errors.push(
+      "El IBAN debe tener formato español y superar la validación de control (ES + 22 dígitos).",
+    );
     marks.push("iban");
   }
 
   return { errors, marks, selectedLocation };
 }
 
-ownerForm.addEventListener("submit", async event => {
+ownerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (ownerDialogReadOnly) return;
-  if (!requirePermission(state.activeRole === "owner" ? "owner:edit" : "owner:manage", state.ui.editingOwnerId || "")) {
+  if (
+    !requirePermission(
+      state.activeRole === "owner" ? "owner:edit" : "owner:manage",
+      state.ui.editingOwnerId || "",
+    )
+  ) {
     closeOwnerEditor();
     return;
   }
@@ -1324,17 +1509,17 @@ ownerForm.addEventListener("submit", async event => {
   const { errors, marks, selectedLocation } = collectOwnerErrors();
 
   if (errors.length > 0) {
-    const tabMark = marks.find(mark => typeof mark === "string" && mark.startsWith("__tab:"));
+    const tabMark = marks.find((mark) => typeof mark === "string" && mark.startsWith("__tab:"));
     if (tabMark) {
       switchOwnerDialogTab(tabMark.slice(6));
     } else {
       switchOwnerDialogTab(ownerTabForField(marks[0] || "name"));
     }
-    marks.filter(mark => !String(mark).startsWith("__tab:")).forEach(markOwnerFieldError);
+    marks.filter((mark) => !String(mark).startsWith("__tab:")).forEach(markOwnerFieldError);
 
     if (ownerValidationList && ownerValidationDialog) {
       ownerValidationList.replaceChildren();
-      errors.forEach(errText => {
+      errors.forEach((errText) => {
         const li = document.createElement("li");
         li.textContent = errText;
         ownerValidationList.append(li);
@@ -1349,7 +1534,18 @@ ownerForm.addEventListener("submit", async event => {
   const formData = new FormData(ownerForm);
   const data = Object.fromEntries(formData);
 
-  ["name", "surname", "dni", "phone", "otherPhone", "email", "address", "postalCode", "iban", "notes"].forEach(key => {
+  [
+    "name",
+    "surname",
+    "dni",
+    "phone",
+    "otherPhone",
+    "email",
+    "address",
+    "postalCode",
+    "iban",
+    "notes",
+  ].forEach((key) => {
     data[key] = (data[key] || "").trim();
   });
 
@@ -1369,9 +1565,11 @@ ownerForm.addEventListener("submit", async event => {
   data.documents = editingDocs.current;
 
   const docKeys = ["dni", "bankReceipt", "propertyDeed"];
-  const uploadedCount = docKeys.filter(k => !!editingDocs.current[k]).length;
-  const previousDocs = state.owners.find(owner => owner.id === state.ui.editingOwnerId)?.documents || {};
-  const isCompleteDocs = uploadedCount === 3 && JSON.stringify(previousDocs) !== JSON.stringify(editingDocs.current);
+  const uploadedCount = docKeys.filter((k) => !!editingDocs.current[k]).length;
+  const previousDocs =
+    state.owners.find((owner) => owner.id === state.ui.editingOwnerId)?.documents || {};
+  const isCompleteDocs =
+    uploadedCount === 3 && JSON.stringify(previousDocs) !== JSON.stringify(editingDocs.current);
 
   // El backend resuelve la vinculación N:M de los inmuebles (pestaña Inmueble)
   data.propertyIds = editingOwnerProperties.slice();
@@ -1396,12 +1594,12 @@ ownerForm.addEventListener("submit", async event => {
 
   // Sincronizar el % de titularidad del propietario en cada inmueble asociado
   for (const propertyId of editingOwnerProperties) {
-    const property = state.properties.find(item => item.id === propertyId);
+    const property = state.properties.find((item) => item.id === propertyId);
     if (!property || !hasPermission("property:manage", property.id)) continue;
     const ownerIds = [...new Set([...propertyOwnerIds(property), data.id])];
     const ownerPercentages = {
       ...(property.ownerPercentages || {}),
-      [data.id]: Number(editingOwnerPropertyPercentages[propertyId] ?? 100)
+      [data.id]: Number(editingOwnerPropertyPercentages[propertyId] ?? 100),
     };
     try {
       await api.updateProperty(propertyId, { ...property, ownerIds, ownerPercentages });
@@ -1419,20 +1617,28 @@ ownerForm.addEventListener("submit", async event => {
   if (isCompleteDocs) {
     // 1. Remitir aviso por correo electrónico al Administrador
     let emailSent;
-    try { emailSent = await sendAdminEmailNotification(data, editingDocs.current); } catch (error) { toast(`Los datos se guardaron; el aviso no pudo enviarse: ${error.message}`); return; }
+    try {
+      emailSent = await sendAdminEmailNotification(data, editingDocs.current);
+    } catch (error) {
+      toast(`Los datos se guardaron; el aviso no pudo enviarse: ${error.message}`);
+      return;
+    }
 
     // 2. Notificar en el buzón personal del propietario
     addOwnerNotification({
       ownerId: data.id,
       title: "Documentación enviada para aprobación",
       type: "info",
-      message: "Tus documentos se han recibido y están pendientes de revisión administrativa."
+      message: "Tus documentos se han recibido y están pendientes de revisión administrativa.",
     });
 
     // 3. Mostrar mensaje emergente al usuario confirmando el proceso completado con éxito
-    document.querySelector("#success-audit-dni").textContent = `Documentación recibida: pendiente de revisión administrativa.`;
-    document.querySelector("#success-audit-bank").textContent = `Documentación recibida: pendiente de revisión administrativa.`;
-    document.querySelector("#success-audit-deed").textContent = `Documentación recibida: pendiente de revisión administrativa.`;
+    document.querySelector("#success-audit-dni").textContent =
+      `Documentación recibida: pendiente de revisión administrativa.`;
+    document.querySelector("#success-audit-bank").textContent =
+      `Documentación recibida: pendiente de revisión administrativa.`;
+    document.querySelector("#success-audit-deed").textContent =
+      `Documentación recibida: pendiente de revisión administrativa.`;
 
     if (btnViewAdminEmail) {
       btnViewAdminEmail.style.display = state.activeRole === "owner" ? "none" : "";
@@ -1446,7 +1652,6 @@ ownerForm.addEventListener("submit", async event => {
   }
 });
 
-
 // --- Propietarios ---
 const ownDniInput = ownerForm.elements.dni;
 const ownPhoneInput = ownerForm.elements.phone;
@@ -1458,7 +1663,7 @@ ownDniInput.addEventListener("input", () => {
   ownDniInput.setCustomValidity("");
 });
 
-[ownPhoneInput, ownOtherPhoneInput].forEach(inp => {
+[ownPhoneInput, ownOtherPhoneInput].forEach((inp) => {
   inp.addEventListener("input", () => {
     inp.value = inp.value.replace(/\D/g, "");
     inp.setCustomValidity("");
@@ -1474,10 +1679,15 @@ ownerForm.elements.email.addEventListener("input", () => {
   ownerForm.elements.email.setCustomValidity("");
 });
 
-
-document.querySelector("#new-owner").addEventListener("click", () => openOwnerEditor(null, "general"));
-document.querySelector("#close-owner-dialog").addEventListener("click", () => intentarCerrar(ownerForm, ownerDialog));
-document.querySelector("#cancel-owner-dialog").addEventListener("click", () => intentarCerrar(ownerForm, ownerDialog));
+document
+  .querySelector("#new-owner")
+  .addEventListener("click", () => openOwnerEditor(null, "general"));
+document
+  .querySelector("#close-owner-dialog")
+  .addEventListener("click", () => intentarCerrar(ownerForm, ownerDialog));
+document
+  .querySelector("#cancel-owner-dialog")
+  .addEventListener("click", () => intentarCerrar(ownerForm, ownerDialog));
 
 // Cierre nativo del diálogo (Esc): restaura el modo lectura y el estado.
 ownerDialog.addEventListener("close", () => {
@@ -1500,12 +1710,14 @@ if (ownerReadonlyEditBtn) {
   ownerReadonlyEditBtn.addEventListener("click", () => {
     const targetId = state.ui.editingOwnerId;
     if (!targetId) return;
-    const activeTab = document.querySelector("#owner-dialog .community-editor-tab.active")?.dataset.ownerTab || "general";
+    const activeTab =
+      document.querySelector("#owner-dialog .community-editor-tab.active")?.dataset.ownerTab ||
+      "general";
     closeOwnerEditor();
     openOwnerEditor(targetId, activeTab);
   });
 }
-ownerDetailTenantList.addEventListener("click", event => {
+ownerDetailTenantList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-tenant-action]");
   if (!button) return;
   const tenantId = button.dataset.tenantId;
@@ -1519,7 +1731,7 @@ ownerDetailTenantList.addEventListener("click", event => {
 });
 
 ownerDetailPropertyCommunity.addEventListener("change", () => {
-  const owner = state.owners.find(item => item.id === state.ui.viewingOwnerId);
+  const owner = state.owners.find((item) => item.id === state.ui.viewingOwnerId);
   if (owner) renderOwnerPropertySelectors(owner);
 });
 ownerDetailViewPropertyBtn.addEventListener("click", () => {
@@ -1550,7 +1762,7 @@ document.querySelector("#confirm-owner-delete").addEventListener("click", async 
 ownerForm.elements.isMember?.addEventListener("change", updateCommunityTabGating);
 
 // Pestañas del Formulario de Propietario (6 tabs)
-ownerTabsRoot.forEach(btn => {
+ownerTabsRoot.forEach((btn) => {
   btn.addEventListener("click", () => switchOwnerDialogTab(btn.dataset.ownerTab));
 });
 
@@ -1584,13 +1796,18 @@ if (btnOwnerConfirmProperty) {
       toast("Ese inmueble ya está asociado a este propietario.");
       return;
     }
-    const property = state.properties.find(item => item.id === propertyId);
+    const property = state.properties.find((item) => item.id === propertyId);
     const capacity = property ? ownerPropertyCapacity(property) : 0;
     if (capacity <= 0) {
-      toast(`No se puede asociar el inmueble "${property?.plot}": ya alcanzó el 100% de titularidad entre sus propietarios.`);
-      showValidationErrors([
-        `El inmueble "${property?.plot}" ya alcanzó el 100% de titularidad entre sus propietarios, por lo que no se puede vincular a este propietario.`
-      ], "No se puede vincular el inmueble");
+      toast(
+        `No se puede asociar el inmueble "${property?.plot}": ya alcanzó el 100% de titularidad entre sus propietarios.`,
+      );
+      showValidationErrors(
+        [
+          `El inmueble "${property?.plot}" ya alcanzó el 100% de titularidad entre sus propietarios, por lo que no se puede vincular a este propietario.`,
+        ],
+        "No se puede vincular el inmueble",
+      );
       return;
     }
     editingOwnerProperties.push(propertyId);
@@ -1598,7 +1815,9 @@ if (btnOwnerConfirmProperty) {
     editingOwnerPropertyPercentages[propertyId] = capacity;
     renderOwnerPropertiesTab();
     if (capacity <= 0) {
-      toast(`La titularidad de "${property.plot}" llegó al 100%: no se pueden agregar más propietarios.`);
+      toast(
+        `La titularidad de "${property.plot}" llegó al 100%: no se pueden agregar más propietarios.`,
+      );
     }
   });
 }
@@ -1612,13 +1831,14 @@ if (btnOwnerCancelProperty) {
 // Diálogo de Éxito al usuario
 closeDocSuccessBtn.addEventListener("click", () => docSuccessDialog.close());
 
-
 // Visor de Documento
-if (closeDocViewerDialog) closeDocViewerDialog.addEventListener("click", () => docViewerDialog.close());
+if (closeDocViewerDialog)
+  closeDocViewerDialog.addEventListener("click", () => docViewerDialog.close());
 if (closeDocViewerBtn) closeDocViewerBtn.addEventListener("click", () => docViewerDialog.close());
 
 // Diálogo de Rechazo
-if (closeDocRejectDialog) closeDocRejectDialog.addEventListener("click", () => docRejectDialog.close());
+if (closeDocRejectDialog)
+  closeDocRejectDialog.addEventListener("click", () => docRejectDialog.close());
 if (cancelDocRejectBtn) cancelDocRejectBtn.addEventListener("click", () => docRejectDialog.close());
 
 // ==========================================
@@ -1628,7 +1848,7 @@ if (cancelDocRejectBtn) cancelDocRejectBtn.addEventListener("click", () => docRe
 // Cierre de modal de validación en bloque
 const closeOwnerValidationBtn = document.querySelector("#close-owner-validation-btn");
 const closeOwnerValidationDialogBtn = document.querySelector("#close-owner-validation-dialog");
-[closeOwnerValidationBtn, closeOwnerValidationDialogBtn].forEach(button => {
+[closeOwnerValidationBtn, closeOwnerValidationDialogBtn].forEach((button) => {
   if (button && ownerValidationDialog) {
     button.addEventListener("click", () => ownerValidationDialog.close());
   }
@@ -1654,8 +1874,14 @@ let reenvioTimer = 0;
 
 /** Restaura el botón de reenvío (sin cuenta atrás). */
 function detenerCuentaAtras() {
-  if (reenvioTimer) { clearInterval(reenvioTimer); reenvioTimer = 0; }
-  if (verificationResendBtn) { verificationResendBtn.disabled = false; verificationResendBtn.textContent = RESEND_LABEL; }
+  if (reenvioTimer) {
+    clearInterval(reenvioTimer);
+    reenvioTimer = 0;
+  }
+  if (verificationResendBtn) {
+    verificationResendBtn.disabled = false;
+    verificationResendBtn.textContent = RESEND_LABEL;
+  }
 }
 
 /** Deshabilita el reenvío durante el cooldown informado por el servidor. */
@@ -1667,7 +1893,10 @@ function iniciarCuentaAtras(segundos) {
   verificationResendBtn.textContent = `${RESEND_LABEL} (${restante}s)`;
   reenvioTimer = setInterval(() => {
     restante -= 1;
-    if (restante <= 0) { detenerCuentaAtras(); return; }
+    if (restante <= 0) {
+      detenerCuentaAtras();
+      return;
+    }
     verificationResendBtn.textContent = `${RESEND_LABEL} (${restante}s)`;
   }, 1000);
 }
@@ -1678,19 +1907,19 @@ const VERIFICATION_TEXTS = {
     desc: "Enviaremos un código de 6 dígitos por SMS al número indicado. El código caduca en pocos minutos y es de un solo uso; el botón de reenvío se reactiva cuando corresponda.",
     label: "Teléfono",
     value: () => digitsOnly(ownPhoneInput?.value || "", 9),
-    isValid: value => isValidPhone(value),
-    send: value => api.contact.sendPhoneCode(value),
-    confirm: (challengeId, code) => api.contact.confirmPhone(challengeId, code)
+    isValid: (value) => isValidPhone(value),
+    send: (value) => api.contact.sendPhoneCode(value),
+    confirm: (challengeId, code) => api.contact.confirmPhone(challengeId, code),
   },
   email: {
     title: "Verificar email",
     desc: "Enviaremos un código de 6 dígitos por correo electrónico a la dirección indicada. El código caduca en pocos minutos y es de un solo uso; el botón de reenvío se reactiva cuando corresponda.",
     label: "Email",
     value: () => (ownerForm.elements.email?.value || "").trim().toLowerCase(),
-    isValid: value => isValidEmail(value),
-    send: value => api.contact.sendEmailCode(value),
-    confirm: (challengeId, code) => api.contact.confirmEmail(challengeId, code)
-  }
+    isValid: (value) => isValidEmail(value),
+    send: (value) => api.contact.sendEmailCode(value),
+    confirm: (challengeId, code) => api.contact.confirmEmail(challengeId, code),
+  },
 };
 
 function setVerificationError(message) {
@@ -1718,9 +1947,13 @@ async function sendVerificationCode() {
       value,
       challengeId: res.challengeId,
       verified: false,
-      verifiedAt: ""
+      verifiedAt: "",
     });
-    setVerifyStatus(verificationKind, "pending", `Código enviado${res.maskedDestination ? ` a ${res.maskedDestination}` : ""}.`);
+    setVerifyStatus(
+      verificationKind,
+      "pending",
+      `Código enviado${res.maskedDestination ? ` a ${res.maskedDestination}` : ""}.`,
+    );
     if (res.devCode && verificationDemo && verificationDemoCode) {
       verificationDemo.hidden = false;
       verificationDemoCode.textContent = res.devCode;
@@ -1757,7 +1990,7 @@ function openVerificationDialog(kind) {
   verificationCodeInput.value = "";
   setVerificationError("");
   verificationDialog.showModal();
-  sendVerificationCode().then(sent => {
+  sendVerificationCode().then((sent) => {
     if (sent) verificationCodeInput.focus();
   });
 }
@@ -1777,8 +2010,11 @@ if (verificationConfirmBtn) {
       setVerificationError("Introduce el código de 6 dígitos recibido.");
       return;
     }
-    if (!contactVerify[verificationKind].pending || !contactVerify[verificationKind].challengeId ||
-        contactVerify[verificationKind].value !== config.value()) {
+    if (
+      !contactVerify[verificationKind].pending ||
+      !contactVerify[verificationKind].challengeId ||
+      contactVerify[verificationKind].value !== config.value()
+    ) {
       setVerificationError("Solicita un código nuevo para el valor actual.");
       return;
     }
@@ -1792,9 +2028,18 @@ if (verificationConfirmBtn) {
       contactVerify[verificationKind].pending = false;
       contactVerify[verificationKind].verifiedAt = res.verifiedAt;
       updateCanalOptions();
-      setVerifyStatus(verificationKind, "verified",
-        verificationKind === "phone" ? "✓ Teléfono verificado por SMS" : "✓ Correo electrónico verificado");
-      toast(verificationKind === "phone" ? "Teléfono verificado correctamente." : "Correo electrónico verificado con éxito.");
+      setVerifyStatus(
+        verificationKind,
+        "verified",
+        verificationKind === "phone"
+          ? "✓ Teléfono verificado por SMS"
+          : "✓ Correo electrónico verificado",
+      );
+      toast(
+        verificationKind === "phone"
+          ? "Teléfono verificado correctamente."
+          : "Correo electrónico verificado con éxito.",
+      );
       verificationDialog.close();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -1806,11 +2051,11 @@ if (verificationConfirmBtn) {
   });
 }
 
-[closeVerificationDialogBtn].forEach(button => {
+[closeVerificationDialogBtn].forEach((button) => {
   if (button) button.addEventListener("click", () => verificationDialog.close());
 });
 verificationDialog?.addEventListener("close", () => detenerCuentaAtras());
-verificationDialog?.addEventListener("click", event => {
+verificationDialog?.addEventListener("click", (event) => {
   if (event.target === verificationDialog) verificationDialog.close();
 });
 
@@ -1867,10 +2112,12 @@ if (ownIbanInput) {
 // 4. Máscara de Referencia Catastral (20 caracteres alfanuméricos)
 if (ownerForm.elements.cadastralRef) {
   ownerForm.elements.cadastralRef.addEventListener("input", () => {
-    ownerForm.elements.cadastralRef.value = ownerForm.elements.cadastralRef.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+    ownerForm.elements.cadastralRef.value = ownerForm.elements.cadastralRef.value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 20);
   });
 }
 
 // 5. La dependencia Provincia → Municipio → Código Postal (con búsqueda y
 //    autocompletado bidireccional) la gestiona territory.js (setupTerritory).
-

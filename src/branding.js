@@ -4,8 +4,8 @@ export const FONT_STACKS = Object.freeze({
   inter:
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   system: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  arial: 'Arial, Helvetica, sans-serif',
-  verdana: 'Verdana, Geneva, sans-serif',
+  arial: "Arial, Helvetica, sans-serif",
+  verdana: "Verdana, Geneva, sans-serif",
   georgia: 'Georgia, "Times New Roman", serif',
 });
 
@@ -60,21 +60,16 @@ export function brandOf(settings = {}) {
       : DEFAULT_BRAND.tipografia,
     tamanoBase: numberOr(marca.tamanoBase, DEFAULT_BRAND.tamanoBase, 12, 18),
     radioBordes: numberOr(marca.radioBordes, DEFAULT_BRAND.radioBordes, 0, 16),
-    densidad: TEXT_DENSITIES.includes(marca.densidad)
-      ? marca.densidad
-      : DEFAULT_BRAND.densidad,
+    densidad: TEXT_DENSITIES.includes(marca.densidad) ? marca.densidad : DEFAULT_BRAND.densidad,
   };
 }
 
 export function validateBrand(marca) {
   if (marca === undefined || marca === null) return null;
-  if (typeof marca !== "object" || Array.isArray(marca))
-    return "El bloque de marca no es válido.";
+  if (typeof marca !== "object" || Array.isArray(marca)) return "El bloque de marca no es válido.";
   if (
     marca.nombre !== undefined &&
-    (typeof marca.nombre !== "string" ||
-      !marca.nombre.trim() ||
-      marca.nombre.trim().length > 120)
+    (typeof marca.nombre !== "string" || !marca.nombre.trim() || marca.nombre.trim().length > 120)
   )
     return "El nombre de marca debe tener entre 1 y 120 caracteres.";
   if (marca.colorPrimario !== undefined && !HEX.test(marca.colorPrimario))
@@ -90,10 +85,7 @@ export function validateBrand(marca) {
   ])
     if (marca[key] !== undefined && !HEX.test(marca[key]))
       return `El color de ${label} debe ser un valor hexadecimal (#RRGGBB).`;
-  if (
-    marca.tipografia !== undefined &&
-    !Object.hasOwn(FONT_STACKS, marca.tipografia)
-  )
+  if (marca.tipografia !== undefined && !Object.hasOwn(FONT_STACKS, marca.tipografia))
     return "La tipografía seleccionada no es válida.";
   if (
     marca.tamanoBase !== undefined &&
@@ -128,18 +120,8 @@ export function brandStyle(brand = DEFAULT_BRAND) {
   const tipografia = Object.hasOwn(FONT_STACKS, brand.tipografia)
     ? FONT_STACKS[brand.tipografia]
     : FONT_STACKS.inter;
-  const tamanoBase = numberOr(
-    brand.tamanoBase,
-    DEFAULT_BRAND.tamanoBase,
-    12,
-    18,
-  );
-  const radioBordes = numberOr(
-    brand.radioBordes,
-    DEFAULT_BRAND.radioBordes,
-    0,
-    16,
-  );
+  const tamanoBase = numberOr(brand.tamanoBase, DEFAULT_BRAND.tamanoBase, 12, 18);
+  const radioBordes = numberOr(brand.radioBordes, DEFAULT_BRAND.radioBordes, 0, 16);
   return `:root:root{--nav:${color("colorPrimario")};--brand:${acento};--brand-dark:color-mix(in srgb,${acento} 80%,black);--canvas:${color("colorFondo")};--surface:${color("colorSuperficie")};--ink:${color("colorTexto")};--muted:${color("colorTextoSuave")};--line:${color("colorBorde")};--font-ui:${tipografia};--font-size-base:${tamanoBase}px;--radius:${radioBordes}px}`;
 }
 
@@ -154,8 +136,7 @@ const PUBLIC_FALLBACK = Object.freeze({
 });
 
 export function publicSettingsOf(settings = {}) {
-  const text = (value, max) =>
-    typeof value === "string" ? value.trim().slice(0, max) : "";
+  const text = (value, max) => (typeof value === "string" ? value.trim().slice(0, max) : "");
   return {
     nombreAsociacion: text(settings.nombreAsociacion, 120),
     emailContacto: text(settings.emailContacto, 120),
@@ -188,10 +169,7 @@ function escapeHtml(value) {
 export function injectBranding(html, settings) {
   const brand = brandOf(settings);
   const json = JSON.stringify(brand).replace(/<\//g, "<\\/");
-  const publicJson = JSON.stringify(publicSettingsOf(settings)).replace(
-    /<\//g,
-    "<\\/",
-  );
+  const publicJson = JSON.stringify(publicSettingsOf(settings)).replace(/<\//g, "<\\/");
   return html
     .replace("__BRAND_JSON__", () => json)
     .replace("__PUBLIC_SETTINGS_JSON__", () => publicJson)

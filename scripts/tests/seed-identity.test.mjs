@@ -8,9 +8,8 @@ process.env.APP_DATA_DIR = mkdtempSync(path.join(tmpdir(), "penarrubia-identifie
 process.env.APP_UPLOADS_DIR = path.join(process.env.APP_DATA_DIR, "uploads");
 const { db } = await import("../../src/db.js");
 const { seedIfEmpty, seedDemoComunidades } = await import("../../src/seed.js");
-const { isValidIdentityDocument, isValidIban, isValidCommunityNif } = await import(
-  "../../public/js/utils.js"
-);
+const { isValidIdentityDocument, isValidIban, isValidCommunityNif } =
+  await import("../../public/js/utils.js");
 
 after(() => {
   db.close();
@@ -21,9 +20,7 @@ const IDENTITY_TOKEN = /(?<![A-Z0-9])(?:\d{8}[A-Z]|[XYZ]\d{7}[A-Z])(?![A-Z0-9])/
 
 function identityProblems() {
   const problems = [];
-  const owners = db
-    .prepare("SELECT id, documentType, dni, iban, documents FROM owners")
-    .all();
+  const owners = db.prepare("SELECT id, documentType, dni, iban, documents FROM owners").all();
   for (const owner of owners) {
     if (!isValidIdentityDocument(owner.dni, owner.documentType)) {
       problems.push(`propietario ${owner.id}: ${owner.documentType} ${owner.dni}`);
@@ -38,9 +35,7 @@ function identityProblems() {
       }
     }
   }
-  for (const tenant of db
-    .prepare("SELECT id, documentType, documentId FROM tenants")
-    .all()) {
+  for (const tenant of db.prepare("SELECT id, documentType, documentId FROM tenants").all()) {
     if (!isValidIdentityDocument(tenant.documentId, tenant.documentType)) {
       problems.push(`inquilino ${tenant.id}: ${tenant.documentType} ${tenant.documentId}`);
     }

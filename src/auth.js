@@ -15,21 +15,14 @@ export function verifyPassword(password, stored) {
   const parts = String(stored || "").split(":");
   let computed, expected;
   if (parts[0] === "scrypt" && parts.length === 3) {
-    if (!/^[a-f0-9]{32}$/.test(parts[1]) || !/^[a-f0-9]{128}$/.test(parts[2]))
-      return false;
+    if (!/^[a-f0-9]{32}$/.test(parts[1]) || !/^[a-f0-9]{128}$/.test(parts[2])) return false;
     computed = hashPassword(password, parts[1]);
     expected = parts[2];
   } else if (parts.length === 2 && /^[a-f0-9]{64}$/.test(parts[1])) {
-    computed = crypto
-      .createHash("sha256")
-      .update(`${parts[0]}:${password}`)
-      .digest("hex");
+    computed = crypto.createHash("sha256").update(`${parts[0]}:${password}`).digest("hex");
     expected = parts[1];
   } else return false;
-  return crypto.timingSafeEqual(
-    Buffer.from(computed, "hex"),
-    Buffer.from(expected, "hex"),
-  );
+  return crypto.timingSafeEqual(Buffer.from(computed, "hex"), Buffer.from(expected, "hex"));
 }
 export function findUserById(id) {
   return db.prepare("SELECT * FROM users WHERE id = ?").get(id);

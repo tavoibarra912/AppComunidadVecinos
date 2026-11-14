@@ -13,7 +13,7 @@ export const PROPERTY_TYPE_LABELS = {
   vivienda: "Vivienda",
   local: "Local",
   garaje: "Plaza de garaje",
-  trastero: "Trastero"
+  trastero: "Trastero",
 };
 
 export const PROPERTY_USE_LABELS = {
@@ -21,7 +21,7 @@ export const PROPERTY_USE_LABELS = {
   comercial: "Comercial",
   garaje: "Garaje",
   trastero: "Trastero",
-  otros: "Otros"
+  otros: "Otros",
 };
 
 export const TENANT_AUTHORIZATION_LABELS = {
@@ -37,32 +37,27 @@ export const TENANT_AUTHORIZATION_LABELS = {
   key_duplicate: "Solicitar duplicado de llaves",
   work_authorization: "Autorizar obras o reformas en la unidad",
   pet_registration: "Registrar mascotas",
-  community_app: "Uso de la app de la comunidad"
+  community_app: "Uso de la app de la comunidad",
 };
 
 /**
  * Catálogo inicial de autorizaciones. Cada comunidad puede personalizarlo
  * desde Configuración → Inquilinos; si no lo hace, se usa esta lista.
  */
-export const DEFAULT_TENANT_AUTHORIZATIONS = Object.entries(
-  TENANT_AUTHORIZATION_LABELS,
-).map(([id, label]) => ({ id, label }));
+export const DEFAULT_TENANT_AUTHORIZATIONS = Object.entries(TENANT_AUTHORIZATION_LABELS).map(
+  ([id, label]) => ({ id, label }),
+);
 
 /** Autorizaciones vigentes para una comunidad (o las predeterminadas). */
 export function tenantAuthorizationCatalog(communityId = "") {
-  const saved = communityId
-    ? state.settings?.tenantAuthorizations?.[communityId]
-    : null;
-  return Array.isArray(saved) && saved.length
-    ? saved
-    : DEFAULT_TENANT_AUTHORIZATIONS;
+  const saved = communityId ? state.settings?.tenantAuthorizations?.[communityId] : null;
+  return Array.isArray(saved) && saved.length ? saved : DEFAULT_TENANT_AUTHORIZATIONS;
 }
 
 /** Etiqueta visible de una autorización guardada en un inquilino. */
 export function tenantAuthorizationLabel(id, communityId = "") {
   return (
-    tenantAuthorizationCatalog(communityId).find((item) => item.id === id)
-      ?.label ||
+    tenantAuthorizationCatalog(communityId).find((item) => item.id === id)?.label ||
     TENANT_AUTHORIZATION_LABELS[id] ||
     id
   );
@@ -72,7 +67,7 @@ export const CURRENCY_CATALOG = [
   { code: "EUR", name: "Euro (EUR)" },
   { code: "USD", name: "Dólar estadounidense (USD)" },
   { code: "GBP", name: "Libra esterlina (GBP)" },
-  { code: "CHF", name: "Franco suizo (CHF)" }
+  { code: "CHF", name: "Franco suizo (CHF)" },
 ];
 
 let currenciesCache = null;
@@ -125,8 +120,8 @@ export const state = {
     ownerFilterCommunity: "",
     ownerPropertyCommunityFilter: "",
     ownerFilterMember: "",
-    ownerFilterDocStatus: ""
-  }
+    ownerFilterDocStatus: "",
+  },
 };
 
 let refreshing = null;
@@ -138,7 +133,7 @@ export function onDataChanged(fn) {
 }
 
 function notifyDataChanged() {
-  dataListeners.forEach(fn => fn());
+  dataListeners.forEach((fn) => fn());
 }
 
 /**
@@ -160,7 +155,8 @@ export async function refreshState() {
       state.settings = bootstrap.settings || {};
       state.loadedAt = new Date().toISOString();
       if (bootstrap.currentUser) {
-        if (!state.users.some(u => u.id === bootstrap.currentUser.id)) state.users.push(bootstrap.currentUser);
+        if (!state.users.some((u) => u.id === bootstrap.currentUser.id))
+          state.users.push(bootstrap.currentUser);
         setActiveUser(bootstrap.currentUser.id);
       }
       notifyDataChanged();
@@ -176,37 +172,39 @@ export async function refreshState() {
 // ==========================================
 
 export function getCommunityById(id) {
-  return state.communities.find(item => item.id === id) || null;
+  return state.communities.find((item) => item.id === id) || null;
 }
 
 export function getOwnerById(id) {
-  return state.owners.find(item => item.id === id) || null;
+  return state.owners.find((item) => item.id === id) || null;
 }
 
 export function getPropertyById(id) {
-  return state.properties.find(item => item.id === id) || null;
+  return state.properties.find((item) => item.id === id) || null;
 }
 
 export function getTenantById(id) {
-  return state.tenants.find(item => item.id === id) || null;
+  return state.tenants.find((item) => item.id === id) || null;
 }
 
 export function ownerProperties(owner) {
   if (!owner) return [];
-  const linkedIds = new Set([
-    ...(Array.isArray(owner.propertyIds) ? owner.propertyIds : []),
-    owner.propertyId
-  ].filter(Boolean));
-  return state.properties.filter(property =>
-    property.ownerId === owner.id ||
-    linkedIds.has(property.id) ||
-    propertyOwnerIds(property).includes(owner.id)
+  const linkedIds = new Set(
+    [...(Array.isArray(owner.propertyIds) ? owner.propertyIds : []), owner.propertyId].filter(
+      Boolean,
+    ),
+  );
+  return state.properties.filter(
+    (property) =>
+      property.ownerId === owner.id ||
+      linkedIds.has(property.id) ||
+      propertyOwnerIds(property).includes(owner.id),
   );
 }
 
 export function ownerTenants(owner) {
   if (!owner) return [];
-  return state.tenants.filter(tenant => tenant.ownerId === owner.id);
+  return state.tenants.filter((tenant) => tenant.ownerId === owner.id);
 }
 
 export function getLocalDateInputValue(date = new Date()) {
@@ -223,8 +221,8 @@ export function getTenantContractStatus(tenant) {
 }
 
 export function tenantsForProperty(propertyId) {
-  return state.tenants.filter(tenant =>
-    tenant.propertyId === propertyId && getTenantContractStatus(tenant) === "Vigente"
+  return state.tenants.filter(
+    (tenant) => tenant.propertyId === propertyId && getTenantContractStatus(tenant) === "Vigente",
   );
 }
 
@@ -236,7 +234,9 @@ export function propertyLabel(p) {
 export function propertyOwnerIds(property) {
   return Array.isArray(property?.ownerIds) && property.ownerIds.length
     ? property.ownerIds
-    : (property?.ownerId ? [property.ownerId] : []);
+    : property?.ownerId
+      ? [property.ownerId]
+      : [];
 }
 
 // ==========================================
@@ -248,13 +248,13 @@ export const ROLE_LABELS = {
   super_admin: "Super Administrador",
   administrator: "Administrador",
   community_admin: "Administrador de Comunidad",
-  user: "Usuario"
+  user: "Usuario",
 };
 
 // LOGIN SIMULADO Y PERFILES
 
 export function getCurrentUser() {
-  return state.users.find(user => user.id === state.currentUserId) || null;
+  return state.users.find((user) => user.id === state.currentUserId) || null;
 }
 
 export function getCurrentUserRole() {
@@ -265,9 +265,13 @@ export function getCurrentUserRole() {
 export function getUserProfiles(user = getCurrentUser()) {
   if (!user) return { ownerIds: [], tenantIds: [], adminCommunityIds: [] };
   return {
-    ownerIds: state.owners.filter(owner => owner.userId === user.id).map(owner => owner.id),
-    tenantIds: state.tenants.filter(tenant => tenant.userId === user.id).map(tenant => tenant.id),
-    adminCommunityIds: state.communities.filter(community => community.adminUserId === user.id).map(community => community.id)
+    ownerIds: state.owners.filter((owner) => owner.userId === user.id).map((owner) => owner.id),
+    tenantIds: state.tenants
+      .filter((tenant) => tenant.userId === user.id)
+      .map((tenant) => tenant.id),
+    adminCommunityIds: state.communities
+      .filter((community) => community.adminUserId === user.id)
+      .map((community) => community.id),
   };
 }
 
@@ -275,7 +279,7 @@ export function getUserProfiles(user = getCurrentUser()) {
 export function getCurrentOwnerProfile() {
   const user = getCurrentUser();
   if (!user) return null;
-  return state.owners.find(owner => owner.userId === user.id) || null;
+  return state.owners.find((owner) => owner.userId === user.id) || null;
 }
 
 export function getCurrentOwnerProfileId() {
@@ -286,13 +290,13 @@ export function getCurrentOwnerProfileId() {
 export function userCommunityIds(user = getCurrentUser()) {
   const profiles = getUserProfiles(user);
   const ids = new Set(profiles.adminCommunityIds);
-  profiles.ownerIds.forEach(ownerId => {
-    const owner = state.owners.find(o => o.id === ownerId);
-    if (owner) ownerProperties(owner).forEach(property => ids.add(property.communityId));
+  profiles.ownerIds.forEach((ownerId) => {
+    const owner = state.owners.find((o) => o.id === ownerId);
+    if (owner) ownerProperties(owner).forEach((property) => ids.add(property.communityId));
   });
-  profiles.tenantIds.forEach(tenantId => {
-    const tenant = state.tenants.find(x => x.id === tenantId);
-    const property = state.properties.find(x => x.id === tenant?.propertyId);
+  profiles.tenantIds.forEach((tenantId) => {
+    const tenant = state.tenants.find((x) => x.id === tenantId);
+    const property = state.properties.find((x) => x.id === tenant?.propertyId);
     if (property?.communityId) ids.add(property.communityId);
   });
   return [...ids];
@@ -303,19 +307,34 @@ export function hasPermission(permission, resourceId = "") {
 }
 
 export function setActiveUser(userId) {
-  state.currentUserId = state.users.some(u => u.id === userId && u.activo) ? userId : null;
-  const role = state.roles.find(r => r.nombre === getCurrentUser()?.rol || r.id === getCurrentUser()?.rol);
+  state.currentUserId = state.users.some((u) => u.id === userId && u.activo) ? userId : null;
+  const role = state.roles.find(
+    (r) => r.nombre === getCurrentUser()?.rol || r.id === getCurrentUser()?.rol,
+  );
   state.activeRole = role?.nombre === "user" ? "owner" : "admin";
 }
 
 export function clearSession() {
-  for (const key of ["communities", "owners", "properties", "tenants", "adminEmails", "ownerNotifications", "users", "roles"]) state[key] = [];
+  for (const key of [
+    "communities",
+    "owners",
+    "properties",
+    "tenants",
+    "adminEmails",
+    "ownerNotifications",
+    "users",
+    "roles",
+  ])
+    state[key] = [];
   state.currentUserId = null;
   state.activeRole = "owner";
 }
 
 export function requirePermission(permission, resourceId = "") {
   if (hasPermission(permission, resourceId)) return true;
-  toast(`No tienes permiso para esta acción (requiere: ${etiquetaPermiso(permission)}).`, "warning");
+  toast(
+    `No tienes permiso para esta acción (requiere: ${etiquetaPermiso(permission)}).`,
+    "warning",
+  );
   return false;
 }

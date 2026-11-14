@@ -123,16 +123,14 @@ app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
   console.error("[server] Error no controlado:", error.message);
   const status = error.status === 413 ? 413 : error.type === "entity.parse.failed" ? 400 : 500;
-  res
-    .status(status)
-    .json({
-      error:
-        status === 413
-          ? "La petición supera el tamaño permitido."
-          : status === 400
-            ? "El JSON enviado no es válido."
-            : "Error interno del servidor.",
-    });
+  res.status(status).json({
+    error:
+      status === 413
+        ? "La petición supera el tamaño permitido."
+        : status === 400
+          ? "El JSON enviado no es válido."
+          : "Error interno del servidor.",
+  });
 });
 
 app.listen(PORT, HOST, () => {

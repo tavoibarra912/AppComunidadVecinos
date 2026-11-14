@@ -221,15 +221,15 @@ coinciden (por ejemplo, `super_admin` / `super_admin`), salvo que hayas cambiado
 
 Cuentas demo estándar (usuario = contraseña = email local = nombre):
 
-| Usuario | Rol | Escenario |
-| --- | --- | --- |
-| `super_admin` | super_admin | Acceso total, sin perfil |
-| `admin` | administrator | Crea y administra todas las comunidades |
-| `comm_admin` | community_admin | Administra la comunidad asignada (Peñarrubia) |
-| `usuario_r_user_s_perfil` | user | Sin perfil vinculado |
-| `usuario_r_user_c_propietario` | user | Con perfil de propietario |
-| `usuario_r_user_c_inquilino` | user | Con perfil de inquilino |
-| `usuario_r_user_c_propietario_c_inquilino` | user | Con perfiles de propietario e inquilino |
+| Usuario                                    | Rol             | Escenario                                     |
+| ------------------------------------------ | --------------- | --------------------------------------------- |
+| `super_admin`                              | super_admin     | Acceso total, sin perfil                      |
+| `admin`                                    | administrator   | Crea y administra todas las comunidades       |
+| `comm_admin`                               | community_admin | Administra la comunidad asignada (Peñarrubia) |
+| `usuario_r_user_s_perfil`                  | user            | Sin perfil vinculado                          |
+| `usuario_r_user_c_propietario`             | user            | Con perfil de propietario                     |
+| `usuario_r_user_c_inquilino`               | user            | Con perfil de inquilino                       |
+| `usuario_r_user_c_propietario_c_inquilino` | user            | Con perfiles de propietario e inquilino       |
 
 Permisos destacados configurables por rol (Administración → Roles):
 
@@ -243,7 +243,7 @@ Permisos destacados configurables por rol (Administración → Roles):
   siempre participa.
 
 **Avisos por email de cambios de perfiles**: en Configuración → General, la
-clave *Email(s) para avisar cambios de perfiles* acepta una o varias
+clave _Email(s) para avisar cambios de perfiles_ acepta una o varias
 direcciones separadas por comas (vacío = desactivado). Cada vez que un
 propietario se edita, la plataforma envía un correo con quién lo modificó y
 el detalle campo por campo. El envío usa el correo habilitado en Proveedores
@@ -304,6 +304,7 @@ máxima de ocho horas y se revoca al cerrar sesión o cambiar la contraseña.
 Las contraseñas nuevas se guardan con scrypt; las antiguas se actualizan al iniciar sesión.
 
 Los roles y sus permisos se comparten entre backend y frontend:
+
 - Super Administrador: administración completa, incluido usuarios, roles y configuración.
 - Administrador: los permisos definidos en su rol.
 - Administrador de Comunidad: permisos limitados a las comunidades asignadas.
@@ -407,26 +408,31 @@ protección de sus copias de seguridad para producción.
 ## Funcionalidad principal
 
 ### Inicio
+
 - Panel con métricas de los registros visibles para la cuenta, filtro de comunidad y actualización manual. Los inmuebles con varios titulares se cuentan una sola vez; el usuario ve sus vínculos reales, incluidas varias comunidades si corresponde.
 - Gráficos de documentación e inmuebles, avisos pendientes, agenda y últimas publicaciones. La documentación de ejemplo no acredita un expediente; los contratos sin fechas válidas se identifican aparte. Los accesos se muestran según permisos, incluido el acceso directo a los estatutos de la comunidad.
 
 ### Comunidades
+
 - En **Ver**, solo están habilitados las pestañas, el cierre y la apertura de los adjuntos. No se puede editar, verificar contactos, asociar inmuebles ni abrir sus fichas desde esa vista. La edición se recupera al abrir **Editar**.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
 - CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito numérico de control, teléfonos de 9 dígitos, correo electrónico, CP contra catálogo INE con autocompletado de municipio y provincia). El NIF se normaliza antes de validar y guardar: admite minúsculas y separadores habituales (espacios, puntos y guiones), y conserva la comprobación del dígito de control.
 - Documentación adjunta con biblioteca de archivos y carpetas, y ficha detallada con propietarios censados. Pestaña **Estatutos** independiente con consulta para residentes y gestión para administradores.
 
 ### Propietarios
+
 - Formulario en tres pestañas: **1. Datos personales**, **2. Inmueble** (un único selector que vincula al propietario con un inmueble existente, igual que la asociación «Propietario» del formulario de inmuebles; si el inmueble era de otro dueño se reasigna) y **3. Documentación requerida**.
 - Contacto guardado sin exigir un proveedor de verificación todavía no configurado.
 - Expediente documental (DNI, recibo bancario, escritura) con comprobaciones de formato y revisión administrativa manual, botones de documento de prueba, aprobación/rechazo administrativo y buzones de notificación.
 - IBAN con validación MOD-97, moneda de cuotas, dirección con catálogo territorial.
 
 ### Inmuebles
+
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
 - Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
 ### Inquilinos
+
 - Alta/edición seleccionando **directamente el inmueble** (el propietario se deduce de él; si se cambia a un inmueble de otro dueño, el inquilino cambia de propietario).
 - Pestaña de documentación multi-archivo, biblioteca de archivos y carpetas, y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
 

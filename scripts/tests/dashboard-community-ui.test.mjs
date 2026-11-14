@@ -15,10 +15,7 @@ const noop = () => {};
 const escapeHtml = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ],
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
   );
 function domFixture() {
   const dom = new JSDOM(html, {
@@ -58,9 +55,7 @@ function communityFixture() {
         ],
       },
     ],
-    properties: [
-      { id: "p1", communityId: "c1", plot: "Piso 1", ownerIds: ["o1"] },
-    ],
+    properties: [{ id: "p1", communityId: "c1", plot: "Piso 1", ownerIds: ["o1"] }],
     owners: [{ id: "o1", name: "Titular", surname: "Prueba" }],
     users: [],
     roles: [],
@@ -115,7 +110,7 @@ function communityFixture() {
       set: (city, province, cp) => {
         form.elements.city.value = city ? "madrid-id" : "";
         form.elements.province.value = city ? "Madrid" : "";
-        form.elements.postalCode.value = city ? (cp || "28001") : "";
+        form.elements.postalCode.value = city ? cp || "28001" : "";
       },
       reset: () => {
         form.elements.city.value = "";
@@ -166,32 +161,14 @@ test("Comunidad Ver: campos y acciones bloqueados, pestañas y documento operabl
     f.w.communityUI.openCommunityEditor("c1", "details", true);
     await flush();
     const form = f.w.document.querySelector("#community-form");
-    assert.ok(
-      [...form.querySelectorAll("input,select,textarea")].every(
-        (el) => el.disabled,
-      ),
-    );
-    assert.equal(
-      form.querySelector('[data-community-tab="contact"]').disabled,
-      false,
-    );
+    assert.ok([...form.querySelectorAll("input,select,textarea")].every((el) => el.disabled));
+    assert.equal(form.querySelector('[data-community-tab="contact"]').disabled, false);
     form.querySelector('[data-community-tab="properties"]').click();
-    assert.equal(
-      f.w.document.querySelector("#community-tab-properties").hidden,
-      false,
-    );
-    assert.equal(
-      form.querySelectorAll("#community-edit-properties-list button").length,
-      0,
-    );
-    assert.equal(
-      form.querySelector("#btn-community-edit-add-property").disabled,
-      true,
-    );
+    assert.equal(f.w.document.querySelector("#community-tab-properties").hidden, false);
+    assert.equal(form.querySelectorAll("#community-edit-properties-list button").length, 0);
+    assert.equal(form.querySelector("#btn-community-edit-add-property").disabled, true);
     form.querySelector("#btn-community-edit-add-property").click();
-    form.dispatchEvent(
-      new f.w.Event("submit", { cancelable: true, bubbles: true }),
-    );
+    form.dispatchEvent(new f.w.Event("submit", { cancelable: true, bubbles: true }));
     await flush();
     assert.deepEqual(f.calls, []);
     form.querySelector('[data-community-tab="docs"]').click();
@@ -248,11 +225,7 @@ test("Comunidad Ver: nuevos controles también quedan bloqueados y Editar recupe
         (o) => o.value === String(new Date().getFullYear()),
       ),
     );
-    assert.ok(
-      [...form.elements.constitutionYear.options].some(
-        (o) => o.value === "2005",
-      ),
-    );
+    assert.ok([...form.elements.constitutionYear.options].some((o) => o.value === "2005"));
     assert.ok(form.querySelector("#community-edit-properties-list button"));
     const money = form.elements.reserveFund;
     assert.equal(money.type, "number");
@@ -383,21 +356,12 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     assert.match(root.textContent, /Situación de cuotas/);
     assert.match(root.textContent, /Emitido/);
     assert.match(root.textContent, /50% del emitido/);
-    assert.doesNotMatch(
-      root.textContent,
-      /Sistema Operativo|cuotas y derechos al día/i,
-    );
-    assert.equal(
-      root.querySelector(".dashboard-metric strong").textContent,
-      "2",
-    );
+    assert.doesNotMatch(root.textContent, /Sistema Operativo|cuotas y derechos al día/i);
+    assert.equal(root.querySelector(".dashboard-metric strong").textContent, "2");
     const select = root.querySelector("#dashboard-community");
     select.value = "a";
     select.dispatchEvent(new w.Event("change", { bubbles: true }));
-    assert.equal(
-      root.querySelector(".dashboard-metric strong").textContent,
-      "1",
-    );
+    assert.equal(root.querySelector(".dashboard-metric strong").textContent, "1");
     assert.equal(root.querySelector(".dashboard-bar strong").textContent, "1");
     root.querySelector('[data-dashboard-action="post"]').click();
     await flush();

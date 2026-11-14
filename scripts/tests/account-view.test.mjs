@@ -38,9 +38,7 @@ function fixture() {
         ownerIds: ["demo-owner"],
       },
     ],
-    communities: [
-      { id: "demo-community", name: "Comunidad de ejemplo", adminUserId: "" },
-    ],
+    communities: [{ id: "demo-community", name: "Comunidad de ejemplo", adminUserId: "" }],
   };
 }
 test("cuenta nueva: no adopta el propietario ni la comunidad de los datos demo", () => {

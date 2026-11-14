@@ -6,17 +6,35 @@ const toastEl = typeof document !== "undefined" ? document.querySelector("#toast
 let toastTimer = 0;
 
 const TOAST_ICONOS = {
-  info: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><line x1=\"12\" y1=\"16\" x2=\"12\" y2=\"12\"></line><line x1=\"12\" y1=\"8\" x2=\"12.01\" y2=\"8\"></line></svg>",
-  success: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\"></path><polyline points=\"22 4 12 14.01 9 11.01\"></polyline></svg>",
-  error: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><line x1=\"15\" y1=\"9\" x2=\"9\" y2=\"15\"></line><line x1=\"9\" y1=\"9\" x2=\"15\" y2=\"15\"></line></svg>",
-  warning: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"></path><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"></line><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"></line></svg>"
+  info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+  success:
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+  error:
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+  warning:
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
 };
 
 /** Deduce el tipo de toast por el contenido del mensaje (para las 78 llamadas existentes). */
 function detectarTipoToast(mensaje) {
-  if (/no se pudo|inválid|incorrect|no coincide|no tienes permiso|no está permitido|ya existe|no es válid|no corresponde/i.test(mensaje)) return "error";
-  if (/no se puede|antes de|desvincula|elimina los|reasigna|pendiente de verificación|espera/i.test(mensaje)) return "warning";
-  if (/correcto|éxito|exitosamente|guardad|eliminad|cread|actualizad|registrad|enviad|verificado|cerrad|restablecid|sincronizad/i.test(mensaje)) return "success";
+  if (
+    /no se pudo|inválid|incorrect|no coincide|no tienes permiso|no está permitido|ya existe|no es válid|no corresponde/i.test(
+      mensaje,
+    )
+  )
+    return "error";
+  if (
+    /no se puede|antes de|desvincula|elimina los|reasigna|pendiente de verificación|espera/i.test(
+      mensaje,
+    )
+  )
+    return "warning";
+  if (
+    /correcto|éxito|exitosamente|guardad|eliminad|cread|actualizad|registrad|enviad|verificado|cerrad|restablecid|sincronizad/i.test(
+      mensaje,
+    )
+  )
+    return "success";
   return "info";
 }
 
@@ -70,11 +88,15 @@ export function digitsIban(value) {
 
 export function formatIban(value) {
   if (!value) return "No registrado";
-  return digitsIban(value).replace(/(.{4})/g, "$1 ").trim();
+  return digitsIban(value)
+    .replace(/(.{4})/g, "$1 ")
+    .trim();
 }
 
 export function maskIbanField(el) {
-  const clean = digitsIban(el.value).replace(/[^A-Z0-9]/g, "").slice(0, 24);
+  const clean = digitsIban(el.value)
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 24);
   el.value = clean.replace(/(.{4})/g, "$1 ").trim();
 }
 
@@ -92,7 +114,7 @@ const MENSAJES_DE_VALIDEZ = {
   tooLong: "es demasiado largo",
   rangeUnderflow: "es menor que el mínimo permitido",
   rangeOverflow: "es mayor que el máximo permitido",
-  stepMismatch: "no cumple el incremento permitido"
+  stepMismatch: "no cumple el incremento permitido",
 };
 
 /** Traduce al español la razón de invalidez nativa del navegador. */
@@ -100,7 +122,7 @@ export function mensajeDeValidez(element) {
   // setCustomValidity() guarda el motivo exacto en validationMessage: es más
   // útil que el mensaje genérico y evita perderlo al resumir los errores.
   if (element.validity?.customError && element.validationMessage) return element.validationMessage;
-  const razon = Object.keys(MENSAJES_DE_VALIDEZ).find(clave => element.validity?.[clave]);
+  const razon = Object.keys(MENSAJES_DE_VALIDEZ).find((clave) => element.validity?.[clave]);
   return razon ? MENSAJES_DE_VALIDEZ[razon] : "tiene un valor no válido";
 }
 
@@ -155,7 +177,7 @@ export function isValidNie(value) {
   const str = normalizeIdentityDocument(value);
   const match = str.match(/^([XYZ])(\d{7})([A-Z])$/);
   if (!match) return false;
-  const prefix = match[1] === "X" ? "0" : (match[1] === "Y" ? "1" : "2");
+  const prefix = match[1] === "X" ? "0" : match[1] === "Y" ? "1" : "2";
   return DNI_NIE_LETTERS[Number(prefix + match[2]) % 23] === match[3];
 }
 
@@ -213,7 +235,9 @@ export function detectDocumentType(value) {
 }
 
 export function isValidIdentityDocument(value, documentType) {
-  const type = String(documentType || "DNI").trim().toUpperCase();
+  const type = String(documentType || "DNI")
+    .trim()
+    .toUpperCase();
   const str = normalizeIdentityDocument(value);
   if (type === "CIF") return isValidCif(str);
   if (type === "NIE") return isValidNie(str);
@@ -277,12 +301,14 @@ export function validateDocumentFiles(files, settings = {}) {
   const configured = Array.isArray(settings?.documentosTiposPermitidos)
     ? settings.documentosTiposPermitidos
     : DEFAULT_DOCUMENT_TYPES;
-  const allowed = configured.map(type => String(type).toLowerCase().replace(/^\./, ""));
+  const allowed = configured.map((type) => String(type).toLowerCase().replace(/^\./, ""));
   const maxMb = Math.min(50, Math.max(1, Number(settings?.documentosMaxSizeMb) || 15));
-  [...files].forEach(file => {
+  [...files].forEach((file) => {
     const extension = file.name.split(".").pop().toLowerCase();
     if (!allowed.includes(extension)) {
-      messages.push(`El archivo "${file.name}" debe ser ${allowed.map(type => type.toUpperCase()).join(", ")}.`);
+      messages.push(
+        `El archivo "${file.name}" debe ser ${allowed.map((type) => type.toUpperCase()).join(", ")}.`,
+      );
     }
     if (file.size > maxMb * 1024 * 1024) {
       messages.push(`El archivo "${file.name}" supera el límite de ${maxMb} MB.`);
@@ -293,25 +319,25 @@ export function validateDocumentFiles(files, settings = {}) {
 
 export function setupGenericFileDropzone(dropzoneEl, inputEl) {
   if (!dropzoneEl || !inputEl) return;
-  ["dragenter", "dragover"].forEach(eventName => {
-    dropzoneEl.addEventListener(eventName, e => {
+  ["dragenter", "dragover"].forEach((eventName) => {
+    dropzoneEl.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
       dropzoneEl.classList.add("dragover");
     });
   });
-  ["dragleave", "drop"].forEach(eventName => {
-    dropzoneEl.addEventListener(eventName, e => {
+  ["dragleave", "drop"].forEach((eventName) => {
+    dropzoneEl.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
       dropzoneEl.classList.remove("dragover");
     });
   });
-  dropzoneEl.addEventListener("drop", e => {
+  dropzoneEl.addEventListener("drop", (e) => {
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
     const transfer = new DataTransfer();
-    [...inputEl.files, ...files].forEach(file => transfer.items.add(file));
+    [...inputEl.files, ...files].forEach((file) => transfer.items.add(file));
     inputEl.files = transfer.files;
   });
 }
@@ -396,21 +422,23 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
   function renderOptions(query = "") {
     list.replaceChildren();
     const q = query.trim().toLocaleLowerCase("es");
-    const options = [...select.options].filter(option => !option.hidden && !option.disabled);
-    const matches = options.filter(option => !q || option.textContent.toLocaleLowerCase("es").includes(q));
+    const options = [...select.options].filter((option) => !option.hidden && !option.disabled);
+    const matches = options.filter(
+      (option) => !q || option.textContent.toLocaleLowerCase("es").includes(q),
+    );
     if (matches.length === 0) {
       const li = document.createElement("li");
       li.className = "combo-box-empty";
       li.textContent = "Sin resultados";
       list.append(li);
     }
-    matches.slice(0, 80).forEach(option => {
+    matches.slice(0, 80).forEach((option) => {
       const li = document.createElement("li");
       li.setAttribute("role", "option");
       li.dataset.value = option.value;
       li.textContent = option.textContent;
       if (option.value === select.value) li.classList.add("selected");
-      li.addEventListener("mousedown", event => {
+      li.addEventListener("mousedown", (event) => {
         event.preventDefault();
         select.value = option.value;
         input.value = selectedText();
@@ -485,11 +513,13 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
     renderOptions();
   });
   input.addEventListener("input", () => renderOptions(input.value));
-  input.addEventListener("blur", () => setTimeout(() => {
-    closeList();
-    input.value = selectedText();
-  }, 150));
-  input.addEventListener("keydown", event => {
+  input.addEventListener("blur", () =>
+    setTimeout(() => {
+      closeList();
+      input.value = selectedText();
+    }, 150),
+  );
+  input.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       event.preventDefault();
       input.value = selectedText();
@@ -514,8 +544,11 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
     syncInput();
     if (!list.hidden) renderOptions(input.value);
   }).observe(select, {
-    childList: true, subtree: true, characterData: true,
-    attributes: true, attributeFilter: ["disabled", "label"],
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ["disabled", "label"],
   });
 
   // Sincroniza también las asignaciones programáticas de select.value.
@@ -523,8 +556,13 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscar�
   if (nativeValue?.get && nativeValue?.set) {
     Object.defineProperty(select, "value", {
       configurable: true,
-      get() { return nativeValue.get.call(select); },
-      set(value) { nativeValue.set.call(select, value); syncInput(); },
+      get() {
+        return nativeValue.get.call(select);
+      },
+      set(value) {
+        nativeValue.set.call(select, value);
+        syncInput();
+      },
     });
   }
   select.form?.addEventListener("reset", () => setTimeout(syncInput, 0));
@@ -560,7 +598,7 @@ export function installSearchableSelects() {
   if (typeof document === "undefined" || document.body?.dataset.selectsReady === "true") return;
   if (document.body) document.body.dataset.selectsReady = "true";
   enhanceSearchableSelects(document);
-  const observer = new MutationObserver(records => {
+  const observer = new MutationObserver((records) => {
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (node.nodeType !== 1) continue;
@@ -572,14 +610,14 @@ export function installSearchableSelects() {
 
   // Los formularios en modo lectura (y otros flujos) deshabilitan el <select>
   // real: el buscador visible debe reflejar ese estado.
-  const syncState = select => {
+  const syncState = (select) => {
     const box = select.closest?.(".combo-box");
     const input = box?.querySelector(".combo-box-input");
     if (!input) return;
     input.disabled = select.disabled;
     box.hidden = select.hidden;
   };
-  const stateObserver = new MutationObserver(records => {
+  const stateObserver = new MutationObserver((records) => {
     for (const record of records) {
       if (record.target.tagName === "SELECT") syncState(record.target);
     }
@@ -604,12 +642,16 @@ export function showValidationErrors(messages, title = "Revisa los siguientes da
   // Botones de cierre (se conectan una sola vez)
   if (!dialog.dataset.closeWired) {
     dialog.dataset.closeWired = "true";
-    document.querySelector("#close-validation-dialog")?.addEventListener("click", () => dialog.close());
-    document.querySelector("#close-validation-btn")?.addEventListener("click", () => dialog.close());
+    document
+      .querySelector("#close-validation-dialog")
+      ?.addEventListener("click", () => dialog.close());
+    document
+      .querySelector("#close-validation-btn")
+      ?.addEventListener("click", () => dialog.close());
   }
   document.querySelector("#validation-title").textContent = title;
   list.replaceChildren();
-  messages.forEach(message => {
+  messages.forEach((message) => {
     const li = document.createElement("li");
     li.textContent = message;
     list.append(li);
@@ -667,18 +709,23 @@ export function intentarCerrar(form, dialog) {
 }
 
 // Botones del diálogo de confirmación de cierre
-if (typeof document !== "undefined") (() => {
-  const confirmDialog = document.querySelector("#confirm-close-dialog");
-  if (!confirmDialog) return;
-  const cerrarObjetivo = () => {
-    const target = document.getElementById(confirmDialog.dataset.targetDialog || "");
-    if (target && target.close) target.close();
-    confirmDialog.close();
-  };
-  document.querySelector("#confirm-close-leave")?.addEventListener("click", cerrarObjetivo);
-  document.querySelector("#confirm-close-stay")?.addEventListener("click", () => confirmDialog.close());
-  document.querySelector("#close-confirm-close-dialog")?.addEventListener("click", () => confirmDialog.close());
-})();
+if (typeof document !== "undefined")
+  (() => {
+    const confirmDialog = document.querySelector("#confirm-close-dialog");
+    if (!confirmDialog) return;
+    const cerrarObjetivo = () => {
+      const target = document.getElementById(confirmDialog.dataset.targetDialog || "");
+      if (target && target.close) target.close();
+      confirmDialog.close();
+    };
+    document.querySelector("#confirm-close-leave")?.addEventListener("click", cerrarObjetivo);
+    document
+      .querySelector("#confirm-close-stay")
+      ?.addEventListener("click", () => confirmDialog.close());
+    document
+      .querySelector("#close-confirm-close-dialog")
+      ?.addEventListener("click", () => confirmDialog.close());
+  })();
 
 /**
  * Pone todos los controles del formulario en modo solo lectura y oculta
@@ -689,8 +736,13 @@ export function setFormReadonly(form, readonly) {
   form.classList.toggle("is-readonly", readonly);
   // Solo controles de valor: los botones (tabs, cierres) deben seguir
   // siendo operables en modo lectura
-  form.querySelectorAll("input, select, textarea, [contenteditable]").forEach(element => {
-    if (element.type === "submit" || element.closest(".dialog-actions") || element.closest(".doc-library")) return;
+  form.querySelectorAll("input, select, textarea, [contenteditable]").forEach((element) => {
+    if (
+      element.type === "submit" ||
+      element.closest(".dialog-actions") ||
+      element.closest(".doc-library")
+    )
+      return;
     // El buscador del combo se sincroniza desde su <select> real: si ese
     // select está deshabilitado por otra regla, debe seguir bloqueado.
     if (element.classList.contains("combo-box-input")) return;
@@ -701,15 +753,15 @@ export function setFormReadonly(form, readonly) {
     }
     element.disabled = readonly;
   });
-  form.querySelectorAll(".combo-box").forEach(box => {
+  form.querySelectorAll(".combo-box").forEach((box) => {
     const select = box.querySelector("select");
     const input = box.querySelector(".combo-box-input");
     if (select && input) input.disabled = select.disabled;
   });
-  form.querySelectorAll(".rich-text-toolbar button").forEach(button => {
+  form.querySelectorAll(".rich-text-toolbar button").forEach((button) => {
     button.disabled = readonly;
   });
-  form.querySelectorAll(".dialog-actions").forEach(actions => {
+  form.querySelectorAll(".dialog-actions").forEach((actions) => {
     actions.hidden = readonly;
   });
 }
@@ -724,7 +776,7 @@ export function renderDocumentRecords(container, records, removeAttr, emptyText)
     return;
   }
 
-  records.forEach(documentRecord => {
+  records.forEach((documentRecord) => {
     const item = document.createElement("div");
     item.className = "property-document-item";
     const link = document.createElement("a");

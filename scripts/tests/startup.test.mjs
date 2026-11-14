@@ -19,7 +19,9 @@ test("restart: selecciona solo listeners del puerto local exacto (IPv4 e IPv6)",
 });
 
 test("refreshState: permite reintentar tras un fallo de red y comparte cargas simultáneas", async () => {
-  const permissionsUrl = JSON.stringify(new URL("../../public/js/permissions.js", import.meta.url).href);
+  const permissionsUrl = JSON.stringify(
+    new URL("../../public/js/permissions.js", import.meta.url).href,
+  );
   const utilsUrl = JSON.stringify(new URL("../../public/js/utils.js", import.meta.url).href);
   const source = (await readFile(new URL("../../public/js/state.js", import.meta.url), "utf8"))
     .replace('"./permissions.js"', permissionsUrl)

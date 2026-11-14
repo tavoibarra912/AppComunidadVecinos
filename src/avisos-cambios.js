@@ -27,7 +27,7 @@ const CAMPOS_OWNER = [
 export function emailsAvisosCambios() {
   return String(getSettings().avisosCambiosEmail || "")
     .split(",")
-    .map(e => e.trim())
+    .map((e) => e.trim())
     .filter(Boolean);
 }
 
@@ -43,8 +43,7 @@ export function diffOwner(before, after) {
   for (const [campo, etiqueta] of CAMPOS_OWNER) {
     const antes = valor(before, campo);
     const despues = valor(after, campo);
-    if (antes !== despues)
-      cambios.push(`• ${etiqueta}: "${antes || "—"}" → "${despues || "—"}"`);
+    if (antes !== despues) cambios.push(`• ${etiqueta}: "${antes || "—"}" → "${despues || "—"}"`);
   }
   return cambios;
 }
@@ -75,4 +74,3 @@ export async function avisarCambioOwner(before, after, actor) {
   }
   return true;
 }
-

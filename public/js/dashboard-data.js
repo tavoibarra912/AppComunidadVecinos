@@ -12,32 +12,17 @@ export function ownerDocumentState(owner) {
   const docs = requiredDocuments.map((key) => owner.documents?.[key]);
   const files = docs.filter(hasDocumentFile);
   if (!files.length) return "none";
-  if (files.some((doc) => doc.adminApproval?.status === "rejected"))
-    return "rejected";
+  if (files.some((doc) => doc.adminApproval?.status === "rejected")) return "rejected";
   if (files.length !== requiredDocuments.length) return "incomplete";
-  return files.every((doc) => doc.adminApproval?.status === "approved")
-    ? "approved"
-    : "pending";
+  return files.every((doc) => doc.adminApproval?.status === "approved") ? "approved" : "pending";
 }
-export function dashboardData(
-  data,
-  snapshot = null,
-  communityId = "",
-  now = new Date(),
-) {
+export function dashboardData(data, snapshot = null, communityId = "", now = new Date()) {
   const user = data.users.find((u) => u.id === data.currentUserId);
-  const role = data.roles.find(
-    (r) => r.id === user?.rol || r.nombre === user?.rol,
-  );
-  const personal =
-    role?.nombre === "user" ||
-    user?.rol === "user" ||
-    data.activeRole === "owner";
+  const role = data.roles.find((r) => r.id === user?.rol || r.nombre === user?.rol);
+  const personal = role?.nombre === "user" || user?.rol === "user" || data.activeRole === "owner";
   const ownOwners = user ? data.owners.filter((o) => o.userId === user.id) : [];
   const ownOwnerIds = new Set(ownOwners.map((o) => o.id));
-  const ownTenants = user
-    ? data.tenants.filter((t) => t.userId === user.id)
-    : [];
+  const ownTenants = user ? data.tenants.filter((t) => t.userId === user.id) : [];
   const availableProperties = !user
     ? []
     : personal
@@ -47,17 +32,11 @@ export function dashboardData(
             ownTenants.some((t) => t.propertyId === p.id),
         )
       : data.properties;
-  const availableCommunityIds = new Set(
-    availableProperties.map((p) => p.communityId),
-  );
+  const availableCommunityIds = new Set(availableProperties.map((p) => p.communityId));
   const availableCommunities = !user
     ? []
-    : data.communities.filter(
-        (c) => !personal || availableCommunityIds.has(c.id),
-      );
-  const communities = availableCommunities.filter(
-    (c) => !communityId || c.id === communityId,
-  );
+    : data.communities.filter((c) => !personal || availableCommunityIds.has(c.id));
+  const communities = availableCommunities.filter((c) => !communityId || c.id === communityId);
   const properties = availableProperties.filter(
     (p) => !communityId || p.communityId === communityId,
   );
@@ -68,9 +47,7 @@ export function dashboardData(
   );
   const ownerIds = new Set(owners.map((o) => o.id));
   const tenants = (!user ? [] : data.tenants).filter(
-    (t) =>
-      propertyIds.has(t.propertyId) ||
-      (!communityId && personal && t.userId === user.id),
+    (t) => propertyIds.has(t.propertyId) || (!communityId && personal && t.userId === user.id),
   );
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const validDate = (value) =>
@@ -82,8 +59,7 @@ export function dashboardData(
   for (const t of tenants)
     contracts[
       !validDate(t.contractStart) ||
-      (t.contractEnd &&
-        (!validDate(t.contractEnd) || t.contractEnd < t.contractStart))
+      (t.contractEnd && (!validDate(t.contractEnd) || t.contractEnd < t.contractStart))
         ? "unknown"
         : t.contractStart > today
           ? "upcoming"
@@ -91,9 +67,7 @@ export function dashboardData(
             ? "ended"
             : "active"
     ]++;
-  const docOwners = owners.filter(
-    (o) => o.documents && typeof o.documents === "object",
-  );
+  const docOwners = owners.filter((o) => o.documents && typeof o.documents === "object");
   const ownerStates = {
     approved: 0,
     pending: 0,
@@ -125,9 +99,7 @@ export function dashboardData(
         {
           key: "approved",
           label: "Aprobados",
-          value: tenantDocuments.filter(
-            (d) => d.adminApproval?.status === "approved",
-          ).length,
+          value: tenantDocuments.filter((d) => d.adminApproval?.status === "approved").length,
         },
         {
           key: "pending",
@@ -139,9 +111,7 @@ export function dashboardData(
         {
           key: "rejected",
           label: "Requieren corrección",
-          value: tenantDocuments.filter(
-            (d) => d.adminApproval?.status === "rejected",
-          ).length,
+          value: tenantDocuments.filter((d) => d.adminApproval?.status === "rejected").length,
         },
       ];
   const typeLabels = {
@@ -156,9 +126,7 @@ export function dashboardData(
     label,
     value: properties.filter((p) => p.propertyType === key).length,
   }));
-  const other = properties.filter(
-    (p) => !(p.propertyType in typeLabels),
-  ).length;
+  const other = properties.filter((p) => !(p.propertyType in typeLabels)).length;
   if (other)
     propertyTypes.push({
       key: "other",
@@ -171,9 +139,7 @@ export function dashboardData(
       (!communityId || p.communityId === communityId) &&
       availableCommunities.some((c) => c.id === p.communityId),
   );
-  const published = posts.filter(
-    (p) => !["draft", "scheduled"].includes(p.phase),
-  );
+  const published = posts.filter((p) => !["draft", "scheduled"].includes(p.phase));
   const unreadPosts = published.filter(
     (p) => p.recipient?.userId === user?.id && !p.recipient.readAt,
   ).length;
@@ -193,11 +159,7 @@ export function dashboardData(
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
     .slice(0, 5);
   const recent = [...published]
-    .sort(
-      (a, b) =>
-        Date.parse(b.updatedAt || b.publishAt) -
-        Date.parse(a.updatedAt || a.publishAt),
-    )
+    .sort((a, b) => Date.parse(b.updatedAt || b.publishAt) - Date.parse(a.updatedAt || a.publishAt))
     .slice(0, 3);
   return {
     user,

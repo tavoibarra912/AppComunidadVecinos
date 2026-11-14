@@ -3,10 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 test("contraseña actual incorrecta no dispara cierre de sesión en el cliente", async () => {
-  const source = await readFile(
-    new URL("../../public/js/api.js", import.meta.url),
-    "utf8",
-  );
+  const source = await readFile(new URL("../../public/js/api.js", import.meta.url), "utf8");
   const harness = `const window = new EventTarget();
     const fetch = async () => new Response(JSON.stringify({error: 'Credenciales incorrectas'}), {status: 401});
     export { window as events };\n`;

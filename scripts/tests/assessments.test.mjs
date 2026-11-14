@@ -6,9 +6,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import express from "express";
 
-const directory = mkdtempSync(
-  path.join(tmpdir(), "penarrubia-assessments-test-"),
-);
+const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-assessments-test-"));
 process.env.APP_DATA_DIR = directory;
 process.env.APP_UPLOADS_DIR = path.join(directory, "uploads");
 process.env.NODE_ENV = "test";
@@ -47,17 +45,11 @@ db.prepare("INSERT INTO fee_receipts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)").run(
 const fees = await import("../../src/fees.js");
 const { default: router } = await import("../../src/routes/index.js");
 const { processFeeNotifications } = await import("../../src/fee-worker.js");
-const actor = db
-  .prepare("SELECT * FROM users WHERE usuario='super_admin'")
-  .get();
-const manager = db
-  .prepare("SELECT * FROM users WHERE rol='community_admin' LIMIT 1")
-  .get();
+const actor = db.prepare("SELECT * FROM users WHERE usuario='super_admin'").get();
+const manager = db.prepare("SELECT * FROM users WHERE rol='community_admin' LIMIT 1").get();
 const o1 = "own-seed-1",
   o2 = "assessment-owner-2";
-db.prepare(
-  "INSERT INTO owners(id,name,surname,dni,userId) VALUES(?,?,?,?,?)",
-).run(
+db.prepare("INSERT INTO owners(id,name,surname,dni,userId) VALUES(?,?,?,?,?)").run(
   o2,
   "Titular",
   "Segundo",
@@ -92,9 +84,7 @@ let sequence = 0,
   staff;
 function community() {
   const id = `assessment-community-${++sequence}`;
-  db.prepare(
-    "INSERT INTO communities(id,name,nif,adminUserId,currency) VALUES(?,?,?,?,?)",
-  ).run(
+  db.prepare("INSERT INTO communities(id,name,nif,adminUserId,currency) VALUES(?,?,?,?,?)").run(
     id,
     `Derramas ${sequence}`,
     `ASSESSMENT-${sequence}`,
@@ -149,25 +139,16 @@ function client() {
     const response = await fetch(base + route, {
       method,
       headers: {
-        ...(body instanceof FormData
-          ? {}
-          : { "Content-Type": "application/json" }),
+        ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(cookie ? { Cookie: cookie } : {}),
       },
-      body:
-        body === undefined
-          ? undefined
-          : body instanceof FormData
-            ? body
-            : JSON.stringify(body),
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     });
     if (response.headers.get("set-cookie"))
       cookie = response.headers.get("set-cookie").split(";")[0];
     return {
       status: response.status,
-      data: (response.headers.get("content-type") || "").includes(
-        "application/json",
-      )
+      data: (response.headers.get("content-type") || "").includes("application/json")
         ? await response.json()
         : await response.text(),
     };
@@ -182,9 +163,7 @@ before(async () => {
   const app = express();
   app.use(express.json());
   app.use("/api", router);
-  app.use((error, _req, res, _next) =>
-    res.status(500).json({ error: error.message }),
-  );
+  app.use((error, _req, res, _next) => res.status(500).json({ error: error.message }));
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -203,9 +182,7 @@ after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
   db.close();
   assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
-  assert.ok(
-    path.basename(directory).startsWith("penarrubia-assessments-test-"),
-  );
+  assert.ok(path.basename(directory).startsWith("penarrubia-assessments-test-"));
   rmSync(directory, { recursive: true, force: true });
 });
 
@@ -219,21 +196,11 @@ test("derramas: migra el esquema anterior conservando recibos e índices indepen
     )
     .all();
   assert.equal(indexes.length, 2);
-  assert.match(
-    indexes.find((x) => x.name === "fee_receipts_period").sql,
-    /assessmentId=''/,
-  );
-  assert.match(
-    indexes.find((x) => x.name === "fee_receipts_assessment").sql,
-    /assessmentId<>''/,
-  );
+  assert.match(indexes.find((x) => x.name === "fee_receipts_period").sql, /assessmentId=''/);
+  assert.match(indexes.find((x) => x.name === "fee_receipts_assessment").sql, /assessmentId<>''/);
   await import("../../src/fees.js?restart-test");
   assert.equal(
-    db
-      .prepare(
-        "SELECT COUNT(*) n FROM schema_migrations WHERE id='extraordinary-fees-v1'",
-      )
-      .get().n,
+    db.prepare("SELECT COUNT(*) n FROM schema_migrations WHERE id='extraordinary-fees-v1'").get().n,
     1,
   );
   assert.equal(fees.receiptById("legacy-receipt").amount, 10000);
@@ -249,10 +216,7 @@ test("derramas API: exige sesión, gestión y comunidad asignada en todas las op
   }
   const a = await ok(staff, route, "POST", defaults, 201);
   assert.equal((await ok(staff, route)).length, 1);
-  assert.equal(
-    (await ok(owner, `/fees/communities/${c.id}`)).assessments.length,
-    0,
-  );
+  assert.equal((await ok(owner, `/fees/communities/${c.id}`)).assessments.length, 0);
   for (const request of [owner, tenant])
     for (const [suffix, method, body] of [
       ["", "GET"],
@@ -261,11 +225,7 @@ test("derramas API: exige sesión, gestión y comunidad asignada en todas las op
       ["/issue", "POST", { installment: 1 }],
       ["/cancel", "POST", { reason: "Prueba" }],
     ])
-      assert.equal(
-        (await request(`/fees/assessments/${a.id}${suffix}`, method, body))
-          .status,
-        403,
-      );
+      assert.equal((await request(`/fees/assessments/${a.id}${suffix}`, method, body)).status, 403);
   db.prepare("UPDATE communities SET adminUserId='' WHERE id=?").run(c.id);
   assert.equal((await staff(route)).status, 403);
   assert.equal((await staff(`/fees/assessments/${a.id}`)).status, 403);
@@ -311,9 +271,7 @@ test("derramas: valida importes, selección, acuerdos, reparto y vencimientos an
       400,
       JSON.stringify(change),
     );
-  db.prepare("UPDATE properties SET participationCoef='24' WHERE id=?").run(
-    c.properties[0],
-  );
+  db.prepare("UPDATE properties SET participationCoef='24' WHERE id=?").run(c.properties[0]);
   assert.equal((await admin(route, "POST", defaults)).status, 400);
   assert.equal(fees.assessments(c.id).length, 0);
 });
@@ -323,12 +281,7 @@ test("derramas: sin pestaña de avisos conserva los recordatorios guardados y no
   assert.equal(c.assessment.reminders.beforeDays, 12);
   const withoutReminders = { ...defaults };
   delete withoutReminders.reminders;
-  const edited = fees.saveAssessment(
-    c.id,
-    withoutReminders,
-    actor,
-    c.assessment.id,
-  );
+  const edited = fees.saveAssessment(c.id, withoutReminders, actor, c.assessment.id);
   assert.equal(edited.reminders.beforeDays, 12);
   const fresh = fees.saveAssessment(c.id, withoutReminders, actor);
   assert.deepEqual(fresh.reminders, {});
@@ -341,9 +294,7 @@ test("derramas: congela inmuebles, coeficientes e importes aunque cambien el cen
     original.rows.map((r) => r.amount),
     [2000, 6000],
   );
-  db.prepare("UPDATE properties SET participationCoef='10' WHERE id=?").run(
-    c.properties[0],
-  );
+  db.prepare("UPDATE properties SET participationCoef='10' WHERE id=?").run(c.properties[0]);
   db.prepare(
     "INSERT INTO properties(id,communityId,plot,ownerIds,participationCoef) VALUES(?,?,?,?,?)",
   ).run(`${c.id}-new`, c.id, "Alta posterior", JSON.stringify([o1]), "15");
@@ -387,16 +338,10 @@ test("derramas: selección manual, copropiedad y redondeos conservan los totales
   assert.equal(rows.length, 6);
   for (const id of c.properties)
     assert.equal(
-      rows
-        .filter((r) => r.propertyId === id)
-        .reduce((sum, r) => sum + r.amount, 0),
+      rows.filter((r) => r.propertyId === id).reduce((sum, r) => sum + r.amount, 0),
       a.allocations[id],
     );
-  const subset = fees.saveAssessment(
-    c.id,
-    { ...defaults, propertyIds: [c.properties[0]] },
-    actor,
-  );
+  const subset = fees.saveAssessment(c.id, { ...defaults, propertyIds: [c.properties[0]] }, actor);
   assert.equal(fees.previewAssessment(subset.id, 1).rows[0].amount, 8000);
   assert.equal(fees.previewAssessment(subset.id, 1).rows.length, 1);
 });
@@ -410,9 +355,7 @@ test("derramas API: borrador editable, vista previa obsoleta, emisión única y 
   });
   assert.equal(edited.canEdit, true);
   const batch = await ok(staff, `${route}/preview`, "POST", { installment: 1 });
-  db.prepare(
-    "UPDATE properties SET plot='Referencia actualizada' WHERE id=?",
-  ).run(c.properties[0]);
+  db.prepare("UPDATE properties SET plot='Referencia actualizada' WHERE id=?").run(c.properties[0]);
   assert.equal(
     (
       await staff(`${route}/issue`, "POST", {
@@ -423,13 +366,7 @@ test("derramas API: borrador editable, vista previa obsoleta, emisión única y 
     409,
   );
   const fresh = await ok(staff, `${route}/preview`, "POST", { installment: 1 });
-  await ok(
-    staff,
-    `${route}/issue`,
-    "POST",
-    { installment: 1, token: fresh.token },
-    201,
-  );
+  await ok(staff, `${route}/issue`, "POST", { installment: 1, token: fresh.token }, 201);
   assert.equal(
     (
       await staff(`${route}/issue`, "POST", {
@@ -458,9 +395,7 @@ test("derramas API: borrador editable, vista previa obsoleta, emisión única y 
   issue(second.id);
   assert.equal(
     db
-      .prepare(
-        "SELECT COUNT(*) n FROM fee_receipts WHERE communityId=? AND period='2030-12'",
-      )
+      .prepare("SELECT COUNT(*) n FROM fee_receipts WHERE communityId=? AND period='2030-12'")
       .get(c.id).n,
     6,
   );
@@ -483,10 +418,7 @@ test("derramas: anula plazos pendientes sin crear recibos, conserva motivo y blo
   assert.equal(a.totals.cancelled, 12000);
   assert.equal(a.canEdit, false);
   assert.equal(detail(a.id).receipts.length, 0);
-  assert.equal(
-    (await staff(`${route}/preview`, "POST", { installment: 2 })).status,
-    409,
-  );
+  assert.equal((await staff(`${route}/preview`, "POST", { installment: 2 })).status, 409);
   assert.equal(
     (
       await staff(`${route}/issue`, "POST", {
@@ -498,8 +430,7 @@ test("derramas: anula plazos pendientes sin crear recibos, conserva motivo y blo
   );
   assert.equal((await staff(route, "PUT", defaults)).status, 409);
   assert.equal(
-    (await staff(`${route}/cancel`, "POST", { installment: 2, reason: "Otra" }))
-      .status,
+    (await staff(`${route}/cancel`, "POST", { installment: 2, reason: "Otra" })).status,
     409,
   );
   const cancelled = await ok(staff, `${route}/cancel`, "POST", {
@@ -525,10 +456,7 @@ test("derramas: anular recibos emitidos nunca devuelve el borrador ni permite re
   assert.equal(a.totals.unissued, 12000);
   assert.equal(a.totals.cancelled, 8000);
   assert.equal((await staff(route, "PUT", defaults)).status, 409);
-  assert.equal(
-    (await staff(`${route}/preview`, "POST", { installment: 1 })).status,
-    409,
-  );
+  assert.equal((await staff(`${route}/preview`, "POST", { installment: 1 })).status, 409);
   issue(a.id, 2);
   assert.deepEqual(
     detail(a.id)
@@ -538,13 +466,11 @@ test("derramas: anular recibos emitidos nunca devuelve el borrador ni permite re
   );
   const legacy = create();
   const emitted = issue(legacy.assessment.id);
-  for (const id of emitted.ids)
-    fees.cancelReceipt(id, { reason: "Anulación individual" }, actor);
+  for (const id of emitted.ids) fees.cancelReceipt(id, { reason: "Anulación individual" }, actor);
   assert.equal(detail(legacy.assessment.id).canEdit, false);
-  assert.throws(
-    () => fees.saveAssessment(legacy.id, defaults, actor, legacy.assessment.id),
-    { status: 409 },
-  );
+  assert.throws(() => fees.saveAssessment(legacy.id, defaults, actor, legacy.assessment.id), {
+    status: 409,
+  });
   assert.throws(() => fees.previewAssessment(legacy.assessment.id, 1), {
     status: 409,
   });
@@ -555,19 +481,13 @@ test("derramas: cobros parciales bloquean anulación atómicamente; saldo y devo
   issue(c.assessment.id);
   issue(c.assessment.id, 2);
   const rows = detail(c.assessment.id).receipts;
-  const first = rows.find(
-    (r) => r.propertyId === c.properties[0] && r.installment === 1,
-  );
-  const second = rows.find(
-    (r) => r.propertyId === c.properties[0] && r.installment === 2,
-  );
+  const first = rows.find((r) => r.propertyId === c.properties[0] && r.installment === 1);
+  const second = rows.find((r) => r.propertyId === c.properties[0] && r.installment === 2);
   const partial = payment(c.id, o1, "5", [first.id]);
   assert.equal(detail(c.assessment.id).installments[0].status, "partial");
-  assert.throws(
-    () =>
-      fees.cancelAssessment(c.assessment.id, { reason: "Bloqueada" }, actor),
-    { status: 409 },
-  );
+  assert.throws(() => fees.cancelAssessment(c.assessment.id, { reason: "Bloqueada" }, actor), {
+    status: 409,
+  });
   assert.ok(detail(c.assessment.id).receipts.every((r) => !r.cancelledAt));
   assert.ok(detail(c.assessment.id).installments.every((r) => !r.cancelledAt));
   fees.savePlan(
@@ -583,11 +503,7 @@ test("derramas: cobros parciales bloquean anulación atómicamente; saldo y devo
     actor,
   );
   const preview = fees.preview(c.id, "2030-12");
-  const ordinary = fees.issue(
-    c.id,
-    { period: preview.period, token: preview.token },
-    actor,
-  ).ids[0];
+  const ordinary = fees.issue(c.id, { period: preview.period, token: preview.token }, actor).ids[0];
   const paid = payment(c.id, o1, "45", [ordinary, first.id]);
   assert.equal(paid.credit, 500);
   fees.allocateCredit(paid.id, { receiptIds: [second.id] }, actor);
@@ -597,11 +513,7 @@ test("derramas: cobros parciales bloquean anulación atómicamente; saldo y devo
   assert.equal(fees.receiptView(fees.receiptById(first.id)).paid, 500);
   assert.equal(fees.receiptView(fees.receiptById(second.id)).outstanding, 3000);
   fees.reversePayment(partial.id, { reason: "Devuelto" }, actor);
-  const cancelled = fees.cancelAssessment(
-    c.assessment.id,
-    { reason: "Anulación íntegra" },
-    actor,
-  );
+  const cancelled = fees.cancelAssessment(c.assessment.id, { reason: "Anulación íntegra" }, actor);
   assert.equal(cancelled.status, "cancelled");
   assert.equal(cancelled.totals.outstanding, 0);
   assert.equal(cancelled.totals.unissued, 0);
@@ -621,10 +533,9 @@ test("derramas: el estado cobrada excluye plazos anulados y no confunde cobrado 
   );
   assert.equal(a.status, "collected");
   assert.equal(a.totals.paid, 8000);
-  assert.throws(
-    () => fees.cancelAssessment(a.id, { reason: "Con cobros" }, actor),
-    { status: 409 },
-  );
+  assert.throws(() => fees.cancelAssessment(a.id, { reason: "Con cobros" }, actor), {
+    status: 409,
+  });
 });
 
 test("derramas API: recibos propios, justificantes privados, avisos y resumen de Inicio reutilizan el libro", async () => {
@@ -633,10 +544,7 @@ test("derramas API: recibos propios, justificantes privados, avisos y resumen de
   const first = detail(c.assessment.id).receipts[0],
     second = detail(c.assessment.id).receipts[1];
   const mine = await ok(owner, "/fees/mine");
-  assert.equal(
-    mine.receipts.filter((r) => r.assessmentId === c.assessment.id).length,
-    1,
-  );
+  assert.equal(mine.receipts.filter((r) => r.assessmentId === c.assessment.id).length, 1);
   assert.equal((await owner(`/fees/receipts/${second.id}`)).status, 403);
   assert.equal((await tenant(`/fees/receipts/${first.id}`)).status, 403);
   const receipt = await ok(owner, `/fees/receipts/${first.id}`);
@@ -649,13 +557,7 @@ test("derramas API: recibos propios, justificantes privados, avisos y resumen de
     new Blob(["%PDF-1.4\njustificante"], { type: "application/pdf" }),
     "justificante.pdf",
   );
-  const proof = await ok(
-    owner,
-    `/fees/receipts/${first.id}/proofs`,
-    "POST",
-    form,
-    201,
-  );
+  const proof = await ok(owner, `/fees/receipts/${first.id}/proofs`, "POST", form, 201);
   assert.equal((await other(`/fees/proofs/${proof.id}/download`)).status, 403);
   await ok(staff, `/fees/proofs/${proof.id}/review`, "POST", {
     status: "accepted",
@@ -670,9 +572,7 @@ test("derramas API: recibos propios, justificantes privados, avisos y resumen de
   fees.materializeFeeReminders("2030-12-09");
   assert.equal(
     db
-      .prepare(
-        "SELECT COUNT(*) n FROM fee_events WHERE receiptId=? AND kind='due'",
-      )
+      .prepare("SELECT COUNT(*) n FROM fee_events WHERE receiptId=? AND kind='due'")
       .get(issued.ids[0]).n,
     1,
   );
@@ -698,15 +598,10 @@ test("derramas: recordatorios email usan su configuración, consentimiento y con
     [o1, true],
     [o2, false],
   ]) {
-    const userId = db
-      .prepare("SELECT userId FROM owners WHERE id=?")
-      .get(id).userId;
+    const userId = db.prepare("SELECT userId FROM owners WHERE id=?").get(id).userId;
     db.prepare(
       "INSERT INTO communication_preferences(userId,data) VALUES(?,?) ON CONFLICT(userId) DO UPDATE SET data=excluded.data",
-    ).run(
-      userId,
-      JSON.stringify({ emailEnabled: enabled, email: `${id}@example.test` }),
-    );
+    ).run(userId, JSON.stringify({ emailEnabled: enabled, email: `${id}@example.test` }));
   }
   const sent = [];
   await processFeeNotifications(async (_channel, _to, body) => sent.push(body));
@@ -716,20 +611,10 @@ test("derramas: recordatorios email usan su configuración, consentimiento y con
   await processFeeNotifications(async (_channel, _to, body) => sent.push(body));
   assert.equal(sent.length, 2);
   assert.match(sent[1], /Derrama.*fachada.*Pendiente actual/);
-  fees.notify(
-    fees.receiptById(row.id),
-    "due",
-    "paid-before-mail",
-    "Vence derrama",
-    "Pendiente",
-  );
+  fees.notify(fees.receiptById(row.id), "due", "paid-before-mail", "Vence derrama", "Pendiente");
   payment(c.id, o1, "20", [row.id]);
   await processFeeNotifications(async (_channel, _to, body) => sent.push(body));
-  assert.equal(
-    sent.length,
-    3,
-    "Solo la confirmación del cobro, sin reclamar un recibo pagado",
-  );
+  assert.equal(sent.length, 3, "Solo la confirmación del cobro, sin reclamar un recibo pagado");
 });
 
 test("derramas API: EUR obligatorio al crear, previsualizar y emitir; conserva comunidades con borradores", async () => {
@@ -754,10 +639,7 @@ test("derramas API: protege los inmuebles del reparto antes de emitir y permite 
   const c = create(),
     destination = community();
   const property = await ok(admin, `/properties/${c.properties[0]}`);
-  assert.equal(
-    (await admin(`/properties/${property.id}`, "DELETE")).status,
-    409,
-  );
+  assert.equal((await admin(`/properties/${property.id}`, "DELETE")).status, 409);
   assert.equal(
     (
       await admin(`/properties/${property.id}`, "PUT", {
@@ -768,11 +650,7 @@ test("derramas API: protege los inmuebles del reparto antes de emitir y permite 
     ).status,
     409,
   );
-  fees.cancelAssessment(
-    c.assessment.id,
-    { reason: "Descartar borrador" },
-    actor,
-  );
+  fees.cancelAssessment(c.assessment.id, { reason: "Descartar borrador" }, actor);
   await ok(admin, `/properties/${property.id}`, "DELETE");
 });
 
@@ -790,12 +668,7 @@ test("derramas: conserva el motivo enriquecido y elimina etiquetas, atributos y 
     c.assessment.purpose,
   );
   assert.throws(
-    () =>
-      fees.saveAssessment(
-        c.id,
-        { ...defaults, purpose: "x".repeat(20001) },
-        actor,
-      ),
+    () => fees.saveAssessment(c.id, { ...defaults, purpose: "x".repeat(20001) }, actor),
     { status: 400 },
   );
 });
