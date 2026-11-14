@@ -64,11 +64,15 @@ router.patch("/owner-notifications/:id", (req, res) => {
 
 router.patch("/owner-notifications", (req, res) => {
   const { ownerId, read } = req.body || {};
-  if (ownerId) {
-    db.prepare("UPDATE owner_notifications SET read = ? WHERE ownerId = ?").run(read === false ? 0 : 1, ownerId);
-  } else {
-    db.prepare("UPDATE owner_notifications SET read = ?").run(read === false ? 0 : 1);
-  }
+  // Defensa en profundidad: nunca marcar notificaciones sin acotar al propietario.
+  if (!ownerId)
+    return res
+      .status(400)
+      .json({ error: "Indicá el propietario de las notificaciones." });
+  db.prepare("UPDATE owner_notifications SET read = ? WHERE ownerId = ?").run(
+    read === false ? 0 : 1,
+    ownerId,
+  );
   res.json({ ok: true });
 });
 

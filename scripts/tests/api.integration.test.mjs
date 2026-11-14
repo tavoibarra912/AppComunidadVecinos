@@ -456,6 +456,18 @@ test("propietario: la administración persiste los datos LPH en la ficha", async
     });
   }
 });
+test("buzones: marcar todas sin ownerId se rechaza (400)", async () => {
+  const sinOwner = await owner("/notifications/owner-notifications", "PATCH", {
+    read: true,
+  });
+  assert.ok(sinOwner.status === 400 || sinOwner.status === 403, "sin ownerId debe rechazarse (400/403)");
+  const conOwner = await owner("/notifications/owner-notifications", "PATCH", {
+    ownerId: "own-seed-1",
+    read: true,
+  });
+  assert.equal(conOwner.status, 200);
+});
+
 test("buzones: avisos persisten y solo el destinatario los puede marcar leídos", async () => {
   const n = await admin("/notifications/owner-notifications", "POST", {
     ownerId: "own-seed-1",
