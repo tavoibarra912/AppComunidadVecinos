@@ -16,7 +16,8 @@ const { db } = await import("../../src/db.js");
 const { seedIfEmpty } = await import("../../src/seed.js");
 seedIfEmpty();
 // Simula una base anterior a las derramas, con recibos e índice ordinario.
-db.exec(`CREATE TABLE fee_receipts (
+db.exec(`DROP TABLE IF EXISTS fee_receipts;
+CREATE TABLE fee_receipts (
   id TEXT PRIMARY KEY, communityId TEXT NOT NULL, propertyId TEXT NOT NULL,
   planId TEXT NOT NULL, period TEXT NOT NULL, periodEnd TEXT NOT NULL,
   dueDate TEXT NOT NULL, amount INTEGER NOT NULL CHECK(amount>0),

@@ -37,25 +37,6 @@ export const serviceBillings = {
   informative: "Solo reparto informativo, sin deuda",
 };
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS service_bills (
-    id TEXT PRIMARY KEY, communityId TEXT NOT NULL, service TEXT NOT NULL,
-    supplier TEXT NOT NULL DEFAULT '', invoiceNumber TEXT NOT NULL DEFAULT '',
-    period TEXT NOT NULL, issueDate TEXT NOT NULL, dueDate TEXT NOT NULL,
-    totalAmount INTEGER NOT NULL CHECK(totalAmount>0), data TEXT NOT NULL,
-    createdAt TEXT NOT NULL, actorId TEXT NOT NULL,
-    issuedAt TEXT NOT NULL DEFAULT '',
-    cancelledAt TEXT NOT NULL DEFAULT '', cancellationReason TEXT NOT NULL DEFAULT ''
-  );
-  CREATE INDEX IF NOT EXISTS service_bills_community ON service_bills(communityId,issueDate);
-  CREATE TABLE IF NOT EXISTS service_attachments (
-    id TEXT PRIMARY KEY, serviceBillId TEXT NOT NULL,
-    fileName TEXT NOT NULL, diskName TEXT NOT NULL, mime TEXT NOT NULL,
-    createdAt TEXT NOT NULL, actorId TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS service_attachments_bill ON service_attachments(serviceBillId);
-`);
-
 // Fotos de contadores: se guardan como adjuntos del servicio, separados de la
 // factura mediante `kind` y vinculados al inmueble con `propertyId`.
 for (const [column, definition] of [

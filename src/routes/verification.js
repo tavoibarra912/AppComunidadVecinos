@@ -6,16 +6,6 @@ import { nombrePlataforma } from "../textos-envio.js";
 
 const router = Router();
 
-db.exec(`CREATE TABLE IF NOT EXISTS contact_verification_challenges (
-  id TEXT PRIMARY KEY,
-  tipo TEXT NOT NULL,
-  destino TEXT NOT NULL,
-  codigo TEXT NOT NULL,
-  createdAt INTEGER NOT NULL,
-  expiresAt INTEGER NOT NULL,
-  confirmed INTEGER NOT NULL DEFAULT 0,
-  attempts INTEGER NOT NULL DEFAULT 0
-)`);
 const challengeCols = db
   .prepare("PRAGMA table_info(contact_verification_challenges)")
   .all()
@@ -84,12 +74,10 @@ router.post("/:tipo/send", async (req, res) => {
     .get(tipo, destino);
   if (ultimo && now - ultimo.createdAt < cooldownMs) {
     const segundos = Math.ceil((cooldownMs - (now - ultimo.createdAt)) / 1000);
-    return res
-      .status(429)
-      .json({
-        error: `Espera ${segundos} segundos para pedir otro código de verificación.`,
-        reenvioSegundos: segundos,
-      });
+    return res.status(429).json({
+      error: `Espera ${segundos} segundos para pedir otro código de verificación.`,
+      reenvioSegundos: segundos,
+    });
   }
 
   const codigo = String(crypto.randomInt(100000, 999999));

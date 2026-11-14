@@ -3,42 +3,6 @@ import { db, getSettings } from "./db.js";
 import { allowed, policyData, publicUser } from "./security.js";
 import { getLocalDateInputValue } from "./domain.js";
 
-db.exec(`
-CREATE TABLE IF NOT EXISTS communication_posts (
- id TEXT PRIMARY KEY, communityId TEXT NOT NULL, data TEXT NOT NULL,
- createdBy TEXT NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1
-);
-CREATE INDEX IF NOT EXISTS idx_communication_community ON communication_posts(communityId);
-CREATE TABLE IF NOT EXISTS communication_recipients (
- postId TEXT NOT NULL, userId TEXT NOT NULL, readAt TEXT NOT NULL DEFAULT '', receiptAt TEXT NOT NULL DEFAULT '',
- rsvp TEXT NOT NULL DEFAULT 'pending', attended INTEGER NOT NULL DEFAULT 0,
- PRIMARY KEY(postId,userId)
-);
-CREATE TABLE IF NOT EXISTS communication_comments (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, body TEXT NOT NULL,
- createdAt TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS communication_ballots (
- postId TEXT NOT NULL, userId TEXT NOT NULL, choices TEXT NOT NULL, createdAt TEXT NOT NULL,
- PRIMARY KEY(postId,userId)
-);
-CREATE TABLE IF NOT EXISTS communication_files (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL, content BLOB NOT NULL,
- kind TEXT NOT NULL, final INTEGER NOT NULL DEFAULT 0, createdAt TEXT NOT NULL, createdBy TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS communication_audit (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, action TEXT NOT NULL, createdAt TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS communication_preferences (userId TEXT PRIMARY KEY, data TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS communication_providers (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS communication_outbox (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, channel TEXT NOT NULL, kind TEXT NOT NULL,
- version INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending', error TEXT NOT NULL DEFAULT '',
- providerId TEXT NOT NULL DEFAULT '', createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL,
- UNIQUE(postId,userId,channel,kind,version)
-);
-`);
-
 const spanishDemoCopy = new Map([
   [
     "Torneo de pádel entre vecinos\u0000Inscripciones abiertas para el torneo de pádel (parejas mixtas, nivel libre). Pista del club de al lado, 16:00. Inscribite hasta el jueves respondiendo a este aviso.",
