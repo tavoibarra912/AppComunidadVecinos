@@ -360,6 +360,8 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   )
     return;
   editingCommunityId = id;
+  communityForm.dataset.editVersion =
+    state.communities.find((item) => item.id === id)?.version || "";
   communityReadonly = readonly;
   // Los controles dinámicos de una apertura anterior también recuperan su estado.
   communityForm.querySelectorAll("button[data-community-readonly-disabled]").forEach((button) => {
@@ -1018,8 +1020,13 @@ export function validateCommunityFields() {
 
 communityForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!requirePermission("community:edit")) {
-    closeCommunityEditor();
+  if (communityReadonly) return;
+  if (
+    !requirePermission(
+      editingCommunityId ? "community:edit" : "community:create",
+      editingCommunityId || "",
+    )
+  ) {
     return;
   }
   const wasEditing = !!editingCommunityId;
@@ -1096,9 +1103,14 @@ async function persistCommunityDraft() {
   const communityId = editingCommunityId || crypto.randomUUID();
   try {
     if (isEditing) {
-      await api.updateCommunity(communityId, data);
+      const saved = await api.updateCommunity(communityId, {
+        ...data,
+        version: Number(communityForm.dataset.editVersion),
+      });
+      communityForm.dataset.editVersion = saved.version;
     } else {
-      await api.createCommunity({ ...data, id: communityId });
+      const saved = await api.createCommunity({ ...data, id: communityId });
+      communityForm.dataset.editVersion = saved.version;
     }
   } catch (error) {
     communityError.textContent = error.message;

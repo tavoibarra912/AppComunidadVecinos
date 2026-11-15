@@ -56,6 +56,8 @@ import { openCommunityEditor } from "./comunidades.js";
 let ownerTable = null;
 // Inmuebles asociados en el editor de propietario (modelo N:M) + % de titularidad por inmueble
 let editingOwnerProperties = [];
+let editingOwnerPropertyVersions = new Map();
+let editingOwnerOriginalPropertyIds = [];
 let editingOwnerPropertyPercentages = {};
 
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
@@ -568,6 +570,12 @@ export function addPropertyToOwnerEditor(ownerId, propertyId) {
   if (!editingOwnerProperties.includes(propertyId)) {
     editingOwnerProperties.push(propertyId);
   }
+  // Un inmueble recién creado desde este formulario todavía no tenía versión.
+  if (!editingOwnerPropertyVersions.has(propertyId))
+    editingOwnerPropertyVersions.set(
+      propertyId,
+      state.properties.find((p) => p.id === propertyId)?.version,
+    );
   renderOwnerPropertiesTab();
 }
 
@@ -646,11 +654,16 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   if (!requirePermission(permission, id || "")) return;
   ownerDialogReadOnly = readOnly;
   state.ui.editingOwnerId = id;
+  editingOwnerPropertyVersions = new Map(
+    state.properties.map((property) => [property.id, property.version]),
+  );
+  ownerForm.dataset.editVersion = state.owners.find((item) => item.id === id)?.version || "";
   ownerForm.reset();
   clearOwnerFieldErrors();
   populateCurrencySelect("EUR");
 
   const o = state.owners.find((item) => item.id === id);
+  editingOwnerOriginalPropertyIds = o ? ownerProperties(o).map((property) => property.id) : [];
   if (readOnly) {
     document.querySelector("#owner-dialog-title").textContent = "Ficha del propietario";
     ownerForm.elements.isMember.disabled = true;
@@ -1497,11 +1510,14 @@ ownerForm.addEventListener("submit", async (event) => {
   if (ownerDialogReadOnly) return;
   if (
     !requirePermission(
-      state.activeRole === "owner" ? "owner:edit" : "owner:manage",
+      state.ui.editingOwnerId
+        ? state.activeRole === "owner"
+          ? "owner:edit"
+          : "owner:manage"
+        : "owner:create",
       state.ui.editingOwnerId || "",
     )
   ) {
-    closeOwnerEditor();
     return;
   }
   clearOwnerFieldErrors();
@@ -1573,6 +1589,18 @@ ownerForm.addEventListener("submit", async (event) => {
 
   // El backend resuelve la vinculación N:M de los inmuebles (pestaña Inmueble)
   data.propertyIds = editingOwnerProperties.slice();
+  data.propertyVersions = Object.fromEntries(
+    [...new Set([...editingOwnerOriginalPropertyIds, ...editingOwnerProperties])]
+      .filter((propertyId) => hasPermission("property:manage", propertyId))
+      .map((propertyId) => [propertyId, editingOwnerPropertyVersions.get(propertyId)]),
+  );
+  data.propertyShares = editingOwnerProperties
+    .filter((propertyId) => hasPermission("property:manage", propertyId))
+    .map((propertyId) => ({
+      propertyId,
+      version: editingOwnerPropertyVersions.get(propertyId),
+      percentage: Number(editingOwnerPropertyPercentages[propertyId] ?? 100),
+    }));
   data.userId = ownerForm.elements.userId?.value || "";
   data.phoneVerified = contactVerify.phone.verified;
   data.phoneVerifiedAt = contactVerify.phone.verifiedAt;
@@ -1581,7 +1609,7 @@ ownerForm.addEventListener("submit", async (event) => {
 
   try {
     if (isEditing) {
-      await api.updateOwner(data.id, data);
+      await api.updateOwner(data.id, { ...data, version: Number(ownerForm.dataset.editVersion) });
     } else {
       await api.createOwner(data);
     }
@@ -1590,23 +1618,6 @@ ownerForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  await refreshState();
-
-  // Sincronizar el % de titularidad del propietario en cada inmueble asociado
-  for (const propertyId of editingOwnerProperties) {
-    const property = state.properties.find((item) => item.id === propertyId);
-    if (!property || !hasPermission("property:manage", property.id)) continue;
-    const ownerIds = [...new Set([...propertyOwnerIds(property), data.id])];
-    const ownerPercentages = {
-      ...(property.ownerPercentages || {}),
-      [data.id]: Number(editingOwnerPropertyPercentages[propertyId] ?? 100),
-    };
-    try {
-      await api.updateProperty(propertyId, { ...property, ownerIds, ownerPercentages });
-    } catch (error) {
-      toast(`No se pudo actualizar la titularidad en "${property.plot}": ${error.message}`);
-    }
-  }
   await refreshState();
 
   limpiarGuardia(ownerForm);

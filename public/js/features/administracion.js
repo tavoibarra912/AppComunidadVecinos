@@ -103,6 +103,12 @@ const PERMISOS_CATALOGO = [
     hint: "Editar inquilinos y sus contratos.",
   },
   { key: "tenant:delete", label: "Eliminar inquilinos", grupo: "Inquilinos" },
+  {
+    key: "tenant:history:read",
+    label: "Conservar historial propio de antiguo inquilino",
+    grupo: "Inquilinos",
+    hint: "Tras finalizar el contrato, permite consultar su ficha y descargar sus documentos. No da acceso a la comunidad ni a los inmuebles.",
+  },
   { key: "document:read", label: "Ver documentos", grupo: "Documentación" },
   {
     key: "document:upload",

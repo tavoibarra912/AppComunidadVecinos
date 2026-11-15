@@ -10,6 +10,7 @@ import { rebuildPropertyTenantReferences } from "./src/domain.js";
 import { startCommunicationWorker } from "./src/communication-worker.js";
 import { renderIndex } from "./src/branding.js";
 import { getSettings } from "./src/db.js";
+import { seedIfEmpty } from "./src/seed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -21,15 +22,21 @@ if (!fs.existsSync(PUBLIC_DIR)) {
   process.exit(1);
 }
 
-// seedDemoComunidades() pausado — se ejecuta manualmente con
-// node scripts/seed-demo-comunidades.mjs cuando se necesite.
-// if (process.env.NODE_ENV !== "production") {
-//   seedDemoComunidades();
-// }
+// El entorno demo arranca con un censo completo sin sobrescribir bases existentes.
+if (process.env.NODE_ENV !== "production") seedIfEmpty();
 rebuildPropertyTenantReferences();
 
 const app = express();
 app.disable("x-powered-by");
+// Solo direcciones/redes explícitas del proxy; las cabeceras del cliente no
+// determinan su IP salvo que la conexión llegue desde un proxy de confianza.
+if (process.env.TRUST_PROXY?.trim())
+  app.set(
+    "trust proxy",
+    process.env.TRUST_PROXY.split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
 app.use((req, res, next) => {
   res.set("X-Content-Type-Options", "nosniff");
   res.set(
@@ -68,9 +75,14 @@ const MIME_ESTATICOS = {
   ".webp": "image/webp",
   ".woff2": "font/woff2",
 };
-async function archivoComprimido(filePath, brotli) {
+function staticHeaders(res, filePath) {
+  if (/\.(?:m?js|css)$/i.test(filePath))
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+}
+async function archivoComprimido(filePath, brotli, version) {
   const key = brotli ? filePath + ".br" : filePath + ".gz";
-  if (comprimidos.has(key)) return comprimidos.get(key);
+  const cached = comprimidos.get(key);
+  if (cached?.version === version) return cached.data;
   try {
     const data = await fsp.readFile(filePath);
     const out = await new Promise((resolve, reject) => {
@@ -81,7 +93,7 @@ async function archivoComprimido(filePath, brotli) {
       stream.on("error", reject);
       stream.end(data);
     });
-    comprimidos.set(key, out);
+    comprimidos.set(key, { version, data: out });
     return out;
   } catch {
     return null;
@@ -95,15 +107,20 @@ app.use(async (req, res, next) => {
     if (!filePath.startsWith(path.normalize(PUBLIC_DIR) + path.sep)) return next();
     const stat = await fsp.stat(filePath).catch(() => null);
     if (!stat || !stat.isFile() || stat.size < 200 * 1024) return next();
-    const accept = req.headers["accept-encoding"] || "";
-    const brotli = accept.includes("br");
-    const encoding = brotli ? "br" : accept.includes("gzip") ? "gzip" : null;
-    if (!encoding) return next();
-    const data = await archivoComprimido(filePath, brotli);
+    res.vary("Accept-Encoding");
+    const encoding = req.acceptsEncodings("br", "gzip", "identity");
+    if (!encoding) return res.status(406).end();
+    if (encoding === "identity") return next();
+    const data = await archivoComprimido(
+      filePath,
+      encoding === "br",
+      `${stat.mtimeMs}:${stat.size}`,
+    );
     if (!data) return next();
     const ext = path.extname(filePath).toLowerCase();
     res.set("Content-Encoding", encoding);
     res.set("Content-Type", MIME_ESTATICOS[ext] || "application/octet-stream");
+    staticHeaders(res, filePath);
     res.send(data);
   } catch {
     next();
@@ -111,11 +128,7 @@ app.use(async (req, res, next) => {
 });
 app.use(
   express.static(PUBLIC_DIR, {
-    setHeaders: (res, filePath) => {
-      // JS/CSS siempre revalidan: nunca más módulos viejos cacheados.
-      if (/.(js|css)$/.test(filePath))
-        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-    },
+    setHeaders: staticHeaders,
   }),
 );
 

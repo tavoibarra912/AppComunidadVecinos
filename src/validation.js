@@ -2,6 +2,8 @@ import {
   isValidCommunityNif,
   isValidIdentityDocument,
   normalizeIdentityDocument,
+  digitsIban,
+  isValidIban,
 } from "../public/js/utils.js";
 
 export { normalizeIdentityDocument };
@@ -40,6 +42,16 @@ export function contactError(data) {
   }
   if (data.postalCode && !/^\d{5}$/.test(data.postalCode))
     return "El código postal debe tener 5 dígitos.";
+  return null;
+}
+/** El mismo formato español y MOD-97 que valida el formulario. Vacío es opcional. */
+export function bankAccountError(data) {
+  if (data.iban === undefined) return null;
+  if (typeof data.iban !== "string") return "El IBAN debe ser texto.";
+  const normalized = digitsIban(data.iban);
+  if (!isValidIban(normalized))
+    return "El IBAN no es válido. Comprueba el formato y los dígitos de control.";
+  data.iban = normalized;
   return null;
 }
 export function communityFinanceError(data, year = new Date().getFullYear()) {

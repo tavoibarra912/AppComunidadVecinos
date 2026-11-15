@@ -1,4 +1,4 @@
-import { db } from "./db.js";
+import { db, getSettings } from "./db.js";
 import { materialize, postById, canRead, phase } from "./communication-store.js";
 import { sendMessage, destination } from "./delivery-providers.js";
 import { processRecoveryMail, recoverInterruptedMail } from "./password-recovery.js";
@@ -31,7 +31,9 @@ export async function processCommunications(send = sendMessage) {
         error = "",
         providerId = "";
       try {
-        if (!post || !user || !canRead(user, post))
+        if (item.channel === "email" && !getSettings().notificacionesEmail)
+          error = "Las notificaciones por email están deshabilitadas en la configuración general.";
+        else if (!post || !user || !canRead(user, post))
           error = "La cuenta ya no tiene acceso a la publicación.";
         else if (item.version !== post.version)
           error = "El aviso fue sustituido por una actualización posterior.";

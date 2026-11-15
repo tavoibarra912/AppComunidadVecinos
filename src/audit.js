@@ -91,6 +91,15 @@ export function auditRequests(req, res, next) {
       });
     } else if (status === 401 || status === 403) {
       recordAudit({ ...base, action: "access-denied", outcome: "denied", details: { status } });
+    } else if (status >= 400 && req.user) {
+      // Se ejecuta antes de todas las rutas y también al finalizar errores
+      // gestionados fuera del router. No guardar cuerpos ni mensajes con PII.
+      recordAudit({
+        ...base,
+        action: `error.${req.method.toLowerCase()}`,
+        outcome: "failure",
+        details: { estado: status },
+      });
     } else if (mutation && ["POST", "PUT", "DELETE"].includes(req.method) && status < 400) {
       const [, collection, id, link] = mutation;
       const resourceId = id || body?.id || "";

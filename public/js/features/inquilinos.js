@@ -460,6 +460,7 @@ export function openTenantEditor(
   tenantDialogReadOnly = readonly;
   state.ui.viewingOwnerId = editingOwner?.id || null;
   state.ui.editingTenantId = id;
+  tenantForm.dataset.editVersion = tenant?.version || "";
   tenantForm.reset();
   tenantFormError.textContent = "";
   tenantEditingDocs = tenant?.documents ? JSON.parse(JSON.stringify(tenant.documents)) : {};
@@ -471,7 +472,8 @@ export function openTenantEditor(
   state.owners
     .filter(
       (owner) =>
-        hasPermission("tenant:manage", owner.id) || (readonly && owner.id === editingOwner?.id),
+        hasPermission(id ? "tenant:manage" : "tenant:create", owner.id) ||
+        (readonly && owner.id === editingOwner?.id),
     )
     .forEach((owner) =>
       tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)),
@@ -1050,6 +1052,7 @@ document
 // Submit
 tenantForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (tenantDialogReadOnly) return;
   tenantFormError.textContent = "";
   const property = state.properties.find((item) => item.id === editingTenantPropertyId);
   const selectedOwnerId = tenantOwnerSelect.value || "";
@@ -1057,7 +1060,12 @@ tenantForm.addEventListener("submit", async (event) => {
     ? selectedOwnerId
     : property?.ownerIds?.[0] || selectedOwnerId;
   const owner = derivedOwnerId ? state.owners.find((item) => item.id === derivedOwnerId) : null;
-  if (owner && !requirePermission("tenant:manage", owner.id)) {
+  if (
+    !requirePermission(
+      state.ui.editingTenantId ? "tenant:manage" : "tenant:create",
+      state.ui.editingTenantId || owner?.id || "",
+    )
+  ) {
     tenantFormError.textContent = "No tienes permisos para gestionar este propietario.";
     return;
   }
@@ -1154,7 +1162,11 @@ tenantForm.addEventListener("submit", async (event) => {
     ...tenant,
   };
   try {
-    if (isEditing) await api.updateTenant(tenantId, payload);
+    if (isEditing)
+      await api.updateTenant(tenantId, {
+        ...payload,
+        version: Number(tenantForm.dataset.editVersion),
+      });
     else await api.createTenant(payload);
   } catch (error) {
     tenantFormError.textContent = error.message;

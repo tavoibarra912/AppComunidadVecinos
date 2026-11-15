@@ -1,3 +1,5 @@
+import { prepareOwnerPropertyShares } from "../owner-property-shares.js";
+import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, ownerFromRow } from "../db.js";
@@ -6,14 +8,14 @@ import {
   syncOwnerProperties,
   rebuildOwnersPropertyIds,
 } from "../domain.js";
-import { contactError, identityDocumentError } from "../validation.js";
+import { contactError, bankAccountError, identityDocumentError } from "../validation.js";
 import { avisarCambioOwner } from "../avisos-cambios.js";
 
 const router = Router();
 router.use((req, res, next) => {
   if (["POST", "PUT"].includes(req.method)) {
     const data = req.body || {};
-    const error = contactError(data);
+    const error = contactError(data) || bankAccountError(data);
     if (error) return res.status(400).json({ error });
     if (data.documentType !== undefined) {
       data.documentType = String(data.documentType || "DNI")
@@ -79,6 +81,7 @@ router.post("/", (req, res) => {
 
   db.exec("BEGIN");
   try {
+    const saveShares = prepareOwnerPropertyShares(data, id, req.user);
     db.prepare(
       `INSERT INTO owners (id, name, surname, documentType, dni, isMember, phone, otherPhone, email,
          phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt, address, province, city, postalCode,
@@ -117,93 +120,103 @@ router.post("/", (req, res) => {
         ? [data.propertyId]
         : [];
     propertyIds.forEach((propertyId) => applyOwnerPropertyLink(id, propertyId));
+    saveShares();
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
+    if (error.status) return res.status(error.status).json({ error: error.message });
     throw error;
   }
 
   res.status(201).json(findOwner(id));
 });
 
-router.put("/:id", (req, res) => {
-  const existing = findOwner(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
-  const data = req.body || {};
-  if (!data.name || !data.surname || !data.dni || !data.email) {
-    return res
-      .status(400)
-      .json({ error: "Nombre, apellidos, documento y email son obligatorios." });
-  }
-  const dniOwner = db
-    .prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?) AND id <> ?")
-    .get(String(data.dni), existing.id);
-  if (dniOwner) {
-    return res
-      .status(409)
-      .json({ error: "Ya existe otro propietario registrado con ese documento." });
-  }
+router.put(
+  "/:id",
+  versionedUpdate("owners", (req, res) => {
+    const existing = findOwner(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
+    const data = req.body || {};
+    if (!data.name || !data.surname || !data.dni || !data.email) {
+      return res
+        .status(400)
+        .json({ error: "Nombre, apellidos, documento y email son obligatorios." });
+    }
+    const dniOwner = db
+      .prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?) AND id <> ?")
+      .get(String(data.dni), existing.id);
+    if (dniOwner) {
+      return res
+        .status(409)
+        .json({ error: "Ya existe otro propietario registrado con ese documento." });
+    }
 
-  const lph = ownerLphFields(data, existing);
-  db.exec("BEGIN");
-  try {
-    db.prepare(
-      `UPDATE owners SET name = ?, surname = ?, documentType = ?, dni = ?, isMember = ?, phone = ?, otherPhone = ?,
+    const lph = ownerLphFields(data, existing);
+    db.exec("SAVEPOINT entity_update");
+    try {
+      const saveShares = prepareOwnerPropertyShares(data, existing.id, req.user);
+      db.prepare(
+        `UPDATE owners SET name = ?, surname = ?, documentType = ?, dni = ?, isMember = ?, phone = ?, otherPhone = ?,
          email = ?, phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ?, address = ?,
          province = ?, city = ?, postalCode = ?, iban = ?, currency = ?, votingRights = ?,
          legalRepresentative = ?, notificationPreference = ?, notes = ?, documents = ?, userId = ?
        WHERE id = ?`,
-    ).run(
-      data.name,
-      data.surname,
-      data.documentType || "DNI",
-      String(data.dni).toUpperCase(),
-      data.isMember ? 1 : 0,
-      data.phone || "",
-      data.otherPhone || "",
-      data.email || "",
-      data.phoneVerified ? 1 : 0,
-      data.phoneVerifiedAt || "",
-      data.emailVerified ? 1 : 0,
-      data.emailVerifiedAt || "",
-      data.address || "",
-      data.province || "",
-      data.city || "",
-      data.postalCode || "",
-      data.iban || "",
-      data.currency || "EUR",
-      lph.votingRights,
-      lph.legalRepresentative,
-      lph.notificationPreference,
-      data.notes || "",
-      JSON.stringify(data.documents || existing.documents),
-      data.userId !== undefined ? data.userId : existing.userId || "",
-      existing.id,
-    );
-    const propertyIds = Array.isArray(data.propertyIds)
-      ? data.propertyIds
-      : data.propertyId
-        ? [data.propertyId]
-        : null;
-    if (propertyIds) {
-      syncOwnerProperties(existing.id, propertyIds);
-    } else if (data.propertyId) {
-      applyOwnerPropertyLink(existing.id, data.propertyId);
+      ).run(
+        data.name,
+        data.surname,
+        data.documentType || "DNI",
+        String(data.dni).toUpperCase(),
+        data.isMember ? 1 : 0,
+        data.phone || "",
+        data.otherPhone || "",
+        data.email || "",
+        data.phoneVerified ? 1 : 0,
+        data.phoneVerifiedAt || "",
+        data.emailVerified ? 1 : 0,
+        data.emailVerifiedAt || "",
+        data.address || "",
+        data.province || "",
+        data.city || "",
+        data.postalCode || "",
+        data.iban || "",
+        data.currency || "EUR",
+        lph.votingRights,
+        lph.legalRepresentative,
+        lph.notificationPreference,
+        data.notes || "",
+        JSON.stringify(data.documents || existing.documents),
+        data.userId !== undefined ? data.userId : existing.userId || "",
+        existing.id,
+      );
+      const propertyIds = Array.isArray(data.propertyIds)
+        ? data.propertyIds
+        : data.propertyId
+          ? [data.propertyId]
+          : null;
+      if (propertyIds) {
+        syncOwnerProperties(existing.id, propertyIds);
+      } else if (data.propertyId) {
+        applyOwnerPropertyLink(existing.id, data.propertyId);
+      }
+      saveShares();
+      db.exec("RELEASE entity_update");
+    } catch (error) {
+      db.exec("ROLLBACK TO entity_update");
+      throw error;
     }
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
 
-  const actualizado = findOwner(existing.id);
-  // Aviso por email de los cambios (configurable; no bloquea el guardado).
-  avisarCambioOwner(existing, actualizado, req.user).catch((error) =>
-    console.error("[avisos] error notificando cambios de propietario:", error.message),
-  );
+    const actualizado = findOwner(existing.id);
+    // Aviso por email de los cambios (configurable; no bloquea el guardado).
+    res.once("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 300)
+        avisarCambioOwner(existing, actualizado, req.user).catch((error) =>
+          console.error("[avisos] error notificando cambios de propietario:", error.message),
+        );
+    });
 
-  res.json(actualizado);
-});
+    res.json(actualizado);
+  }),
+);
 
 router.delete("/:id", (req, res) => {
   if (

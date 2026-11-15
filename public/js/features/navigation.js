@@ -33,6 +33,7 @@ const navInmuebles = document.querySelector("#nav-inmuebles");
 const mobileNavInmuebles = document.querySelector("#mobile-nav-inmuebles");
 const navInquilinos = document.querySelector("#nav-inquilinos");
 const navAdministracion = document.querySelector("#nav-administracion");
+const mobileNavAdministracion = document.querySelector("#mobile-nav-administracion");
 const navCuotas = document.querySelector("#nav-cuotas");
 const mobileNavCuotas = document.querySelector("#mobile-nav-cuotas");
 const secCuotas = document.querySelector("#cuotas");
@@ -95,14 +96,15 @@ export function applyRoleUI() {
     mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (navInmuebles) navInmuebles.hidden = !hasPermission("property:read");
   if (mobileNavInmuebles) mobileNavInmuebles.hidden = !hasPermission("property:read");
-  if (navAdministracion)
-    navAdministracion.hidden = ![
-      "admin:users",
-      "admin:roles",
-      "admin:settings",
-      "audit:read",
-      "admin:providers",
-    ].some((p) => hasPermission(p));
+  const canAccessAdministration = [
+    "admin:users",
+    "admin:roles",
+    "admin:settings",
+    "audit:read",
+    "admin:providers",
+  ].some((p) => hasPermission(p));
+  for (const link of [navAdministracion, mobileNavAdministracion])
+    if (link) link.hidden = !canAccessAdministration;
   document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach((link) => {
     link.hidden = isOwner;
   });
@@ -222,6 +224,7 @@ export function handleRouting() {
     navInquilinos,
     mobileNavInquilinos,
     navAdministracion,
+    mobileNavAdministracion,
   ].forEach((el) => {
     if (el) el.classList.remove("active");
   });
@@ -265,7 +268,8 @@ export function handleRouting() {
       secAdministracion.hidden = false;
       secAdministracion.style.display = "block";
     }
-    if (navAdministracion) navAdministracion.classList.add("active");
+    for (const link of [navAdministracion, mobileNavAdministracion])
+      if (link) link.classList.add("active");
     document.title = brandTitle();
     renderAdministracion();
   } else if (hash === "#inquilinos") {

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { db, getSettings } from "./db.js";
 import { allowed, policyData, publicUser } from "./security.js";
 import { getLocalDateInputValue } from "./domain.js";
+import { isTenantContractActive } from "../public/js/permissions.js";
 
 const spanishDemoCopy = new Map([
   [
@@ -185,10 +186,7 @@ export function profiles(communityId, data = policyData()) {
   const owners = data.owners.filter((o) => properties.some((p) => p.ownerIds.includes(o.id)));
   const today = getLocalDateInputValue();
   const tenants = data.tenants.filter(
-    (t) =>
-      properties.some((p) => p.id === t.propertyId) &&
-      (!t.contractStart || t.contractStart <= today) &&
-      (!t.contractEnd || t.contractEnd >= today),
+    (t) => properties.some((p) => p.id === t.propertyId) && isTenantContractActive(t, today),
   );
   return { properties, owners, tenants };
 }

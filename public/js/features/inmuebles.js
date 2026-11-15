@@ -699,6 +699,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
     return;
   propertyDialogReadOnly = readonly;
   state.ui.editingPropertyId = id;
+  propertyForm.dataset.editVersion = state.properties.find((item) => item.id === id)?.version || "";
   propertyForm.reset();
   propertyFormError.textContent = "";
   updatePropertyCommunitySelect();
@@ -768,11 +769,7 @@ export function closePropertyEditor() {
 }
 
 export function visibleProperties() {
-  return state.properties.filter((property) => {
-    if (!hasPermission("property:read", property.id)) return false;
-    const propOwnerIds = propertyOwnerIds(property);
-    return state.owners.some((owner) => propOwnerIds.includes(owner.id));
-  });
+  return state.properties.filter((property) => hasPermission("property:read", property.id));
 }
 
 export function renderProperties() {
@@ -820,6 +817,12 @@ export function renderProperties() {
             const wrap = document.createElement("span");
             wrap.className = "community-name";
             wrap.textContent = `${property.plot || "Inmueble"} · ${PROPERTY_TYPE_LABELS[property.propertyType] || "Inmueble"}`;
+            if (!propertyOwnerIds(property).length) {
+              const pending = document.createElement("small");
+              pending.className = "status-badge doc-pending-admin";
+              pending.textContent = "Sin propietario";
+              wrap.append(" ", pending);
+            }
             return wrap;
           },
         },
@@ -1161,8 +1164,13 @@ if (propertyAreaInput) {
 
 propertyForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!requirePermission("property:manage")) {
-    closePropertyEditor();
+  if (propertyDialogReadOnly) return;
+  if (
+    !requirePermission(
+      state.ui.editingPropertyId ? "property:manage" : "property:create",
+      state.ui.editingPropertyId || "",
+    )
+  ) {
     return;
   }
   propertyFormError.textContent = "";
@@ -1292,7 +1300,10 @@ propertyForm.addEventListener("submit", async (event) => {
 
   try {
     if (isEditing) {
-      await api.updateProperty(propertyId, payload);
+      await api.updateProperty(propertyId, {
+        ...payload,
+        version: Number(propertyForm.dataset.editVersion),
+      });
     } else {
       await api.createProperty(payload);
     }

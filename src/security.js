@@ -9,7 +9,7 @@ import {
   listRoles,
   listUsers,
 } from "./db.js";
-import { can } from "../public/js/permissions.js";
+import { createPermissionChecker } from "../public/js/permissions.js";
 
 const COOKIE = "penarrubia_session";
 const digest = (token) => crypto.createHash("sha256").update(token).digest("hex");
@@ -22,8 +22,14 @@ export function policyData() {
     roles: listRoles(),
   };
 }
+const policyCheckers = new WeakMap();
 export function allowed(user, permission, resourceId = "", data = policyData()) {
-  return can(user, permission, resourceId, data);
+  if (!user) return false;
+  let users = policyCheckers.get(data);
+  if (!users) policyCheckers.set(data, (users = new WeakMap()));
+  let check = users.get(user);
+  if (!check) users.set(user, (check = createPermissionChecker(user, data)));
+  return check(permission, resourceId);
 }
 export function publicUser(user) {
   const { passwordHash, resetToken, resetTokenExpira, ssoId, ...safe } = user;
@@ -96,15 +102,22 @@ export function requirePermission(permission) {
       : res.status(403).json({ error: "No tienes permiso para esta operación." });
 }
 
-export function visibleData(user) {
-  const data = policyData();
+export function visibleData(user, data = policyData()) {
   const permits = (p, id) => allowed(user, p, id, data);
-  const tenants = data.tenants.filter((t) => permits("tenant:read", t.id));
+  // Los expedientes embebidos (data URLs) solo se entregan con document:read.
+  const withoutDocuments = (entity) =>
+    permits("document:read", entity.id)
+      ? entity
+      : {
+          ...entity,
+          documents: Array.isArray(entity.documents) ? [] : {},
+        };
+  const tenants = data.tenants.filter((t) => permits("tenant:read", t.id)).map(withoutDocuments);
   return {
     communities: data.communities.filter((c) => permits("community:read", c.id)),
     owners: data.owners.flatMap((o) =>
       permits("owner:read", o.id)
-        ? [o]
+        ? [withoutDocuments(o)]
         : tenants.some((t) => t.userId === user.id && t.ownerId === o.id)
           ? [{ id: o.id, name: o.name, surname: o.surname, propertyIds: [] }]
           : [],

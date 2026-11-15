@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Revisión de producción · AppComunidadVecinos · 14/11/2026</title>
+<style>
+:root{color-scheme:light;--ink:#17212b;--muted:#566473;--line:#dce1e6;--paper:#fff;--back:#f4f6f8;--accent:#155e69;--danger:#9c2a26}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;color:var(--ink);background:var(--back);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1120px;margin:auto;padding:48px 28px}h1{font-size:32px;line-height:1.2;margin:10px 0 20px;max-width:820px}h2{font-size:23px;line-height:1.35;margin:12px 0}h3{font-size:18px}p{margin:12px 0}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.verdict{color:var(--danger);font-size:19px;font-weight:750}.lead{font-size:19px;max-width:850px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:24px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:26px 0}.summary strong{display:block;font-size:30px;line-height:1.2}.summary span{color:var(--muted);font-size:14px}.note{padding:16px 20px;background:var(--paper);border-left:3px solid var(--accent)}.muted,figcaption{color:var(--muted);font-size:14px}
+section{margin:38px 0}a{color:var(--accent);text-underline-offset:3px}code{font:13px ui-monospace,Consolas,monospace;overflow-wrap:anywhere}pre{font:12px/1.6 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--back);padding:16px;border-radius:3px}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:20px 0}.controls label{font-size:14px}input,select,button{font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}input{min-width:260px}button{cursor:pointer}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px;background:var(--paper)}th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;background:#eef1f3}td,th{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}td:first-child{white-space:nowrap}td:nth-child(2){min-width:95px}
+.finding{background:var(--paper);padding:30px 34px;margin:30px 0;border-top:2px solid var(--line);scroll-margin-top:20px}.finding[data-priority="P0"]{border-top-color:var(--danger)}.finding>h2{max-width:950px}dl{margin:18px 0}dt{font-weight:700;font-size:14px;margin:15px 0 3px}dd{margin:0;color:#364450}details{margin:18px 0}summary{cursor:pointer;font-size:14px;font-weight:650}figure{margin:24px 0}figure img{max-width:100%;max-height:680px;height:auto;border:1px solid var(--line)}.back{font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:30px}li{margin:8px 0}[hidden]{display:none!important}
+@media(max-width:700px){main{padding:24px 16px}h1{font-size:27px}.summary{gap:12px;grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.finding{padding:20px 18px}h2{font-size:21px}}
+@media print{body{background:white;font-size:11pt}main{max-width:none;padding:0}.controls,.back,button{display:none}.finding{break-before:page;padding:0;border-top:0;margin:0}h2,dt,summary{break-after:avoid}figure img{max-height:500px}details:not([open]){display:none}a{color:inherit}.finding[hidden],tr[hidden]{display:revert!important}}
+</style></head><body><main>
+<header><p class="eyebrow">Auditoría de preparación para producción · 14/11/2026</p>
+<h1>AppComunidadVecinos: fallas comprobadas y condiciones para publicar</h1>
+<p class="verdict">NO APTA PARA PRODUCCIÓN</p>
+<p class="lead">Hay una vía de acceso administrativo con credenciales conocidas, fallos de aislamiento entre comunidades y un bloqueo medido del servidor al crecer el censo. Las pruebas existentes pasan, pero no cubren estos escenarios.</p>
+<p class="muted">Base revisada: Git 0beec61 · Node v27.0.0-alpha.0.0.0 · Express 4.22.3 · SQLite local · todos los hallazgos siguen abiertos.</p>
+<div class="summary"><div><strong>1</strong><span>Crítica · P0</span></div><div><strong>8</strong><span>Altas · P1</span></div><div><strong>8</strong><span>Medias · P2</span></div><div><strong>1</strong><span>Baja · P3</span></div></div>
+<p class="note">Esta revisión entrega diagnóstico y reproducciones. No se modificó el código funcional, la base de datos local del proyecto ni sus adjuntos. Los únicos archivos añadidos pertenecen a esta auditoría. Las pruebas usaron bases y archivos temporales propios.</p></header>
+<section><h2>Qué se comprobó</h2><p>Revisión del repositorio, pruebas automatizadas, API del servidor real en modo producción con datos sintéticos, arranque con base nueva, reinicios, concurrencia de edición, permisos, documentos, cuotas, comunicaciones, rendimiento y recorrido visual en navegador.</p>
+<div class="grid"><div><h3>Resultados favorables</h3><ul>
+<li><strong>217 de 217 pruebas</strong> correctas; ninguna omitida ni cancelada.</li>
+<li><strong>0 vulnerabilidades conocidas</strong> reportadas por npm audit en el lockfile consultado; esto no evalúa los errores del código propio.</li>
+<li>Sesiones, contraseñas, control de origen ajeno, aislamiento básico, subidas genéricas, migraciones, cuotas, derramas, cobros, anulaciones y servicios tienen cobertura automatizada existente.</li>
+<li>Sin IDs duplicados ni referencias rotas de label/ARIA en las 567 identificaciones del HTML.</li>
+<li>Recorrido visual por Inicio, Comunidades, Inmuebles, Propietarios, Inquilinos, Cuotas, Administración y Comunicación sin errores ni avisos de consola capturados. Se probaron escritorio y móvil.</li></ul></div>
+<div><h3>Alcance y límites de la conclusión</h3><ul>
+<li>Las reproducciones HTTP usan <strong>server.js real con NODE_ENV=production</strong>. La semilla se prepara antes únicamente en bases desechables, salvo la prueba F00 que arranca una base de producción completamente nueva.</li>
+<li>HTTPS se reproduce con las cabeceras del salto interno del proxy; no se inspeccionó una infraestructura de producción publicada.</li>
+<li>No se enviaron emails, SMS ni WhatsApp reales. Los envíos en cola se comprobaron con un proveedor simulado.</li>
+<li>Los permisos y cuotas se ejercitaron por API y pruebas. El recorrido del navegador cubre navegación y formularios seleccionados; no equivale a una regresión manual exhaustiva de cada combinación y navegador.</li>
+<li>Una revisión finita no permite garantizar ausencia absoluta de errores. Los hallazgos descritos sí tienen evidencia o comprobación concreta de interfaz y código.</li></ul></div></div></section>
+<section id="rendimiento"><h2>Rendimiento observado de la carga inicial</h2><p>Una petición a bootstrap y otra a health con 10 ms de separación. Una muestra por tamaño y por ejecución; se repitió la secuencia en varias ejecuciones con el mismo patrón. Son medidas de este equipo, sin extrapolación a otro servidor.</p>
+<div class="table-wrap"><table><thead><tr><th>Inmuebles totales</th><th>Bootstrap (ms)</th><th>Health concurrente (ms)</th></tr></thead><tbody><tr><td>11</td><td>34</td><td>13</td></tr><tr><td>111</td><td>970</td><td>953</td></tr><tr><td>311</td><td>12.023</td><td>12.006</td></tr></tbody></table></div><p class="muted">Fuente: probes.mjs → evidence.json, F16 · 2026-11-14T22:41:19.608Z · la espera de health demuestra el efecto sobre otras peticiones.</p></section>
+<section><h2>Orden propuesto de corrección</h2><ol>
+<li><strong>Cerrar la exposición y los accesos.</strong> F00; después F06 y F15, F03 y F04, F09. Revisar tanto bases nuevas como existentes y reinicios.</li>
+<li><strong>Validar el despliegue real y la disponibilidad.</strong> F01 y F10 con el proxy final; F16 con el censo y concurrencia esperados.</li>
+<li><strong>Corregir la operativa.</strong> F17, F12, F11, F13, F05, F07, F14 y F18. Completar F08 para el comportamiento de caché.</li>
+<li><strong>Repetir la regresión.</strong> Exigir las 217 pruebas actuales y pruebas nuevas para cada criterio de cierre; repetir las reproducciones invirtiendo sus expectativas, porque el script actual registra el comportamiento defectuoso y no certifica un arreglo.</li></ol></section>
+<section id="indice"><h2>Índice de las 18 fallas</h2><p>P0: detener publicación. P1: resolver antes de producción. P2: resolver para considerar la versión impecable. P3: corrección de menor impacto. Los IDs conservan los nombres de las reproducciones; C01 es un control correcto, no una falla.</p>
+<div class="controls"><label>Prioridad <select id="priority"><option value="all">Todas</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option></select></label><label>Buscar <input id="query" type="search" placeholder="Comunidad, documentos, permisos…"></label><button id="print" type="button">Imprimir / guardar PDF</button><span id="result-count" class="muted">18 hallazgos</span></div>
+<div class="table-wrap"><table><thead><tr><th>ID</th><th>Gravedad</th><th>Falla comprobada</th><th>Área</th></tr></thead><tbody id="findings-index"><tr data-priority="P0"><td><a href="#F00">F00</a></td><td>P0 · Crítica</td><td><a href="#F00">Producción crea cuentas demo y puede recrear un superadministrador con contraseña conocida</a></td><td>Arranque y autenticación</td></tr>
+<tr data-priority="P1"><td><a href="#F01">F01</a></td><td>P1 · Alta</td><td><a href="#F01">El login legítimo falla detrás de un proxy que termina HTTPS</a></td><td>Despliegue HTTPS</td></tr>
+<tr data-priority="P1"><td><a href="#F03">F03</a></td><td>P1 · Alta</td><td><a href="#F03">Un inquilino con contrato finalizado conserva acceso a la comunidad y sus documentos</a></td><td>Permisos de residentes</td></tr>
+<tr data-priority="P1"><td><a href="#F04">F04</a></td><td>P1 · Alta</td><td><a href="#F04">Retirar document:read no protege los expedientes embebidos en propietarios e inquilinos</a></td><td>Privacidad documental</td></tr>
+<tr data-priority="P1"><td><a href="#F06">F06</a></td><td>P1 · Alta</td><td><a href="#F06">Un administrador local puede eliminar titularidades de otra comunidad</a></td><td>Aislamiento entre comunidades</td></tr>
+<tr data-priority="P1"><td><a href="#F09">F09</a></td><td>P1 · Alta</td><td><a href="#F09">El reinicio vuelve a otorgar permisos retirados desde Roles</a></td><td>Persistencia de permisos</td></tr>
+<tr data-priority="P1"><td><a href="#F10">F10</a></td><td>P1 · Alta</td><td><a href="#F10">El limitador puede bloquear a usuarios legítimos y cuenta también logins correctos</a></td><td>Disponibilidad del acceso</td></tr>
+<tr data-priority="P1"><td><a href="#F15">F15</a></td><td>P1 · Alta</td><td><a href="#F15">La consulta de cuotas por propietario expone servicios de una comunidad ajena</a></td><td>Privacidad financiera</td></tr>
+<tr data-priority="P1"><td><a href="#F16">F16</a></td><td>P1 · Alta</td><td><a href="#F16">La carga inicial bloquea el servidor durante segundos con un censo moderado</a></td><td>Rendimiento y disponibilidad</td></tr>
+<tr data-priority="P2"><td><a href="#F05">F05</a></td><td>P2 · Media</td><td><a href="#F05">Los documentos de ficha enviados como JSON eluden los controles de la biblioteca</a></td><td>Validación de archivos</td></tr>
+<tr data-priority="P2"><td><a href="#F07">F07</a></td><td>P2 · Media</td><td><a href="#F07">Una ficha abierta antes puede sobrescribir cambios recientes sin avisar</a></td><td>Integridad de las ediciones</td></tr>
+<tr data-priority="P2"><td><a href="#F11">F11</a></td><td>P2 · Media</td><td><a href="#F11">Confirmar un OTP no conserva la verificación al guardar la ficha</a></td><td>Verificación de contactos</td></tr>
+<tr data-priority="P2"><td><a href="#F12">F12</a></td><td>P2 · Media</td><td><a href="#F12">Los inmuebles sin propietario desaparecen del listado incluso para el superadministrador</a></td><td>Listado de inmuebles</td></tr>
+<tr data-priority="P2"><td><a href="#F13">F13</a></td><td>P2 · Media</td><td><a href="#F13">El servidor acepta IBAN que la interfaz considera inválidos</a></td><td>Datos bancarios</td></tr>
+<tr data-priority="P2"><td><a href="#F14">F14</a></td><td>P2 · Media</td><td><a href="#F14">Desactivar los emails generales no detiene los que ya están pendientes</a></td><td>Cola de comunicaciones</td></tr>
+<tr data-priority="P2"><td><a href="#F17">F17</a></td><td>P2 · Media</td><td><a href="#F17">Los permisos de crear permiten abrir formularios que luego no dejan guardar</a></td><td>Permisos en formularios</td></tr>
+<tr data-priority="P2"><td><a href="#F18">F18</a></td><td>P2 · Media</td><td><a href="#F18">Administración no tiene acceso de navegación en móvil</a></td><td>Navegación móvil</td></tr>
+<tr data-priority="P3"><td><a href="#F08">F08</a></td><td>P3 · Baja</td><td><a href="#F08">La compresión manual omite Vary y la política de revalidación de JavaScript</a></td><td>Caché de estáticos</td></tr></tbody></table></div></section>
+<article id="F00" class="finding" data-priority="P0">
+<p class="eyebrow">F00 · P0 · Crítica · Arranque y autenticación</p>
+<h2>Producción crea cuentas demo y puede recrear un superadministrador con contraseña conocida</h2>
+<p><strong>Impacto.</strong> Una instalación nueva, aun con APP_ADMIN_PASSWORD fuerte, añade 12 cuentas demo activas. admin/admin accede como administrador general. Si se renombran las cuentas super_admin y admin para endurecer el acceso, el siguiente arranque crea otra cuenta super_admin con contraseña super_admin y acceso total.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Inicializar una base vacía con NODE_ENV=production y APP_ADMIN_PASSWORD fuerte; consultar las cuentas y verificar la contraseña de admin. Renombrar super_admin y admin, reiniciar y verificar la nueva cuenta super_admin.</dd><dt>Resultado comprobado</dt><dd>Se crearon 13 cuentas activas en producción. La contraseña conocida de admin fue aceptada. Tras renombrar ambas cuentas y reiniciar, se recreó super_admin y su contraseña conocida también fue aceptada.</dd><dt>Causa</dt><dd>ensureDemoProfiles() se ejecuta incondicionalmente al importar db.js; su bucle crea cada cuenta ausente con contraseña igual al nombre de usuario. La protección de APP_ADMIN_PASSWORD solo cubre la primera cuenta de una base vacía.</dd><dt>Corrección propuesta</dt><dd>Excluir por completo la creación y reparación de identidades demo en producción. Convertir las migraciones de identidad necesarias en migraciones puntuales que respeten los datos reales. Revisar y retirar las cuentas demo existentes; cambiar sus credenciales no resuelve la recreación de cuentas renombradas.</dd><dt>Criterio de cierre</dt><dd>Una base de producción nueva contiene únicamente la cuenta inicial configurada. Renombrar o eliminar una cuenta autorizadamente y reiniciar no crea ninguna identidad adicional. Las credenciales demo dejan de autenticar.</dd><dt>Referencias del código</dt><dd><code>src/db.js:864</code> · <code>src/db.js:708</code> · <code>src/db.js:682</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;users&quot;: [
+    {
+      &quot;usuario&quot;: &quot;super_admin&quot;,
+      &quot;rol&quot;: &quot;super_admin&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;admin&quot;,
+      &quot;rol&quot;: &quot;administrator&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;ca1&quot;,
+      &quot;rol&quot;: &quot;community_admin&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;ca2&quot;,
+      &quot;rol&quot;: &quot;community_admin&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;urusp1&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;urucp1&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;urucp2&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;urucp3&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;uruci1&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;uruci2&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;uruci3&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;urucpci1&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    },
+    {
+      &quot;usuario&quot;: &quot;urucpci2&quot;,
+      &quot;rol&quot;: &quot;user&quot;,
+      &quot;activo&quot;: 1
+    }
+  ],
+  &quot;knownAdminPasswordAccepted&quot;: true,
+  &quot;afterRenamingAndRestarting&quot;: {
+    &quot;recreatedSuperAdmin&quot;: true,
+    &quot;role&quot;: &quot;super_admin&quot;,
+    &quot;knownSuperAdminPasswordAccepted&quot;: true
+  }
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F01" class="finding" data-priority="P1">
+<p class="eyebrow">F01 · P1 · Alta · Despliegue HTTPS</p>
+<h2>El login legítimo falla detrás de un proxy que termina HTTPS</h2>
+<p><strong>Impacto.</strong> El despliegue habitual navegador HTTPS → proxy → Node HTTP rechaza el login y otras escrituras con 403. El servidor solo crea un listener HTTP; no configura la confianza en el proxy.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Enviar POST /api/auth/signin con Origin: https://audit.example.test, Host: audit.example.test y X-Forwarded-Proto: https al servidor HTTP interno, como haría el proxy.</dd><dt>Resultado comprobado</dt><dd>403: Origen de la petición no permitido.</dd><dt>Causa</dt><dd>sameOrigin compara Origin con req.protocol y Host; Express conserva req.protocol=http porque falta trust proxy.</dd><dt>Corrección propuesta</dt><dd>Definir el origen público permitido y la confianza en los proxies concretos de la infraestructura. Conservar el rechazo de orígenes ajenos y evitar confiar indiscriminadamente en cabeceras aportadas por cualquier cliente.</dd><dt>Criterio de cierre</dt><dd>Login, altas, cambios, subidas y logout funcionan por la URL HTTPS real; un Origin ajeno sigue recibiendo 403.</dd><dt>Referencias del código</dt><dd><code>src/security.js:80</code> · <code>server.js:31</code> · <code>server.js:136</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;status&quot;: 403,
+  &quot;body&quot;: {
+    &quot;error&quot;: &quot;Origen de la petición no permitido.&quot;
+  }
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F03" class="finding" data-priority="P1">
+<p class="eyebrow">F03 · P1 · Alta · Permisos de residentes</p>
+<h2>Un inquilino con contrato finalizado conserva acceso a la comunidad y sus documentos</h2>
+<p><strong>Impacto.</strong> Un antiguo residente puede seguir leyendo la comunidad, el inmueble y los archivos comunitarios. Comunicación sí revoca su pertenencia, lo que deja políticas contradictorias entre módulos.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Finalizar un contrato vinculado a una cuenta activa, mantener su sesión y solicitar /api/bootstrap y la descarga de un documento de la comunidad.</dd><dt>Resultado comprobado</dt><dd>Con contrato finalizado en 2001, bootstrap seguía incluyendo com-seed-1 y prop-seed-1; la descarga documental devolvió 200. Los metadatos de Comunicación ya no incluían esa comunidad.</dd><dt>Causa</dt><dd>La política compartida toma todos los perfiles de inquilino de la cuenta sin comprobar contractStart ni contractEnd.</dd><dt>Corrección propuesta</dt><dd>Unificar la pertenencia vigente por contrato en la política compartida y aplicar la misma regla a consultas y descargas. Definir separadamente qué historial propio puede conservar el antiguo residente.</dd><dt>Criterio de cierre</dt><dd>Una cuenta exclusivamente inquilina pierde acceso comunitario al terminar el contrato y no lo recibe antes de su inicio. Un segundo perfil vigente conserva solo su ámbito correspondiente.</dd><dt>Referencias del código</dt><dd><code>public/js/permissions.js:55</code> · <code>public/js/permissions.js:102</code> · <code>src/routes/documents.js:157</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;communities&quot;: [
+    &quot;com-seed-1&quot;
+  ],
+  &quot;properties&quot;: [
+    &quot;prop-seed-1&quot;
+  ],
+  &quot;downloadStatus&quot;: 200,
+  &quot;communicationCommunities&quot;: []
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F04" class="finding" data-priority="P1">
+<p class="eyebrow">F04 · P1 · Alta · Privacidad documental</p>
+<h2>Retirar document:read no protege los expedientes embebidos en propietarios e inquilinos</h2>
+<p><strong>Impacto.</strong> Los archivos de identidad y otros documentos guardados como data URL viajan dentro de las fichas y de bootstrap. Un gestor sin permiso documental puede seguir recibiendo documentos personales de los propietarios de su comunidad.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Guardar un documento sintético en la ficha de un propietario o inquilino, retirar document:read al rol y consultar las fichas y bootstrap. Comparar con la descarga de la biblioteca genérica.</dd><dt>Resultado comprobado</dt><dd>La descarga genérica fue denegada con 403, pero la ficha de inquilino devolvió su DNI embebido y bootstrap entregó el archivo de identidad de otro propietario al administrador de comunidad sin document:read.</dd><dt>Causa</dt><dd>visibleData filtra entidades por owner:read/tenant:read, pero conserva documents completo. El filtrado documental de bootstrap solo se aplica a la biblioteca genérica.</dd><dt>Corrección propuesta</dt><dd>Aplicar los permisos documentales a todos los documentos en todas las respuestas, incluida la ficha fija y los buzones que puedan contener copias. Preferir metadatos y descargas autorizadas a los archivos embebidos.</dd><dt>Criterio de cierre</dt><dd>Sin document:read, ninguna ruta ni bootstrap devuelve los bytes o data URL de esos expedientes; el mismo rol con el permiso recupera el acceso previsto.</dd><dt>Referencias del código</dt><dd><code>src/security.js:99</code> · <code>src/routes/index.js:79</code> · <code>src/routes/owners.js:59</code> · <code>src/routes/tenants.js:55</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;downloadDenied&quot;: 403,
+  &quot;tenantReadStatus&quot;: 200,
+  &quot;documentKeys&quot;: [
+    &quot;dni&quot;
+  ],
+  &quot;hasEmbeddedFile&quot;: true,
+  &quot;staffReadingOtherPersonsFile&quot;: {
+    &quot;hasDocumentRead&quot;: false,
+    &quot;ownerId&quot;: &quot;own-seed-1&quot;,
+    &quot;containsEmbeddedIdentityFile&quot;: true
+  }
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F06" class="finding" data-priority="P1">
+<p class="eyebrow">F06 · P1 · Alta · Aislamiento entre comunidades</p>
+<h2>Un administrador local puede eliminar titularidades de otra comunidad</h2>
+<p><strong>Impacto.</strong> Cuando un propietario tiene inmuebles en dos comunidades, guardar su ficha desde una de ellas puede desvincularlo de la otra. Esto altera titularidades y puede modificar los destinatarios y titulares de cargos futuros.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Vincular un propietario a un inmueble de la comunidad A y otro de B. Entrar como administrador únicamente de A y guardar propertyIds con el inmueble visible de A.</dd><dt>Resultado comprobado</dt><dd>PUT devolvió 200 y el inmueble prop-seed-6 de com-seed-3 perdió al propietario, aunque el administrador ca1 solo gestiona com-seed-1.</dd><dt>Causa</dt><dd>La autorización comprueba los inmuebles incluidos en la solicitud. syncOwnerProperties también elimina los vínculos actuales omitidos, sin comprobar permiso sobre esos inmuebles.</dd><dt>Corrección propuesta</dt><dd>Autorizar cada alta y baja de relación en el servidor. Conservar las relaciones fuera del ámbito del actor o rechazar atómicamente una solicitud que intente alterarlas.</dd><dt>Criterio de cierre</dt><dd>Editar en A nunca modifica vínculos, porcentajes ni contratos de B. Añadir pruebas de propietarios compartidos entre comunidades.</dd><dt>Referencias del código</dt><dd><code>src/domain.js:76</code> · <code>src/domain.js:85</code> · <code>src/access.js:202</code> · <code>src/routes/owners.js:189</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;foreignCommunity&quot;: &quot;com-seed-3&quot;,
+  &quot;foreignProperty&quot;: &quot;prop-seed-6&quot;,
+  &quot;status&quot;: 200,
+  &quot;before&quot;: [
+    &quot;own-seed-4&quot;,
+    &quot;own-seed-1&quot;
+  ],
+  &quot;after&quot;: [
+    &quot;own-seed-4&quot;
+  ]
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F09" class="finding" data-priority="P1">
+<p class="eyebrow">F09 · P1 · Alta · Persistencia de permisos</p>
+<h2>El reinicio vuelve a otorgar permisos retirados desde Roles</h2>
+<p><strong>Impacto.</strong> La configuración de acceso guardada no se respeta. Por ejemplo, un administrador de comunidad recupera el permiso de borrar inquilinos al reiniciar la aplicación.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Retirar tenant:delete y comm:participacion del rol community_admin por la API de Roles, comprobar que se guardó y reiniciar el servidor.</dd><dt>Resultado comprobado</dt><dd>Antes del reinicio ambos permisos estaban ausentes; después aparecieron de nuevo.</dd><dt>Causa</dt><dd>El backfill de permisos se ejecuta en cada importación de db.js, sin marcador de migración.</dd><dt>Corrección propuesta</dt><dd>Convertir el backfill en una migración identificada que solo se ejecute una vez y que no sustituya decisiones posteriores del administrador.</dd><dt>Criterio de cierre</dt><dd>Los permisos retirados siguen retirados tras varios reinicios. Las bases antiguas reciben la migración necesaria una sola vez.</dd><dt>Referencias del código</dt><dd><code>src/db.js:646</code> · <code>src/db.js:651</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;before&quot;: [],
+  &quot;after&quot;: [
+    &quot;comm:participacion&quot;,
+    &quot;tenant:delete&quot;
+  ]
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F10" class="finding" data-priority="P1">
+<p class="eyebrow">F10 · P1 · Alta · Disponibilidad del acceso</p>
+<h2>El limitador puede bloquear a usuarios legítimos y cuenta también logins correctos</h2>
+<p><strong>Impacto.</strong> Hay un único cupo de 40 POST de autenticación por IP durante 15 minutos. Con el proxy sin configurar se comparte entre todos los clientes; también se puede agotar con accesos correctos o afectar a usuarios de una misma red.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Hacer intentos con X-Forwarded-For diferentes y después un login válido desde otro cliente. En una ventana nueva, realizar 40 logins válidos y probar el número 41.</dd><dt>Resultado comprobado</dt><dd>El cliente legítimo obtuvo 429. En la segunda prueba hubo 40 inicios correctos y el siguiente recibió 429.</dd><dt>Causa</dt><dd>El contador usa req.ip y suma cualquier POST antes de saber si falla. Comparte cuota entre signup, signin, recuperación y cambio de contraseña.</dd><dt>Corrección propuesta</dt><dd>Resolver correctamente la IP mediante proxies de confianza y diseñar límites separados por operación, IP y cuenta, centrados en intentos fallidos y sin facilitar el bloqueo global de vecinos.</dd><dt>Criterio de cierre</dt><dd>Los intentos fallidos siguen limitados; los accesos correctos y los clientes independientes no consumen un cupo común que cierre el acceso a toda la comunidad.</dd><dt>Referencias del código</dt><dd><code>src/routes/auth.js:15</code> · <code>src/routes/auth.js:21</code> · <code>src/routes/auth.js:27</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;first429&quot;: 41,
+  &quot;legitimateUserStatus&quot;: 429,
+  &quot;body&quot;: {
+    &quot;error&quot;: &quot;Demasiados intentos. Vuelve a intentar en unos minutos.&quot;
+  },
+  &quot;successfulLoginsAlsoConsumeLimit&quot;: {
+    &quot;successfulLogins&quot;: 40,
+    &quot;nextStatus&quot;: 429
+  }
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F15" class="finding" data-priority="P1">
+<p class="eyebrow">F15 · P1 · Alta · Privacidad financiera</p>
+<h2>La consulta de cuotas por propietario expone servicios de una comunidad ajena</h2>
+<p><strong>Impacto.</strong> Un administrador de A puede consultar datos de facturas y repartos informativos de B si un propietario tiene inmuebles en ambas. El filtrado correcto de recibos no cubre estos servicios.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Crear un servicio informativo en B para un inmueble de un propietario compartido con A. Consultar GET /api/fees/owners/:ownerId como administrador únicamente de A.</dd><dt>Resultado comprobado</dt><dd>La respuesta fue 200 y contenía el servicio de com-seed-3 con su importe total de 10.000 céntimos, aunque ca1 solo gestiona com-seed-1.</dd><dt>Causa</dt><dd>La ruta autoriza la lectura del propietario y llama informativeServicesFor con su ID global, sin filtrar cada comunidad por los permisos del solicitante.</dd><dt>Corrección propuesta</dt><dd>Aplicar autorización financiera por comunidad y propietario a cada servicio informativo antes de serializarlo, también cuando se consulta desde una ficha de propietario.</dd><dt>Criterio de cierre</dt><dd>La respuesta de A no contiene servicios, lecturas, facturas ni adjuntos de B. El propio propietario sí ve los repartos que legítimamente le corresponden.</dd><dt>Referencias del código</dt><dd><code>src/routes/fees.js:245</code> · <code>src/routes/fees.js:166</code> · <code>src/services.js:477</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;status&quot;: 200,
+  &quot;foreignCommunity&quot;: &quot;com-seed-3&quot;,
+  &quot;leakedServices&quot;: [
+    {
+      &quot;id&quot;: &quot;7040faf9-3d0a-4524-b9f2-d7ef6b0dcd6e&quot;,
+      &quot;communityId&quot;: &quot;com-seed-3&quot;,
+      &quot;totalAmount&quot;: 10000
+    }
+  ]
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F16" class="finding" data-priority="P1">
+<p class="eyebrow">F16 · P1 · Alta · Rendimiento y disponibilidad</p>
+<h2>La carga inicial bloquea el servidor durante segundos con un censo moderado</h2>
+<p><strong>Impacto.</strong> Cargar o refrescar datos de un gestor bloquea otras peticiones en el mismo proceso. Afecta al login, a las operaciones de otros usuarios y a las colas que dependen del event loop.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Crear 100 y 300 inmuebles sintéticos adicionales, medir GET /api/bootstrap y lanzar /api/health a la vez. No se ha aplicado carga sobre los datos reales.</dd><dt>Resultado comprobado</dt><dd>Con 11 inmuebles, la carga tardó decenas de milisegundos; con 111, alrededor de un segundo; con 311, alrededor de 11 segundos. Health quedó esperando prácticamente el mismo tiempo. Los valores exactos están en la evidencia.</dd><dt>Causa</dt><dd>Cada llamada a allowed sin datos explícitos reconstruye policyData completo. Bootstrap lo hace por entidad documental; listProperties ejecuta además consultas por inmueble. Todo ocurre de forma síncrona en el hilo HTTP.</dd><dt>Corrección propuesta</dt><dd>Construir una política por petición, reutilizarla y precargar estados financieros y documentos con consultas por lotes. Paginar las colecciones y medir de nuevo con el volumen de producción previsto.</dd><dt>Criterio de cierre</dt><dd>Con el censo objetivo, bootstrap cumple el tiempo acordado y una petición concurrente a health no queda bloqueada durante segundos. Medir varias muestras y percentiles tras la corrección.</dd><dt>Referencias del código</dt><dd><code>src/security.js:25</code> · <code>src/routes/index.js:80</code> · <code>src/db.js:971</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>[
+  {
+    &quot;properties&quot;: 11,
+    &quot;bootstrapMs&quot;: 34,
+    &quot;concurrentHealthMs&quot;: 13
+  },
+  {
+    &quot;properties&quot;: 111,
+    &quot;bootstrapMs&quot;: 970,
+    &quot;concurrentHealthMs&quot;: 953
+  },
+  {
+    &quot;properties&quot;: 311,
+    &quot;bootstrapMs&quot;: 12023,
+    &quot;concurrentHealthMs&quot;: 12006
+  }
+]</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F05" class="finding" data-priority="P2">
+<p class="eyebrow">F05 · P2 · Media · Validación de archivos</p>
+<h2>Los documentos de ficha enviados como JSON eluden los controles de la biblioteca</h2>
+<p><strong>Impacto.</strong> La política de tipos y tamaños no se aplica de manera uniforme. Se puede guardar contenido arbitrario en los expedientes y aumentar el tamaño de SQLite y de cada bootstrap.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Actualizar la propia ficha de propietario con documents.dni que indique archivo.exe, un MIME ejecutable y una data URL con cabecera MZ.</dd><dt>Resultado comprobado</dt><dd>200 y persistencia literal del nombre archivo.exe y de la data URL. No se ejecutó contenido; el visor limita los esquemas que muestra.</dd><dt>Causa</dt><dd>safeDocuments normaliza la aprobación, pero no decodifica ni valida el contenido, tamaño, tipo, claves admitidas ni permiso de subida. La biblioteca multipart sí tiene controles separados.</dd><dt>Corrección propuesta</dt><dd>Usar el mismo servicio de almacenamiento y validación para todos los expedientes. Validar los bytes en el servidor y evitar archivos base64 dentro de las fichas.</dd><dt>Criterio de cierre</dt><dd>JSON y multipart rechazan los mismos tipos y límites. Un documento rechazado no queda almacenado ni se marca como aportado.</dd><dt>Referencias del código</dt><dd><code>src/access.js:16</code> · <code>src/access.js:188</code> · <code>src/routes/owners.js:177</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;status&quot;: 200,
+  &quot;storedFileName&quot;: &quot;archivo.exe&quot;,
+  &quot;storedDataUrl&quot;: &quot;data:application/x-msdownload;base64,TVqQAAMAAAA=&quot;
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F07" class="finding" data-priority="P2">
+<p class="eyebrow">F07 · P2 · Media · Integridad de las ediciones</p>
+<h2>Una ficha abierta antes puede sobrescribir cambios recientes sin avisar</h2>
+<p><strong>Impacto.</strong> Dos gestores pueden perder cambios de contacto, titularidad o datos financieros al guardar formularios completos desde estados distintos.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Leer la misma comunidad en A y B. Guardar presidente=Presidencia A desde A. Guardar otro campo desde la copia antigua de B.</dd><dt>Resultado comprobado</dt><dd>La segunda escritura devolvió 200, guardó el otro campo y volvió a dejar vacío el presidente, perdiendo Presidencia A.</dd><dt>Causa</dt><dd>Los CRUD principales no incluyen versión ni condición de actualización; PUT sustituye los campos a partir del formulario recibido. Comunicación sí tiene control de versión.</dd><dt>Corrección propuesta</dt><dd>Añadir control de concurrencia mediante versión o ETag a comunidades, propietarios, inmuebles e inquilinos. Avisar del conflicto y conservar el formulario del usuario.</dd><dt>Criterio de cierre</dt><dd>Una edición obsoleta recibe 409/412 y no pierde ninguno de los cambios guardados. El usuario puede recargar y resolver la diferencia.</dd><dt>Referencias del código</dt><dd><code>src/routes/communities.js:97</code> · <code>src/routes/communities.js:111</code> · <code>src/routes/owners.js:129</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;status&quot;: 200,
+  &quot;presidentExpected&quot;: &quot;Presidencia A&quot;,
+  &quot;presidentActual&quot;: &quot;&quot;,
+  &quot;administrator&quot;: &quot;Administración B&quot;
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F11" class="finding" data-priority="P2">
+<p class="eyebrow">F11 · P2 · Media · Verificación de contactos</p>
+<h2>Confirmar un OTP no conserva la verificación al guardar la ficha</h2>
+<p><strong>Impacto.</strong> La interfaz puede comunicar que el contacto está verificado y perder ese estado al guardar y volver a abrir el perfil.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Cambiar un teléfono para dejarlo sin verificar, confirmar un reto OTP válido y guardar phoneVerified=true con la fecha devuelta. El reto de la prueba se insertó en la base temporal para no enviar ningún SMS.</dd><dt>Resultado comprobado</dt><dd>El endpoint respondió verified=true, pero el propietario quedó con phoneVerified=false y fecha vacía.</dd><dt>Causa</dt><dd>La confirmación solo marca el reto como confirmado. resourceAccess ignora los valores de verificación recibidos del cliente y conserva únicamente el estado anterior; no consume el reto confirmado para actualizar la ficha.</dd><dt>Corrección propuesta</dt><dd>Vincular cada reto a la cuenta, destino y entidad autorizada. Persistir o consumir la prueba verificada en el servidor al guardar. Mantener el rechazo de flags falsificados por el navegador.</dd><dt>Criterio de cierre</dt><dd>Una verificación real sobrevive a guardar y recargar; cambiar el contacto vuelve a invalidarla. Un reto de otra cuenta no sirve para verificar el perfil.</dd><dt>Referencias del código</dt><dd><code>src/routes/verification.js:151</code> · <code>src/access.js:195</code> · <code>public/js/features/propietarios.js:1577</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;confirmed&quot;: true,
+  &quot;phoneVerified&quot;: false,
+  &quot;phoneVerifiedAt&quot;: &quot;&quot;
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F12" class="finding" data-priority="P2">
+<p class="eyebrow">F12 · P2 · Media · Listado de inmuebles</p>
+<h2>Los inmuebles sin propietario desaparecen del listado incluso para el superadministrador</h2>
+<p><strong>Impacto.</strong> Inicio informa de 11 inmuebles y el listado solo muestra 8. El gestor puede interpretar que faltan registros y no localizar unidades pendientes de asignar.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Abrir Inicio y después Inmuebles con la semilla de prueba, o desvincular al último propietario de una unidad sin borrar el inmueble.</dd><dt>Resultado comprobado</dt><dd>La API contenía 11 inmuebles. La regla de la interfaz ocultó prop-seed-9, prop-seed-3 y prop-seed-5; el navegador mostró 8.</dd><dt>Causa</dt><dd>visibleProperties exige que exista un propietario visible, además de property:read, aunque el backend admite unidades heredadas sin propietario.</dd><dt>Corrección propuesta</dt><dd>Mostrar las unidades autorizadas sin propietario con un estado claro y una acción para asignarlo. Hacer coherentes los contadores de Inicio y el listado.</dd><dt>Criterio de cierre</dt><dd>Un inmueble autorizado sin propietario sigue visible, se puede abrir y asignar, y los recuentos coinciden cuando no hay filtros.</dd><dt>Referencias del código</dt><dd><code>public/js/features/inmuebles.js:770</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;apiTotal&quot;: 11,
+  &quot;visibleWithCurrentFrontendRule&quot;: 8,
+  &quot;hiddenPropertyIds&quot;: [
+    &quot;prop-seed-9&quot;,
+    &quot;prop-seed-3&quot;,
+    &quot;prop-seed-5&quot;
+  ]
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F13" class="finding" data-priority="P2">
+<p class="eyebrow">F13 · P2 · Media · Datos bancarios</p>
+<h2>El servidor acepta IBAN que la interfaz considera inválidos</h2>
+<p><strong>Impacto.</strong> Pueden persistirse cuentas bancarias mal formadas o con control incorrecto a través de la API. El IBAN de comunidad se copia a los datos de transferencia de los recibos.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Enviar una actualización válida de propietario sustituyendo iban por NO-ES-UN-IBAN.</dd><dt>Resultado comprobado</dt><dd>200 y valor inválido guardado literalmente.</dd><dt>Causa</dt><dd>El backend valida identidad y contacto, pero escribe iban directamente. La comprobación MOD-97 está en el cliente.</dd><dt>Corrección propuesta</dt><dd>Normalizar y validar IBAN en el servidor para propietarios y comunidades con la misma regla de control, permitiendo vacío cuando el campo sea opcional.</dd><dt>Criterio de cierre</dt><dd>Los IBAN inválidos reciben 400 sin modificar la ficha; los válidos normalizados y los vacíos permitidos se guardan correctamente.</dd><dt>Referencias del código</dt><dd><code>src/routes/owners.js:173</code> · <code>src/routes/communities.js:124</code> · <code>src/validation.js:32</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;status&quot;: 200,
+  &quot;storedIban&quot;: &quot;NO-ES-UN-IBAN&quot;
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F14" class="finding" data-priority="P2">
+<p class="eyebrow">F14 · P2 · Media · Cola de comunicaciones</p>
+<h2>Desactivar los emails generales no detiene los que ya están pendientes</h2>
+<p><strong>Impacto.</strong> Un gestor puede apagar las notificaciones por correo y aun así salir mensajes de publicaciones pendientes. El worker de cuotas sí vuelve a comprobar ese ajuste.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Encolar una publicación por email para una cuenta que haya aceptado el canal, desactivar notificacionesEmail y procesar la cola con un proveedor simulado.</dd><dt>Resultado comprobado</dt><dd>El worker llamó al envío simulado por email con notificacionesEmail=false. No se envió ningún correo real.</dd><dt>Causa</dt><dd>El ajuste se consulta al crear la cola, pero processCommunications no lo vuelve a comprobar antes del envío.</dd><dt>Corrección propuesta</dt><dd>Comprobar la configuración vigente inmediatamente antes de cada envío y definir qué ocurre con los pendientes al apagar y volver a activar el canal.</dd><dt>Criterio de cierre</dt><dd>Con el canal global apagado no se inicia ningún envío de publicaciones, incluidos los encolados previamente; quedan en un estado explicable en seguimiento.</dd><dt>Referencias del código</dt><dd><code>src/communication-store.js:275</code> · <code>src/communication-worker.js:45</code> · <code>src/communication-worker.js:76</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;notificacionesEmail&quot;: false,
+  &quot;simulatedCalls&quot;: [
+    {
+      &quot;channel&quot;: &quot;email&quot;,
+      &quot;to&quot;: &quot;audit@example.test&quot;
+    }
+  ]
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F17" class="finding" data-priority="P2">
+<p class="eyebrow">F17 · P2 · Media · Permisos en formularios</p>
+<h2>Los permisos de crear permiten abrir formularios que luego no dejan guardar</h2>
+<p><strong>Impacto.</strong> Los roles configurados solo para altas ven Nueva comunidad o Nuevo inmueble y pueden rellenar el formulario, pero al guardar se les exige editar o administrar. El diálogo se cierra y se pierde la entrada.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Crear un rol con community:create y property:create, sin community:edit ni property:manage; entrar con ese rol, abrir los formularios y pulsar Guardar.</dd><dt>Resultado comprobado</dt><dd>Reproducido en navegador: Nuevo inmueble terminó con &#39;requiere: administrar inmuebles&#39;; Nueva comunidad con &#39;requiere: editar comunidades&#39;. Ambos diálogos se cerraron. Se guardó captura.</dd><dt>Causa</dt><dd>La apertura distingue crear y editar, pero los listeners de submit exigen el permiso de edición. El código de propietarios e inquilinos tiene el mismo desajuste al guardar altas.</dd><dt>Corrección propuesta</dt><dd>Elegir el permiso de submit según si la entidad es nueva o existente, y según su ID y ámbito. Ante una denegación, conservar los datos del formulario.</dd><dt>Criterio de cierre</dt><dd>Un rol con create puede dar altas y no editar registros existentes; uno con edit/manage hace lo contrario según la política. Probarlo en los cuatro formularios, también desde accesos rápidos.</dd><dt>Referencias del código</dt><dd><code>public/js/features/comunidades.js:1021</code> · <code>public/js/features/inmuebles.js:1164</code> · <code>public/js/features/propietarios.js:1499</code> · <code>public/js/features/inquilinos.js:1060</code></dd></dl>
+
+<figure><img loading="lazy" src="permiso-alta.jpg" alt="Evidencia visual de F17"><figcaption>Entorno temporal con datos sintéticos · 14 de noviembre de 2026.</figcaption></figure>
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F18" class="finding" data-priority="P2">
+<p class="eyebrow">F18 · P2 · Media · Navegación móvil</p>
+<h2>Administración no tiene acceso de navegación en móvil</h2>
+<p><strong>Impacto.</strong> Un superadministrador en una pantalla estrecha no dispone de un enlace visible a Usuarios, Roles, Configuración o Auditoría. Puede entrar escribiendo la URL, pero el acceso se pierde en la navegación normal.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Entrar como super_admin, usar viewport de 390 × 844 y revisar la barra de navegación móvil y el menú de cuenta.</dd><dt>Resultado comprobado</dt><dd>Cero enlaces visibles a #administracion. La barra móvil no incluye Administración y el menú de cuenta solo ofrece perfil, contraseña, comunidades y cerrar sesión.</dd><dt>Causa</dt><dd>El CSS oculta el sidebar por debajo de 760 px y la navegación móvil no contiene el enlace equivalente de Administración.</dd><dt>Corrección propuesta</dt><dd>Añadir un acceso móvil a Administración sujeto a los permisos efectivos, manteniendo una navegación utilizable sin escribir direcciones manualmente.</dd><dt>Criterio de cierre</dt><dd>En móvil un usuario autorizado llega por la interfaz a todas las secciones administrativas permitidas; el vecino sin permisos no ve esos accesos.</dd><dt>Referencias del código</dt><dd><code>public/index.html:164</code> · <code>public/index.html:342</code> · <code>public/styles.css:1242</code></dd></dl>
+
+<figure><img loading="lazy" src="navegacion-movil.jpg" alt="Evidencia visual de F18"><figcaption>Entorno temporal con datos sintéticos · 14 de noviembre de 2026.</figcaption></figure>
+<a class="back" href="#indice">Volver al índice</a></article>
+<article id="F08" class="finding" data-priority="P3">
+<p class="eyebrow">F08 · P3 · Baja · Caché de estáticos</p>
+<h2>La compresión manual omite Vary y la política de revalidación de JavaScript</h2>
+<p><strong>Impacto.</strong> Un proxy o caché intermedia puede reutilizar la representación equivocada del catálogo territorial. La respuesta comprimida no recibe la política de caché aplicada a los JS normales.</p>
+<dl><dt>Cómo reproducirlo</dt><dd>Solicitar /js/municipios-ine.js con Accept-Encoding: identity y con gzip; comparar las cabeceras.</dd><dt>Resultado comprobado</dt><dd>Sin comprimir: Cache-Control de revalidación. Con gzip: Content-Encoding=gzip, sin Vary: Accept-Encoding y sin Cache-Control.</dd><dt>Causa</dt><dd>El middleware de compresión responde antes de express.static y no reproduce las cabeceras necesarias para distinguir variantes.</dd><dt>Corrección propuesta</dt><dd>Usar una capa de compresión probada o completar la negociación, Vary y la política de caché en esa ruta, incluida la validación de q=0.</dd><dt>Criterio de cierre</dt><dd>Todas las variantes incluyen Vary: Accept-Encoding y una política de caché coherente; una caché compartida sirve correctamente a clientes con y sin compresión.</dd><dt>Referencias del código</dt><dd><code>server.js:94</code> · <code>server.js:105</code> · <code>server.js:117</code></dd></dl>
+<details><summary>Evidencia técnica de la reproducción</summary><pre>{
+  &quot;identity&quot;: {
+    &quot;encoding&quot;: null,
+    &quot;vary&quot;: null,
+    &quot;cache&quot;: &quot;public, max-age=0, must-revalidate&quot;
+  },
+  &quot;gzip&quot;: {
+    &quot;encoding&quot;: &quot;gzip&quot;,
+    &quot;vary&quot;: null,
+    &quot;cache&quot;: null
+  }
+}</pre></details>
+
+<a class="back" href="#indice">Volver al índice</a></article>
+<section id="pendientes"><h2>Verificaciones externas pendientes para autorizar la salida</h2><p>Son comprobaciones no realizadas en esta auditoría; no se contabilizan como errores confirmados.</p><ul>
+<li>Probar el dominio, certificado, proxy, cookies Secure, recuperación de contraseña y control de origen en la instalación final.</li>
+<li>Elegir y fijar una versión soportada de Node y repetir las pruebas. El entorno disponible es una versión alpha; package.json no fija engines. Node recomienda Active LTS o Maintenance LTS para producción. <a href="https://nodejs.org/en/about/previous-releases">Referencia oficial de Node</a>.</li>
+<li>Ejecutar una copia y restauración verificadas de SQLite, adjuntos y clave de proveedores. El repositorio menciona copias, pero no incluye un procedimiento de restauración comprobado. En SQLite con WAL, usar un procedimiento consistente; <a href="https://www.sqlite.org/backup.html">referencia oficial de backup</a>.</li>
+<li>Validar SMTP y los canales contratados con destinos de prueba autorizados; comprobar errores, recuperación y retención de la clave. Confirmar APP_PUBLIC_URL en el despliegue.</li>
+<li>Medir concurrencia y tiempos con el volumen esperado, el mismo Node del despliegue y una copia anonimizada representativa. La prueba actual es un diagnóstico local, no una certificación de capacidad.</li>
+<li>Definir arranque supervisado, reinicio, recuperación tras fallo y monitorización en la infraestructura elegida; no se inspeccionó su configuración.</li></ul>
+<p>Para corregir F01 y F10, ajustar la confianza al proxy realmente utilizado según la <a href="https://expressjs.com/en/guide/behind-proxies/">documentación oficial de Express</a>.</p></section>
+<section id="evidencias"><h2>Archivos y reproducción</h2><ul>
+<li><a href="tests.txt">Salida completa de las 217 pruebas</a>.</li>
+<li><a href="dependencies-audit.json">Resultado de npm audit</a>.</li>
+<li><a href="evidence.json">Evidencia HTTP, arranques y medidas de rendimiento</a>.</li>
+<li><a href="findings.json">Hallazgos estructurados con referencias y criterios de cierre</a>.</li>
+<li><a href="probes.mjs">Script de reproducción aislada</a>: ejecutar <code>node audits/2026-11-14/probes.mjs</code> desde la raíz del repositorio. Crea y elimina exclusivamente sus propias bases temporales y actualiza evidence.json.</li>
+<li>F17 y F18 se reprodujeron en navegador: las capturas acompañan sus fichas. Los propietarios e inquilinos adicionales de F17 se revisaron por código; el bloqueo de Comunidades e Inmuebles se reprodujo en la interfaz.</li></ul>
+<p class="muted">Fecha de cierre del informe: 14 de noviembre de 2026. No se publicó nada en el contexto compartido entre herramientas.</p></section></main>
+<script>
+const priority=document.querySelector('#priority'),query=document.querySelector('#query');function filter(){let count=0;document.querySelectorAll('.finding').forEach(article=>{const show=(priority.value==='all'||article.dataset.priority===priority.value)&&article.textContent.toLocaleLowerCase('es').includes(query.value.trim().toLocaleLowerCase('es'));article.hidden=!show;document.querySelector('#findings-index a[href="#'+article.id+'"]').closest('tr').hidden=!show;if(show)count++;});document.querySelector('#result-count').textContent=count+' de 18 hallazgos';}priority.addEventListener('change',filter);query.addEventListener('input',filter);document.querySelector('#print').addEventListener('click',()=>window.print());</script></body></html>

@@ -64,7 +64,7 @@ function communityFixture() {
     ui: {},
   };
   const utils = vm.runInContext(
-    `(()=>{${source("public/js/utils.js")}\nreturn {setFormReadonly};})()`,
+    `(()=>{${source("public/js/utils.js")}\nreturn {setFormReadonly,isValidCommunityNif,normalizeIdentityDocument};})()`,
     dom.getInternalVMContext(),
   );
   const richText = vm.runInContext(
@@ -105,6 +105,8 @@ function communityFixture() {
     limpiarGuardia: noop,
     intentarCerrar: (_f, dialog) => dialog.close(),
     setFormReadonly: utils.setFormReadonly,
+    isValidCommunityNif: utils.isValidCommunityNif,
+    normalizeIdentityDocument: utils.normalizeIdentityDocument,
     createRichText: richText.createRichText,
     setupTerritory: (form) => ({
       set: (city, province, cp) => {
@@ -372,5 +374,46 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     assert.ok(calls.includes("refresh-posts"));
   } finally {
     w.close();
+  }
+});
+
+test("F07 · refrescar estado no cambia la versión del formulario ni borra un conflicto", async () => {
+  const f = communityFixture();
+  try {
+    f.state.communities[0].version = 7;
+    f.w.communityUI.openCommunityEditor("c1", "details", false);
+    const form = f.w.document.querySelector("#community-form");
+    form.elements.name.value = "Mi edición pendiente";
+    form.elements.address.value = "Calle Prueba 1";
+    form.elements.email.value = "comunidad@example.test";
+    form.elements.city.replaceChildren(new f.w.Option("Madrid", "madrid-id", true, true));
+    form.elements.province.replaceChildren(new f.w.Option("Madrid", "Madrid", true, true));
+    form.elements.postalCode.replaceChildren(new f.w.Option("28001", "28001", true, true));
+    let payload;
+    f.w.api = {
+      updateCommunity: async (_id, data) => {
+        payload = data;
+        throw Object.assign(new Error("Este registro cambió mientras lo editabas."), {
+          status: 409,
+        });
+      },
+    };
+    const validation = [];
+    f.w.showValidationErrors = (messages) => validation.push(...messages);
+    // Simula el refresh de otra pestaña o una biblioteca abierta en paralelo.
+    f.state.communities = [{ ...f.state.communities[0], version: 8 }];
+    form.dispatchEvent(new f.w.Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+    assert.deepEqual(validation, []);
+    assert.equal(payload.version, 7);
+    assert.equal(form.elements.name.value, "Mi edición pendiente");
+    assert.equal(f.w.document.querySelector("#community-dialog").open, true);
+    assert.match(
+      f.w.document.querySelector("#form-error").textContent,
+      /cambió mientras lo editabas/,
+    );
+    assert.equal(form.dataset.editVersion, "7");
+  } finally {
+    f.dom.window.close();
   }
 });

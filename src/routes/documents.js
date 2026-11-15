@@ -3,15 +3,9 @@ import multer from "multer";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import {
-  db,
-  documentFromRow,
-  documentFolderFromRow,
-  UPLOADS_DIR,
-  getSettings,
-  listDocuments,
-} from "../db.js";
+import { db, documentFromRow, documentFolderFromRow, UPLOADS_DIR, listDocuments } from "../db.js";
 import { allowed } from "../security.js";
+import { allowedDocumentLabels, detectContentType, documentLimits } from "../document-policy.js";
 import {
   DOCUMENT_ENTITY_TABLES,
   createFolder,
@@ -37,13 +31,10 @@ const storage = multer.diskStorage({
   filename: (_req, file, cb) =>
     cb(null, `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`),
 });
-const maxBytes = () =>
-  Math.min(50, Math.max(1, Number(getSettings().documentosMaxSizeMb) || 15)) * 1024 * 1024;
-const maxFiles = () => Math.min(50, Math.max(1, Number(getSettings().documentosMaxArchivos) || 20));
-const allowedExtensions = () =>
-  new Set(getSettings().documentosTiposPermitidos.map((tipo) => `.${String(tipo).toLowerCase()}`));
-const allowedLabels = () =>
-  [...allowedExtensions()].map((extension) => extension.slice(1).toUpperCase()).join(", ");
+const maxBytes = () => documentLimits().maxBytes;
+const maxFiles = () => documentLimits().maxFiles;
+const allowedExtensions = () => documentLimits().allowed;
+const allowedLabels = () => allowedDocumentLabels();
 const upload = (req, res, done) =>
   multer({
     storage,
@@ -105,39 +96,10 @@ function contentType(file) {
   } finally {
     fs.closeSync(fd);
   }
-  const sample = head.subarray(0, length);
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (ext === ".pdf" && sample.subarray(0, 5).toString() === "%PDF-") return "application/pdf";
-  if (
-    [".jpg", ".jpeg"].includes(ext) &&
-    sample[0] === 255 &&
-    sample[1] === 216 &&
-    sample[2] === 255
-  )
-    return "image/jpeg";
-  if (
-    ext === ".png" &&
-    sample.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-  )
-    return "image/png";
-  if (
-    ext === ".webp" &&
-    sample.subarray(0, 4).toString() === "RIFF" &&
-    sample.subarray(8, 12).toString() === "WEBP"
-  )
-    return "image/webp";
-  if (
-    ext === ".doc" &&
-    sample.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))
-  )
-    return "application/msword";
-  if (
-    ext === ".docx" &&
-    sample.subarray(0, 4).toString() === "PK\u0003\u0004" &&
-    sample.includes("[Content_Types].xml")
-  )
-    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  return null;
+  return (
+    detectContentType(head.subarray(0, length), path.extname(file.originalname).toLowerCase()) ||
+    null
+  );
 }
 export function documentPath(row) {
   if (!row.storedName || path.basename(row.storedName) !== row.storedName)

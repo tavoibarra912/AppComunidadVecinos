@@ -36,6 +36,7 @@ db.exec(`
     reserveFund TEXT NOT NULL DEFAULT '',
     notes TEXT NOT NULL DEFAULT '',
     documents TEXT NOT NULL DEFAULT '[]',
+    version INTEGER NOT NULL DEFAULT 1,
     createdAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -891,6 +892,22 @@ db.exec(`
   WHERE city = '' AND communityId <> ''
 `);
 
+// La versión también cambia con modificaciones indirectas de vínculos o perfiles.
+// No se incrementa al reescribir los mismos valores durante una reconstrucción.
+for (const table of ["communities", "owners", "properties", "tenants"]) {
+  ensureColumns(table, { version: "INTEGER NOT NULL DEFAULT 1" });
+  const columns = db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .map((row) => row.name)
+    .filter((name) => name !== "version");
+  const changed = columns.map((name) => `NEW.${name} IS NOT OLD.${name}`).join(" OR ");
+  db.exec(`CREATE TRIGGER IF NOT EXISTS ${table}_edit_version
+    AFTER UPDATE ON ${table}
+    WHEN NEW.version = OLD.version AND (${changed})
+    BEGIN UPDATE ${table} SET version = OLD.version + 1 WHERE id = NEW.id; END;`);
+}
+
 function parseJson(value, fallback) {
   try {
     const parsed = JSON.parse(value);
@@ -903,6 +920,7 @@ function parseJson(value, fallback) {
 export function communityFromRow(row) {
   return {
     id: row.id,
+    version: row.version,
     name: row.name,
     nif: row.nif,
     phone: row.phone,
@@ -927,6 +945,7 @@ export function communityFromRow(row) {
 export function ownerFromRow(row) {
   return {
     id: row.id,
+    version: row.version,
     name: row.name,
     surname: row.surname,
     documentType: row.documentType,
@@ -968,27 +987,55 @@ export function ownerFromRow(row) {
   };
 }
 
-export function propertyFromRow(row) {
-  const ledger = db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get();
-  const latestFee = ledger
-    ? db
-        .prepare(
-          "SELECT amount,snapshot FROM fee_receipts WHERE propertyId=? AND cancelledAt='' ORDER BY period DESC LIMIT 1",
-        )
-        .get(row.id)
-    : null;
-  const hasFeeReceipts =
-    !!ledger && !!db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=? LIMIT 1").get(row.id);
-  const pendingFee =
-    hasFeeReceipts &&
+function propertyFinancialState() {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get())
+    return { latest: new Map(), withReceipts: new Set(), pending: new Set() };
+  // Una sola pasada por propiedad: la versión anterior lanzaba cuatro
+  // consultas por fila y bloqueaba el hilo con censos medianos.
+  const latest = new Map(
     db
       .prepare(
-        `SELECT 1 FROM fee_receipts r WHERE r.propertyId=? AND r.cancelledAt='' AND r.amount>
-    COALESCE((SELECT SUM(a.amount) FROM fee_allocations a JOIN fee_payments p ON p.id=a.paymentId WHERE a.receiptId=r.id AND p.reversedAt=''),0) LIMIT 1`,
+        `SELECT propertyId, amount, snapshot FROM (
+           SELECT propertyId, amount, snapshot,
+             ROW_NUMBER() OVER (PARTITION BY propertyId ORDER BY period DESC) AS position
+           FROM fee_receipts WHERE cancelledAt=''
+         ) WHERE position=1`,
       )
-      .get(row.id);
+      .all()
+      .map((row) => [row.propertyId, row]),
+  );
+  const withReceipts = new Set(
+    db
+      .prepare("SELECT DISTINCT propertyId FROM fee_receipts")
+      .all()
+      .map((row) => row.propertyId),
+  );
+  const pending = new Set(
+    db
+      .prepare(
+        `SELECT r.propertyId FROM fee_receipts r
+         LEFT JOIN (
+           SELECT a.receiptId, SUM(a.amount) AS paid
+           FROM fee_allocations a
+           JOIN fee_payments p ON p.id = a.paymentId AND p.reversedAt=''
+           GROUP BY a.receiptId
+         ) paid ON paid.receiptId = r.id
+         WHERE r.cancelledAt='' AND r.amount > COALESCE(paid.paid,0)
+         GROUP BY r.propertyId`,
+      )
+      .all()
+      .map((row) => row.propertyId),
+  );
+  return { latest, withReceipts, pending };
+}
+
+export function propertyFromRow(row, financial = propertyFinancialState()) {
+  const latestFee = financial.latest.get(row.id) || null;
+  const hasFeeReceipts = financial.withReceipts.has(row.id);
+  const pendingFee = hasFeeReceipts && financial.pending.has(row.id);
   return {
     id: row.id,
+    version: row.version,
     communityId: row.communityId,
     communityName: row.communityName,
     ownerIds: parseJson(row.ownerIds, []),
@@ -1023,6 +1070,7 @@ export function propertyFromRow(row) {
 export function tenantFromRow(row) {
   return {
     id: row.id,
+    version: row.version,
     ownerId: row.ownerId,
     propertyId: row.propertyId,
     name: row.name,
@@ -1130,7 +1178,11 @@ export function listOwners() {
 }
 
 export function listProperties() {
-  return db.prepare("SELECT * FROM properties ORDER BY plot").all().map(propertyFromRow);
+  const financial = propertyFinancialState();
+  return db
+    .prepare("SELECT * FROM properties ORDER BY plot")
+    .all()
+    .map((row) => propertyFromRow(row, financial));
 }
 
 export function listTenants() {
@@ -1258,4 +1310,42 @@ export function listDocumentFolders(entityType, entityId) {
     )
     .all(entityType, entityId)
     .map(documentFolderFromRow);
+}
+
+const ENTITY_CHUNK = 500;
+
+function inChunks(ids, callback) {
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  const output = [];
+  for (let index = 0; index < unique.length; index += ENTITY_CHUNK) {
+    const chunk = unique.slice(index, index + ENTITY_CHUNK);
+    output.push(...callback(chunk, chunk.map(() => "?").join(",")));
+  }
+  return output;
+}
+
+/** Documentos de varias entidades en una sola consulta por lote. */
+export function listDocumentsForEntities(entityType, entityIds, category = "document") {
+  return inChunks(entityIds, (chunk, marks) =>
+    db
+      .prepare(
+        `SELECT * FROM documents WHERE entityType = ? AND entityId IN (${marks}) AND category = ?
+         ORDER BY uploadedAt DESC, fileName COLLATE NOCASE`,
+      )
+      .all(entityType, ...chunk, category)
+      .map(documentFromRow),
+  );
+}
+
+/** Carpetas de varias entidades en una sola consulta por lote. */
+export function listDocumentFoldersForEntities(entityType, entityIds) {
+  return inChunks(entityIds, (chunk, marks) =>
+    db
+      .prepare(
+        `SELECT * FROM document_folders WHERE entityType = ? AND entityId IN (${marks})
+         ORDER BY name COLLATE NOCASE`,
+      )
+      .all(entityType, ...chunk)
+      .map(documentFolderFromRow),
+  );
 }

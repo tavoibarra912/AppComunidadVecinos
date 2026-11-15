@@ -1,6 +1,7 @@
+import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db, propertyFromRow, listDocuments } from "../db.js";
+import { db, propertyFromRow, listProperties, listDocuments } from "../db.js";
 import { rebuildOwnersPropertyIds, rebuildPropertyTenantReferences } from "../domain.js";
 import { removeEntityFiles } from "./documents.js";
 
@@ -60,13 +61,7 @@ function ownerCommunityIds(ownerId) {
 }
 
 router.get("/", (req, res) => {
-  res.json(
-    db
-      .prepare("SELECT * FROM properties ORDER BY plot")
-      .all()
-      .map(propertyFromRow)
-      .map(propertyPayload),
-  );
+  res.json(listProperties().map(propertyPayload));
 });
 
 router.get("/:id", (req, res) => {
@@ -312,48 +307,47 @@ router.post("/", (req, res) => {
   res.status(201).json(propertyPayload(findProperty(id)));
 });
 
-router.put("/:id", (req, res) => {
-  const existing = findProperty(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
-  const data = req.body || {};
-  if ((data.communityId || "") !== existing.communityId && hasAssessment(existing.id))
-    return res
-      .status(409)
-      .json({
+router.put(
+  "/:id",
+  versionedUpdate("properties", (req, res) => {
+    const existing = findProperty(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
+    const data = req.body || {};
+    if ((data.communityId || "") !== existing.communityId && hasAssessment(existing.id))
+      return res.status(409).json({
         error:
           "No se puede cambiar de comunidad un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto.",
       });
-  const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
-  if (error) return res.status(400).json({ error });
-  const community = db
-    .prepare("SELECT id, name FROM communities WHERE id = ?")
-    .get(data.communityId);
+    const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
+    if (error) return res.status(400).json({ error });
+    const community = db
+      .prepare("SELECT id, name FROM communities WHERE id = ?")
+      .get(data.communityId);
 
-  db.exec("BEGIN");
-  try {
-    storeProperty(existing.id, data, community);
-    syncTenantsForProperty(
-      existing.id,
-      Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : [],
-    );
-    rebuildOwnersPropertyIds();
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
+    db.exec("SAVEPOINT entity_update");
+    try {
+      storeProperty(existing.id, data, community);
+      syncTenantsForProperty(
+        existing.id,
+        Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : [],
+      );
+      rebuildOwnersPropertyIds();
+      db.exec("RELEASE entity_update");
+    } catch (error) {
+      db.exec("ROLLBACK TO entity_update");
+      throw error;
+    }
 
-  res.json(propertyPayload(findProperty(existing.id)));
-});
+    res.json(propertyPayload(findProperty(existing.id)));
+  }),
+);
 
 router.delete("/:id", (req, res) => {
   if (hasAssessment(req.params.id))
-    return res
-      .status(409)
-      .json({
-        error:
-          "No se puede eliminar un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto.",
-      });
+    return res.status(409).json({
+      error:
+        "No se puede eliminar un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto.",
+    });
   if (
     db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() &&
     db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=?").get(req.params.id)

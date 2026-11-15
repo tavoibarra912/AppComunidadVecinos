@@ -6,7 +6,7 @@ Aplicación web completa para la gestión de la Asociación de Propietarios de P
 
 - **Backend**: Node.js + Express + SQLite (`node:sqlite`, sin dependencias nativas). API REST, subida de archivos (`multer`) y control de acceso por sesiones.
 - **Frontend**: vanilla JavaScript en módulos ES (sin build step), servido por el propio backend. Persistencia íntegra en base de datos — ya no se usa `localStorage`.
-- **Datos demo**: la base se inicializa con datos de ejemplo **solo si está vacía** al arrancar; los cambios persisten entre reinicios.
+- **Datos demo**: fuera de producción, el arranque llama a `seedIfEmpty()` y carga el censo de ejemplo **solo si no hay comunidades**; los cambios persisten entre reinicios.
 
 ## Cuotas ordinarias
 
@@ -417,7 +417,7 @@ protección de sus copias de seguridad para producción.
 - En **Ver**, solo están habilitados las pestañas, el cierre y la apertura de los adjuntos. No se puede editar, verificar contactos, asociar inmuebles ni abrir sus fichas desde esa vista. La edición se recupera al abrir **Editar**.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
 - CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito numérico de control, teléfonos de 9 dígitos, correo electrónico, CP contra catálogo INE con autocompletado de municipio y provincia). El NIF se normaliza antes de validar y guardar: admite minúsculas y separadores habituales (espacios, puntos y guiones), y conserva la comprobación del dígito de control.
-- Documentación adjunta con biblioteca de archivos y carpetas, y ficha detallada con propietarios censados. Pestaña **Estatutos** independiente con consulta para residentes y gestión para administradores.
+- Documentación adjunta y ficha con propietarios censados. La gestión de archivos y estatutos se describe en [Estatutos y biblioteca documental](#estatutos-y-biblioteca-documental).
 
 ### Propietarios
 
@@ -486,10 +486,40 @@ versiones anteriores no pueden recuperarse sin una copia de seguridad.
 
 ## Producción
 
-Con `NODE_ENV=production` no se cargan datos demo y las cookies requieren HTTPS.
+Con `NODE_ENV=production` no se carga automáticamente el censo de comunidades de
+ejemplo y las cookies requieren HTTPS. La provisión de cuentas y permisos demo
+se mantiene por decisión del proyecto durante esta etapa del MVP.
 Una base nueva exige `APP_ADMIN_PASSWORD` de al menos 12 caracteres para crear
 la cuenta inicial. Las bases existentes conservan su administrador. Si se desea
 escuchar fuera de la máquina local, debe configurarse `HOST` explícitamente.
+
+Detrás de un proxy inverso, configurar `TRUST_PROXY` con las IP o redes de los
+proxies de confianza, separadas por comas (por ejemplo, `loopback` si el proxy
+corre en la misma máquina, o una IP/CIDR concreta). El backend debe recibir
+conexiones solo por esa ruta de confianza. Sin esta opción, Express ignora
+`X-Forwarded-For` y usa la IP de la conexión. No se debe confiar en cualquier
+origen ni en un número fijo de saltos cuando hay varias rutas de acceso.
+
+Los intentos de autenticación se separan por operación, IP e identidad.
+Los accesos correctos no consumen intentos. El acceso limita 15 fallos por
+identidad/IP cada 15 minutos, con `Retry-After`; un barrido desde una IP tiene
+además un tope de 500 fallos por minuto. Recuperación, registro, restablecimiento
+y cambio de contraseña tienen presupuestos independientes. Estos contadores
+son locales al proceso: un despliegue con varias instancias necesita un almacén
+compartido o límites equivalentes en el proxy.
+
+La API devuelve `version` en las fichas de comunidades, propietarios, inmuebles
+e inquilinos. Cada `PUT` debe incluir la versión leída: sin ella responde `428`,
+y si cambió responde `409` con `code: "EDIT_CONFLICT"`. El formulario conserva
+los cambios pendientes; hay que revisar la ficha actual antes de reenviar.
+Las versiones también reflejan modificaciones indirectas de vínculos.
+El editor de propietario envía `propertyShares` con inmueble, versión y porcentaje,
+y guarda ficha y titularidades en una sola transacción.
+
+El bootstrap usa una instantánea de permisos por petición y carga los estados
+financieros y la biblioteca documental por lotes. `npm test` incluye una prueba
+con 1.211 inmuebles, 14.400 recibos y 1.200 documentos que comprueba tiempos de
+respuesta, disponibilidad y aislamiento entre roles en un servidor separado.
 
 Los archivos se guardan en disco y necesitan copias de seguridad junto con SQLite.
 La revisión documental es humana: el sistema no realiza OCR ni certifica la

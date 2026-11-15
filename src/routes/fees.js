@@ -163,7 +163,13 @@ function data(user, rows, communityId = "", informativeOwnerIds) {
   return {
     receipts,
     payments,
-    informativeServices: informativeServicesFor(serviceOwnerIds, communityId),
+    // Cada reparto informativo se autoriza por su propia comunidad: un
+    // administrador local no puede ver facturas de otra comunidad aunque el
+    // propietario consultado tenga inmuebles en ambas.
+    informativeServices: informativeServicesFor(serviceOwnerIds, communityId).filter((service) => {
+      const row = serviceBillById(service.id);
+      return !!row && canReadServiceBill(user, row);
+    }),
     totals: {
       issued: receipts.filter((r) => !r.cancelledAt).reduce((s, r) => s + r.amount, 0),
       paid: receipts.filter((r) => !r.cancelledAt).reduce((s, r) => s + r.paid, 0),

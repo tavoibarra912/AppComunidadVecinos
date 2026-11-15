@@ -718,6 +718,7 @@ test("servicios: no permite borrar ni mover inmuebles incluidos en un reparto vi
   assert.equal(
     (
       await admin(`/properties/${property}`, "PUT", {
+        version: (await admin(`/properties/${property}`)).data.version,
         communityId: `${c.id}-otra`,
         plot: "Unidad 1",
         participationCoef: "25",

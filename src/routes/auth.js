@@ -1,3 +1,4 @@
+import { createAuthRateLimit } from "../auth-rate-limit.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, getSettings } from "../db.js";
@@ -13,21 +14,8 @@ import { validEmail, passwordError } from "../validation.js";
 import { requestRecovery, resetRecoveredPassword } from "../password-recovery.js";
 
 const router = Router();
-const attempts = new Map();
-router.use((req, res, next) => {
-  if (req.method !== "POST" || req.path === "/logout") return next();
-  const now = Date.now();
-  for (const [key, entry] of attempts) if (entry.until < now) attempts.delete(key);
-  const key = req.ip;
-  const entry = attempts.get(key) || { count: 0, until: now + 15 * 60_000 };
-  if (entry.count >= 40)
-    return res.status(429).json({
-      error: "Demasiados intentos. Vuelve a intentar en unos minutos.",
-    });
-  entry.count++;
-  attempts.set(key, entry);
-  next();
-});
+router.use("/change-password", requireSession);
+router.use(createAuthRateLimit());
 router.get("/me", requireSession, (req, res) => res.json(publicUser(req.user)));
 router.post("/logout", requireSession, (req, res) => {
   endSession(req, res);

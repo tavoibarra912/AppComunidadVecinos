@@ -1,8 +1,10 @@
+import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, communityFromRow, listDocuments } from "../db.js";
 import {
   contactError,
+  bankAccountError,
   communityFinanceError,
   communityNifError,
   normalizeIdentityDocument,
@@ -15,7 +17,11 @@ router.use((req, res, next) => {
   if (["POST", "PUT"].includes(req.method)) {
     const data = req.body || {};
     data.nif = normalizeIdentityDocument(data.nif);
-    const error = contactError(data) || communityFinanceError(data) || communityNifError(data.nif);
+    const error =
+      contactError(data) ||
+      bankAccountError(data) ||
+      communityFinanceError(data) ||
+      communityNifError(data.nif);
     if (error) return res.status(400).json({ error });
     if (data.notes !== undefined) data.notes = sanitizeRichText(data.notes);
     for (const key of ["constitutionYear", "reserveFund"])
@@ -33,11 +39,9 @@ router.use((req, res, next) => {
         !role ||
         (role.nombre !== "super_admin" && !JSON.parse(role.permisos).includes("community:manage"))
       )
-        return res
-          .status(400)
-          .json({
-            error: "La cuenta asignada debe tener permisos de administración de comunidades.",
-          });
+        return res.status(400).json({
+          error: "La cuenta asignada debe tener permisos de administración de comunidades.",
+        });
     }
   }
   next();
@@ -94,46 +98,51 @@ router.post("/", (req, res) => {
   res.status(201).json(findCommunity(id));
 });
 
-router.put("/:id", (req, res) => {
-  const existing = findCommunity(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Comunidad no encontrada." });
-  const data = req.body || {};
-  if (!data.name || !data.nif) {
-    return res.status(400).json({ error: "El nombre y el NIF de la comunidad son obligatorios." });
-  }
-  const nifOwner = db
-    .prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?) AND id <> ?")
-    .get(data.nif, existing.id);
-  if (nifOwner) {
-    return res.status(409).json({ error: "Ya existe otra comunidad con ese NIF." });
-  }
-  db.prepare(
-    `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
+router.put(
+  "/:id",
+  versionedUpdate("communities", (req, res) => {
+    const existing = findCommunity(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Comunidad no encontrada." });
+    const data = req.body || {};
+    if (!data.name || !data.nif) {
+      return res
+        .status(400)
+        .json({ error: "El nombre y el NIF de la comunidad son obligatorios." });
+    }
+    const nifOwner = db
+      .prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?) AND id <> ?")
+      .get(data.nif, existing.id);
+    if (nifOwner) {
+      return res.status(409).json({ error: "Ya existe otra comunidad con ese NIF." });
+    }
+    db.prepare(
+      `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
        province = ?, postalCode = ?, email = ?, iban = ?, president = ?, administrator = ?,
        constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ? WHERE id = ?`,
-  ).run(
-    data.name,
-    data.nif,
-    data.phone || "",
-    data.otherPhone || "",
-    data.address || "",
-    data.city || "",
-    data.province || "",
-    data.postalCode || "",
-    data.email || "",
-    data.iban || "",
-    data.president || "",
-    data.administrator || "",
-    data.constitutionYear || "",
-    data.reserveFund || "",
-    data.notes || "",
-    JSON.stringify(Array.isArray(data.documents) ? data.documents : existing.documents),
-    data.currency || "",
-    data.adminUserId !== undefined ? data.adminUserId : existing.adminUserId || "",
-    existing.id,
-  );
-  res.json(findCommunity(existing.id));
-});
+    ).run(
+      data.name,
+      data.nif,
+      data.phone || "",
+      data.otherPhone || "",
+      data.address || "",
+      data.city || "",
+      data.province || "",
+      data.postalCode || "",
+      data.email || "",
+      data.iban || "",
+      data.president || "",
+      data.administrator || "",
+      data.constitutionYear || "",
+      data.reserveFund || "",
+      data.notes || "",
+      JSON.stringify(Array.isArray(data.documents) ? data.documents : existing.documents),
+      data.currency || "",
+      data.adminUserId !== undefined ? data.adminUserId : existing.adminUserId || "",
+      existing.id,
+    );
+    res.json(findCommunity(existing.id));
+  }),
+);
 
 router.delete("/:id", (req, res) => {
   const feeTables = [
@@ -148,12 +157,10 @@ router.delete("/:id", (req, res) => {
       db.prepare(`SELECT 1 FROM ${table} WHERE communityId=? LIMIT 1`).get(req.params.id),
     )
   )
-    return res
-      .status(409)
-      .json({
-        error:
-          "No se puede eliminar una comunidad con historial de cuotas, derramas, servicios o cobros.",
-      });
+    return res.status(409).json({
+      error:
+        "No se puede eliminar una comunidad con historial de cuotas, derramas, servicios o cobros.",
+    });
   const existing = findCommunity(req.params.id);
   if (!existing) return res.status(404).json({ error: "Comunidad no encontrada." });
   const properties = db

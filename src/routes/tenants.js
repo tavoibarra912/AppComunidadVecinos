@@ -1,3 +1,4 @@
+import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, tenantFromRow } from "../db.js";
@@ -77,25 +78,28 @@ router.post("/", (req, res) => {
   res.status(201).json(tenantPayload(findTenant(id)));
 });
 
-router.put("/:id", (req, res) => {
-  const existing = findTenant(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Inquilino no encontrado." });
-  const data = req.body || {};
-  if (!data.name || !data.surname) {
-    return res
-      .status(400)
-      .json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
-  }
-  try {
-    db.exec("BEGIN");
-    upsertTenant(data, existing.id);
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    return res.status(400).json({ error: error.message });
-  }
-  res.json(tenantPayload(findTenant(existing.id)));
-});
+router.put(
+  "/:id",
+  versionedUpdate("tenants", (req, res) => {
+    const existing = findTenant(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Inquilino no encontrado." });
+    const data = req.body || {};
+    if (!data.name || !data.surname) {
+      return res
+        .status(400)
+        .json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
+    }
+    try {
+      db.exec("SAVEPOINT entity_update");
+      upsertTenant(data, existing.id);
+      db.exec("RELEASE entity_update");
+    } catch (error) {
+      db.exec("ROLLBACK TO entity_update");
+      return res.status(400).json({ error: error.message });
+    }
+    res.json(tenantPayload(findTenant(existing.id)));
+  }),
+);
 
 router.delete("/:id", (req, res) => {
   const existing = findTenant(req.params.id);
