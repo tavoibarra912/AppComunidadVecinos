@@ -2,6 +2,7 @@ import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, propertyFromRow, listProperties, listDocuments } from "../db.js";
+import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { rebuildOwnersPropertyIds, rebuildPropertyTenantReferences } from "../domain.js";
 import { removeEntityFiles } from "./documents.js";
 
@@ -71,9 +72,9 @@ router.get("/:id", (req, res) => {
 });
 
 function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } = {}) {
-  if (!data.plot || !data.propertyType) {
-    return "Tipo e identificador del inmueble son obligatorios.";
-  }
+  trimEntityFields("property", data);
+  const errorObligatorio = entityRequiredError("property", data, { exigirAusentes: false });
+  if (errorObligatorio) return errorObligatorio;
   let community = null;
   if (data.communityId) {
     community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);

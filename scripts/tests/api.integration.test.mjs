@@ -515,6 +515,60 @@ test("validaciones de servidor rechazan NIF y contacto inválidos", async () => 
     400,
   );
 });
+test("R01/R02: el servidor rechaza campos vacíos o solo espacios", async () => {
+  // Comunidad con dirección vacía → 400
+  const sinDir = await admin("/communities", "POST", {
+    name: "Comunidad sin dirección",
+    nif: "H12345674",
+    address: "  ",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28001",
+  });
+  assert.equal(sinDir.status, 400);
+  assert.match(sinDir.data.error, /dirección/);
+
+  // Propietario con teléfono vacío → 400
+  const sinTel = await admin("/owners", "POST", {
+    name: "Juan",
+    surname: "Sin Teléfono",
+    dni: "12345678Z",
+    email: "juan.sintel@example.test",
+    phone: "",
+    address: "Calle 1",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28001",
+  });
+  assert.equal(sinTel.status, 400);
+  assert.match(sinTel.data.error, /teléfono/);
+
+  // Propietario con apellido solo espacios → 400
+  const soloEspacios = await admin("/owners", "POST", {
+    name: "María",
+    surname: "   ",
+    dni: "47895231P",
+    email: "maria.espacios@example.test",
+    phone: "612333444",
+    address: "Calle 2",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28002",
+  });
+  assert.equal(soloEspacios.status, 400);
+  assert.match(soloEspacios.data.error, /apellidos/);
+
+  // PUT de community existente con teléfono vacío → 400
+  const original = (await admin("/communities/com-seed-1")).data;
+  const putVacio = await admin("/communities/com-seed-1", "PUT", {
+    ...original,
+    phone: "",
+    address: "  ",
+  });
+  assert.equal(putVacio.status, 400);
+  assert.match(putVacio.data.error, /teléfono|dirección/);
+});
+
 test("comunidades: el NIF se normaliza aunque venga con espacios, guiones o minúsculas", async () => {
   const created = await admin("/communities", "POST", {
     name: "Comunidad normalizada",

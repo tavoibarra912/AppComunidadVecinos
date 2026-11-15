@@ -26,6 +26,19 @@ export function communityNifError(value) {
     return "El NIF de la comunidad debe ser un CIF válido con formato H + 7 dígitos + dígito de control numérico (por ejemplo, H12345674).";
   return null;
 }
+
+/**
+ * Devuelve el primer campo requerido que falte, venga vacío o sean solo
+ * espacios, normalizando el texto con trim. Usado por las rutas para no
+ * persistir datos incompletos que la interfaz sí exige.
+ */
+export function requiredTrimmed(data, campos) {
+  for (const campo of campos) {
+    const valor = data[campo];
+    if (valor === undefined || valor === null || String(valor).trim() === "") return campo;
+  }
+  return null;
+}
 export function passwordError(value) {
   return typeof value !== "string" || value.length < 8 || value.length > 128
     ? "La contraseña debe tener entre 8 y 128 caracteres."

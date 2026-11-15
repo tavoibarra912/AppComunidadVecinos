@@ -1309,6 +1309,14 @@ export function openTenantDetail(ownerId, tenantId) {
   if (!tenantDetailDialog.open) tenantDetailDialog.showModal();
 }
 
+// Cierre de la ficha de contratos desde la X y el botón inferior.
+document
+  .querySelector("#close-tenant-detail-dialog")
+  ?.addEventListener("click", () => closeTenantDetail());
+document
+  .querySelector("#close-tenant-detail-btn")
+  ?.addEventListener("click", () => closeTenantDetail());
+
 export function closeTenantDetail() {
   tenantDetailDialog.close();
   state.ui.viewingTenantId = null;
