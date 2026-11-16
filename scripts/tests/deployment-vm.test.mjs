@@ -37,7 +37,10 @@ async function fixture(t) {
     path.join(root, "bin/docker"),
     `#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$TRACE"
-if [[ "$1" == build && "\${FAIL_BUILD:-}" == 1 ]]; then exit 22; fi
+if [[ "$1 $2" == 'image inspect' ]]; then
+  if [[ "\${FAIL_IMAGE:-}" == 1 ]]; then exit 22; fi
+  printf '%s' "$IMAGE_REVISION"
+fi
 if [[ " $* " == *' exec -T api node '* && "\${FAIL_HEALTH:-}" == 1 ]]; then exit 1; fi
 `,
     { mode: 0o755 },
@@ -58,21 +61,28 @@ exec /bin/tar "$@"
     run: (extra = {}, commit = sha) =>
       spawnSync("bash", [path.join(source, "scripts/update-vm.sh"), commit, root], {
         encoding: "utf8",
-        env: { ...process.env, PATH: `${root}/bin:${process.env.PATH}`, TRACE: trace, ...extra },
+        env: {
+          ...process.env,
+          PATH: `${root}/bin:${process.env.PATH}`,
+          TRACE: trace,
+          IMAGE_REVISION: sha,
+          ...extra,
+        },
         timeout: 10000,
       }),
   };
 }
 
 test(
-  "VM: construye antes de parar, guarda backup y conserva datos y secretos",
+  "VM: verifica la imagen antes de parar, guarda backup y conserva datos y secretos",
   options,
   async (t) => {
     const f = await fixture(t);
     const result = f.run();
     assert.equal(result.status, 0, result.stderr);
     const trace = await readFile(f.trace, "utf8");
-    assert.ok(trace.indexOf("build --build-arg") < trace.indexOf(" stop api"));
+    assert.ok(trace.indexOf("image inspect") < trace.indexOf(" stop api"));
+    assert.ok(!trace.includes("build --build-arg"));
     assert.ok(trace.includes("up -d --no-deps --pull never api"));
     assert.equal(
       await readFile(path.join(f.root, ".env"), "utf8"),
@@ -103,9 +113,16 @@ test(
   },
 );
 
-test("VM: un build fallido no detiene ni cambia producción", options, async (t) => {
+test("VM: una imagen ausente no detiene ni cambia producción", options, async (t) => {
   const f = await fixture(t);
-  assert.notEqual(f.run({ FAIL_BUILD: "1" }).status, 0);
+  assert.notEqual(f.run({ FAIL_IMAGE: "1" }).status, 0);
+  assert.ok(!(await readFile(f.trace, "utf8")).includes(" stop api"));
+  assert.equal(await readFile(path.join(f.root, ".env"), "utf8"), originalEnv);
+});
+
+test("VM: una imagen de otro commit no detiene ni cambia producción", options, async (t) => {
+  const f = await fixture(t);
+  assert.notEqual(f.run({ IMAGE_REVISION: "b".repeat(40) }).status, 0);
   assert.ok(!(await readFile(f.trace, "utf8")).includes(" stop api"));
   assert.equal(await readFile(path.join(f.root, ".env"), "utf8"), originalEnv);
 });
