@@ -707,6 +707,8 @@ if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
 }
 
 export function ensureDemoProfiles() {
+  // El despliegue público puede conservar el censo sin crear cuentas previsibles.
+  if (process.env.APP_DEMO_PROFILES === "false") return;
   // Cuentas estándar de demostración (idempotente): una por rol y vecinos con
   // todas las combinaciones de perfiles para probar cada escenario.
   //   ca*      administradores de comunidad (2)

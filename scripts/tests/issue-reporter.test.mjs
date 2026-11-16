@@ -59,7 +59,6 @@ function reportForm(overrides = {}) {
     description:
       "Al pulsar guardar en la ficha del inmueble no ocurre nada y no aparece ningún aviso.",
     steps: "1. Abrir un inmueble\n2. Cambiar el coeficiente\n3. Pulsar Guardar",
-    affected: "Comunidad Los Olmos",
     screen: "/#inmuebles",
     userAgent: "Mozilla/5.0 (pruebas)",
     language: "es-ES",
@@ -167,12 +166,27 @@ test("reportes: la configuración no expone el token y valida el formulario", as
     enabled: true,
     repository: "owner/repo",
     label: "User-Detected-Issue",
+    attachments: {
+      maxFiles: 20,
+      maxBytes: 15 * 1024 * 1024,
+      maxTotalBytes: 50 * 1024 * 1024,
+      allowed: ["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"],
+      labels: "PDF, JPG, JPEG, PNG, WEBP, DOC, DOCX",
+    },
   });
   assert.doesNotMatch(JSON.stringify(config.data), /token-de-prueba/);
+
+  const missingTitle = await owner("/issues", "POST", reportForm({ title: "   " }));
+  assert.equal(missingTitle.status, 400);
+  assert.match(missingTitle.data.error, /El título es obligatorio/);
 
   const shortTitle = await owner("/issues", "POST", reportForm({ title: "Fall" }));
   assert.equal(shortTitle.status, 400);
   assert.match(shortTitle.data.error, /al menos 5/);
+
+  const missingDescription = await owner("/issues", "POST", reportForm({ description: "" }));
+  assert.equal(missingDescription.status, 400);
+  assert.match(missingDescription.data.error, /La descripción es obligatoria/);
 
   const shortDescription = await owner(
     "/issues",
@@ -181,6 +195,22 @@ test("reportes: la configuración no expone el token y valida el formulario", as
   );
   assert.equal(shortDescription.status, 400);
   assert.match(shortDescription.data.error, /al menos 20/);
+
+  const emptyHtml = await owner(
+    "/issues",
+    "POST",
+    reportForm({ description: `<p><strong>${"&nbsp;".repeat(30)}</strong><br></p>` }),
+  );
+  assert.equal(emptyHtml.status, 400);
+  assert.match(emptyHtml.data.error, /La descripción es obligatoria/);
+
+  const emptyNumericHtml = await owner(
+    "/issues",
+    "POST",
+    reportForm({ description: `<p>${"&#160;&#x20;&ensp;".repeat(20)}</p>` }),
+  );
+  assert.equal(emptyNumericHtml.status, 400);
+  assert.match(emptyNumericHtml.data.error, /La descripción es obligatoria/);
 });
 
 test("reportes: rechaza adjuntos con contenido falso y formatos no permitidos", async () => {
@@ -201,8 +231,69 @@ test("reportes: rechaza adjuntos con contenido falso y formatos no permitidos", 
   assert.match(badName.data.error, /Formato no permitido/);
 });
 
+test("reportes: los adjuntos respetan la configuración general", async () => {
+  const saved = db.prepare("SELECT data FROM settings WHERE id = 'general'").get();
+  const previous = saved ? JSON.parse(saved.data) : {};
+  db.prepare(
+    "INSERT INTO settings (id, data) VALUES ('general', ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
+  ).run(
+    JSON.stringify({
+      ...previous,
+      documentosMaxSizeMb: 1,
+      documentosMaxArchivos: 2,
+      documentosTiposPermitidos: ["png"],
+    }),
+  );
+  try {
+    const config = await tenant("/issues");
+    assert.equal(config.status, 200);
+    assert.deepEqual(config.data.attachments, {
+      maxFiles: 2,
+      maxBytes: 1024 * 1024,
+      maxTotalBytes: 2 * 1024 * 1024,
+      allowed: ["png"],
+      labels: "PNG",
+    });
+
+    const pdf = reportForm();
+    pdf.append("files", new Blob([PDF], { type: "application/pdf" }), "consola.pdf");
+    const badType = await tenant("/issues", "POST", pdf);
+    assert.equal(badType.status, 400);
+    assert.match(badType.data.error, /Formato no permitido/);
+
+    const tooBig = reportForm();
+    tooBig.append(
+      "files",
+      new Blob([Buffer.concat([PNG, Buffer.alloc(1024 * 1024)])], { type: "image/png" }),
+      "grande.png",
+    );
+    const oversized = await tenant("/issues", "POST", tooBig);
+    assert.equal(oversized.status, 400);
+    assert.match(oversized.data.error, /1 MB/);
+
+    const tooMany = reportForm();
+    for (let index = 0; index < 3; index += 1) {
+      tooMany.append("files", new Blob([PNG], { type: "image/png" }), `captura-${index}.png`);
+    }
+    const count = await tenant("/issues", "POST", tooMany);
+    assert.equal(count.status, 400);
+    assert.match(count.data.error, /máximo 2 archivos/);
+  } finally {
+    if (saved) {
+      db.prepare("UPDATE settings SET data = ? WHERE id = 'general'").run(saved.data);
+    } else {
+      db.prepare("DELETE FROM settings WHERE id = 'general'").run();
+    }
+  }
+});
+
 test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces", async () => {
-  const request = validForm();
+  const request = validForm({
+    description:
+      "<p>Al pulsar <strong>guardar</strong> no ocurre nada y no aparece ningún aviso.</p><script>alert(1)</script>",
+    steps:
+      "<ol><li>Abrir un inmueble</li><li>Cambiar el coeficiente</li><li>Pulsar Guardar</li></ol>",
+  });
   const response = await owner("/issues", "POST", request);
   assert.equal(response.status, 201, JSON.stringify(response.data));
   assert.deepEqual(response.data, {
@@ -233,9 +324,13 @@ test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces",
   assert.deepEqual(issue.body.labels, ["User-Detected-Issue"]);
   assert.equal(issue.body.title, "El botón de guardar no responde");
   assert.match(issue.body.body, /### Descripción/);
-  assert.match(issue.body.body, /Comunidad Los Olmos/);
+  assert.match(issue.body.body, /<strong>guardar<\/strong>/);
+  assert.doesNotMatch(issue.body.body, /<script>/);
+  assert.match(issue.body.body, /<ol><li>Abrir un inmueble<\/li>/);
+  assert.doesNotMatch(issue.body.body, /Comunidad o unidad afectada|Comunidad Los Olmos/);
   assert.match(issue.body.body, /`urucp1`/);
   assert.match(issue.body.body, /`\/#inmuebles`/);
+  assert.match(issue.body.body, /\*\*Versión de la aplicación:\*\* `1\.0\.0`/);
   assert.match(
     issue.body.body,
     /!\[captura\.png\]\(https:\/\/raw\.example\.test\/owner\/repo\/issue-attachments\/reportes\//,
@@ -244,6 +339,24 @@ test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces",
     issue.body.body,
     /- \[consola\.pdf\]\(https:\/\/raw\.example\.test\/owner\/repo\/issue-attachments\/reportes\//,
   );
+});
+
+test("reportes: admite descripciones largas con formato y conserva entidades", async () => {
+  const description = `<p><strong>${"á".repeat(4900)} &amp; &lt;prueba&gt;</strong></p>`;
+  const response = await tenant("/issues", "POST", reportForm({ description, steps: "" }));
+  assert.equal(response.status, 201, JSON.stringify(response.data));
+  const issue = requests.findLast((item) => item.method === "POST" && item.url.endsWith("/issues"));
+  assert.match(issue.body.body, /á{4900} &amp; &lt;prueba&gt;/);
+  assert.doesNotMatch(issue.body.body, /&amp;amp;/);
+  assert.match(issue.body.body, /_No indicados\._/);
+
+  const tooLong = await tenant(
+    "/issues",
+    "POST",
+    reportForm({ description: `<p>${"á".repeat(5001)}</p>` }),
+  );
+  assert.equal(tooLong.status, 400);
+  assert.match(tooLong.data.error, /5000 caracteres/);
 });
 
 test("reportes: la rama y la etiqueta se reutilizan en envíos posteriores", async () => {

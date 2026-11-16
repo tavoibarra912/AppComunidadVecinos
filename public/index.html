@@ -6236,8 +6236,8 @@
       hidden
     >
       <svg
-        width="26"
-        height="26"
+        width="21"
+        height="21"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -6281,57 +6281,183 @@
           </button>
         </div>
         <p class="form-intro">
-          Cuéntanos qué ha fallado. El reporte se creará como issue en GitHub con la etiqueta
-          <strong>User-Detected-Issue</strong>.
+          Cuéntanos qué ha fallado y adjunta la información que nos ayude a revisarlo.
         </p>
         <p class="issue-reporter-config" id="issue-reporter-config" role="status" hidden></p>
         <div class="form-grid">
           <label class="full"
-            >Título del error<input
+            >Título del error *
+            <input
               name="title"
               type="text"
               minlength="5"
               maxlength="140"
               placeholder="Resumen breve de lo que no funciona"
+              aria-required="true"
               required
           /></label>
-          <label class="full"
-            >Descripción<textarea
-              name="description"
-              rows="5"
-              minlength="20"
-              maxlength="5000"
-              placeholder="¿Qué esperabas que ocurriera y qué ocurrió en su lugar?"
-              required
-            ></textarea>
-          </label>
-          <label class="full"
-            >Pasos para reproducirlo (opcional)<textarea
-              name="steps"
-              rows="3"
-              maxlength="3000"
-              placeholder="1. Entrar en…&#10;2. Pulsar…&#10;3. Ver que…"
-            ></textarea>
-          </label>
-          <label class="full"
-            >Comunidad o inmueble afectado (opcional)<input
-              name="affected"
-              type="text"
-              maxlength="200"
-              placeholder="Ej.: Comunidad Los Olmos, portal 2"
-          /></label>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="issue-reporter-description-label">Descripción *</span>
+            <div class="rich-text-editor">
+              <div
+                class="rich-text-toolbar"
+                id="issue-reporter-description-toolbar"
+                role="toolbar"
+                aria-label="Formato de la descripción"
+              >
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita">
+                  <strong>B</strong>
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="italic"
+                  title="Cursiva"
+                  aria-label="Cursiva"
+                >
+                  <em>I</em>
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="underline"
+                  title="Subrayado"
+                  aria-label="Subrayado"
+                >
+                  <u>U</u>
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="insertUnorderedList"
+                  title="Lista con viñetas"
+                  aria-label="Lista con viñetas"
+                >
+                  • Lista
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="insertOrderedList"
+                  title="Lista numerada"
+                  aria-label="Lista numerada"
+                >
+                  1. Lista
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="createLink"
+                  title="Insertar enlace"
+                  aria-label="Insertar enlace"
+                >
+                  Enlace
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="removeFormat"
+                  title="Quitar formato"
+                  aria-label="Quitar formato"
+                >
+                  Limpiar
+                </button>
+              </div>
+              <div
+                class="rich-text-content"
+                id="issue-reporter-description-editor"
+                contenteditable="true"
+                role="textbox"
+                aria-multiline="true"
+                aria-labelledby="issue-reporter-description-label"
+                aria-required="true"
+                data-placeholder="¿Qué esperabas que ocurriera y qué ocurrió en su lugar?"
+                data-maxlength="5000"
+              ></div>
+            </div>
+            <textarea name="description" id="issue-reporter-description-input" hidden></textarea>
+          </div>
+          <div class="full rich-text-field">
+            <span class="rich-text-label" id="issue-reporter-steps-label"
+              >Pasos para reproducirlo (opcional)</span
+            >
+            <div class="rich-text-editor">
+              <div
+                class="rich-text-toolbar"
+                id="issue-reporter-steps-toolbar"
+                role="toolbar"
+                aria-label="Formato de los pasos para reproducir"
+              >
+                <button type="button" data-rich-command="bold" title="Negrita" aria-label="Negrita">
+                  <strong>B</strong>
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="italic"
+                  title="Cursiva"
+                  aria-label="Cursiva"
+                >
+                  <em>I</em>
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="underline"
+                  title="Subrayado"
+                  aria-label="Subrayado"
+                >
+                  <u>U</u>
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="insertUnorderedList"
+                  title="Lista con viñetas"
+                  aria-label="Lista con viñetas"
+                >
+                  • Lista
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="insertOrderedList"
+                  title="Lista numerada"
+                  aria-label="Lista numerada"
+                >
+                  1. Lista
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="createLink"
+                  title="Insertar enlace"
+                  aria-label="Insertar enlace"
+                >
+                  Enlace
+                </button>
+                <button
+                  type="button"
+                  data-rich-command="removeFormat"
+                  title="Quitar formato"
+                  aria-label="Quitar formato"
+                >
+                  Limpiar
+                </button>
+              </div>
+              <div
+                class="rich-text-content"
+                id="issue-reporter-steps-editor"
+                contenteditable="true"
+                role="textbox"
+                aria-multiline="true"
+                aria-labelledby="issue-reporter-steps-label"
+                data-placeholder="1. Entrar en… 2. Pulsar… 3. Ver que…"
+                data-maxlength="3000"
+              ></div>
+            </div>
+            <textarea name="steps" id="issue-reporter-steps-input" hidden></textarea>
+          </div>
           <label class="full issue-reporter-files-field"
             >Adjuntos (opcional)
             <input
               id="issue-reporter-files"
               name="files"
               type="file"
-              accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               multiple
             />
-            <span class="form-intro"
-              >Hasta 5 archivos de 5 MB: PNG, JPG, WebP o PDF. Se suben al repositorio y se enlazan
-              en el issue.</span
+            <span class="form-intro" id="issue-reporter-files-hint"
+              >Hasta 20 archivos de 15 MB: PDF, JPG, JPEG, PNG, WEBP, DOC, DOCX.</span
             >
           </label>
           <ul class="issue-reporter-file-list" id="issue-reporter-file-list" hidden></ul>
@@ -6354,21 +6480,11 @@
         role="status"
         hidden
       >
-        <p class="eyebrow">ENVIADO</p>
-        <h2 tabindex="-1">Gracias por avisar</h2>
-        <p>
-          El reporte se ha creado como issue
-          <strong id="issue-reporter-success-number"></strong> en GitHub.
-        </p>
-        <p>
-          <a id="issue-reporter-success-link" href="#" target="_blank" rel="noopener noreferrer"
-            >Ver el issue en GitHub</a
-          >
-        </p>
+        <h2 id="issue-reporter-success-title" tabindex="-1">
+          Gracias por notificar el inconveniente
+        </h2>
+        <p>Hemos recibido tu aviso.</p>
         <div class="dialog-actions">
-          <button class="secondary-button" type="button" id="issue-reporter-again">
-            Crear otro reporte
-          </button>
           <button class="primary-button" type="button" data-close-issue-reporter>Cerrar</button>
         </div>
       </div>

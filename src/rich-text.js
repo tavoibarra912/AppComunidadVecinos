@@ -1,3 +1,5 @@
+import { decodeHTML, decodeHTMLAttribute } from "entities";
+
 // Saneamiento de texto enriquecido para el servidor. No depende del DOM:
 // reconstruye el HTML desde cero y solo conserva una lista cerrada de etiquetas
 // y el atributo href de los enlaces (validado por esquema).
@@ -32,7 +34,7 @@ function escapeAttribute(value) {
 }
 
 function safeHref(value) {
-  const href = String(value || "").trim();
+  const href = decodeHTMLAttribute(String(value || "")).trim();
   if (/^(https?:\/\/|mailto:)/i.test(href)) return href;
   if (/^\/(?!\/)/.test(href)) return href;
   return "";
@@ -51,7 +53,7 @@ export function sanitizeRichText(value, { maxLength = 20000 } = {}) {
   const openTags = [];
 
   for (const match of source.matchAll(tagPattern)) {
-    output += escapeText(source.slice(cursor, match.index));
+    output += escapeText(decodeHTML(source.slice(cursor, match.index)));
     cursor = match.index + match[0].length;
 
     const closing = Boolean(match[1]);
@@ -85,7 +87,22 @@ export function sanitizeRichText(value, { maxLength = 20000 } = {}) {
     openTags.push(name);
   }
 
-  output += escapeText(source.slice(cursor));
+  output += escapeText(decodeHTML(source.slice(cursor)));
   while (openTags.length) output += `</${openTags.pop()}>`;
   return output.trim();
+}
+
+/**
+ * Texto visible de un valor enriquecido, para validaciones de longitud y
+ * resúmenes. Mantiene los saltos de párrafo y lista como saltos de línea.
+ */
+export function richTextToPlainText(value, { maxLength = 20000 } = {}) {
+  const text = sanitizeRichText(value, { maxLength })
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|li|h[3-4]|blockquote)>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+  return decodeHTML(text)
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

@@ -97,22 +97,13 @@ function attachmentBlock(file) {
 }
 
 /** Cuerpo del issue, con el contexto técnico que se usa para reproducir fallos. */
-export function buildIssueBody({
-  description,
-  steps = "",
-  affected = "",
-  context = {},
-  attachments = [],
-}) {
+export function buildIssueBody({ description, steps = "", context = {}, attachments = [] }) {
   const parts = [
     "### Descripción",
     String(description || "").trim(),
     "",
     "### Pasos para reproducir",
     String(steps || "").trim() || "_No indicados._",
-    "",
-    "### Comunidad o unidad afectada",
-    String(affected || "").trim() || "_No indicada._",
     "",
     "### Contexto técnico",
     `- **Usuario:** ${codeSpan(context.username, 120)}`,
@@ -282,7 +273,6 @@ export function createGithubIssueClient({
     title,
     description,
     steps,
-    affected,
     context = {},
     files = [],
     appVersion = "",
@@ -295,7 +285,6 @@ export function createGithubIssueClient({
       const body = buildIssueBody({
         description,
         steps,
-        affected,
         context: { ...context, appVersion },
         attachments: uploaded,
       });

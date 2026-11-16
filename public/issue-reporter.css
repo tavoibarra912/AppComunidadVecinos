@@ -7,17 +7,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 46px;
+  height: 46px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--brand, #198b84);
+  background: #c63838;
   color: #fff;
   cursor: pointer;
   box-shadow:
-    0 10px 24px #0f274033,
-    0 3px 8px #0f27401f;
+    0 9px 20px #7f1d1d40,
+    0 3px 7px #7f1d1d26;
   transition:
     transform 0.16s ease,
     background-color 0.16s ease,
@@ -25,11 +25,11 @@
 }
 
 .issue-reporter-fab:hover {
-  background: var(--brand-dark, #116f6a);
+  background: #a92c2c;
   transform: translateY(-2px) scale(1.03);
   box-shadow:
-    0 14px 28px #0f27403d,
-    0 4px 10px #0f274024;
+    0 13px 24px #7f1d1d4d,
+    0 4px 10px #7f1d1d2e;
 }
 
 .issue-reporter-fab:active {
@@ -37,13 +37,13 @@
 }
 
 .issue-reporter-fab:focus-visible {
-  outline: 3px solid #bce8e4;
+  outline: 3px solid #f2b8b8;
   outline-offset: 3px;
 }
 
 .issue-reporter-fab svg {
-  width: 26px;
-  height: 26px;
+  width: 21px;
+  height: 21px;
 }
 
 /* Mientras se ve el login no hay sesión que pueda enviar reportes. */
@@ -53,7 +53,7 @@ body:has(#login-screen:not([hidden])) .issue-reporter-fab {
 
 /* El aviso emergente sube para no tapar el botón flotante. */
 body:has(.issue-reporter-fab:not([hidden])) .toast {
-  bottom: 92px;
+  bottom: 80px;
 }
 
 .issue-reporter-dialog {
@@ -64,6 +64,10 @@ body:has(.issue-reporter-fab:not([hidden])) .toast {
 
 .issue-reporter-dialog .dialog-content {
   max-width: 100%;
+}
+
+.issue-reporter-dialog .rich-text-content {
+  min-height: 110px;
 }
 
 .issue-reporter-config {
@@ -143,11 +147,6 @@ body:has(.issue-reporter-fab:not([hidden])) .toast {
   line-height: 1.5;
 }
 
-.issue-reporter-success a {
-  color: var(--brand-dark, #116f6a);
-  font-weight: 700;
-}
-
 .issue-reporter-success h2:focus-visible {
   outline: 3px solid #bce8e4;
   outline-offset: 4px;
@@ -157,16 +156,16 @@ body:has(.issue-reporter-fab:not([hidden])) .toast {
   .issue-reporter-fab {
     right: 16px;
     bottom: 16px;
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
   }
 
   .issue-reporter-fab svg {
-    width: 24px;
-    height: 24px;
+    width: 19px;
+    height: 19px;
   }
 
   body:has(.issue-reporter-fab:not([hidden])) .toast {
-    bottom: 80px;
+    bottom: 74px;
   }
 }

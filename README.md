@@ -470,11 +470,16 @@ API del módulo: `GET /api/communications/{metadata|posts|preferences}`, `POST /
 ### Reportar un error desde la app
 
 Cualquier cuenta con sesión iniciada ve un botón flotante con forma de insecto en
-la esquina inferior derecha. Abre un formulario con título, descripción, pasos
-para reproducir, comunidad o inmueble afectado y hasta cinco adjuntos (PNG, JPG,
-WebP o PDF, 5 MB por archivo). Al enviarlo se crea un issue real en GitHub con la
-etiqueta `User-Detected-Issue`.
+la esquina inferior derecha. Abre un formulario con título, descripción y pasos
+para reproducir con formato enriquecido, además de adjuntos múltiples. Al
+enviarlo se crea un issue real en GitHub con la etiqueta `User-Detected-Issue`.
+La confirmación solo muestra un agradecimiento y el botón Cerrar, sin enlaces
+ni identificadores de GitHub.
 
+- El título y la descripción son obligatorios. Los adjuntos siguen la misma
+  configuración general que los documentos (tipos permitidos, tamaño máximo por
+  archivo y número máximo de archivos), con un tope adicional de 50 MB por
+  reporte.
 - Los adjuntos se suben como commits a la rama `issue-attachments` del
   repositorio y se enlazan desde el cuerpo del issue. El issue nunca se publica
   como creado si GitHub devuelve un error; en ese caso se retiran los adjuntos
@@ -518,9 +523,100 @@ versiones anteriores no pueden recuperarse sin una copia de seguridad.
 
 ## Producción
 
+### Despliegue híbrido de coste mínimo
+
+**Estado a 16 de noviembre de 2026:** publicación temporal completa en GCP,
+`https://penarrubia.35.209.188.202.sslip.io`. Reutiliza la VM/IP y el certificado
+gratuito de Let's Encrypt se renueva con el timer ya existente de MyGym.
+`sslip.io` resuelve el nombre a la IP actual sin comprar un dominio; depende
+de ese servicio DNS y, si cambia la IP, cambia también esta dirección.
+El consumo adicional puede generar tráfico facturable fuera de cuota.
+La API de Netlify rechazó la publicación de producción por créditos agotados,
+aunque el resumen de la cuenta no señalaba límites excedidos. La renovación
+indicada es el 13 de diciembre de 2026. Existe un borrador de validación protegido
+por Netlify; la URL de Netlify no está disponible para uso normal.
+
+El frontend para el híbrido se prepara con `npm run build:netlify` y su destino es
+`https://gestion-penarrubia.netlify.app` (sitio Netlify
+`60d02ac0-8740-489e-852d-b4f48342c744`). Solo `dist/` se sube a Netlify.
+El HTML inicial y `/api/*` se reenvían por HTTPS a
+`https://35.209.188.202/comunidad/`, en la VM existente `wger-server`,
+proyecto `wger-mygym`, zona `us-central1-a`. Los estáticos y DOMPurify se sirven
+desde Netlify. El HTML mantiene la marca y los ajustes actuales sin reconstruir
+la web. `APP_BACKEND_URL` permite cambiar el destino del proxy al compilar.
+
+El backend usa Node.js 24 en un contenedor independiente, con límite de 192 MB,
+0,5 CPU, logs rotados y sin puertos públicos propios. Reutiliza la red Docker,
+IP y certificado de la instalación existente. Los datos viven en
+`/home/quantum_system/comunidad/{data,uploads}` y nunca dentro de la imagen.
+La API y el HTML dinámico llevan `Cache-Control: no-store`.
+
+No se crean máquinas, IPs, discos, bases gestionadas, dominios ni planes de pago.
+La VM/IP existentes mantienen sus costes y el tráfico adicional puede consumir
+cuota. Netlify debe permanecer en Free y sin recarga automática: sus créditos
+son compartidos por los sitios del equipo y, al agotarlos, puede pausar las webs.
+Las publicaciones son manuales para evitar consumir créditos con cada push.
+No activar Functions, AI, analítica de pago o compras de créditos.
+Correo, SMS y WhatsApp conservan sus proveedores y pueden tener cargos propios.
+
+Copiar `deploy/.env.example` a `.env` en la VM, fijar `COMUNIDAD_IMAGE` a una
+imagen local previamente construida, ajustar `APP_UID`/`APP_GID` al propietario
+de los datos (`id -u` / `id -g` en la VM) y configurar
+`APP_PUBLIC_URL` con el origen real de la web (actualmente
+`https://penarrubia.35.209.188.202.sslip.io`; al activar el híbrido,
+`https://gestion-penarrubia.netlify.app`). Este origen exacto se usa
+para validar peticiones del navegador sin confiar en `Host` ni en cabeceras
+reenviadas por Internet. `TRUST_PROXY` queda vacío en este montaje: los límites
+por IP se comparten a través del proxy; los límites por identidad se mantienen.
+`APP_DEMO_PROFILES=false` evita recrear cuentas con contraseñas previsibles sin
+borrar los perfiles existentes. El entorno local conserva su comportamiento.
+
+La primera transferencia usa `node scripts/snapshot-deploy.mjs --rotate-predictable`.
+Crea una copia consistente de SQLite mediante su API de backup, copia `uploads/`
+y conserva `provider-key`; ejecutar sin subidas/ediciones concurrentes para que
+los documentos correspondan a la misma copia. Solo en la copia sustituye
+contraseñas previsibles por claves aleatorias y descarta sesiones/recuperaciones.
+Los accesos nuevos quedan en `.deploy-private/snapshot-*/accesos-produccion.json`.
+Ese directorio está excluido de Git, del contenedor y de Netlify. No trasladar
+manualmente el `.db` activo sin su WAL ni regenerar la clave de proveedores.
+Después del traslado, usar la web publicada como fuente de datos: la copia local
+y la remota son independientes y no se sincronizan.
+
+El gateway compartido incluye `additional-https/*.conf` dentro del servidor de
+la IP y `additional-servers/*.conf` a nivel HTTP. Las inclusiones se conservan
+en el repositorio canónico de MyGym; sus snippets viven solo en la VM.
+El servidor de la IP conserva `default_server` en ambos listeners para que los
+clientes que conectan a MyGym sin SNI sigan recibiendo el certificado de la IP.
+`deploy/install-gateway-route.py` prepara `/comunidad/` para Netlify y
+`deploy/install-standalone.py` activa el virtual host temporal después de emitir
+su certificado. Ambos guardan la configuración anterior y validan nginx antes
+de recargar. La app no depende del estado de mantenimiento de MyGym.
+
+Desde `/home/quantum_system/comunidad`, operar con:
+
+```bash
+docker compose --project-directory . --env-file .env -f deploy/compose.yml ps
+bash deploy/backup.sh
+```
+
+`deploy/backup.sh` detiene brevemente solo esta API, guarda base, documentos y
+`.env`, y la vuelve a arrancar incluso si falla el backup. No borra copias ni
+amplía el disco automáticamente. Las copias locales en la VM no cubren pérdida
+del disco: conservar también una copia privada fuera de ella.
+
+Para actualizar: construir una imagen con otra etiqueta fija, hacer backup,
+cambiar `COMUNIDAD_IMAGE` y ejecutar `docker compose ... up -d --no-deps api`.
+Conservar el `.env` privado del servidor y configurar en él `GITHUB_ISSUES_TOKEN`,
+`GITHUB_ISSUES_REPO`, `GITHUB_ISSUES_LABEL` y `GITHUB_ISSUES_ATTACHMENTS_BRANCH`
+para habilitar los reportes. Nunca incluir ese `.env` en la imagen ni en Git.
+Comprobar salud, login, permisos y descargas antes de publicar `dist/` mediante
+la API de Netlify. Un rollback de imagen puede necesitar restaurar también la
+base del backup si hubo migraciones; conservar primero los datos posteriores.
+
 Con `NODE_ENV=production` no se carga automáticamente el censo de comunidades de
 ejemplo y las cookies requieren HTTPS. La provisión de cuentas y permisos demo
-se mantiene por decisión del proyecto durante esta etapa del MVP.
+se mantiene durante esta etapa del MVP salvo si `APP_DEMO_PROFILES=false`, como
+en el contenedor de despliegue público.
 Una base nueva exige `APP_ADMIN_PASSWORD` de al menos 12 caracteres para crear
 la cuenta inicial. Las bases existentes conservan su administrador. Si se desea
 escuchar fuera de la máquina local, debe configurarse `HOST` explícitamente.
