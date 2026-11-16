@@ -579,7 +579,8 @@ hacia esas ramas ejecutan validación, sin acceso a secretos ni publicación.
 - **Desplegar GCP** (`.github/workflows/deploy-gcp.yml`): instala con Node.js 24,
   ejecuta las pruebas y valida Bash; transfiere el commit exacto por SSH a
   `/home/quantum_system/comunidad/releases/<SHA>`, sin requerir un clon de Git.
-  Construye la imagen antes de detener el servicio, hace backup privado de
+  Construye la imagen en el runner de GitHub y la carga por SSH en la VM sin
+  compilar allí. Comprueba su etiqueta de commit antes de detener el servicio y hace backup privado de
   SQLite, documentos, clave de proveedores, `.env` y Compose, y actualiza solo
   `api`. Conserva datos, credenciales, UID/GID, red, alias y límites de recursos.
   Comprueba por HTTPS la API, el HTML y los estáticos del commit publicado.

@@ -78,6 +78,21 @@ jobs:
           printf '%s\n' "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/comunidad_ci ~/.ssh/known_hosts
           printf 'Host produccion\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/comunidad_ci\n  IdentitiesOnly yes\n  BatchMode yes\n  StrictHostKeyChecking yes\n  ConnectTimeout 20\n' "$VM_HOST" "$VM_USER" > ~/.ssh/config
+      - name: Construir la imagen en GitHub
+        run: docker build --build-arg "APP_RELEASE=$GITHUB_SHA" --label "org.opencontainers.image.revision=$GITHUB_SHA" -t "comunidad:$GITHUB_SHA" .
+      - name: Verificar versión y permisos de la imagen
+        run: |
+          docker run --rm --network none --entrypoint node "comunidad:$GITHUB_SHA" -e '
+            const fs = require("node:fs");
+            for (const file of ["server.js", "src/db.js", "public/js/main.js", "node_modules/dompurify/dist/purify.es.mjs"])
+              fs.accessSync(file, fs.constants.R_OK);
+            for (const dir of ["data", "uploads"]) fs.accessSync(dir, fs.constants.W_OK);
+            if (JSON.parse(fs.readFileSync("public/release.json", "utf8")).release !== process.argv[1]) process.exit(1);
+          ' "$GITHUB_SHA"
+      - name: Transferir la imagen preparada a GCP
+        run: |
+          set -o pipefail
+          docker save "comunidad:$GITHUB_SHA" | gzip -1 | ssh produccion 'docker load'
       - name: Actualizar la aplicación y hacer backup
         run: |
           remote="/home/$VM_USER/comunidad/releases/$GITHUB_SHA"

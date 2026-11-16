@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Ejecutado desde releases/<SHA>; los datos y el .env permanecen en la raíz.
+# Ejecutado desde releases/<SHA>, con la imagen ya cargada por el runner.
+# Los datos y el .env permanecen en la raíz.
 set -euo pipefail
 umask 077
 
@@ -25,8 +26,9 @@ required_kb=$(du -sk data uploads | awk '{sum+=$1} END {print sum+1048576}')
 (( available_kb >= required_kb )) || { echo 'Espacio insuficiente para imagen y backup; no se borra nada.' >&2; exit 1; }
 
 image="comunidad:$release_sha"
-# Construir primero: un fallo no detiene la versión actual.
-docker build --build-arg "APP_RELEASE=$release_sha" --label "org.opencontainers.image.revision=$release_sha" -t "$image" "$source_root"
+# Solo aceptar la imagen del commit, sin construir en la VM de producción.
+revision=$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
+[[ "$revision" == "$release_sha" ]] || { echo 'La imagen cargada no corresponde al commit' >&2; exit 1; }
 backup="$app_root/backups/comunidad-$(date -u +%Y%m%dT%H%M%S)-$release_sha.tar.gz"
 "${compose[@]}" stop api
 # Si falla la copia, volver a arrancar con la configuración anterior.
