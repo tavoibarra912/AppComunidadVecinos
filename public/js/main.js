@@ -37,7 +37,7 @@ async function boot() {
     updateOwnerInboxBadge();
     applyRoleUI();
     renderAccountMenu();
-    refreshCommunication().catch(error => console.error("[communication]", error.message));
+    refreshCommunication().catch((error) => console.error("[communication]", error.message));
     handleRouting();
   });
 
@@ -63,10 +63,10 @@ const FORMS_BY_DIALOG = {
   "owner-dialog": "#owner-form",
   "tenant-dialog": "#tenant-form",
   "user-dialog": "#user-form",
-  "role-dialog": "#role-form"
+  "role-dialog": "#role-form",
 };
-document.querySelectorAll("dialog").forEach(dialog => {
-  dialog.addEventListener("cancel", event => {
+document.querySelectorAll("dialog").forEach((dialog) => {
+  dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
     const formSelector = FORMS_BY_DIALOG[dialog.id];
     if (formSelector && typeof window.intentarCerrar === "function") {
@@ -77,7 +77,7 @@ document.querySelectorAll("dialog").forEach(dialog => {
   });
 });
 
-boot().catch(error => {
+boot().catch((error) => {
   console.error("[main] Error de inicialización:", error);
   showLoginView("signin");
   document.querySelector("#login-signin-error").textContent =

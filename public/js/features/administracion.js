@@ -1,56 +1,155 @@
 import { sanitizeHtml } from "../html.js";
 import { api } from "../api.js";
-import { state, refreshState, hasPermission, requirePermission, DEFAULT_TENANT_AUTHORIZATIONS } from "../state.js";
-import { toast, showValidationErrors, armarGuardia, limpiarGuardia, intentarCerrar, makeSelectSearchable } from "../utils.js";
+import {
+  state,
+  refreshState,
+  hasPermission,
+  requirePermission,
+  DEFAULT_TENANT_AUTHORIZATIONS,
+} from "../state.js";
+import {
+  toast,
+  showValidationErrors,
+  armarGuardia,
+  limpiarGuardia,
+  intentarCerrar,
+  makeSelectSearchable,
+} from "../utils.js";
 import { createDataTable, aplicarFilasPorPagina } from "../table.js";
 import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
 import { applyBrand, applyPublicSettings } from "../brand.js";
-const ADMIN_TABS = { usuarios: "admin:users", roles: "admin:roles", settings: "admin:settings", auditoria: "audit:read" };
+const ADMIN_TABS = {
+  usuarios: "admin:users",
+  roles: "admin:roles",
+  settings: "admin:settings",
+  auditoria: "audit:read",
+};
 
 // ==========================================
 // PANTALLA ADMINISTRACIÓN: Usuarios / Roles / Configuración
 // ==========================================
 
 const PERMISOS_CATALOGO = [
-  { key: "fee:read", label: "Consultar cuotas", grupo: "Cuotas", hint: "Propietarios: recibos propios. Administradores: comunidades de su ámbito." },
-  { key: "fee:manage", label: "Gestionar cuotas", grupo: "Cuotas", hint: "Configurar acuerdos, emitir recibos, registrar cobros, revisar justificantes y devoluciones." },
+  {
+    key: "fee:read",
+    label: "Consultar cuotas",
+    grupo: "Cuotas",
+    hint: "Propietarios: recibos propios. Administradores: comunidades de su ámbito.",
+  },
+  {
+    key: "fee:manage",
+    label: "Gestionar cuotas",
+    grupo: "Cuotas",
+    hint: "Configurar acuerdos, emitir recibos, registrar cobros, revisar justificantes y devoluciones.",
+  },
   { key: "community:read", label: "Ver comunidades", grupo: "Comunidades" },
   { key: "community:create", label: "Crear comunidades", grupo: "Comunidades" },
-  { key: "community:edit", label: "Editar comunidades", grupo: "Comunidades", hint: "Modificar los datos de una comunidad existente." },
-  { key: "community:manage", label: "Administrar comunidades", grupo: "Comunidades", hint: "Gestionar la comunidad, sus vínculos y su documentación." },
+  {
+    key: "community:edit",
+    label: "Editar comunidades",
+    grupo: "Comunidades",
+    hint: "Modificar los datos de una comunidad existente.",
+  },
+  {
+    key: "community:manage",
+    label: "Administrar comunidades",
+    grupo: "Comunidades",
+    hint: "Gestionar la comunidad, sus vínculos y su documentación.",
+  },
   { key: "community:delete", label: "Eliminar comunidades", grupo: "Comunidades" },
   { key: "owner:read", label: "Ver propietarios", grupo: "Propietarios" },
-  { key: "owner:create", label: "Crear propietarios", grupo: "Propietarios", hint: "Dar de alta nuevos propietarios." },
-  { key: "owner:manage", label: "Gestionar propietarios", grupo: "Propietarios", hint: "Editar propietarios y operar con sus datos." },
+  {
+    key: "owner:create",
+    label: "Crear propietarios",
+    grupo: "Propietarios",
+    hint: "Dar de alta nuevos propietarios.",
+  },
+  {
+    key: "owner:manage",
+    label: "Gestionar propietarios",
+    grupo: "Propietarios",
+    hint: "Editar propietarios y operar con sus datos.",
+  },
   { key: "owner:edit", label: "Editar su propio perfil", grupo: "Propietarios" },
   { key: "owner:delete", label: "Eliminar propietarios", grupo: "Propietarios" },
   { key: "owner:documents:submit", label: "Subir documentación propia", grupo: "Propietarios" },
   { key: "property:read", label: "Ver inmuebles", grupo: "Inmuebles" },
-  { key: "property:create", label: "Crear inmuebles", grupo: "Inmuebles", hint: "Dar de alta nuevos inmuebles." },
-  { key: "property:manage", label: "Gestionar inmuebles", grupo: "Inmuebles", hint: "Editar inmuebles y sus titulares." },
+  {
+    key: "property:create",
+    label: "Crear inmuebles",
+    grupo: "Inmuebles",
+    hint: "Dar de alta nuevos inmuebles.",
+  },
+  {
+    key: "property:manage",
+    label: "Gestionar inmuebles",
+    grupo: "Inmuebles",
+    hint: "Editar inmuebles y sus titulares.",
+  },
   { key: "property:delete", label: "Eliminar inmuebles", grupo: "Inmuebles" },
   { key: "tenant:read", label: "Ver inquilinos", grupo: "Inquilinos" },
-  { key: "tenant:create", label: "Crear inquilinos", grupo: "Inquilinos", hint: "Dar de alta nuevos inquilinos." },
-  { key: "tenant:manage", label: "Gestionar inquilinos", grupo: "Inquilinos", hint: "Editar inquilinos y sus contratos." },
+  {
+    key: "tenant:create",
+    label: "Crear inquilinos",
+    grupo: "Inquilinos",
+    hint: "Dar de alta nuevos inquilinos.",
+  },
+  {
+    key: "tenant:manage",
+    label: "Gestionar inquilinos",
+    grupo: "Inquilinos",
+    hint: "Editar inquilinos y sus contratos.",
+  },
   { key: "tenant:delete", label: "Eliminar inquilinos", grupo: "Inquilinos" },
+  {
+    key: "tenant:history:read",
+    label: "Conservar historial propio de antiguo inquilino",
+    grupo: "Inquilinos",
+    hint: "Tras finalizar el contrato, permite consultar su ficha y descargar sus documentos. No da acceso a la comunidad ni a los inmuebles.",
+  },
   { key: "document:read", label: "Ver documentos", grupo: "Documentación" },
-  { key: "document:upload", label: "Subir documentos", grupo: "Documentación", hint: "Adjuntar archivos a comunidades, propietarios, inmuebles e inquilinos." },
+  {
+    key: "document:upload",
+    label: "Subir documentos",
+    grupo: "Documentación",
+    hint: "Adjuntar archivos a comunidades, propietarios, inmuebles e inquilinos.",
+  },
   { key: "document:approve", label: "Aprobar documentación", grupo: "Documentación" },
   { key: "document:delete", label: "Eliminar documentos", grupo: "Documentación" },
-  { key: "comm:participacion", label: "Participar en Comunicación", grupo: "Comunicación", hint: "Comentar, votar y confirmar asistencia." },
-  { key: "comm:publicar", label: "Publicar en Comunicación", grupo: "Comunicación", hint: "Crear y editar publicaciones." },
-  { key: "comm:moderar", label: "Moderar Comunicación", grupo: "Comunicación", hint: "Eliminar comentarios ajenos y ver documentos internos." },
+  {
+    key: "comm:participacion",
+    label: "Participar en Comunicación",
+    grupo: "Comunicación",
+    hint: "Comentar, votar y confirmar asistencia.",
+  },
+  {
+    key: "comm:publicar",
+    label: "Publicar en Comunicación",
+    grupo: "Comunicación",
+    hint: "Crear y editar publicaciones.",
+  },
+  {
+    key: "comm:moderar",
+    label: "Moderar Comunicación",
+    grupo: "Comunicación",
+    hint: "Eliminar comentarios ajenos y ver documentos internos.",
+  },
   { key: "admin_notification:read", label: "Ver buzón del administrador", grupo: "Notificaciones" },
   { key: "owner_notification:read", label: "Ver su buzón de avisos", grupo: "Notificaciones" },
-  { key: "owner_notification:send", label: "Enviar avisos a propietarios", grupo: "Notificaciones", hint: "Responder y enviar avisos desde el buzón de propietarios." },
+  {
+    key: "owner_notification:send",
+    label: "Enviar avisos a propietarios",
+    grupo: "Notificaciones",
+    hint: "Responder y enviar avisos desde el buzón de propietarios.",
+  },
   { key: "reports:read", label: "Ver reportes", grupo: "Reportes y auditoría" },
   { key: "audit:read", label: "Ver auditoría", grupo: "Reportes y auditoría" },
   { key: "admin:users", label: "Administrar usuarios", grupo: "Sistema" },
   { key: "admin:roles", label: "Administrar roles", grupo: "Sistema" },
   { key: "admin:settings", label: "Administrar configuración", grupo: "Sistema" },
-  { key: "admin:providers", label: "Configurar proveedores de comunicación", grupo: "Sistema" }
+  { key: "admin:providers", label: "Configurar proveedores de comunicación", grupo: "Sistema" },
 ];
 
 let userTable = null;
@@ -59,7 +158,9 @@ let editingUserId = null;
 let editingRoleId = null;
 
 function puedeAdministrar() {
-  return Object.values(ADMIN_TABS).some(p => hasPermission(p)) || hasPermission("admin:providers");
+  return (
+    Object.values(ADMIN_TABS).some((p) => hasPermission(p)) || hasPermission("admin:providers")
+  );
 }
 
 // El tab de Configuración también lo ven quienes solo administran proveedores.
@@ -70,12 +171,12 @@ function conPermisoTab(tab) {
 function switchAdminTab(tab) {
   if (!conPermisoTab(tab)) return;
   adminTabActual = tab;
-  document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
+  document.querySelectorAll("#administracion [data-admin-tab]").forEach((btn) => {
     const active = btn.dataset.adminTab === tab;
     btn.classList.toggle("active", active);
     btn.setAttribute("aria-selected", String(active));
   });
-  document.querySelectorAll("#administracion [data-admin-pane]").forEach(pane => {
+  document.querySelectorAll("#administracion [data-admin-pane]").forEach((pane) => {
     pane.hidden = pane.dataset.adminPane !== tab;
   });
   if (tab === "usuarios") renderUsers();
@@ -84,7 +185,7 @@ function switchAdminTab(tab) {
   if (tab === "auditoria") renderAudit();
 }
 
-document.querySelectorAll("#administracion [data-admin-tab]").forEach(btn => {
+document.querySelectorAll("#administracion [data-admin-tab]").forEach((btn) => {
   btn.addEventListener("click", () => switchAdminTab(btn.dataset.adminTab));
 });
 
@@ -104,7 +205,7 @@ const SETTINGS_PANELS = {
 function prepararSettings() {
   const conProveedores = hasPermission("admin:providers");
   const conGeneral = hasPermission("admin:settings");
-  document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach(btn => {
+  document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
     btn.hidden = btn.dataset.settingsTab === "proveedores" ? !conProveedores : !conGeneral;
   });
   if (settingsTab === "proveedores" && !conProveedores) settingsTab = "asociacion";
@@ -117,7 +218,7 @@ function prepararSettings() {
 
 async function switchSettingsTab(tab) {
   settingsTab = tab;
-  document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach(btn => {
+  document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
     const active = btn.dataset.settingsTab === tab;
     btn.classList.toggle("active", active);
     btn.setAttribute("aria-selected", String(active));
@@ -130,12 +231,15 @@ async function switchSettingsTab(tab) {
   if (panelProveedores) panelProveedores.hidden = tab !== "proveedores";
   if (tab === "proveedores" && panelProveedores) {
     panelProveedores.replaceChildren();
-    try { await renderProvidersPanel(panelProveedores); }
-    catch (error) { panelProveedores.innerHTML = `<p class="form-error">${error.message}</p>`; }
+    try {
+      await renderProvidersPanel(panelProveedores);
+    } catch (error) {
+      panelProveedores.innerHTML = `<p class="form-error">${error.message}</p>`;
+    }
   }
 }
 
-document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach(btn => {
+document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
   btn.addEventListener("click", () => switchSettingsTab(btn.dataset.settingsTab));
 });
 
@@ -160,9 +264,9 @@ function renderUsers() {
         {
           key: "usuario",
           label: "Usuario",
-          value: u => u.usuario,
+          value: (u) => u.usuario,
           defaultVisible: true,
-          render: u => {
+          render: (u) => {
             const wrap = document.createElement("div");
             const name = document.createElement("span");
             name.className = "community-name";
@@ -175,44 +279,46 @@ function renderUsers() {
               wrap.append(sub);
             }
             return wrap;
-          }
+          },
         },
-        { key: "email", label: "Email", value: u => u.email, defaultVisible: true },
+        { key: "email", label: "Email", value: (u) => u.email, defaultVisible: true },
         {
           key: "rol",
           label: "Rol",
-          value: u => u.rol,
+          value: (u) => u.rol,
           defaultVisible: true,
-          render: u => {
+          render: (u) => {
             const badge = document.createElement("span");
-            badge.className = "status-badge " + (u.rol === "administrador" ? "member" : "non-member");
+            badge.className =
+              "status-badge " + (u.rol === "administrador" ? "member" : "non-member");
             badge.textContent = u.rol;
             return badge;
-          }
+          },
         },
         {
           key: "activo",
           label: "Estado",
-          value: u => (u.activo ? "Activo" : "Inactivo"),
+          value: (u) => (u.activo ? "Activo" : "Inactivo"),
           defaultVisible: true,
-          render: u => {
+          render: (u) => {
             const badge = document.createElement("span");
             badge.className = `status-badge ${u.activo ? "doc-approved" : "doc-rejected"}`;
             badge.textContent = u.activo ? "Activo" : "Inactivo";
             return badge;
-          }
+          },
         },
         {
           key: "perfiles",
           label: "Perfiles",
-          value: u => {
+          value: (u) => {
             const parts = [];
-            if (state.owners.some(o => o.userId === u.id)) parts.push("Propietario");
-            if (state.tenants.some(t => t.userId === u.id)) parts.push("Inquilino");
-            if (state.communities.some(c => c.adminUserId === u.id)) parts.push("Admin de Comunidad");
+            if (state.owners.some((o) => o.userId === u.id)) parts.push("Propietario");
+            if (state.tenants.some((t) => t.userId === u.id)) parts.push("Inquilino");
+            if (state.communities.some((c) => c.adminUserId === u.id))
+              parts.push("Admin de Comunidad");
             return parts.join(", ") || "—";
           },
-          defaultVisible: true
+          defaultVisible: true,
         },
         {
           key: "actions",
@@ -223,18 +329,23 @@ function renderUsers() {
           groupable: false,
           sortable: false,
           value: () => "",
-          render: u => {
+          render: (u) => {
             const wrap = document.createElement("div");
             wrap.className = "row-actions";
             const btnEdit = iconBtn("btn-edit", "Editar", `Editar ${u.usuario}`, ICON_EDIT);
             btnEdit.addEventListener("click", () => openUserEditor(u.id));
-            const btnDelete = iconBtn("btn-delete", "Eliminar", `Eliminar ${u.usuario}`, ICON_DELETE);
+            const btnDelete = iconBtn(
+              "btn-delete",
+              "Eliminar",
+              `Eliminar ${u.usuario}`,
+              ICON_DELETE,
+            );
             btnDelete.addEventListener("click", () => deleteUser(u.id, u.usuario));
             wrap.append(btnEdit, btnDelete);
             return wrap;
-          }
-        }
-      ]
+          },
+        },
+      ],
     });
   } else {
     userTable.refresh();
@@ -270,9 +381,11 @@ function openUserEditor(id = null) {
   const roles = state.roles;
   const rolSelect = userForm.elements.rol;
   rolSelect.replaceChildren();
-  roles.forEach(r => rolSelect.add(new Option(r.nombre, r.nombre)));
-  const u = state.users.find(item => item.id === id);
-  document.querySelector("#user-dialog-title").textContent = u ? `Editar usuario: ${u.usuario}` : "Nuevo usuario";
+  roles.forEach((r) => rolSelect.add(new Option(r.nombre, r.nombre)));
+  const u = state.users.find((item) => item.id === id);
+  document.querySelector("#user-dialog-title").textContent = u
+    ? `Editar usuario: ${u.usuario}`
+    : "Nuevo usuario";
   if (u) {
     userForm.elements.nombre.value = u.nombre || "";
     userForm.elements.apellido.value = u.apellido || "";
@@ -300,31 +413,37 @@ function renderUserLinkSelects(user) {
   if (isPlatformAdmin) return;
 
   // Vínculos actuales calculados desde los registros (no desde la cuenta)
-  const linkedOwnerId = (state.owners.find(o => o.userId === user?.id) || {}).id || "";
-  const linkedTenantId = (state.tenants.find(t => t.userId === user?.id) || {}).id || "";
+  const linkedOwnerId = (state.owners.find((o) => o.userId === user?.id) || {}).id || "";
+  const linkedTenantId = (state.tenants.find((t) => t.userId === user?.id) || {}).id || "";
 
   if (userLinkedOwnerSelect) {
     userLinkedOwnerSelect.replaceChildren(new Option("Sin perfil Propietario", ""));
-    state.owners.forEach(owner => {
+    state.owners.forEach((owner) => {
       if (owner.userId && owner.userId !== user?.id) return; // ya vinculado a otra cuenta
-      const communityName = owner.communityName ||
-        state.communities.find(c => c.id === owner.communityId)?.name || "";
-      userLinkedOwnerSelect.add(new Option(
-        `${owner.name} ${owner.surname} (${owner.dni})${communityName ? " · " + communityName : ""}`,
-        owner.id
-      ));
+      const communityName =
+        owner.communityName ||
+        state.communities.find((c) => c.id === owner.communityId)?.name ||
+        "";
+      userLinkedOwnerSelect.add(
+        new Option(
+          `${owner.name} ${owner.surname} (${owner.dni})${communityName ? " · " + communityName : ""}`,
+          owner.id,
+        ),
+      );
     });
     if (linkedOwnerId) userLinkedOwnerSelect.value = linkedOwnerId;
   }
 
   if (userLinkedTenantSelect) {
     userLinkedTenantSelect.replaceChildren(new Option("Sin perfil Inquilino", ""));
-    state.tenants.forEach(tenant => {
+    state.tenants.forEach((tenant) => {
       if (tenant.userId && tenant.userId !== user?.id) return;
-      userLinkedTenantSelect.add(new Option(
-        `${tenant.name} ${tenant.surname} (${tenant.documentId || "sin documento"})`,
-        tenant.id
-      ));
+      userLinkedTenantSelect.add(
+        new Option(
+          `${tenant.name} ${tenant.surname} (${tenant.documentId || "sin documento"})`,
+          tenant.id,
+        ),
+      );
     });
     if (linkedTenantId) userLinkedTenantSelect.value = linkedTenantId;
   }
@@ -333,11 +452,11 @@ function renderUserLinkSelects(user) {
 // Al cambiar el rol se muestran u ocultan los perfiles vinculados sin reabrir
 // el diálogo (los roles de plataforma no llevan perfiles).
 userForm?.elements.rol?.addEventListener("change", () => {
-  const actual = state.users.find(item => item.id === editingUserId) || { id: "" };
+  const actual = state.users.find((item) => item.id === editingUserId) || { id: "" };
   renderUserLinkSelects({ ...actual, rol: userForm.elements.rol.value });
 });
 
-userForm?.addEventListener("submit", async event => {
+userForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requirePermission("admin:users")) return;
   const password = userForm.elements.password.value;
@@ -359,7 +478,7 @@ userForm?.addEventListener("submit", async event => {
     email: userForm.elements.email.value.trim(),
     rol: userForm.elements.rol.value,
     activo: userForm.elements.activo.checked,
-    ...(password ? { password } : {})
+    ...(password ? { password } : {}),
   };
   if (!data.usuario) {
     userError.textContent = "El nombre de usuario es obligatorio.";
@@ -374,21 +493,25 @@ userForm?.addEventListener("submit", async event => {
     }
 
     if (savedUser.id === state.currentUserId && (data.password || !data.activo)) {
-      window.dispatchEvent(new Event("auth:expired")); toast("Vuelve a iniciar sesión para continuar."); return;
+      window.dispatchEvent(new Event("auth:expired"));
+      toast("Vuelve a iniciar sesión para continuar.");
+      return;
     }
     // Sincronizar vinculaciones de perfiles (Propietario / Inquilino)
     // Los roles de administración no llevan perfiles: solo se desvinculan
     // los que hubiera (el servidor rechaza intentar vincular uno nuevo).
     if (["super_admin", "administrator"].includes(data.rol)) {
-      if (state.owners.some(o => o.userId === savedUser.id)) await api.linkOwner(savedUser.id, "");
-      if (state.tenants.some(t => t.userId === savedUser.id)) await api.linkTenant(savedUser.id, "");
+      if (state.owners.some((o) => o.userId === savedUser.id))
+        await api.linkOwner(savedUser.id, "");
+      if (state.tenants.some((t) => t.userId === savedUser.id))
+        await api.linkTenant(savedUser.id, "");
     } else {
-      const currentLinkedOwnerId = state.owners.find(o => o.userId === savedUser.id)?.id || "";
+      const currentLinkedOwnerId = state.owners.find((o) => o.userId === savedUser.id)?.id || "";
       const newOwnerId = userLinkedOwnerSelect?.value || "";
       if (newOwnerId !== currentLinkedOwnerId) {
         await api.linkOwner(savedUser.id, newOwnerId);
       }
-      const currentLinkedTenantId = state.tenants.find(t => t.userId === savedUser.id)?.id || "";
+      const currentLinkedTenantId = state.tenants.find((t) => t.userId === savedUser.id)?.id || "";
       const newTenantId = userLinkedTenantSelect?.value || "";
       if (newTenantId !== currentLinkedTenantId) {
         await api.linkTenant(savedUser.id, newTenantId);
@@ -409,13 +532,15 @@ userForm?.addEventListener("submit", async event => {
 async function deleteUser(id, usuario) {
   if (!requirePermission("admin:users")) return;
   const profiles = [
-    state.owners.some(owner => owner.userId === id) ? "propietario" : "",
-    state.tenants.some(tenant => tenant.userId === id) ? "inquilino" : ""
+    state.owners.some((owner) => owner.userId === id) ? "propietario" : "",
+    state.tenants.some((tenant) => tenant.userId === id) ? "inquilino" : "",
   ].filter(Boolean);
   if (profiles.length) {
     showValidationErrors(
-      [`El usuario tiene un perfil de ${profiles.join(" y ")} asociado. Desvincula el perfil antes de borrar la cuenta.`],
-      "No se puede eliminar el usuario"
+      [
+        `El usuario tiene un perfil de ${profiles.join(" y ")} asociado. Desvincula el perfil antes de borrar la cuenta.`,
+      ],
+      "No se puede eliminar el usuario",
     );
     return;
   }
@@ -426,15 +551,22 @@ async function deleteUser(id, usuario) {
     showValidationErrors([error.message], "No se puede eliminar el usuario");
     return;
   }
-  if (id === state.currentUserId) { window.dispatchEvent(new Event("auth:expired")); return; }
+  if (id === state.currentUserId) {
+    window.dispatchEvent(new Event("auth:expired"));
+    return;
+  }
   await refreshState();
   renderUsers();
   toast(`Usuario ${usuario} eliminado.`);
 }
 
 document.querySelector("#new-user")?.addEventListener("click", () => openUserEditor());
-document.querySelector("#close-user-dialog")?.addEventListener("click", () => intentarCerrar(userForm, userDialog));
-document.querySelector("#cancel-user-dialog")?.addEventListener("click", () => intentarCerrar(userForm, userDialog));
+document
+  .querySelector("#close-user-dialog")
+  ?.addEventListener("click", () => intentarCerrar(userForm, userDialog));
+document
+  .querySelector("#cancel-user-dialog")
+  ?.addEventListener("click", () => intentarCerrar(userForm, userDialog));
 
 // ---------- Roles ----------
 let rolesTable = null;
@@ -453,9 +585,9 @@ function renderRoles() {
         {
           key: "nombre",
           label: "Rol",
-          value: r => r.nombre,
+          value: (r) => r.nombre,
           defaultVisible: true,
-          render: r => {
+          render: (r) => {
             const wrap = document.createElement("div");
             const name = document.createElement("span");
             name.className = "community-name";
@@ -468,26 +600,31 @@ function renderRoles() {
               wrap.append(badge);
             }
             return wrap;
-          }
+          },
         },
-        { key: "descripcion", label: "Descripción", value: r => r.descripcion || "—", defaultVisible: true },
+        {
+          key: "descripcion",
+          label: "Descripción",
+          value: (r) => r.descripcion || "—",
+          defaultVisible: true,
+        },
         {
           key: "permisos",
           label: "Permisos",
-          value: r => String(r.permisos.length),
+          value: (r) => String(r.permisos.length),
           defaultVisible: true,
-          render: r => {
+          render: (r) => {
             const badge = document.createElement("span");
             badge.className = "dni-badge";
             badge.textContent = `${r.permisos.length} permisos`;
             return badge;
-          }
+          },
         },
         {
           key: "usuarios",
           label: "Usuarios",
           groupable: false,
-          value: r => String(state.users.filter(u => u.rol === r.nombre).length)
+          value: (r) => String(state.users.filter((u) => u.rol === r.nombre).length),
         },
         {
           key: "actions",
@@ -498,21 +635,26 @@ function renderRoles() {
           groupable: false,
           sortable: false,
           value: () => "",
-          render: r => {
+          render: (r) => {
             const wrap = document.createElement("div");
             wrap.className = "row-actions";
             const btnEdit = iconBtn("btn-edit", "Editar rol", `Editar rol ${r.nombre}`, ICON_EDIT);
             btnEdit.addEventListener("click", () => openRoleEditor(r.id));
             wrap.append(btnEdit);
             if (!r.sistema) {
-              const btnDelete = iconBtn("btn-delete", "Eliminar rol", `Eliminar rol ${r.nombre}`, ICON_DELETE);
+              const btnDelete = iconBtn(
+                "btn-delete",
+                "Eliminar rol",
+                `Eliminar rol ${r.nombre}`,
+                ICON_DELETE,
+              );
               btnDelete.addEventListener("click", () => deleteRole(r.id, r.nombre));
               wrap.append(btnDelete);
             }
             return wrap;
-          }
-        }
-      ]
+          },
+        },
+      ],
     });
   } else {
     rolesTable.refresh();
@@ -529,13 +671,13 @@ function renderRolePermissions(selected = []) {
   rolePermissionsList.replaceChildren();
   const selectedSet = new Set(selected);
   // Agrupados por categoría para facilitar la lectura
-  const grupos = [...new Set(PERMISOS_CATALOGO.map(p => p.grupo))];
-  grupos.forEach(grupo => {
+  const grupos = [...new Set(PERMISOS_CATALOGO.map((p) => p.grupo))];
+  grupos.forEach((grupo) => {
     const header = document.createElement("p");
     header.className = "form-section-title full";
     header.textContent = grupo;
     rolePermissionsList.append(header);
-    PERMISOS_CATALOGO.filter(p => p.grupo === grupo).forEach(({ key, label, hint }) => {
+    PERMISOS_CATALOGO.filter((p) => p.grupo === grupo).forEach(({ key, label, hint }) => {
       const item = document.createElement("label");
       item.className = "role-permission-item";
       const checkbox = document.createElement("input");
@@ -564,8 +706,10 @@ function openRoleEditor(id = null) {
   editingRoleId = id;
   roleForm.reset();
   roleError.textContent = "";
-  const role = state.roles.find(item => item.id === id);
-  document.querySelector("#role-dialog-title").textContent = role ? `Editar rol: ${role.nombre}` : "Nuevo rol";
+  const role = state.roles.find((item) => item.id === id);
+  document.querySelector("#role-dialog-title").textContent = role
+    ? `Editar rol: ${role.nombre}`
+    : "Nuevo rol";
   renderRolePermissions(role ? role.permisos : []);
   if (role) {
     roleForm.elements.nombre.value = role.nombre;
@@ -576,14 +720,16 @@ function openRoleEditor(id = null) {
   roleForm.elements.nombre.focus();
 }
 
-roleForm?.addEventListener("submit", async event => {
+roleForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requirePermission("admin:roles")) return;
-  const permisos = [...rolePermissionsList.querySelectorAll("input:checked")].map(input => input.value);
+  const permisos = [...rolePermissionsList.querySelectorAll("input:checked")].map(
+    (input) => input.value,
+  );
   const data = {
     nombre: roleForm.elements.nombre.value.trim(),
     descripcion: roleForm.elements.descripcion.value.trim(),
-    permisos
+    permisos,
   };
   if (!data.nombre) {
     roleError.textContent = "El nombre del rol es obligatorio.";
@@ -622,16 +768,19 @@ async function deleteRole(id, nombre) {
 }
 
 document.querySelector("#new-role")?.addEventListener("click", () => openRoleEditor());
-document.querySelector("#close-role-dialog")?.addEventListener("click", () => intentarCerrar(roleForm, roleDialog));
-document.querySelector("#cancel-role-dialog")?.addEventListener("click", () => intentarCerrar(roleForm, roleDialog));
+document
+  .querySelector("#close-role-dialog")
+  ?.addEventListener("click", () => intentarCerrar(roleForm, roleDialog));
+document
+  .querySelector("#cancel-role-dialog")
+  ?.addEventListener("click", () => intentarCerrar(roleForm, roleDialog));
 
 // ---------- Configuración General ----------
 const settingsForm = document.querySelector("#settings-form");
 const TIPOS_DOCUMENTO = ["pdf", "jpg", "jpeg", "png", "webp"];
 const DENSIDADES = ["compacta", "normal", "amplia"];
 const TIPOGRAFIAS = ["inter", "system", "arial", "verdana", "georgia"];
-const colorValue = (value, fallback) =>
-  /^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback;
+const colorValue = (value, fallback) => (/^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback);
 const numericValue = (element, fallback, min, max) => {
   if (element?.value === "" || element?.value == null) return fallback;
   const number = Number(element.value);
@@ -657,9 +806,7 @@ function syncTenantAuthGuard() {
   const field = settingsForm?.elements.tenantAuthorizationsState;
   if (!field) return;
   field.value = JSON.stringify(
-    Object.fromEntries(
-      [...tenantAuthTouched].map((id) => [id, tenantAuthDraft[id] || []]),
-    ),
+    Object.fromEntries([...tenantAuthTouched].map((id) => [id, tenantAuthDraft[id] || []])),
   );
 }
 
@@ -689,7 +836,7 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
       Object.assign(document.createElement("p"), {
         className: "form-intro",
         textContent:
-          "Esta comunidad no tiene autorizaciones. Agregá una o restaurá las predeterminadas.",
+          "Esta comunidad no tiene autorizaciones. Agrega una o restaura las predeterminadas.",
       }),
     );
   list.forEach((item, index) => {
@@ -700,10 +847,7 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
     input.value = item.label || "";
     input.maxLength = 80;
     input.placeholder = "Ej.: Acceso a la piscina";
-    input.setAttribute(
-      "aria-label",
-      `Nombre de la autorización ${index + 1}`,
-    );
+    input.setAttribute("aria-label", `Nombre de la autorización ${index + 1}`);
     input.addEventListener("input", () => {
       item.label = input.value;
       markTenantAuthTouched();
@@ -722,8 +866,7 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
     row.append(input, remove);
     box.append(row);
   });
-  if (focusIndex >= 0)
-    box.querySelectorAll("input")[focusIndex]?.focus();
+  if (focusIndex >= 0) box.querySelectorAll("input")[focusIndex]?.focus();
 }
 
 function initTenantAuthorizations() {
@@ -737,9 +880,7 @@ function initTenantAuthorizations() {
   tenantAuthTouched = new Set();
   syncTenantAuthGuard();
   select.replaceChildren();
-  state.communities.forEach((community) =>
-    select.add(new Option(community.name, community.id)),
-  );
+  state.communities.forEach((community) => select.add(new Option(community.name, community.id)));
   tenantAuthCommunityId = state.communities[0]?.id || "";
   select.value = tenantAuthCommunityId;
   if (!select.dataset.wired) {
@@ -748,27 +889,23 @@ function initTenantAuthorizations() {
       tenantAuthCommunityId = select.value;
       renderTenantAuthorizationsEditor();
     });
-    document
-      .querySelector("#add-tenant-authorization")
-      ?.addEventListener("click", () => {
-        if (!tenantAuthCommunityId) return;
-        const list = currentTenantAuthList();
-        list.push({
-          id: `custom_${crypto.randomUUID()}`,
-          label: "",
-        });
-        markTenantAuthTouched();
-        renderTenantAuthorizationsEditor(list.length - 1);
+    document.querySelector("#add-tenant-authorization")?.addEventListener("click", () => {
+      if (!tenantAuthCommunityId) return;
+      const list = currentTenantAuthList();
+      list.push({
+        id: `custom_${crypto.randomUUID()}`,
+        label: "",
       });
-    document
-      .querySelector("#reset-tenant-authorizations")
-      ?.addEventListener("click", () => {
-        if (!tenantAuthCommunityId) return;
-        tenantAuthDraft[tenantAuthCommunityId] = tenantAuthDefaults();
-        markTenantAuthTouched();
-        renderTenantAuthorizationsEditor();
-        toast("Se restauraron las autorizaciones predeterminadas. Guardá para aplicarlas.");
-      });
+      markTenantAuthTouched();
+      renderTenantAuthorizationsEditor(list.length - 1);
+    });
+    document.querySelector("#reset-tenant-authorizations")?.addEventListener("click", () => {
+      if (!tenantAuthCommunityId) return;
+      tenantAuthDraft[tenantAuthCommunityId] = tenantAuthDefaults();
+      markTenantAuthTouched();
+      renderTenantAuthorizationsEditor();
+      toast("Se restauraron las autorizaciones predeterminadas. Guarda para aplicarlas.");
+    });
   }
   renderTenantAuthorizationsEditor();
 }
@@ -777,11 +914,10 @@ function tenantAuthorizationErrors() {
   const errors = [];
   for (const [communityId, list] of Object.entries(tenantAuthDraft)) {
     const communityName =
-      state.communities.find((community) => community.id === communityId)
-        ?.name || communityId;
+      state.communities.find((community) => community.id === communityId)?.name || communityId;
     if (!Array.isArray(list) || !list.length) {
       errors.push(
-        `${communityName}: agregá al menos una autorización o restaurá las predeterminadas.`,
+        `${communityName}: agrega al menos una autorización o restaura las predeterminadas.`,
       );
       continue;
     }
@@ -790,17 +926,11 @@ function tenantAuthorizationErrors() {
       const label = String(item?.label || "").trim();
       if (!item?.id || typeof item.id !== "string")
         errors.push(`${communityName}: la autorización ${index + 1} no es válida.`);
-      else if (ids.has(item.id))
-        errors.push(`${communityName}: hay autorizaciones duplicadas.`);
+      else if (ids.has(item.id)) errors.push(`${communityName}: hay autorizaciones duplicadas.`);
       else ids.add(item.id);
-      if (!label)
-        errors.push(
-          `${communityName}: la autorización ${index + 1} no tiene nombre.`,
-        );
+      if (!label) errors.push(`${communityName}: la autorización ${index + 1} no tiene nombre.`);
       else if (label.length > 80)
-        errors.push(
-          `${communityName}: «${label.slice(0, 30)}…» supera los 80 caracteres.`,
-        );
+        errors.push(`${communityName}: «${label.slice(0, 30)}…» supera los 80 caracteres.`);
     });
   }
   return errors;
@@ -812,8 +942,7 @@ function tenantAuthorizationsPayload() {
   return Object.fromEntries(
     Object.entries(tenantAuthDraft).filter(
       ([communityId]) =>
-        tenantAuthTouched.has(communityId) ||
-        (saved && Object.hasOwn(saved, communityId)),
+        tenantAuthTouched.has(communityId) || (saved && Object.hasOwn(saved, communityId)),
     ),
   );
 }
@@ -821,19 +950,15 @@ function tenantAuthorizationsPayload() {
 function renderSettings() {
   if (!settingsForm || !puedeAdministrar()) return;
   const s = state.settings || {};
-  settingsForm.elements.nombreAsociacion.value =
-    s.nombreAsociacion || "Asociación Peñarrubia";
+  settingsForm.elements.nombreAsociacion.value = s.nombreAsociacion || "Asociación Peñarrubia";
   settingsForm.elements.emailContacto.value = s.emailContacto || "";
   settingsForm.elements.telefonoContacto.value = s.telefonoContacto || "";
   settingsForm.elements.permitirRegistro.checked = s.permitirRegistro !== false;
-  settingsForm.elements.permitirRecuperacion.checked =
-    s.permitirRecuperacion !== false;
-  settingsForm.elements.duracionSesionHoras.value =
-    s.duracionSesionHoras ?? 8;
+  settingsForm.elements.permitirRecuperacion.checked = s.permitirRecuperacion !== false;
+  settingsForm.elements.duracionSesionHoras.value = s.duracionSesionHoras ?? 8;
   settingsForm.elements.otpExpiraMinutos.value = s.otpExpiraMinutos ?? 10;
   settingsForm.elements.otpReenvioSegundos.value = s.otpReenvioSegundos ?? 60;
-  settingsForm.elements.notificacionesEmail.checked =
-    s.notificacionesEmail !== false;
+  settingsForm.elements.notificacionesEmail.checked = s.notificacionesEmail !== false;
   settingsForm.elements.avisosCambiosEmail.value = s.avisosCambiosEmail || "";
   settingsForm.elements.feeBeforeDays.value = s.feeBeforeDays ?? 3;
   settingsForm.elements.feeAfterDays.value = s.feeAfterDays ?? 7;
@@ -841,7 +966,8 @@ function renderSettings() {
   settingsForm.elements.feeInternal.checked = s.feeInternal !== false;
   settingsForm.elements.feeEmail.checked = s.feeEmail === true;
   settingsForm.elements.feeEmailSubject.value = s.feeEmailSubject || "{{titulo}} · {{comunidad}}";
-  settingsForm.elements.feeEmailBody.value = s.feeEmailBody || "{{mensaje}}\nConsulta la pestaña Financiero de la ficha del propietario.";
+  settingsForm.elements.feeEmailBody.value =
+    s.feeEmailBody || "{{mensaje}}\nConsulta la pestaña Financiero de la ficha del propietario.";
   settingsForm.elements.assessmentBeforeDays.value = s.assessmentBeforeDays ?? 3;
   settingsForm.elements.assessmentAfterDays.value = s.assessmentAfterDays ?? 7;
   settingsForm.elements.assessmentRepeatDays.value = s.assessmentRepeatDays ?? 0;
@@ -853,63 +979,33 @@ function renderSettings() {
   settingsForm.elements.serviceInternal.checked = s.serviceInternal !== false;
   settingsForm.elements.serviceEmail.checked = s.serviceEmail === true;
   settingsForm.elements.documentosMaxSizeMb.value = s.documentosMaxSizeMb ?? 15;
-  settingsForm.elements.documentosMaxArchivos.value =
-    s.documentosMaxArchivos ?? 20;
+  settingsForm.elements.documentosMaxArchivos.value = s.documentosMaxArchivos ?? 20;
   const tipos = Array.isArray(s.documentosTiposPermitidos)
     ? s.documentosTiposPermitidos
     : TIPOS_DOCUMENTO;
-  settingsForm
-    .querySelectorAll('input[name="documentosTiposPermitidos"]')
-    .forEach((checkbox) => {
-      checkbox.checked = tipos.includes(checkbox.value);
-    });
+  settingsForm.querySelectorAll('input[name="documentosTiposPermitidos"]').forEach((checkbox) => {
+    checkbox.checked = tipos.includes(checkbox.value);
+  });
   settingsForm.elements.monedaPorDefecto.value = s.monedaPorDefecto || "EUR";
-  settingsForm.elements.diasAvisoVencimientoContrato.value =
-    s.diasAvisoVencimientoContrato ?? 30;
+  settingsForm.elements.diasAvisoVencimientoContrato.value = s.diasAvisoVencimientoContrato ?? 30;
   settingsForm.elements.filasPorPagina.value = s.filasPorPagina ?? 10;
   settingsForm.elements.mantenimiento.checked = !!s.mantenimiento;
-  settingsForm.elements.mensajeMantenimiento.value =
-    s.mensajeMantenimiento || "";
+  settingsForm.elements.mensajeMantenimiento.value = s.mensajeMantenimiento || "";
   const marca = s.marca || {};
   settingsForm.elements.marcaNombre.value = marca.nombre || "Peñarrubia";
-  settingsForm.elements.marcaColorPrimario.value = colorValue(
-    marca.colorPrimario,
-    "#11273e",
-  );
-  settingsForm.elements.marcaColorAcento.value = colorValue(
-    marca.colorAcento,
-    "#198b84",
-  );
-  settingsForm.elements.marcaColorFondo.value = colorValue(
-    marca.colorFondo,
-    "#f7f9fb",
-  );
-  settingsForm.elements.marcaColorSuperficie.value = colorValue(
-    marca.colorSuperficie,
-    "#ffffff",
-  );
-  settingsForm.elements.marcaColorTexto.value = colorValue(
-    marca.colorTexto,
-    "#17212b",
-  );
-  settingsForm.elements.marcaColorTextoSuave.value = colorValue(
-    marca.colorTextoSuave,
-    "#64748b",
-  );
-  settingsForm.elements.marcaColorBorde.value = colorValue(
-    marca.colorBorde,
-    "#e4e9ef",
-  );
-  settingsForm.elements.marcaTipografia.value = TIPOGRAFIAS.includes(
-    marca.tipografia,
-  )
+  settingsForm.elements.marcaColorPrimario.value = colorValue(marca.colorPrimario, "#11273e");
+  settingsForm.elements.marcaColorAcento.value = colorValue(marca.colorAcento, "#198b84");
+  settingsForm.elements.marcaColorFondo.value = colorValue(marca.colorFondo, "#f7f9fb");
+  settingsForm.elements.marcaColorSuperficie.value = colorValue(marca.colorSuperficie, "#ffffff");
+  settingsForm.elements.marcaColorTexto.value = colorValue(marca.colorTexto, "#17212b");
+  settingsForm.elements.marcaColorTextoSuave.value = colorValue(marca.colorTextoSuave, "#64748b");
+  settingsForm.elements.marcaColorBorde.value = colorValue(marca.colorBorde, "#e4e9ef");
+  settingsForm.elements.marcaTipografia.value = TIPOGRAFIAS.includes(marca.tipografia)
     ? marca.tipografia
     : "inter";
   settingsForm.elements.marcaTamanoBase.value = marca.tamanoBase ?? 14;
   settingsForm.elements.marcaRadioBordes.value = marca.radioBordes ?? 5;
-  settingsForm.elements.marcaDensidad.value = DENSIDADES.includes(
-    marca.densidad,
-  )
+  settingsForm.elements.marcaDensidad.value = DENSIDADES.includes(marca.densidad)
     ? marca.densidad
     : "normal";
   settingsForm.elements.marcaLogo.value = "";
@@ -926,8 +1022,7 @@ function renderSettings() {
   initTenantAuthorizations();
   armarGuardia(
     settingsForm,
-    settingsForm.closest(".admin-pane") ||
-      document.querySelector("#administracion"),
+    settingsForm.closest(".admin-pane") || document.querySelector("#administracion"),
   );
 }
 
@@ -945,26 +1040,15 @@ function readMarca() {
         colorTextoSuave: settingsForm.elements.marcaColorTextoSuave.value,
         colorBorde: settingsForm.elements.marcaColorBorde.value,
         tipografia: settingsForm.elements.marcaTipografia.value,
-        tamanoBase: numericValue(
-          settingsForm.elements.marcaTamanoBase,
-          14,
-          12,
-          18,
-        ),
-        radioBordes: numericValue(
-          settingsForm.elements.marcaRadioBordes,
-          5,
-          0,
-          16,
-        ),
+        tamanoBase: numericValue(settingsForm.elements.marcaTamanoBase, 14, 12, 18),
+        radioBordes: numericValue(settingsForm.elements.marcaRadioBordes, 5, 0, 16),
         densidad: settingsForm.elements.marcaDensidad.value,
       };
       if (logoDataUrl !== undefined) marca.logoDataUrl = logoDataUrl;
       resolve(marca);
     };
     if (file) {
-      if (file.size > 230_400)
-        return reject(new Error("El logo no puede superar los 225 KB."));
+      if (file.size > 230_400) return reject(new Error("El logo no puede superar los 225 KB."));
       const reader = new FileReader();
       reader.onload = () => build(reader.result);
       reader.onerror = () => build(undefined);
@@ -973,12 +1057,12 @@ function readMarca() {
   });
 }
 
-settingsForm?.addEventListener("submit", async event => {
+settingsForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requirePermission("admin:settings")) return;
   const authErrors = tenantAuthorizationErrors();
   if (authErrors.length) {
-    showValidationErrors(authErrors, "Revisá las autorizaciones de inquilinos");
+    showValidationErrors(authErrors, "Revisa las autorizaciones de inquilinos");
     return;
   }
   const data = {
@@ -987,25 +1071,13 @@ settingsForm?.addEventListener("submit", async event => {
     telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
     permitirRegistro: settingsForm.elements.permitirRegistro.checked,
     permitirRecuperacion: settingsForm.elements.permitirRecuperacion.checked,
-    duracionSesionHoras: numericValue(
-      settingsForm.elements.duracionSesionHoras,
-      8,
-      1,
-      720,
-    ),
-    otpExpiraMinutos: numericValue(
-      settingsForm.elements.otpExpiraMinutos,
-      10,
-      1,
-      60,
-    ),
-    otpReenvioSegundos: numericValue(
-      settingsForm.elements.otpReenvioSegundos,
-      60,
-      10,
-      600,
-    ),
-    textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => { acc[el.dataset.texto] = el.value; return acc; }, {}),
+    duracionSesionHoras: numericValue(settingsForm.elements.duracionSesionHoras, 8, 1, 720),
+    otpExpiraMinutos: numericValue(settingsForm.elements.otpExpiraMinutos, 10, 1, 60),
+    otpReenvioSegundos: numericValue(settingsForm.elements.otpReenvioSegundos, 60, 10, 600),
+    textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => {
+      acc[el.dataset.texto] = el.value;
+      return acc;
+    }, {}),
     notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
     avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
     feeBeforeDays: Number(settingsForm.elements.feeBeforeDays.value),
@@ -1026,22 +1098,10 @@ settingsForm?.addEventListener("submit", async event => {
     serviceInternal: settingsForm.elements.serviceInternal.checked,
     serviceEmail: settingsForm.elements.serviceEmail.checked,
     tenantAuthorizations: tenantAuthorizationsPayload(),
-    documentosMaxSizeMb: numericValue(
-      settingsForm.elements.documentosMaxSizeMb,
-      15,
-      1,
-      50,
-    ),
-    documentosMaxArchivos: numericValue(
-      settingsForm.elements.documentosMaxArchivos,
-      20,
-      1,
-      50,
-    ),
+    documentosMaxSizeMb: numericValue(settingsForm.elements.documentosMaxSizeMb, 15, 1, 50),
+    documentosMaxArchivos: numericValue(settingsForm.elements.documentosMaxArchivos, 20, 1, 50),
     documentosTiposPermitidos: [
-      ...settingsForm.querySelectorAll(
-        'input[name="documentosTiposPermitidos"]:checked',
-      ),
+      ...settingsForm.querySelectorAll('input[name="documentosTiposPermitidos"]:checked'),
     ].map((checkbox) => checkbox.value),
     monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
     diasAvisoVencimientoContrato: numericValue(
@@ -1053,14 +1113,17 @@ settingsForm?.addEventListener("submit", async event => {
     filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
     mantenimiento: settingsForm.elements.mantenimiento.checked,
     mensajeMantenimiento: settingsForm.elements.mensajeMantenimiento.value.trim(),
-    marca: await readMarca()
+    marca: await readMarca(),
   };
   try {
     state.settings = await api.updateSettings(data);
     applyBrand(state.settings.marca);
     applyPublicSettings(state.settings);
     aplicarFilasPorPagina(state.settings.filasPorPagina);
-    limpiarGuardia(settingsForm, settingsForm.closest(".admin-pane") || document.querySelector("#administracion"));
+    limpiarGuardia(
+      settingsForm,
+      settingsForm.closest(".admin-pane") || document.querySelector("#administracion"),
+    );
     toast("Configuración guardada.");
   } catch (error) {
     showValidationErrors([error.message], "No se pudo guardar la configuración");
@@ -1074,10 +1137,15 @@ export function renderAdministracion() {
   if (nav) nav.hidden = !visible;
   // Los tabs y paneles se ocultan según el permiso del rol, aunque se fuerce
   // la URL; sin ningún permiso admin la pantalla queda vacía.
-  document.querySelectorAll("#administracion [data-admin-tab]").forEach(button => { button.hidden = !conPermisoTab(button.dataset.adminTab); });
-  document.querySelectorAll("#administracion [data-admin-pane]").forEach(pane => { pane.hidden = !conPermisoTab(pane.dataset.adminPane); });
+  document.querySelectorAll("#administracion [data-admin-tab]").forEach((button) => {
+    button.hidden = !conPermisoTab(button.dataset.adminTab);
+  });
+  document.querySelectorAll("#administracion [data-admin-pane]").forEach((pane) => {
+    pane.hidden = !conPermisoTab(pane.dataset.adminPane);
+  });
   if (!visible) return;
-  if (!conPermisoTab(adminTabActual)) adminTabActual = Object.keys(ADMIN_TABS).find(conPermisoTab) || "usuarios";
+  if (!conPermisoTab(adminTabActual))
+    adminTabActual = Object.keys(ADMIN_TABS).find(conPermisoTab) || "usuarios";
   switchAdminTab(adminTabActual);
 }
 

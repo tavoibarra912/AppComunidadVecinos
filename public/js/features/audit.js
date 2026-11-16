@@ -9,8 +9,18 @@ const next = document.querySelector("#audit-next");
 const limit = 25;
 let offset = 0;
 let requestId = 0;
-const outcomes = { success: "Correcto", failure: "Fallido", denied: "Denegado", queued: "En cola", accepted: "Aceptado por SMTP", failed: "Falló el envío", skipped: "Omitido", uncertain: "Envío incierto" };
-const actions = () => new Map([...form.elements.action.options].map(option => [option.value, option.textContent]));
+const outcomes = {
+  success: "Correcto",
+  failure: "Fallido",
+  denied: "Denegado",
+  queued: "En cola",
+  accepted: "Aceptado por SMTP",
+  failed: "Falló el envío",
+  skipped: "Omitido",
+  uncertain: "Envío incierto",
+};
+const actions = () =>
+  new Map([...form.elements.action.options].map((option) => [option.value, option.textContent]));
 function cell(row, value) {
   const td = document.createElement("td");
   td.textContent = value || "—";
@@ -21,7 +31,10 @@ export async function renderAudit() {
   const id = ++requestId;
   results.replaceChildren();
   previous.disabled = next.disabled = true;
-  if (!hasPermission("audit:read")) { status.textContent = "No tienes permiso para consultar la auditoría."; return; }
+  if (!hasPermission("audit:read")) {
+    status.textContent = "No tienes permiso para consultar la auditoría.";
+    return;
+  }
   status.textContent = "Cargando auditoría…";
   try {
     const page = await api.listAudit({ limit, offset, action: form.elements.action.value });
@@ -29,12 +42,17 @@ export async function renderAudit() {
     const table = document.createElement("table");
     const caption = document.createElement("caption");
     caption.textContent = "Historial de seguridad (más recientes primero)";
-    const head = document.createElement("thead"), header = document.createElement("tr");
+    const head = document.createElement("thead"),
+      header = document.createElement("tr");
     for (const label of ["Fecha", "Actor", "Evento", "Resultado", "Recurso", "IP", "Detalle"]) {
-      const th = document.createElement("th"); th.scope = "col"; th.textContent = label; header.append(th);
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = label;
+      header.append(th);
     }
     head.append(header);
-    const body = document.createElement("tbody"), labels = actions();
+    const body = document.createElement("tbody"),
+      labels = actions();
     for (const item of page.items) {
       const row = document.createElement("tr");
       cell(row, new Date(item.createdAt).toLocaleString("es-ES"));
@@ -45,13 +63,24 @@ export async function renderAudit() {
       cell(row, item.ip);
       const detailCell = cell(row, "");
       detailCell.replaceChildren();
-      const details = document.createElement("details"), summary = document.createElement("summary"), pre = document.createElement("pre");
+      const details = document.createElement("details"),
+        summary = document.createElement("summary"),
+        pre = document.createElement("pre");
       summary.textContent = "Ver detalle";
-      pre.textContent = JSON.stringify({ actorId: item.actorId, method: item.method, route: item.route, ...item.details }, null, 2);
-      details.append(summary, pre); detailCell.append(details); body.append(row);
+      pre.textContent = JSON.stringify(
+        { actorId: item.actorId, method: item.method, route: item.route, ...item.details },
+        null,
+        2,
+      );
+      details.append(summary, pre);
+      detailCell.append(details);
+      body.append(row);
     }
-    table.append(caption, head, body); results.append(table);
-    status.textContent = page.total ? `${offset + 1}–${offset + page.items.length} de ${page.total} eventos` : "No hay eventos para este filtro.";
+    table.append(caption, head, body);
+    results.append(table);
+    status.textContent = page.total
+      ? `${offset + 1}–${offset + page.items.length} de ${page.total} eventos`
+      : "No hay eventos para este filtro.";
     previous.disabled = offset === 0;
     next.disabled = offset + page.items.length >= page.total;
   } catch (error) {
@@ -61,6 +90,16 @@ export async function renderAudit() {
     }
   }
 }
-form?.addEventListener("submit", event => { event.preventDefault(); offset = 0; renderAudit(); });
-previous?.addEventListener("click", () => { offset = Math.max(0, offset - limit); renderAudit(); });
-next?.addEventListener("click", () => { offset += limit; renderAudit(); });
+form?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  offset = 0;
+  renderAudit();
+});
+previous?.addEventListener("click", () => {
+  offset = Math.max(0, offset - limit);
+  renderAudit();
+});
+next?.addEventListener("click", () => {
+  offset += limit;
+  renderAudit();
+});

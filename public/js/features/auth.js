@@ -16,7 +16,9 @@ export function showRecoveryFromLink() {
   recoveryToken = match?.[1] || "";
   document.querySelector("#login-forgot-form").hidden = true;
   document.querySelector("#login-reset-block").hidden = false;
-  document.querySelector("#login-reset-error").textContent = recoveryToken ? "" : "El enlace no es válido. Solicita uno nuevo.";
+  document.querySelector("#login-reset-error").textContent = recoveryToken
+    ? ""
+    : "El enlace no es válido. Solicita uno nuevo.";
   return true;
 }
 window.addEventListener("hashchange", showRecoveryFromLink);
@@ -31,10 +33,8 @@ try {
 } catch {}
 
 export function showLoginView(view) {
-  if (view === "signup" && document.querySelector("#login-open-signup")?.hidden)
-    view = "signin";
-  if (view === "forgot" && document.querySelector("#login-open-forgot")?.hidden)
-    view = "signin";
+  if (view === "signup" && document.querySelector("#login-open-signup")?.hidden) view = "signin";
+  if (view === "forgot" && document.querySelector("#login-open-forgot")?.hidden) view = "signin";
   document.querySelector("#login-forgot-form").hidden = false;
   document.querySelector("#login-reset-block").hidden = true;
   recoveryToken = "";
@@ -42,7 +42,9 @@ export function showLoginView(view) {
   document.querySelector(".topbar").style.display = "none";
   document.querySelector(".mobile-nav").style.display = "none";
   document.querySelector("main.layout").style.display = "none";
-  document.querySelectorAll(".login-view").forEach(v => { v.hidden = v.id !== `login-view-${view}`; });
+  document.querySelectorAll(".login-view").forEach((v) => {
+    v.hidden = v.id !== `login-view-${view}`;
+  });
 }
 
 export function hideLoginScreen() {
@@ -71,12 +73,12 @@ async function startSession(user) {
 }
 
 // Navegación entre vistas
-document.querySelectorAll("[data-login-view]").forEach(btn => {
+document.querySelectorAll("[data-login-view]").forEach((btn) => {
   btn.addEventListener("click", () => showLoginView(btn.dataset.loginView));
 });
 
 // ---------- Sign In ----------
-document.querySelector("#login-signin-form")?.addEventListener("submit", async event => {
+document.querySelector("#login-signin-form")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
   const errorEl = document.querySelector("#login-signin-error");
@@ -84,7 +86,7 @@ document.querySelector("#login-signin-form")?.addEventListener("submit", async e
   try {
     const user = await loginApi("signin", {
       usuario: form.elements.usuario.value,
-      password: form.elements.password.value
+      password: form.elements.password.value,
     });
     await startSession(user);
     toast(`Bienvenido, ${user.nombre || user.usuario}.`);
@@ -94,7 +96,7 @@ document.querySelector("#login-signin-form")?.addEventListener("submit", async e
 });
 
 // ---------- Sign Up ----------
-document.querySelector("#login-signup-form")?.addEventListener("submit", async event => {
+document.querySelector("#login-signup-form")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
   const errorEl = document.querySelector("#login-signup-error");
@@ -110,7 +112,7 @@ document.querySelector("#login-signup-form")?.addEventListener("submit", async e
       apellido: form.elements.apellido.value,
       usuario: form.elements.usuario.value,
       email: form.elements.email.value,
-      password
+      password,
     });
     await startSession(user);
     toast("Cuenta creada. ¡Bienvenido!");
@@ -120,10 +122,12 @@ document.querySelector("#login-signup-form")?.addEventListener("submit", async e
 });
 
 // Los proveedores externos quedan ocultos hasta disponer de OAuth real.
-document.querySelectorAll(".sso-btn, .sso-row, .login-divider").forEach(el => { el.hidden = true; });
+document.querySelectorAll(".sso-btn, .sso-row, .login-divider").forEach((el) => {
+  el.hidden = true;
+});
 
 // ---------- Forgot Password ----------
-document.querySelector("#login-forgot-form")?.addEventListener("submit", async event => {
+document.querySelector("#login-forgot-form")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.target;
   const errorEl = document.querySelector("#login-forgot-error");
@@ -134,14 +138,13 @@ document.querySelector("#login-forgot-form")?.addEventListener("submit", async e
     const result = await loginApi("forgot-password", { email: form.elements.email.value });
     okEl.textContent = result.mensaje;
     okEl.hidden = false;
-
   } catch (error) {
     errorEl.textContent = error.message;
   }
 });
 
 // ---------- Reset Password ----------
-document.querySelector("#login-reset-form")?.addEventListener("submit", async event => {
+document.querySelector("#login-reset-form")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const errorEl = document.querySelector("#login-reset-error");
   errorEl.textContent = "";
@@ -166,12 +169,18 @@ document.querySelector("#login-reset-form")?.addEventListener("submit", async ev
 
 function loggedOut() {
   clearSession();
-  document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
-  document.querySelectorAll(".login-view form").forEach(form => form.reset());
+  document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
+  document.querySelectorAll(".login-view form").forEach((form) => form.reset());
   showLoginView("signin");
   window.location.reload();
 }
 window.addEventListener("auth:expired", loggedOut);
 document.querySelector("#user-logout-btn")?.addEventListener("click", async () => {
-  try { await api.auth("logout"); loggedOut(); } catch (error) { if (error.status === 401) loggedOut(); else toast(error.message); }
+  try {
+    await api.auth("logout");
+    loggedOut();
+  } catch (error) {
+    if (error.status === 401) loggedOut();
+    else toast(error.message);
+  }
 });

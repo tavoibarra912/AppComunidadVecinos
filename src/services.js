@@ -37,25 +37,6 @@ export const serviceBillings = {
   informative: "Solo reparto informativo, sin deuda",
 };
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS service_bills (
-    id TEXT PRIMARY KEY, communityId TEXT NOT NULL, service TEXT NOT NULL,
-    supplier TEXT NOT NULL DEFAULT '', invoiceNumber TEXT NOT NULL DEFAULT '',
-    period TEXT NOT NULL, issueDate TEXT NOT NULL, dueDate TEXT NOT NULL,
-    totalAmount INTEGER NOT NULL CHECK(totalAmount>0), data TEXT NOT NULL,
-    createdAt TEXT NOT NULL, actorId TEXT NOT NULL,
-    issuedAt TEXT NOT NULL DEFAULT '',
-    cancelledAt TEXT NOT NULL DEFAULT '', cancellationReason TEXT NOT NULL DEFAULT ''
-  );
-  CREATE INDEX IF NOT EXISTS service_bills_community ON service_bills(communityId,issueDate);
-  CREATE TABLE IF NOT EXISTS service_attachments (
-    id TEXT PRIMARY KEY, serviceBillId TEXT NOT NULL,
-    fileName TEXT NOT NULL, diskName TEXT NOT NULL, mime TEXT NOT NULL,
-    createdAt TEXT NOT NULL, actorId TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS service_attachments_bill ON service_attachments(serviceBillId);
-`);
-
 // Fotos de contadores: se guardan como adjuntos del servicio, separados de la
 // factura mediante `kind` y vinculados al inmueble con `propertyId`.
 for (const [column, definition] of [
@@ -68,9 +49,7 @@ for (const [column, definition] of [
       .all()
       .some((item) => item.name === column)
   )
-    db.exec(
-      `ALTER TABLE service_attachments ADD COLUMN ${column} ${definition}`,
-    );
+    db.exec(`ALTER TABLE service_attachments ADD COLUMN ${column} ${definition}`);
 }
 
 if (
@@ -79,15 +58,9 @@ if (
     .all()
     .some((column) => column.name === "serviceBillId")
 )
-  db.exec(
-    "ALTER TABLE fee_receipts ADD COLUMN serviceBillId TEXT NOT NULL DEFAULT ''",
-  );
+  db.exec("ALTER TABLE fee_receipts ADD COLUMN serviceBillId TEXT NOT NULL DEFAULT ''");
 
-if (
-  !db
-    .prepare("SELECT 1 FROM schema_migrations WHERE id='service-bills-v1'")
-    .get()
-) {
+if (!db.prepare("SELECT 1 FROM schema_migrations WHERE id='service-bills-v1'").get()) {
   transaction(() => {
     // El índice anterior impedía que un inmueble tuviera una cuota ordinaria y
     // un servicio con el mismo periodo. Se recrea excluyendo ambos tipos.
@@ -101,9 +74,7 @@ if (
     db.exec(
       "CREATE UNIQUE INDEX IF NOT EXISTS fee_receipts_service ON fee_receipts(communityId,propertyId,serviceBillId) WHERE cancelledAt='' AND serviceBillId<>''",
     );
-    db.prepare(
-      "INSERT INTO schema_migrations(id) VALUES('service-bills-v1')",
-    ).run();
+    db.prepare("INSERT INTO schema_migrations(id) VALUES('service-bills-v1')").run();
   });
 } else {
   db.exec(
@@ -129,8 +100,7 @@ function audit(actor, action, id, details) {
 function text(value, label, max, required = false) {
   const result = typeof value === "string" ? value.trim() : "";
   if (required && !result) throw problem(`Indicá ${label}.`);
-  if (result.length > max)
-    throw problem(`${label} no puede superar ${max} caracteres.`);
+  if (result.length > max) throw problem(`${label} no puede superar ${max} caracteres.`);
   return result;
 }
 
@@ -139,9 +109,7 @@ function readingValue(value, label) {
     .trim()
     .replace(",", ".");
   if (!/^\d{1,7}(\.\d{1,3})?$/.test(source))
-    throw problem(
-      `${label}: indicá una lectura válida con hasta tres decimales (m³).`,
-    );
+    throw problem(`${label}: indicá una lectura válida con hasta tres decimales (m³).`);
   const result = Math.round(Number(source) * 1000);
   if (!Number.isSafeInteger(result) || result < 0)
     throw problem(`${label}: la lectura no es válida.`);
@@ -156,16 +124,10 @@ function serviceReminders(input) {
     ["afterDays", 365],
     ["repeatDays", 365],
   ])
-    reminders[key] = integer(
-      input.reminders?.[key] ?? defaults[key],
-      0,
-      max,
-      key,
-    );
+    reminders[key] = integer(input.reminders?.[key] ?? defaults[key], 0, max, key);
   for (const key of ["internal", "email"]) {
     reminders[key] = input.reminders?.[key] ?? defaults[key];
-    if (typeof reminders[key] !== "boolean")
-      throw problem("Canal de avisos no válido.");
+    if (typeof reminders[key] !== "boolean") throw problem("Canal de avisos no válido.");
   }
   return reminders;
 }
@@ -189,17 +151,9 @@ function parsePeriod(value) {
 function coefficientData(entries, all) {
   let sum = 0;
   for (const entry of entries) {
-    const source = String(entry.property.participationCoef)
-      .replace(",", ".")
-      .trim();
-    if (
-      !/^\d{1,3}(\.\d{1,4})?$/.test(source) ||
-      Number(source) <= 0 ||
-      Number(source) > 100
-    )
-      throw problem(
-        `${entry.property.plot}: coeficiente no válido (hasta cuatro decimales).`,
-      );
+    const source = String(entry.property.participationCoef).replace(",", ".").trim();
+    if (!/^\d{1,3}(\.\d{1,4})?$/.test(source) || Number(source) <= 0 || Number(source) > 100)
+      throw problem(`${entry.property.plot}: coeficiente no válido (hasta cuatro decimales).`);
     entry.weight = Math.round(Number(source) * 10000);
     sum += entry.weight;
   }
@@ -209,10 +163,7 @@ function coefficientData(entries, all) {
       `Los coeficientes suman ${(sum / 10000).toFixed(4)} %. Deben sumar 100 %. Revisá los inmuebles.`,
     );
   return Object.fromEntries(
-    entries.map((entry) => [
-      entry.property.id,
-      Math.round((entry.weight / sum) * 1000000) / 10000,
-    ]),
+    entries.map((entry) => [entry.property.id, Math.round((entry.weight / sum) * 1000000) / 10000]),
   );
 }
 
@@ -220,14 +171,8 @@ function readingData(entries, input) {
   const readings = {};
   for (const entry of entries) {
     const item = input.readings?.[entry.property.id];
-    const previous = readingValue(
-      item?.previous,
-      `${entry.property.plot}: lectura anterior`,
-    );
-    const current = readingValue(
-      item?.current,
-      `${entry.property.plot}: lectura actual`,
-    );
+    const previous = readingValue(item?.previous, `${entry.property.plot}: lectura anterior`);
+    const current = readingValue(item?.current, `${entry.property.plot}: lectura actual`);
     if (current < previous)
       throw problem(
         `${entry.property.plot}: la lectura actual no puede ser menor que la anterior.`,
@@ -250,26 +195,18 @@ function proportional(total, entries, label) {
 export function saveService(communityId, input, actor, id = "") {
   feeCommunity(communityId);
   const service = input.service;
-  if (!Object.hasOwn(serviceLabels, service))
-    throw problem("Tipo de suministro no válido.");
+  if (!Object.hasOwn(serviceLabels, service)) throw problem("Tipo de suministro no válido.");
   const supplier = text(input.supplier, "el proveedor", 120);
-  const invoiceNumber = text(
-    input.invoiceNumber,
-    "el número de factura",
-    80,
-  );
+  const invoiceNumber = text(input.invoiceNumber, "el número de factura", 80);
   const period = parsePeriod(input.period);
-  if (!validDate(input.issueDate))
-    throw problem("La fecha de factura no es válida.");
-  if (!validDate(input.dueDate))
-    throw problem("El vencimiento no es válido.");
+  if (!validDate(input.issueDate)) throw problem("La fecha de factura no es válida.");
+  if (!validDate(input.dueDate)) throw problem("El vencimiento no es válido.");
   if (input.dueDate < input.issueDate)
     throw problem("El vencimiento no puede ser anterior a la fecha de factura.");
   const totalAmount = money(input.totalAmount, "El importe total");
   if (!Object.hasOwn(serviceBillings, input.billing))
     throw problem("Modo de facturación no válido.");
-  if (!Object.hasOwn(serviceMethods, input.method))
-    throw problem("Criterio de reparto no válido.");
+  if (!Object.hasOwn(serviceMethods, input.method)) throw problem("Criterio de reparto no válido.");
   const billing = input.billing;
   const method = input.method;
   const legalBasis = text(input.legalBasis, "la base legal", 300);
@@ -277,36 +214,22 @@ export function saveService(communityId, input, actor, id = "") {
   const centralHeating = input.centralHeating === true;
   let variableShare = 0;
   if (method === "mixed") {
-    variableShare = integer(
-      Number(input.variableShare),
-      1,
-      99,
-      "Porcentaje de la parte variable",
-    );
+    variableShare = integer(Number(input.variableShare), 1, 99, "Porcentaje de la parte variable");
   }
-  const { all, selected, entries } = selectedChargeProperties(
-    communityId,
-    input,
-  );
+  const { all, selected, entries } = selectedChargeProperties(communityId, input);
   const coefficients = {},
     effectiveCoefficients = {};
   if (method === "coefficient" || method === "mixed") {
     const effective = coefficientData(entries, all);
     for (const entry of entries) {
-      coefficients[entry.property.id] =
-        entry.property.participationCoef;
-      effectiveCoefficients[entry.property.id] =
-        effective[entry.property.id];
+      coefficients[entry.property.id] = entry.property.participationCoef;
+      effectiveCoefficients[entry.property.id] = effective[entry.property.id];
     }
   } else {
-    for (const entry of entries)
-      coefficients[entry.property.id] = entry.property.participationCoef;
+    for (const entry of entries) coefficients[entry.property.id] = entry.property.participationCoef;
   }
 
-  const readings =
-      method === "reading" || method === "mixed"
-        ? readingData(entries, input)
-        : {};
+  const readings = method === "reading" || method === "mixed" ? readingData(entries, input) : {};
   const allocations = {},
     fixedParts = new Map(),
     variableParts = new Map(),
@@ -324,21 +247,14 @@ export function saveService(communityId, input, actor, id = "") {
   } else if (method === "manual") {
     let sum = 0;
     for (const entry of entries) {
-      const amount = money(
-        input.manual?.[entry.property.id],
-        `Importe de ${entry.property.plot}`,
-      );
+      const amount = money(input.manual?.[entry.property.id], `Importe de ${entry.property.plot}`);
       allocations[entry.property.id] = amount;
       sum += amount;
     }
     if (sum !== totalAmount)
-      throw problem(
-        "La suma de importes por inmueble debe coincidir con el total de la factura.",
-      );
+      throw problem("La suma de importes por inmueble debe coincidir con el total de la factura.");
   } else if (method === "reading") {
-    const withConsumption = entries.filter(
-      (entry) => readings[entry.property.id].consumption > 0,
-    );
+    const withConsumption = entries.filter((entry) => readings[entry.property.id].consumption > 0);
     for (const entry of entries)
       if (!readings[entry.property.id].consumption) {
         omitted.push({
@@ -346,9 +262,7 @@ export function saveService(communityId, input, actor, id = "") {
           plot: entry.property.plot,
           reason: "Sin consumo en el periodo",
         });
-        warnings.push(
-          `${entry.property.plot}: sin consumo; no se genera recibo de este servicio.`,
-        );
+        warnings.push(`${entry.property.plot}: sin consumo; no se genera recibo de este servicio.`);
       }
     for (const entry of proportional(
       totalAmount,
@@ -372,9 +286,7 @@ export function saveService(communityId, input, actor, id = "") {
       throw problem(
         "El importe es demasiado bajo para separar la parte fija y la variable. Ajustá el total o el porcentaje.",
       );
-    const withConsumption = entries.filter(
-      (entry) => readings[entry.property.id].consumption > 0,
-    );
+    const withConsumption = entries.filter((entry) => readings[entry.property.id].consumption > 0);
     if (!withConsumption.length)
       throw problem(
         "Todas las lecturas tienen consumo cero: no se puede repartir la parte variable.",
@@ -404,9 +316,7 @@ export function saveService(communityId, input, actor, id = "") {
       }
       allocations[entry.property.id] = amount;
       if (!readings[entry.property.id].consumption)
-        warnings.push(
-          `${entry.property.plot}: sin consumo; solo paga la parte fija del servicio.`,
-        );
+        warnings.push(`${entry.property.plot}: sin consumo; solo paga la parte fija del servicio.`);
     }
   }
 
@@ -414,11 +324,7 @@ export function saveService(communityId, input, actor, id = "") {
     warnings.push(
       "Este reparto no es por coeficiente. Registrá la base legal o el acuerdo de Junta que lo autoriza.",
     );
-  if (
-    method === "mixed" &&
-    centralHeating &&
-    (variableShare < 60 || variableShare > 75)
-  )
+  if (method === "mixed" && centralHeating && (variableShare < 60 || variableShare > 75))
     warnings.push(
       `La parte variable es el ${variableShare} %. Para calefacción o refrigeración centralizada, el RD 736/2020 recomienda entre el 60 % y el 75 %.`,
     );
@@ -429,19 +335,18 @@ export function saveService(communityId, input, actor, id = "") {
       const reading = readings[entry.property.id];
       const amount = allocations[entry.property.id];
       const fixed =
-        method === "mixed" ? fixedParts.get(entry.property.id) || 0 : method === "reading" ? 0 : amount;
+        method === "mixed"
+          ? fixedParts.get(entry.property.id) || 0
+          : method === "reading"
+            ? 0
+            : amount;
       const variable =
-        method === "reading" || method === "mixed"
-          ? variableParts.get(entry.property.id) || 0
-          : 0;
+        method === "reading" || method === "mixed" ? variableParts.get(entry.property.id) || 0 : 0;
       return {
         propertyId: entry.property.id,
         plot: entry.property.plot || entry.property.address,
-        coefficient:
-          effectiveCoefficients[entry.property.id] ??
-          entry.property.participationCoef,
-        effectiveCoefficient:
-          effectiveCoefficients[entry.property.id] ?? null,
+        coefficient: effectiveCoefficients[entry.property.id] ?? entry.property.participationCoef,
+        effectiveCoefficient: effectiveCoefficients[entry.property.id] ?? null,
         previous: reading?.previous ?? null,
         current: reading?.current ?? null,
         consumption: reading?.consumption ?? null,
@@ -464,9 +369,7 @@ export function saveService(communityId, input, actor, id = "") {
     readings,
     allocations,
     fixedAmount:
-      method === "mixed"
-        ? [...fixedParts.values()].reduce((sum, value) => sum + value, 0)
-        : null,
+      method === "mixed" ? [...fixedParts.values()].reduce((sum, value) => sum + value, 0) : null,
     variableAmount:
       method === "mixed"
         ? [...variableParts.values()].reduce((sum, value) => sum + value, 0)
@@ -489,18 +392,13 @@ export function saveService(communityId, input, actor, id = "") {
       if (row.cancelledAt) throw problem("El servicio está anulado.", 409);
       if (
         row.issuedAt ||
-        db
-          .prepare(
-            "SELECT 1 FROM fee_receipts WHERE serviceBillId=? LIMIT 1",
-          )
-          .get(id)
+        db.prepare("SELECT 1 FROM fee_receipts WHERE serviceBillId=? LIMIT 1").get(id)
       )
         throw problem(
           "El servicio ya fue emitido o repartido. Para cambiarlo, anulalo y creá uno nuevo.",
           409,
         );
-      if (data.reminders === null)
-        data.reminders = JSON.parse(row.data).reminders || {};
+      if (data.reminders === null) data.reminders = JSON.parse(row.data).reminders || {};
       db.prepare(
         `UPDATE service_bills SET service=?,supplier=?,invoiceNumber=?,period=?,issueDate=?,dueDate=?,totalAmount=?,data=? WHERE id=?`,
       ).run(
@@ -591,9 +489,7 @@ export function informativeServicesFor(ownerIds, communityId = "") {
     const data = payload(row);
     if (data.billing !== "informative") continue;
     const included = new Set(data.propertyIds || []),
-      breakdown = new Map(
-        (data.breakdown || []).map((item) => [item.propertyId, item]),
-      ),
+      breakdown = new Map((data.breakdown || []).map((item) => [item.propertyId, item])),
       mine = properties.filter(
         (property) =>
           property.communityId === row.communityId &&
@@ -651,9 +547,7 @@ export function informativeServicesFor(ownerIds, communityId = "") {
 export function serviceView(row, date = today()) {
   const data = payload(row),
     receipts = db
-      .prepare(
-        "SELECT * FROM fee_receipts WHERE serviceBillId=? ORDER BY propertyId",
-      )
+      .prepare("SELECT * FROM fee_receipts WHERE serviceBillId=? ORDER BY propertyId")
       .all(row.id),
     active = receipts
       .filter((receipt) => !receipt.cancelledAt)
@@ -687,8 +581,7 @@ export function serviceView(row, date = today()) {
     cancelledAt: row.cancelledAt,
     cancellationReason: row.cancellationReason,
     concept: serviceConcept(row),
-    canEdit:
-      !row.cancelledAt && !row.issuedAt && receipts.length === 0,
+    canEdit: !row.cancelledAt && !row.issuedAt && receipts.length === 0,
     method: data.method,
     billing: data.billing,
     variableShare: data.variableShare,
@@ -726,9 +619,7 @@ export function serviceDetail(row, date = today()) {
   return {
     ...serviceView(row, date),
     receipts: db
-      .prepare(
-        "SELECT * FROM fee_receipts WHERE serviceBillId=? ORDER BY propertyId",
-      )
+      .prepare("SELECT * FROM fee_receipts WHERE serviceBillId=? ORDER BY propertyId")
       .all(row.id)
       .map((receipt) => receiptView(receipt, date)),
     attachments: serviceAttachments(row.id),
@@ -739,24 +630,17 @@ export function previewService(id) {
   const row = serviceBillById(id);
   feeCommunity(row.communityId);
   if (row.cancelledAt) throw problem("El servicio está anulado.", 409);
-  if (row.issuedAt)
-    throw problem("El servicio ya fue emitido o repartido.", 409);
+  if (row.issuedAt) throw problem("El servicio ya fue emitido o repartido.", 409);
   const data = payload(row);
   const { entries } = selectedChargeProperties(row.communityId, {
     propertyIds: data.propertyIds,
   });
-  const community = db
-    .prepare("SELECT name,iban FROM communities WHERE id=?")
-    .get(row.communityId);
+  const community = db.prepare("SELECT name,iban FROM communities WHERE id=?").get(row.communityId);
   const omitted = new Set((data.omitted || []).map((item) => item.propertyId));
-  const breakdown = new Map(
-    (data.breakdown || []).map((item) => [item.propertyId, item]),
-  );
+  const breakdown = new Map((data.breakdown || []).map((item) => [item.propertyId, item]));
   const warnings = [...(data.warnings || [])];
   if (row.dueDate < today())
-    warnings.push(
-      `El vencimiento ${row.dueDate} ya pasó; los recibos se emitirán vencidos.`,
-    );
+    warnings.push(`El vencimiento ${row.dueDate} ya pasó; los recibos se emitirán vencidos.`);
   if (data.method !== "coefficient" && !data.legalBasis)
     warnings.push(
       "Este reparto no es por coeficiente. Registrá la base legal o el acuerdo de Junta que lo autoriza.",
@@ -766,9 +650,7 @@ export function previewService(id) {
     const amount = data.allocations?.[entry.property.id];
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       if (omitted.has(entry.property.id)) continue;
-      throw problem(
-        `${entry.property.plot}: falta su importe en el reparto del servicio.`,
-      );
+      throw problem(`${entry.property.plot}: falta su importe en el reparto del servicio.`);
     }
     const item = breakdown.get(entry.property.id) || {},
       reading = data.readings?.[entry.property.id] || null;
@@ -802,13 +684,10 @@ export function previewService(id) {
       },
     });
   }
-  if (!rows.length)
-    throw problem("El reparto no incluye ningún inmueble con importe.");
+  if (!rows.length) throw problem("El reparto no incluye ningún inmueble con importe.");
   const total = rows.reduce((sum, item) => sum + item.amount, 0);
   if (total !== row.totalAmount)
-    throw problem(
-      "No se pudo repartir el importe de la factura. Revisá los importes.",
-    );
+    throw problem("No se pudo repartir el importe de la factura. Revisá los importes.");
   const result = {
     serviceId: row.id,
     serviceLabel: serviceLabels[row.service] || row.service,
@@ -823,10 +702,7 @@ export function previewService(id) {
   };
   return {
     ...result,
-    token: crypto
-      .createHash("sha256")
-      .update(JSON.stringify(result))
-      .digest("hex"),
+    token: crypto.createHash("sha256").update(JSON.stringify(result)).digest("hex"),
   };
 }
 
@@ -834,19 +710,12 @@ export function issueService(id, input, actor) {
   return transaction(() => {
     const row = serviceBillById(id);
     if (!canManage(actor, row.communityId))
-      throw problem(
-        "No tenés permiso para emitir servicios de esta comunidad.",
-        403,
-      );
+      throw problem("No tienes permiso para emitir servicios de esta comunidad.", 403);
     if (row.cancelledAt) throw problem("El servicio está anulado.", 409);
-    if (row.issuedAt)
-      throw problem("El servicio ya fue emitido o repartido.", 409);
+    if (row.issuedAt) throw problem("El servicio ya fue emitido o repartido.", 409);
     const batch = previewService(id);
     if (input.token !== batch.token)
-      throw problem(
-        "Los datos cambiaron. Volvé a revisar la vista previa antes de emitir.",
-        409,
-      );
+      throw problem("Los datos cambiaron. Volvé a revisar la vista previa antes de emitir.", 409);
     const ids = [];
     if (batch.billing === "receipts")
       for (const item of batch.rows) {
@@ -880,10 +749,7 @@ export function issueService(id, input, actor) {
           }`,
         );
       }
-    db.prepare("UPDATE service_bills SET issuedAt=? WHERE id=?").run(
-      now(),
-      row.id,
-    );
+    db.prepare("UPDATE service_bills SET issuedAt=? WHERE id=?").run(now(), row.id);
     audit(actor, "issue", row.id, {
       communityId: row.communityId,
       billing: batch.billing,
@@ -900,34 +766,29 @@ export function issueService(id, input, actor) {
 }
 
 export function cancelService(id, input, actor) {
-  const note =
-    typeof input.reason === "string" ? input.reason.trim() : "";
-  if (!note || note.length > 500)
-    throw problem("Indicá el motivo (máximo 500 caracteres).");
+  const note = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (!note || note.length > 500) throw problem("Indicá el motivo (máximo 500 caracteres).");
   return transaction(() => {
     const row = serviceBillById(id);
     if (!canManage(actor, row.communityId))
-      throw problem(
-        "No tenés permiso para anular servicios de esta comunidad.",
-        403,
-      );
+      throw problem("No tienes permiso para anular servicios de esta comunidad.", 403);
     if (row.cancelledAt) throw problem("El servicio ya está anulado.", 409);
     const receipts = db
-      .prepare(
-        "SELECT * FROM fee_receipts WHERE serviceBillId=? AND cancelledAt=''",
-      )
+      .prepare("SELECT * FROM fee_receipts WHERE serviceBillId=? AND cancelledAt=''")
       .all(id);
     for (const receipt of receipts)
       if (receiptView(receipt).paid > 0)
         throw problem(
-          "Hay cobros aplicados a este servicio. Revertí primero los cobros y volvé a intentar.",
+          "Hay cobros aplicados a este servicio. Revierte primero los cobros y vuelve a intentarlo.",
           409,
         );
     const cancelledAt = now();
     for (const receipt of receipts) {
-      db.prepare(
-        "UPDATE fee_receipts SET cancelledAt=?,cancellationReason=? WHERE id=?",
-      ).run(cancelledAt, note, receipt.id);
+      db.prepare("UPDATE fee_receipts SET cancelledAt=?,cancellationReason=? WHERE id=?").run(
+        cancelledAt,
+        note,
+        receipt.id,
+      );
       notify(
         receiptById(receipt.id),
         "cancelled",
@@ -936,9 +797,11 @@ export function cancelService(id, input, actor) {
         `Se anuló el servicio de ${serviceLabels[row.service] || row.service} · ${row.period} de ${JSON.parse(receipt.snapshot).property}. Motivo: ${note}`,
       );
     }
-    db.prepare(
-      "UPDATE service_bills SET cancelledAt=?,cancellationReason=? WHERE id=?",
-    ).run(cancelledAt, note, row.id);
+    db.prepare("UPDATE service_bills SET cancelledAt=?,cancellationReason=? WHERE id=?").run(
+      cancelledAt,
+      note,
+      row.id,
+    );
     audit(actor, "cancel", row.id, {
       communityId: row.communityId,
       count: receipts.length,
@@ -953,9 +816,7 @@ export function cancelService(id, input, actor) {
  * lectura anterior al cargar una nueva factura y evitar volver a escribirla.
  */
 export function lastServiceReadings(communityId) {
-  const result = Object.fromEntries(
-    Object.keys(serviceLabels).map((service) => [service, {}]),
-  );
+  const result = Object.fromEntries(Object.keys(serviceLabels).map((service) => [service, {}]));
   const rows = db
     .prepare(
       "SELECT * FROM service_bills WHERE communityId=? AND cancelledAt='' AND issuedAt<>'' ORDER BY issueDate DESC,createdAt DESC",
@@ -964,9 +825,7 @@ export function lastServiceReadings(communityId) {
   for (const row of rows) {
     const data = payload(row);
     if (!["reading", "mixed"].includes(data.method)) continue;
-    for (const [propertyId, reading] of Object.entries(
-      data.readings || {},
-    )) {
+    for (const [propertyId, reading] of Object.entries(data.readings || {})) {
       if (result[row.service][propertyId]) continue;
       result[row.service][propertyId] = {
         reading: reading.current,

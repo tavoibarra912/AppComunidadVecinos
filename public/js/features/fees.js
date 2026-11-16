@@ -1,22 +1,14 @@
 import { api } from "../api.js";
-import {
-  state,
-  getCurrentUser,
-  hasPermission,
-  refreshState,
-} from "../state.js";
+import { state, getCurrentUser, hasPermission, refreshState } from "../state.js";
 import { escapeHtml as esc, richTextHtml, htmlToText } from "../html.js";
 import { buildAssessmentEditor } from "./assessment-editor.js";
 import { buildServiceEditor } from "./service-editor.js";
 import { toast, hayCambiosSinGuardar } from "../utils.js";
 
 const money = (cents) =>
-  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
-    cents / 100,
-  );
+  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(cents / 100);
 const amount = (cents) => (cents / 100).toFixed(2);
-const date = (value) =>
-  value ? value.slice(0, 10).split("-").reverse().join("/") : "—";
+const date = (value) => (value ? value.slice(0, 10).split("-").reverse().join("/") : "—");
 const labels = {
   paid: "Pagado",
   partial: "Pago parcial",
@@ -100,19 +92,14 @@ function tabBar(parent, items, active, select, label) {
   });
   nav.addEventListener("keydown", (event) => {
     const index = controls.indexOf(event.target);
-    if (
-      index < 0 ||
-      !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
-    )
-      return;
+    if (index < 0 || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const next =
       event.key === "Home"
         ? 0
         : event.key === "End"
           ? controls.length - 1
-          : (index + (event.key === "ArrowRight" ? 1 : -1) + controls.length) %
-            controls.length;
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + controls.length) % controls.length;
     controls[next].click();
     parent.querySelector(`[role="tab"][data-tab="${items[next][0]}"]`)?.focus();
   });
@@ -126,17 +113,11 @@ let fieldSequence = 0,
   pageLoadedAt = "";
 export function feeNavigation() {
   const user = getCurrentUser();
-  const role = state.roles.find(
-    (r) => r.nombre === user?.rol || r.id === user?.rol,
-  );
+  const role = state.roles.find((r) => r.nombre === user?.rol || r.id === user?.rol);
   const staff =
-    !!user &&
-    role?.nombre !== "user" &&
-    (hasPermission("fee:read") || hasPermission("fee:manage"));
+    !!user && role?.nombre !== "user" && (hasPermission("fee:read") || hasPermission("fee:manage"));
   const personal =
-    !!user &&
-    hasPermission("fee:read") &&
-    state.owners.some((o) => o.userId === user.id);
+    !!user && hasPermission("fee:read") && state.owners.some((o) => o.userId === user.id);
   return {
     staff,
     personal,
@@ -149,15 +130,10 @@ export function mountFeeShortcut(root, kind, id) {
   root.replaceChildren();
   root.className = "fee-shortcut";
   if (!id || !feeNavigation().visible) return;
-  info(
-    root,
-    "Los recibos, cobros y pendientes se consultan en la pantalla de Cuotas.",
-  );
+  info(root, "Los recibos, cobros y pendientes se consultan en la pantalla de Cuotas.");
   const link = el(
     "a",
-    kind === "community"
-      ? "Abrir cuotas de esta comunidad"
-      : "Abrir cuotas del propietario",
+    kind === "community" ? "Abrir cuotas de esta comunidad" : "Abrir cuotas del propietario",
     "secondary-button",
   );
   const params = new URLSearchParams({
@@ -169,11 +145,7 @@ export function mountFeeShortcut(root, kind, id) {
     const parent = root.closest("dialog");
     if (parent?.open && hayCambiosSinGuardar(root.closest("form"))) {
       if (!root.querySelector(".fee-warning"))
-        info(
-          root,
-          "Guarda o descarta los cambios de la ficha antes de abrir Cuotas.",
-          true,
-        );
+        info(root, "Guarda o descarta los cambios de la ficha antes de abrir Cuotas.", true);
       return;
     }
     parent?.close();
@@ -194,13 +166,11 @@ export function renderFeesPage() {
   const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
   const communities = access.staff
     ? state.communities.filter(
-        (c) =>
-          hasPermission("fee:read", c.id) || hasPermission("fee:manage", c.id),
+        (c) => hasPermission("fee:read", c.id) || hasPermission("fee:manage", c.id),
       )
     : [];
   const owner = params.get("propietario");
-  const ownProfile =
-    owner && state.owners.some((o) => o.id === owner && o.userId === user.id);
+  const ownProfile = owner && state.owners.some((o) => o.id === owner && o.userId === user.id);
   const kind =
     owner && (access.staff || ownProfile)
       ? "owner"
@@ -213,8 +183,7 @@ export function renderFeesPage() {
     : requested && kind === "community"
       ? ""
       : communities[0]?.id || "";
-  const id =
-    kind === "community" ? communityId : kind === "owner" ? owner : user.id;
+  const id = kind === "community" ? communityId : kind === "owner" ? owner : user.id;
   const key = JSON.stringify([
     user.id,
     kind,
@@ -238,11 +207,7 @@ export function renderFeesPage() {
   const heading = el("div", undefined, "page-heading"),
     title = el("div");
   title.append(
-    el(
-      "p",
-      kind === "community" ? "GESTIÓN FINANCIERA" : "ÁREA DEL PROPIETARIO",
-      "eyebrow",
-    ),
+    el("p", kind === "community" ? "GESTIÓN FINANCIERA" : "ÁREA DEL PROPIETARIO", "eyebrow"),
     el(
       "h1",
       kind === "community"
@@ -277,8 +242,7 @@ export function renderFeesPage() {
       ],
     );
     view.addEventListener("change", () => {
-      window.location.hash =
-        view.value === "personal" ? "#cuotas?vista=personal" : "#cuotas";
+      window.location.hash = view.value === "personal" ? "#cuotas?vista=personal" : "#cuotas";
     });
   }
   if (access.staff && kind !== "mine") {
@@ -287,10 +251,7 @@ export function renderFeesPage() {
       kind === "community" ? "Comunidad" : "Gestionar cuotas de una comunidad",
       "select",
       kind === "community" ? communityId : "",
-      [
-        ["", "Elige una comunidad para gestionar"],
-        ...communities.map((c) => [c.id, c.name]),
-      ],
+      [["", "Elige una comunidad para gestionar"], ...communities.map((c) => [c.id, c.name])],
     );
     select.addEventListener("change", () => {
       if (select.value)
@@ -342,8 +303,7 @@ function validateDialog() {
     if (input.dataset.money !== undefined) {
       const text = input.value.trim();
       input.setCustomValidity(
-        /^\d{1,9}([.,]\d{1,2})?$/.test(text) &&
-          Number(text.replace(",", ".")) > 0
+        /^\d{1,9}([.,]\d{1,2})?$/.test(text) && Number(text.replace(",", ".")) > 0
           ? ""
           : "Introduce un importe positivo con un máximo de dos decimales.",
       );
@@ -366,18 +326,10 @@ function el(tag, text, className) {
   return node;
 }
 function button(text, action, primary = false) {
-  const node = el(
-    "button",
-    text,
-    primary ? "primary-button" : "secondary-button",
-  );
+  const node = el("button", text, primary ? "primary-button" : "secondary-button");
   node.type = "button";
   node.addEventListener("click", async () => {
-    if (
-      node.disabled ||
-      (node.closest("#fee-dialog") && dialog.dataset.busy === "true")
-    )
-      return;
+    if (node.disabled || (node.closest("#fee-dialog") && dialog.dataset.busy === "true")) return;
     const version = dialogVersion;
     if (node.closest("#fee-dialog") && primary && !validateDialog()) return;
     const mutation = !!node.closest("#fee-dialog") && primary;
@@ -390,8 +342,7 @@ function button(text, action, primary = false) {
     try {
       await action();
     } catch (error) {
-      if (!node.closest("#fee-dialog") || version === dialogVersion)
-        errorMessage(error.message);
+      if (!node.closest("#fee-dialog") || version === dialogVersion) errorMessage(error.message);
     } finally {
       node.disabled = node.dataset.feeDisabled === "true";
       if (mutation && version === dialogVersion) {
@@ -409,9 +360,7 @@ function ensureDialog() {
   dialog.id = "fee-dialog";
   dialog.setAttribute("aria-labelledby", "fee-dialog-title");
   dialog.innerHTML = `<div class="dialog-content fee-dialog-content"><div class="dialog-header"><h2 id="fee-dialog-title"></h2><button type="button" class="icon-action-btn btn-cancel btn-lg" data-fee-close aria-label="Cerrar" title="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons.close}</svg></button></div><p class="fee-error" data-fee-error role="alert" tabindex="-1" hidden></p><form id="fee-dialog-body" novalidate></form></div>`;
-  dialog
-    .querySelector("[data-fee-close]")
-    .addEventListener("click", () => dialog.close());
+  dialog.querySelector("[data-fee-close]").addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", () => {
     dialogVersion++;
     dialog.dataset.busy = "false";
@@ -427,9 +376,9 @@ function ensureDialog() {
       preferred.click();
       return;
     }
-    const actions = [
-      ...dialog.querySelectorAll("#fee-dialog-body .primary-button"),
-    ].filter((b) => !b.disabled && !b.closest("[hidden]"));
+    const actions = [...dialog.querySelectorAll("#fee-dialog-body .primary-button")].filter(
+      (b) => !b.disabled && !b.closest("[hidden]"),
+    );
     if (actions.length === 1) actions[0].click();
   });
   dialog.addEventListener("keydown", (event) => {
@@ -483,11 +432,7 @@ function field(parent, label, type = "text", value = "", options = []) {
   if (type === "number") input.step = "1";
   input.id = `fee-field-${++fieldSequence}`;
   if (type === "checkbox") wrap.htmlFor = input.id;
-  const caption = el(
-    type === "checkbox" ? "span" : "label",
-    label,
-    "fee-field-label",
-  );
+  const caption = el(type === "checkbox" ? "span" : "label", label, "fee-field-label");
   if (type !== "checkbox") caption.htmlFor = input.id;
   wrap.append(...(type === "checkbox" ? [input, caption] : [caption, input]));
   input.addEventListener("input", () => {
@@ -529,9 +474,8 @@ function guide(root, data, manage) {
     ? Math.max(1, Math.round(12 / Math.max(1, Number(plan.months) || 1)))
     : 0;
   const periodLabel =
-    { 1: "mensual", 3: "trimestral", 6: "semestral", 12: "anual" }[
-      Number(plan?.months)
-    ] || `cada ${plan?.months || 1} meses`;
+    { 1: "mensual", 3: "trimestral", 6: "semestral", 12: "anual" }[Number(plan?.months)] ||
+    `cada ${plan?.months || 1} meses`;
   const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
   const steps = [
     {
@@ -606,9 +550,7 @@ function panelTitle(kind, id) {
     ? "Mis cuotas"
     : kind === "community"
       ? "Cuotas ordinarias de la comunidad"
-      : state.owners.some(
-            (o) => o.id === id && o.userId === getCurrentUser()?.id,
-          )
+      : state.owners.some((o) => o.id === id && o.userId === getCurrentUser()?.id)
         ? "Mis cuotas"
         : "Cuotas del propietario";
 }
@@ -638,9 +580,7 @@ async function reloadAll() {
   await Promise.all(
     [...contexts.entries()]
       .filter(
-        ([root]) =>
-          root.isConnected &&
-          (!root.closest("dialog") || root.closest("dialog").open),
+        ([root]) => root.isConnected && (!root.closest("dialog") || root.closest("dialog").open),
       )
       .map(([root, ctx]) => load(root, ctx)),
   );
@@ -662,8 +602,7 @@ export function mountFees(root, kind, id, options = {}) {
     page: 1,
     pageSize: 10,
   };
-  for (const node of contexts.keys())
-    if (!node.isConnected) contexts.delete(node);
+  for (const node of contexts.keys()) if (!node.isConnected) contexts.delete(node);
   contexts.set(root, ctx);
   root.classList.add("fee-panel");
   root.classList.toggle("fee-panel-standalone", !!options.standalone);
@@ -713,9 +652,7 @@ function renderPanel(root, ctx) {
   });
   const feeCurrency =
     ctx.kind === "community"
-      ? (state.communities.find((c) => c.id === ctx.id)?.currency || "EUR")
-          .trim()
-          .toUpperCase()
+      ? (state.communities.find((c) => c.id === ctx.id)?.currency || "EUR").trim().toUpperCase()
       : "EUR";
   const canConfigure = feeCurrency === "EUR";
   root.replaceChildren();
@@ -745,27 +682,14 @@ function renderPanel(root, ctx) {
   }
   if ((!assessmentTab && !serviceTab) || !manage)
     root.append(
-      el(
-        "h3",
-        serviceTab
-          ? "Servicios"
-          : assessmentTab
-            ? "Derramas"
-            : "Cuotas ordinarias",
-      ),
+      el("h3", serviceTab ? "Servicios" : assessmentTab ? "Derramas" : "Cuotas ordinarias"),
     );
   const tools = el("div", undefined, "fee-toolbar");
   if (!assessmentTab && !serviceTab && ctx.kind === "community" && canConfigure)
     guide(root, data, manage);
   if (ctx.kind === "community" && data.canManage) {
     if (canConfigure && !assessmentTab && !serviceTab)
-      tools.append(
-        button(
-          "1 · Configurar acuerdo",
-          () => configuration(ctx),
-          !data.plans.length,
-        ),
-      );
+      tools.append(button("1 · Configurar acuerdo", () => configuration(ctx), !data.plans.length));
     if (manage) {
       if (canConfigure && !assessmentTab && !serviceTab) {
         const emit = button("2 · Emitir recibos", () => emission(ctx), true);
@@ -784,8 +708,7 @@ function renderPanel(root, ctx) {
   }
   tools.append(button("Actualizar", () => load(root, ctx)));
   root.append(tools);
-  if (!assessmentTab && !serviceTab && !manage)
-    informativeServiceNotice(root, ctx, data);
+  if (!assessmentTab && !serviceTab && !manage) informativeServiceNotice(root, ctx, data);
   if (ctx.kind === "community" && data.canManage && !canConfigure)
     info(
       root,
@@ -802,30 +725,15 @@ function renderPanel(root, ctx) {
   if (manage && canConfigure && !data.properties.length)
     info(
       root,
-      "Asocia inmuebles con sus titulares a esta comunidad antes de emitir cuotas o repartir servicios."
+      "Asocia inmuebles con sus titulares a esta comunidad antes de emitir cuotas o repartir servicios.",
     );
-  if (
-    assessmentTab &&
-    ctx.kind === "community" &&
-    data.canManage &&
-    canConfigure &&
-    !ctx.readonly
-  )
+  if (assessmentTab && ctx.kind === "community" && data.canManage && canConfigure && !ctx.readonly)
     assessmentSection(root, ctx);
-  if (
-    serviceTab &&
-    ctx.kind === "community" &&
-    data.canManage &&
-    canConfigure &&
-    !ctx.readonly
-  )
+  if (serviceTab && ctx.kind === "community" && data.canManage && canConfigure && !ctx.readonly)
     serviceSection(root, ctx);
   if (serviceTab && !manage) informativeServiceSection(root, data);
   if (assessmentTab && manage && !receipts.length) {
-    info(
-      root,
-      "Los recibos de derramas aparecerán aquí cuando emitas el primer plazo.",
-    );
+    info(root, "Los recibos de derramas aparecerán aquí cuando emitas el primer plazo.");
     return;
   }
   if (serviceTab && manage && !receipts.length) {
@@ -837,7 +745,7 @@ function renderPanel(root, ctx) {
   }
   if (serviceTab && !manage && !receipts.length) {
     if (!(data.informativeServices || []).length)
-      info(root, "No tenés recibos ni repartos informativos de servicios.");
+      info(root, "No tienes recibos ni repartos informativos de servicios.");
     return;
   }
   const filters = el("div", undefined, "fee-filters");
@@ -849,9 +757,7 @@ function renderPanel(root, ctx) {
   root.append(filters);
   if (ctx.kind === "owner" || ctx.kind === "mine") {
     const communities = [
-      ...new Map(
-        receipts.map((r) => [r.communityId, r.snapshot.community]),
-      ).entries(),
+      ...new Map(receipts.map((r) => [r.communityId, r.snapshot.community])).entries(),
     ];
     if (communities.length > 1) {
       const community = field(filters, "Comunidad", "select", ctx.community, [
@@ -1034,20 +940,12 @@ function renderPanel(root, ctx) {
     history.append(el("summary", "Historial de cobros y devoluciones"));
     history.append(
       table(
-        [
-          "Fecha / pagador",
-          "Importe",
-          "Forma / referencia",
-          "Estado",
-          "Acción",
-        ],
+        ["Fecha / pagador", "Importe", "Forma / referencia", "Estado", "Acción"],
         data.payments.map((p) => [
           `${esc(date(p.paidOn))}<small>${esc(ownerName(p.ownerId, data))}</small>`,
           money(p.amount),
           `${esc(methods[p.method])}<small>${esc(p.reference)}</small>`,
-          p.reversedAt
-            ? `Devuelto<small>${esc(p.reversalReason)}</small>`
-            : "Registrado",
+          p.reversedAt ? `Devuelto<small>${esc(p.reversalReason)}</small>` : "Registrado",
           p.reversedAt
             ? "—"
             : button("Revertir / devolver", () =>
@@ -1077,9 +975,7 @@ function parseMoneyInput(value) {
   const text = String(value ?? "")
     .trim()
     .replace(",", ".");
-  return /^\d{1,9}(\.\d{1,2})?$/.test(text)
-    ? Math.round(Number(text) * 100)
-    : null;
+  return /^\d{1,9}(\.\d{1,2})?$/.test(text) ? Math.round(Number(text) * 100) : null;
 }
 function parseReadingInput(value) {
   const text = String(value ?? "")
@@ -1107,8 +1003,7 @@ function assessmentStatus(a) {
 }
 function installmentStatus(installment) {
   const label = installmentLabels[installment.status] || installment.status;
-  const overdue =
-    installment.status === "partial" && installment.dueDate < madridDate();
+  const overdue = installment.status === "partial" && installment.dueDate < madridDate();
   return `<span class="fee-status fee-status-${esc(installment.status)}">${esc(label)}</span>${overdue ? '<span class="fee-status fee-status-overdue">Vencido</span>' : ""}${installment.cancellationReason ? `<small>${esc(installment.cancellationReason)}</small>` : ""}`;
 }
 function assessmentSection(root, ctx) {
@@ -1135,7 +1030,7 @@ function assessmentSection(root, ctx) {
   if (!list.length)
     info(
       section,
-      "Todavía no hay derramas. Creá una para aprobar un gasto extraordinario y emitir sus plazos.",
+      "Todavía no hay derramas. Crea una para aprobar un gasto extraordinario y emitir sus plazos.",
     );
   else
     section.append(
@@ -1225,11 +1120,7 @@ async function showAssessment(id) {
       overview.append(purpose);
     }
     if (a.cancelledAt)
-      info(
-        overview,
-        `Anulada el ${date(a.cancelledAt)}. Motivo: ${a.cancellationReason}`,
-        true,
-      );
+      info(overview, `Anulada el ${date(a.cancelledAt)}. Motivo: ${a.cancellationReason}`, true);
     const totals = el("div", undefined, "fee-summary");
     for (const [label, value] of [
       ["Total", a.totals.total],
@@ -1252,15 +1143,10 @@ async function showAssessment(id) {
       overview.append(
         button("Editar derrama", async () => {
           const current = dialogVersion;
-          const data = await api.fees(
-            `/communities/${encodeURIComponent(a.communityId)}`,
-          );
+          const data = await api.fees(`/communities/${encodeURIComponent(a.communityId)}`);
           if (current === dialogVersion && dialog.open) {
             const ctx = [...contexts.values()].find(
-              (ctx) =>
-                ctx.kind === "community" &&
-                ctx.id === a.communityId &&
-                ctx.root.isConnected,
+              (ctx) => ctx.kind === "community" && ctx.id === a.communityId && ctx.root.isConnected,
             );
             if (ctx) {
               ctx.data = data;
@@ -1273,16 +1159,7 @@ async function showAssessment(id) {
     schedule.append(el("h3", "Plazos"));
     schedule.append(
       table(
-        [
-          "Plazo",
-          "Vencimiento",
-          "Importe",
-          "Emitido",
-          "Cobrado",
-          "Pendiente",
-          "Estado",
-          "Acción",
-        ],
+        ["Plazo", "Vencimiento", "Importe", "Emitido", "Cobrado", "Pendiente", "Estado", "Acción"],
         a.installments.map((installment) => {
           const actions = el("div", undefined, "fee-row-actions");
           if (installment.status === "pending" && !a.cancelledAt)
@@ -1291,22 +1168,17 @@ async function showAssessment(id) {
                 assessmentEmission(a.id, installment.number),
               ),
             );
-          if (
-            !a.cancelledAt &&
-            installment.status !== "cancelled" &&
-            installment.paid === 0
-          )
+          if (!a.cancelledAt && installment.status !== "cancelled" && installment.paid === 0)
             actions.append(
               button("Anular plazo", () =>
                 reasonDialog(
                   `Anular plazo ${installment.number}`,
                   "El plazo quedará anulado y no podrá emitirse. Se anularán sus recibos si ya se emitieron. Si hay cobros aplicados, primero revertilos.",
                   async (reason) => {
-                    await api.fees(
-                      `/assessments/${encodeURIComponent(a.id)}/cancel`,
-                      "POST",
-                      { reason, installment: installment.number },
-                    );
+                    await api.fees(`/assessments/${encodeURIComponent(a.id)}/cancel`, "POST", {
+                      reason,
+                      installment: installment.number,
+                    });
                     dialog.close();
                     await reloadAll();
                     showAssessment(a.id);
@@ -1331,15 +1203,7 @@ async function showAssessment(id) {
       receipts.append(el("h3", "Recibos generados"));
       receipts.append(
         table(
-          [
-            "Inmueble",
-            "Titulares",
-            "Importe",
-            "Cobrado",
-            "Pendiente",
-            "Estado",
-            "Acción",
-          ],
+          ["Inmueble", "Titulares", "Importe", "Cobrado", "Pendiente", "Estado", "Acción"],
           a.receipts.map((r) => [
             `${esc(r.snapshot.property)}<small>Plazo ${r.installment}</small>`,
             esc(r.snapshot.owners.map((o) => o.name).join(", ")),
@@ -1352,13 +1216,12 @@ async function showAssessment(id) {
         ),
       );
     }
-    if (!a.receipts.length)
-      info(receipts, "Todavía no hay recibos emitidos de esta derrama.");
+    if (!a.receipts.length) info(receipts, "Todavía no hay recibos emitidos de esta derrama.");
     if (!a.cancelledAt) {
       if (a.totals.paid > 0)
         info(
           body,
-          "Para anular la derrama completa primero revertí los cobros aplicados. También podés anular un plazo sin cobros.",
+          "Para anular la derrama completa primero revierte los cobros aplicados. También puedes anular un plazo sin cobros.",
           true,
         );
       const cancel = button("Anular derrama completa", () =>
@@ -1366,11 +1229,7 @@ async function showAssessment(id) {
           "Anular derrama completa",
           "Se anularán todos los recibos activos de la derrama. Los cobros aplicados bloquean esta acción.",
           async (reason) => {
-            await api.fees(
-              `/assessments/${encodeURIComponent(a.id)}/cancel`,
-              "POST",
-              { reason },
-            );
+            await api.fees(`/assessments/${encodeURIComponent(a.id)}/cancel`, "POST", { reason });
             dialog.close();
             await reloadAll();
             showAssessment(a.id);
@@ -1392,11 +1251,9 @@ async function assessmentEmission(id, number) {
     version = dialogVersion;
   info(body, "Calculando la vista previa del plazo…");
   try {
-    const batch = await api.fees(
-      `/assessments/${encodeURIComponent(id)}/preview`,
-      "POST",
-      { installment: number },
-    );
+    const batch = await api.fees(`/assessments/${encodeURIComponent(id)}/preview`, "POST", {
+      installment: number,
+    });
     if (version !== dialogVersion || !dialog.open) return;
     body.replaceChildren();
     body.append(
@@ -1425,16 +1282,13 @@ async function assessmentEmission(id, number) {
       button(
         "Confirmar emisión del plazo",
         async () => {
-          await api.fees(
-            `/assessments/${encodeURIComponent(id)}/issue`,
-            "POST",
-            { installment: number, token: batch.token },
-          );
+          await api.fees(`/assessments/${encodeURIComponent(id)}/issue`, "POST", {
+            installment: number,
+            token: batch.token,
+          });
           dialog.close();
           await reloadAll();
-          toast(
-            `Plazo ${number} emitido. Los recibos ya están disponibles para los propietarios.`,
-          );
+          toast(`Plazo ${number} emitido. Los recibos ya están disponibles para los propietarios.`);
           showAssessment(id);
         },
         true,
@@ -1474,28 +1328,18 @@ function serviceSection(root, ctx) {
   if (!list.length)
     info(
       section,
-      "Todavía no hay servicios. Creá una factura para repartir su importe entre los inmuebles.",
+      "Todavía no hay servicios. Crea una factura para repartir su importe entre los inmuebles.",
     );
   else
     section.append(
       table(
-        [
-          "Servicio",
-          "Periodo / vencimiento",
-          "Total",
-          "Reparto",
-          "Recibos",
-          "Estado",
-          "Acción",
-        ],
+        ["Servicio", "Periodo / vencimiento", "Total", "Reparto", "Recibos", "Estado", "Acción"],
         list.map((service) => [
           `<strong>${esc(service.serviceLabel)}</strong><small>${esc(service.supplier || service.invoiceNumber || service.concept)}</small>`,
           `${esc(service.period)}<small>Vence ${esc(date(service.dueDate))}</small>`,
           money(service.totalAmount),
           `${esc(serviceMethods[service.method] || service.method)}<small>${esc(serviceBillings[service.billing] || service.billing)}</small>`,
-          service.billing === "informative"
-            ? "Solo reparto"
-            : String(service.receiptCount),
+          service.billing === "informative" ? "Solo reparto" : String(service.receiptCount),
           serviceStatus(service),
           button("Abrir servicio", () => showService(service.id)),
         ]),
@@ -1539,10 +1383,7 @@ function serviceRowsTable(items, method) {
       const previous = item.previous ?? item.reading?.previous,
         current = item.current ?? item.reading?.current,
         consumption = item.consumption ?? item.reading?.consumption,
-        coefficient =
-          item.effectiveCoefficient ??
-          item.snapshot?.coefficient ??
-          item.coefficient,
+        coefficient = item.effectiveCoefficient ?? item.snapshot?.coefficient ?? item.coefficient,
         row = [
           esc(item.plot || item.snapshot?.property || ""),
           coefficient === null || coefficient === undefined
@@ -1551,18 +1392,13 @@ function serviceRowsTable(items, method) {
         ];
       if (reading)
         row.push(
-          previous === null || previous === undefined
-            ? "—"
-            : `${formatReading(previous)} m³`,
-          current === null || current === undefined
-            ? "—"
-            : `${formatReading(current)} m³`,
+          previous === null || previous === undefined ? "—" : `${formatReading(previous)} m³`,
+          current === null || current === undefined ? "—" : `${formatReading(current)} m³`,
           consumption === null || consumption === undefined
             ? "—"
             : `${formatReading(consumption)} m³`,
         );
-      if (method === "mixed")
-        row.push(money(item.fixed || 0), money(item.variable || 0));
+      if (method === "mixed") row.push(money(item.fixed || 0), money(item.variable || 0));
       row.push(money(item.amount));
       return row;
     }),
@@ -1571,11 +1407,7 @@ function serviceRowsTable(items, method) {
 function informativeServiceSection(root, data) {
   const list = data.informativeServices || [];
   if (!list.length) return;
-  const section = el(
-    "section",
-    undefined,
-    "fee-services fee-informative-services",
-  );
+  const section = el("section", undefined, "fee-services fee-informative-services");
   const heading = el("div", undefined, "fee-section-heading"),
     copy = el("div");
   copy.append(
@@ -1592,10 +1424,7 @@ function informativeServiceSection(root, data) {
     table(
       ["Servicio", "Periodo", "Total factura", "Tu parte", "Adjuntos", "Acción"],
       list.map((service) => {
-        const mine = (service.properties || []).reduce(
-          (sum, property) => sum + property.amount,
-          0,
-        );
+        const mine = (service.properties || []).reduce((sum, property) => sum + property.amount, 0);
         return [
           `<strong>${esc(service.serviceLabel)}</strong><small>${esc(service.supplier || service.invoiceNumber || service.concept)}</small>`,
           `${esc(service.period)}<small>Vence ${esc(date(service.dueDate))}</small>`,
@@ -1626,23 +1455,18 @@ function showInformativeService(service) {
   const totals = el("div", undefined, "fee-summary");
   for (const [label, value] of [
     ["Total factura", service.totalAmount],
-    [
-      "Tu parte",
-      mine.reduce((sum, property) => sum + property.amount, 0),
-    ],
+    ["Tu parte", mine.reduce((sum, property) => sum + property.amount, 0)],
   ]) {
     const cell = el("div");
     cell.append(el("span", label), el("strong", money(value)));
     totals.append(cell);
   }
   body.append(totals);
-  if (service.legalBasis)
-    info(body, `Base legal o acuerdo: ${service.legalBasis}`);
+  if (service.legalBasis) info(body, `Base legal o acuerdo: ${service.legalBasis}`);
   if (service.notes) richInfo(body, service.notes);
   body.append(el("h3", "Tu reparto"));
   body.append(serviceRowsTable(mine, service.method));
-  for (const warning of service.warnings || [])
-    info(body, warning, true);
+  for (const warning of service.warnings || []) info(body, warning, true);
   if ((service.attachments || []).length) {
     body.append(el("h3", "Factura adjunta"));
     for (const attachment of service.attachments) {
@@ -1662,7 +1486,7 @@ function informativeServiceNotice(root, ctx, data) {
   notice.append(
     el(
       "p",
-      `Tenés ${count} ${
+      `Tienes ${count} ${
         count === 1 ? "reparto informativo" : "repartos informativos"
       } de servicios sin deuda.`,
     ),
@@ -1707,12 +1531,7 @@ async function showService(id) {
       },
       "Detalle del servicio",
     );
-    for (const paneId of [
-      "overview",
-      "split",
-      "receipts",
-      "attachments",
-    ]) {
+    for (const paneId of ["overview", "split", "receipts", "attachments"]) {
       const pane = el("section", undefined, "fee-detail-pane");
       pane.hidden = paneId !== "overview";
       pane.setAttribute("role", "tabpanel");
@@ -1734,8 +1553,7 @@ async function showService(id) {
         `Anulado el ${date(service.cancelledAt)}. Motivo: ${service.cancellationReason}`,
         true,
       );
-    for (const warning of service.warnings || [])
-      info(overview, warning, true);
+    for (const warning of service.warnings || []) info(overview, warning, true);
     const totals = el("div", undefined, "fee-summary");
     for (const [label, value] of [
       ["Total", service.totals.total],
@@ -1757,16 +1575,13 @@ async function showService(id) {
           : "Cada inmueble recibe un recibo con su parte del reparto."
       }`,
     );
-    if (service.legalBasis)
-      info(overview, `Base legal o acuerdo: ${service.legalBasis}`);
+    if (service.legalBasis) info(overview, `Base legal o acuerdo: ${service.legalBasis}`);
     if (service.notes) richInfo(overview, service.notes);
     if (service.canEdit)
       overview.append(
         button("Editar servicio", async () => {
           const current = dialogVersion;
-          const data = await api.fees(
-            `/communities/${encodeURIComponent(service.communityId)}`,
-          );
+          const data = await api.fees(`/communities/${encodeURIComponent(service.communityId)}`);
           if (current === dialogVersion && dialog.open) {
             const ctx = [...contexts.values()].find(
               (context) =>
@@ -1783,26 +1598,18 @@ async function showService(id) {
         }),
       );
     if (!service.cancelledAt && service.status === "draft")
-      overview.append(
-        button("Revisar y emitir", () => serviceEmission(service.id), true),
-      );
+      overview.append(button("Revisar y emitir", () => serviceEmission(service.id), true));
     if (!service.cancelledAt) {
       if (service.totals.paid > 0)
-        info(
-          overview,
-          "Para anular el servicio primero revertí los cobros aplicados.",
-          true,
-        );
+        info(overview, "Para anular el servicio primero revierte los cobros aplicados.", true);
       const cancel = button("Anular servicio", () =>
         reasonDialog(
           "Anular servicio",
           "Se anularán los recibos activos del servicio. Los cobros aplicados bloquean esta acción.",
           async (reason) => {
-            await api.fees(
-              `/services/${encodeURIComponent(service.id)}/cancel`,
-              "POST",
-              { reason },
-            );
+            await api.fees(`/services/${encodeURIComponent(service.id)}/cancel`, "POST", {
+              reason,
+            });
             dialog.close();
             await reloadAll();
             showService(service.id);
@@ -1841,10 +1648,7 @@ async function showService(id) {
           link = el("a", photo.fileName);
         link.href = `/api/fees/service-attachments/${encodeURIComponent(photo.id)}/download`;
         link.download = photo.fileName;
-        row.append(
-          el("span", plots.get(photo.propertyId) || photo.propertyId),
-          link,
-        );
+        row.append(el("span", plots.get(photo.propertyId) || photo.propertyId), link);
         split.append(row);
       }
     }
@@ -1852,20 +1656,10 @@ async function showService(id) {
       receipts.append(el("h3", "Recibos generados"));
       receipts.append(
         table(
-          [
-            "Inmueble",
-            "Titulares",
-            "Importe",
-            "Cobrado",
-            "Pendiente",
-            "Estado",
-            "Acción",
-          ],
+          ["Inmueble", "Titulares", "Importe", "Cobrado", "Pendiente", "Estado", "Acción"],
           service.receipts.map((receipt) => [
             esc(receipt.snapshot.property),
-            esc(
-              receipt.snapshot.owners.map((owner) => owner.name).join(", "),
-            ),
+            esc(receipt.snapshot.owners.map((owner) => owner.name).join(", ")),
             money(receipt.amount),
             money(receipt.paid),
             money(receipt.outstanding),
@@ -1884,7 +1678,7 @@ async function showService(id) {
     attachments.append(el("h3", "Factura y adjuntos"));
     info(
       attachments,
-      "Podés adjuntar la foto o el PDF de la factura. Los adjuntos se conservan como justificante del reparto.",
+      "Puedes adjuntar la foto o el PDF de la factura. Los adjuntos se conservan como justificante del reparto.",
     );
     for (const attachment of service.attachments || []) {
       if (attachment.kind === "reading") continue;
@@ -1896,10 +1690,7 @@ async function showService(id) {
       if (service.canEdit)
         row.append(
           button("Eliminar adjunto", async () => {
-            await api.fees(
-              `/service-attachments/${encodeURIComponent(attachment.id)}`,
-              "DELETE",
-            );
+            await api.fees(`/service-attachments/${encodeURIComponent(attachment.id)}`, "DELETE");
             await reloadAll();
             await showService(service.id);
             toast("Adjunto eliminado.");
@@ -1919,8 +1710,7 @@ async function showService(id) {
           "Subir adjunto",
           async () => {
             if (!file.files[0]) throw new Error("Seleccioná un archivo.");
-            if (file.files[0].size > 10 * 1024 * 1024)
-              throw new Error("El archivo supera 10 MB.");
+            if (file.files[0].size > 10 * 1024 * 1024) throw new Error("El archivo supera 10 MB.");
             const formData = new FormData();
             formData.append("file", file.files[0]);
             await api.fees(
@@ -1948,17 +1738,11 @@ async function serviceEmission(id) {
     version = dialogVersion;
   info(body, "Calculando la vista previa del reparto…");
   try {
-    const batch = await api.fees(
-      `/services/${encodeURIComponent(id)}/preview`,
-      "POST",
-    );
+    const batch = await api.fees(`/services/${encodeURIComponent(id)}/preview`, "POST");
     if (version !== dialogVersion || !dialog.open) return;
     body.replaceChildren();
     body.append(
-      el(
-        "h3",
-        `Vista previa · ${batch.serviceLabel} · ${batch.period} · ${money(batch.total)}`,
-      ),
+      el("h3", `Vista previa · ${batch.serviceLabel} · ${batch.period} · ${money(batch.total)}`),
     );
     info(
       body,
@@ -1976,11 +1760,9 @@ async function serviceEmission(id) {
           ? "Confirmar emisión de recibos"
           : "Confirmar reparto informativo",
         async () => {
-          await api.fees(
-            `/services/${encodeURIComponent(id)}/issue`,
-            "POST",
-            { token: batch.token },
-          );
+          await api.fees(`/services/${encodeURIComponent(id)}/issue`, "POST", {
+            token: batch.token,
+          });
           dialog.close();
           await reloadAll();
           toast(
@@ -2004,8 +1786,7 @@ function ownerName(id, data) {
   const owner = state.owners.find((o) => o.id === id);
   return owner
     ? `${owner.name} ${owner.surname}`
-    : data.receipts.flatMap((r) => r.snapshot.owners).find((o) => o.id === id)
-        ?.name || id;
+    : data.receipts.flatMap((r) => r.snapshot.owners).find((o) => o.id === id)?.name || id;
 }
 function configuration(ctx) {
   const body = open("Configuración de cuotas ordinarias"),
@@ -2019,9 +1800,8 @@ function configuration(ctx) {
         data.plans.map((p) => [
           date(p.effectiveFrom),
           money(p.annualAmount),
-          { 1: "Mensual", 3: "Trimestral", 6: "Semestral", 12: "Anual" }[
-            Number(p.months)
-          ] || `Cada ${p.months} meses`,
+          { 1: "Mensual", 3: "Trimestral", 6: "Semestral", 12: "Anual" }[Number(p.months)] ||
+            `Cada ${p.months} meses`,
           esc(p.agreement),
         ]),
       ),
@@ -2036,11 +1816,7 @@ function configuration(ctx) {
   const last = data.plans[0],
     grid = el("div", undefined, "fee-form-grid");
   body.append(grid);
-  const annual = euroField(
-    grid,
-    "Importe anual a recaudar (€)",
-    last?.annualAmount ?? "",
-  );
+  const annual = euroField(grid, "Importe anual a recaudar (€)", last?.annualAmount ?? "");
   hint(annual, "Total anual aprobado en Junta para toda la comunidad.");
   const months = field(grid, "Periodicidad", "select", last?.months || "1", [
     ["1", "Mensual"],
@@ -2051,16 +1827,10 @@ function configuration(ctx) {
   hint(months, "Cada cuánto se emite un recibo con la parte proporcional.");
   const from = field(grid, "Aplicar desde (primer día de mes)", "date", "");
   from.type = "month";
-  from.closest(".fee-field").querySelector(".fee-field-label").textContent =
-    "Aplicar desde (mes)";
+  from.closest(".fee-field").querySelector(".fee-field-label").textContent = "Aplicar desde (mes)";
   from.required = true;
   hint(from, "Rige desde este mes; no modifica los recibos ya emitidos.");
-  const day = field(
-    grid,
-    "Día de vencimiento (1–28)",
-    "number",
-    last?.dueDay || 5,
-  );
+  const day = field(grid, "Día de vencimiento (1–28)", "number", last?.dueDay || 5);
   day.min = "1";
   day.max = "28";
   day.required = true;
@@ -2071,15 +1841,12 @@ function configuration(ctx) {
   ]);
   hint(
     mode,
-    "Coeficiente: reparte el importe anual según la participación de cada inmueble. Manual: fijás el importe anual de cada inmueble.",
+    "Coeficiente: reparte el importe anual según la participación de cada inmueble. Manual: fijas el importe anual de cada inmueble.",
   );
   const agreement = field(grid, "Referencia del acuerdo de Junta", "text", "");
   agreement.maxLength = 300;
   agreement.required = true;
-  hint(
-    agreement,
-    "Número de acta o fecha del acuerdo que respalda estos importes.",
-  );
+  hint(agreement, "Número de acta o fecha del acuerdo que respalda estos importes.");
   const computeAmount = () => {
     const total = Number(annual.value.replace(",", "."));
     const count = Number(months.value);
@@ -2109,9 +1876,7 @@ function configuration(ctx) {
   toggle();
   if (data.receipts.length) {
     const latest = data.receipts
-      .filter(
-        (r) => !r.cancelledAt && (r.kind || "ordinary") === "ordinary",
-      )
+      .filter((r) => !r.cancelledAt && (r.kind || "ordinary") === "ordinary")
       .map((r) => r.periodEnd || `${r.period}-28`)
       .sort()
       .at(-1);
@@ -2133,10 +1898,7 @@ function configuration(ctx) {
           mode: mode.value,
           agreement: agreement.value,
           manual: Object.fromEntries(
-            Object.entries(manualInputs).map(([id, input]) => [
-              id,
-              input.value,
-            ]),
+            Object.entries(manualInputs).map(([id, input]) => [id, input.value]),
           ),
         });
         dialog.close();
@@ -2153,12 +1915,7 @@ function emission(ctx) {
     info(body, "Guarda primero la configuración de cuotas de esta comunidad.");
     return;
   }
-  const month = field(
-    body,
-    "Mes de inicio del periodo",
-    "month",
-    madridDate().slice(0, 7),
-  );
+  const month = field(body, "Mes de inicio del periodo", "month", madridDate().slice(0, 7));
   month.required = true;
   hint(
     month,
@@ -2193,10 +1950,7 @@ function emission(ctx) {
     output.replaceChildren(
       el("h3", `Vista previa · ${batch.period} · Total ${money(batch.total)}`),
     );
-    info(
-      output,
-      `Vencimiento: ${date(batch.dueDate)}. Se crearán ${batch.rows.length} recibos.`,
-    );
+    info(output, `Vencimiento: ${date(batch.dueDate)}. Se crearán ${batch.rows.length} recibos.`);
     batch.warnings.forEach((w) => info(output, w, true));
     output.append(
       table(
@@ -2215,9 +1969,7 @@ function emission(ctx) {
         async () => {
           if (month.value !== batch.period) {
             output.replaceChildren();
-            throw new Error(
-              "El periodo cambió. Vuelve a calcular la vista previa.",
-            );
+            throw new Error("El periodo cambió. Vuelve a calcular la vista previa.");
           }
           await api.fees(`/communities/${ctx.id}/issue`, "POST", {
             period: batch.period,
@@ -2250,9 +2002,7 @@ function receiptSelector(parent, receipts, checked = false) {
   }
   const selected = () => inputs.filter((x) => x.input.checked).map((x) => x.id);
   selected.total = () =>
-    inputs
-      .filter((x) => x.input.checked)
-      .reduce((sum, x) => sum + x.outstanding, 0);
+    inputs.filter((x) => x.input.checked).reduce((sum, x) => sum + x.outstanding, 0);
   selected.inputs = inputs;
   return selected;
 }
@@ -2262,15 +2012,11 @@ function paymentForm(ctx, receipt = null) {
     grid = el("div", undefined, "fee-form-grid");
   body.append(grid);
   const owners = new Map();
-  for (const r of data.receipts)
-    for (const o of r.snapshot.owners) owners.set(o.id, o.name);
+  for (const r of data.receipts) for (const o of r.snapshot.owners) owners.set(o.id, o.name);
   for (const p of state.properties.filter((p) => p.communityId === ctx.id))
     for (const id of p.ownerIds) owners.set(id, ownerName(id, data));
   if (!owners.size) {
-    info(
-      body,
-      "La comunidad necesita inmuebles con propietarios para registrar cobros.",
-    );
+    info(body, "La comunidad necesita inmuebles con propietarios para registrar cobros.");
     return;
   }
   const payer = field(
@@ -2280,21 +2026,11 @@ function paymentForm(ctx, receipt = null) {
     receipt?.snapshot.owners[0]?.id || [...owners.keys()][0],
     [...owners.entries()],
   );
-  const value = euroField(
-    grid,
-    "Importe recibido (€)",
-    receipt?.outstanding ?? "",
-  );
+  const value = euroField(grid, "Importe recibido (€)", receipt?.outstanding ?? "");
   const paidOn = field(grid, "Fecha del cobro", "date", madridDate());
   paidOn.max = madridDate();
   paidOn.required = true;
-  const method = field(
-    grid,
-    "Forma de pago",
-    "select",
-    "transfer",
-    Object.entries(methods),
-  );
+  const method = field(grid, "Forma de pago", "select", "transfer", Object.entries(methods));
   const reference = field(grid, "Referencia bancaria", "text");
   reference.maxLength = 120;
   const duplicate = field(
@@ -2316,18 +2052,14 @@ function paymentForm(ctx, receipt = null) {
   let ids;
   function updateDistribution() {
     const text = value.value.trim();
-    if (
-      !/^\d{1,9}([.,]\d{1,2})?$/.test(text) ||
-      Number(text.replace(",", ".")) <= 0
-    ) {
+    if (!/^\d{1,9}([.,]\d{1,2})?$/.test(text) || Number(text.replace(",", ".")) <= 0) {
       distribution.textContent = text
         ? "Revisa el importe: debe ser positivo y tener como máximo dos decimales."
         : "Indica el importe recibido para ver su reparto entre recibos y saldo a favor.";
       return;
     }
     const entered = Number(text.replace(",", "."));
-    const cents =
-      Number.isFinite(entered) && entered > 0 ? Math.round(entered * 100) : 0;
+    const cents = Number.isFinite(entered) && entered > 0 ? Math.round(entered * 100) : 0;
     const applied = Math.min(cents, ids?.total() || 0);
     distribution.textContent = `Aplicado a recibos: ${money(applied)} · Saldo a favor: ${money(cents - applied)}`;
   }
@@ -2335,21 +2067,17 @@ function paymentForm(ctx, receipt = null) {
     selection.replaceChildren();
     ids = receiptSelector(
       selection,
-      data.receipts.filter((r) =>
-        r.snapshot.owners.some((o) => o.id === payer.value),
-      ),
+      data.receipts.filter((r) => r.snapshot.owners.some((o) => o.id === payer.value)),
       true,
     );
     if (receipt && payer.value === receipt.snapshot.owners[0]?.id)
-      for (const item of ids.inputs)
-        item.input.checked = item.id === receipt.id;
+      for (const item of ids.inputs) item.input.checked = item.id === receipt.id;
     if (!ids.inputs.length)
       info(
         selection,
         "Este pagador no tiene recibos pendientes. El cobro se guardará como saldo a favor.",
       );
-    for (const item of ids.inputs)
-      item.input.addEventListener("change", updateDistribution);
+    for (const item of ids.inputs) item.input.addEventListener("change", updateDistribution);
     updateDistribution();
   }
   payer.addEventListener("change", update);
@@ -2372,10 +2100,7 @@ function paymentForm(ctx, receipt = null) {
             confirmDuplicate: duplicate.checked,
           });
         } catch (error) {
-          if (
-            error.status === 409 &&
-            error.message.includes("Posible cobro duplicado")
-          )
+          if (error.status === 409 && error.message.includes("Posible cobro duplicado"))
             duplicate.closest("label").hidden = false;
           throw error;
         }
@@ -2391,21 +2116,15 @@ function creditForm(ctx, payment) {
   const body = open(`Aplicar saldo a favor · ${money(payment.credit)}`);
   const ids = receiptSelector(
     body,
-    ctx.data.receipts.filter((r) =>
-      r.snapshot.owners.some((o) => o.id === payment.ownerId),
-    ),
+    ctx.data.receipts.filter((r) => r.snapshot.owners.some((o) => o.id === payment.ownerId)),
     true,
   );
   if (!ids.inputs.length)
-    info(
-      body,
-      "No hay recibos pendientes del pagador a los que aplicar este saldo.",
-    );
+    info(body, "No hay recibos pendientes del pagador a los que aplicar este saldo.");
   const apply = button(
     "Aplicar saldo",
     async () => {
-      if (!ids().length)
-        throw new Error("Selecciona al menos un recibo pendiente.");
+      if (!ids().length) throw new Error("Selecciona al menos un recibo pendiente.");
       await api.fees(`/payments/${payment.id}/allocate`, "POST", {
         receiptIds: ids(),
       });
@@ -2462,14 +2181,8 @@ export async function showReceipt(id) {
         el(
           "p",
           `${r.snapshot.serviceLabel || "Suministro"} · Periodo ${r.snapshot.servicePeriod || r.period}${
-            r.snapshot.serviceSupplier
-              ? ` · ${r.snapshot.serviceSupplier}`
-              : ""
-          }${
-            r.snapshot.serviceInvoice
-              ? ` · Factura ${r.snapshot.serviceInvoice}`
-              : ""
-          }`,
+            r.snapshot.serviceSupplier ? ` · ${r.snapshot.serviceSupplier}` : ""
+          }${r.snapshot.serviceInvoice ? ` · Factura ${r.snapshot.serviceInvoice}` : ""}`,
         ),
       );
       if (
@@ -2524,30 +2237,20 @@ export async function showReceipt(id) {
     const iban = r.snapshot.communityIban || community?.iban || "";
     if (iban) {
       const paymentInfo = el("div", undefined, "fee-payment-info");
-      paymentInfo.append(
-        el("strong", "Datos para transferencia"),
-        el("span", iban),
-      );
+      paymentInfo.append(el("strong", "Datos para transferencia"), el("span", iban));
       body.append(paymentInfo);
     }
     if (r.canManage && !r.cancelledAt && r.outstanding > 0)
       body.append(
         button("Registrar cobro de este recibo", async () => {
           const current = dialogVersion;
-          const data = await api.fees(
-            `/communities/${encodeURIComponent(r.communityId)}`,
-          );
-          if (current === dialogVersion && dialog.open)
-            paymentForm({ id: r.communityId, data }, r);
+          const data = await api.fees(`/communities/${encodeURIComponent(r.communityId)}`);
+          if (current === dialogVersion && dialog.open) paymentForm({ id: r.communityId, data }, r);
         }),
       );
     info(body, `Acuerdo: ${r.snapshot.agreement}. Identificador: ${r.id}`);
     if (r.cancelledAt)
-      info(
-        body,
-        `Anulado el ${date(r.cancelledAt)}. Motivo: ${r.cancellationReason}`,
-        true,
-      );
+      info(body, `Anulado el ${date(r.cancelledAt)}. Motivo: ${r.cancellationReason}`, true);
     if (r.payments.length)
       body.append(
         table(
@@ -2556,15 +2259,11 @@ export async function showReceipt(id) {
             date(p.paidOn),
             esc(methods[p.method]),
             money(p.amount),
-            p.reversedAt
-              ? `Devuelto<small>${esc(p.reversalReason)}</small>`
-              : "Aplicado",
+            p.reversedAt ? `Devuelto<small>${esc(p.reversalReason)}</small>` : "Aplicado",
           ]),
         ),
       );
-    body.append(
-      button("Descargar extracto del recibo", () => downloadReceipt(r)),
-    );
+    body.append(button("Descargar extracto del recibo", () => downloadReceipt(r)));
     body.append(el("h3", "Justificantes"));
     info(
       body,
@@ -2626,8 +2325,7 @@ export async function showReceipt(id) {
           "Enviar justificante para revisión",
           async () => {
             if (!file.files[0]) throw new Error("Selecciona un archivo.");
-            if (file.files[0].size > 10 * 1024 * 1024)
-              throw new Error("El archivo supera 10 MB.");
+            if (file.files[0].size > 10 * 1024 * 1024) throw new Error("El archivo supera 10 MB.");
             const form = new FormData();
             form.append("file", file.files[0]);
             await api.fees(`/receipts/${id}/proofs`, "POST", form);
@@ -2707,10 +2405,7 @@ function downloadReceipt(r) {
     ["Pendiente EUR", amount(r.outstanding)],
     ["Estado", labels[r.status]],
     ["Acuerdo", r.snapshot.agreement],
-    [
-      "IBAN para transferencia",
-      r.snapshot.communityIban || community?.iban || "",
-    ],
+    ["IBAN para transferencia", r.snapshot.communityIban || community?.iban || ""],
     ["", ""],
     ["Fecha", "Método", "Aplicado EUR", "Estado"],
   ];
@@ -2737,17 +2432,11 @@ function downloadReceipt(r) {
           .join(";"),
       )
       .join("\r\n");
-  const url = URL.createObjectURL(
-      new Blob([csv], { type: "text/csv;charset=utf-8" }),
-    ),
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })),
     a = document.createElement("a");
   a.href = url;
   a.download = `${
-    r.kind === "service"
-      ? "servicio"
-      : r.kind === "assessment"
-        ? "derrama"
-        : "cuota"
+    r.kind === "service" ? "servicio" : r.kind === "assessment" ? "derrama" : "cuota"
   }-${r.period}-${r.id.slice(0, 8)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);

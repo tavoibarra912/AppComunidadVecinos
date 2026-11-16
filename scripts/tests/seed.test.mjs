@@ -20,12 +20,19 @@ test("arranque desde cero: siembra sin duplicar roles y crea perfiles con contra
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM roles").get().n, 4);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM communities").get().n, 7);
   const demo = [
-    "super_admin", "admin",
-    "ca1", "ca2",
+    "super_admin",
+    "admin",
+    "ca1",
+    "ca2",
     "urusp1",
-    "urucp1", "urucp2", "urucp3",
-    "uruci1", "uruci2", "uruci3",
-    "urucpci1", "urucpci2",
+    "urucp1",
+    "urucp2",
+    "urucp3",
+    "uruci1",
+    "uruci2",
+    "uruci3",
+    "urucpci1",
+    "urucpci2",
   ];
   for (const usuario of demo) {
     const user = db.prepare("SELECT * FROM users WHERE usuario = ?").get(usuario);
@@ -33,20 +40,53 @@ test("arranque desde cero: siembra sin duplicar roles y crea perfiles con contra
     assert.ok(verifyPassword(usuario, user.passwordHash), `contraseña demo inválida: ${usuario}`);
   }
   // No quedan cuentas del esquema anterior.
-  for (const viejo of ["comm_admin", "usuario_r_user_s_perfil", "usuario_r_user_c_propietario", "usuario_r_user_c_inquilino", "usuario_r_user_c_propietario_c_inquilino"]) {
-    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM users WHERE usuario = ?").get(viejo).n, 0, `cuenta obsoleta: ${viejo}`);
+  for (const viejo of [
+    "comm_admin",
+    "usuario_r_user_s_perfil",
+    "usuario_r_user_c_propietario",
+    "usuario_r_user_c_inquilino",
+    "usuario_r_user_c_propietario_c_inquilino",
+  ]) {
+    assert.equal(
+      db.prepare("SELECT COUNT(*) AS n FROM users WHERE usuario = ?").get(viejo).n,
+      0,
+      `cuenta obsoleta: ${viejo}`,
+    );
   }
-  assert.equal(db.prepare("SELECT userId FROM owners WHERE id = 'own-seed-1'").get().userId, "user-urucp1");
-  assert.equal(db.prepare("SELECT userId FROM owners WHERE id = 'own-seed-3'").get().userId, "user-urucpci1");
-  assert.equal(db.prepare("SELECT userId FROM tenants WHERE id = 'tenant-seed-1'").get().userId, "user-uruci1");
-  assert.equal(db.prepare("SELECT ownerId FROM tenants WHERE id = 'tenant-seed-1'").get().ownerId, "own-seed-1");
-  assert.equal(db.prepare("SELECT adminUserId FROM communities WHERE id = 'com-seed-1'").get().adminUserId, "user-ca1");
+  assert.equal(
+    db.prepare("SELECT userId FROM owners WHERE id = 'own-seed-1'").get().userId,
+    "user-urucp1",
+  );
+  assert.equal(
+    db.prepare("SELECT userId FROM owners WHERE id = 'own-seed-3'").get().userId,
+    "user-urucpci1",
+  );
+  assert.equal(
+    db.prepare("SELECT userId FROM tenants WHERE id = 'tenant-seed-1'").get().userId,
+    "user-uruci1",
+  );
+  assert.equal(
+    db.prepare("SELECT ownerId FROM tenants WHERE id = 'tenant-seed-1'").get().ownerId,
+    "own-seed-1",
+  );
+  assert.equal(
+    db.prepare("SELECT adminUserId FROM communities WHERE id = 'com-seed-1'").get().adminUserId,
+    "user-ca1",
+  );
 });
 
 test("reinicio: preserva los datos y las contraseñas existentes", () => {
   db.prepare("UPDATE communities SET name = 'Nombre editado' WHERE id = 'com-seed-1'").run();
-  const hash = db.prepare("SELECT passwordHash FROM users WHERE usuario = 'super_admin'").get().passwordHash;
+  const hash = db
+    .prepare("SELECT passwordHash FROM users WHERE usuario = 'super_admin'")
+    .get().passwordHash;
   assert.equal(seedIfEmpty(), false);
-  assert.equal(db.prepare("SELECT name FROM communities WHERE id = 'com-seed-1'").get().name, "Nombre editado");
-  assert.equal(db.prepare("SELECT passwordHash FROM users WHERE usuario = 'super_admin'").get().passwordHash, hash);
+  assert.equal(
+    db.prepare("SELECT name FROM communities WHERE id = 'com-seed-1'").get().name,
+    "Nombre editado",
+  );
+  assert.equal(
+    db.prepare("SELECT passwordHash FROM users WHERE usuario = 'super_admin'").get().passwordHash,
+    hash,
+  );
 });

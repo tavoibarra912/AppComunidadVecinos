@@ -15,17 +15,58 @@
 import { makeSelectSearchable } from "./utils.js";
 
 export const PROVINCES = {
-  "01": "Álava", "02": "Albacete", "03": "Alicante", "04": "Almería", "05": "Ávila",
-  "06": "Badajoz", "07": "Illes Balears", "08": "Barcelona", "09": "Burgos", "10": "Cáceres",
-  "11": "Cádiz", "12": "Castellón", "13": "Ciudad Real", "14": "Córdoba", "15": "A Coruña",
-  "16": "Cuenca", "17": "Girona", "18": "Granada", "19": "Guadalajara", "20": "Gipuzkoa",
-  "21": "Huelva", "22": "Huesca", "23": "Jaén", "24": "León", "25": "Lleida",
-  "26": "La Rioja", "27": "Lugo", "28": "Madrid", "29": "Málaga", "30": "Murcia",
-  "31": "Navarra", "32": "Ourense", "33": "Asturias", "34": "Palencia", "35": "Las Palmas",
-  "36": "Pontevedra", "37": "Salamanca", "38": "Santa Cruz de Tenerife", "39": "Cantabria", "40": "Segovia",
-  "41": "Sevilla", "42": "Soria", "43": "Tarragona", "44": "Teruel", "45": "Toledo",
-  "46": "Valencia", "47": "Valladolid", "48": "Bizkaia", "49": "Zamora", "50": "Zaragoza",
-  "51": "Ceuta", "52": "Melilla"
+  "01": "Álava",
+  "02": "Albacete",
+  "03": "Alicante",
+  "04": "Almería",
+  "05": "Ávila",
+  "06": "Badajoz",
+  "07": "Illes Balears",
+  "08": "Barcelona",
+  "09": "Burgos",
+  10: "Cáceres",
+  11: "Cádiz",
+  12: "Castellón",
+  13: "Ciudad Real",
+  14: "Córdoba",
+  15: "A Coruña",
+  16: "Cuenca",
+  17: "Girona",
+  18: "Granada",
+  19: "Guadalajara",
+  20: "Gipuzkoa",
+  21: "Huelva",
+  22: "Huesca",
+  23: "Jaén",
+  24: "León",
+  25: "Lleida",
+  26: "La Rioja",
+  27: "Lugo",
+  28: "Madrid",
+  29: "Málaga",
+  30: "Murcia",
+  31: "Navarra",
+  32: "Ourense",
+  33: "Asturias",
+  34: "Palencia",
+  35: "Las Palmas",
+  36: "Pontevedra",
+  37: "Salamanca",
+  38: "Santa Cruz de Tenerife",
+  39: "Cantabria",
+  40: "Segovia",
+  41: "Sevilla",
+  42: "Soria",
+  43: "Tarragona",
+  44: "Teruel",
+  45: "Toledo",
+  46: "Valencia",
+  47: "Valladolid",
+  48: "Bizkaia",
+  49: "Zamora",
+  50: "Zaragoza",
+  51: "Ceuta",
+  52: "Melilla",
 };
 
 const PROVINCE_LIST = Object.values(PROVINCES).sort((a, b) => a.localeCompare(b, "es"));
@@ -68,17 +109,18 @@ class TerritoryControl {
 
   #fillProvinces() {
     this.province.replaceChildren(new Option("Selecciona una provincia", ""));
-    PROVINCE_LIST.forEach(province => this.province.add(new Option(province, province)));
+    PROVINCE_LIST.forEach((province) => this.province.add(new Option(province, province)));
     this.province.disabled = false;
   }
 
   /** Lista de municipios: completa, o filtrada por la provincia elegida. */
   #fillCityOptions(provinceName) {
-    const selected = provinceName && this.city.value
-      ? locationsById.get(this.city.value) : null;
+    const selected = provinceName && this.city.value ? locationsById.get(this.city.value) : null;
     this.city.replaceChildren(new Option("Selecciona un municipio", ""));
-    const base = provinceName ? locations.filter(l => l.province === provinceName) : locations;
-    base.forEach(location => this.city.add(new Option(`${location.name} (${location.province})`, location.id)));
+    const base = provinceName ? locations.filter((l) => l.province === provinceName) : locations;
+    base.forEach((location) =>
+      this.city.add(new Option(`${location.name} (${location.province})`, location.id)),
+    );
     this.city.disabled = false;
     // Conservar la selección si sigue perteneciendo a la provincia filtrada.
     if (selected && base.includes(selected)) this.city.value = selected.id;
@@ -89,11 +131,13 @@ class TerritoryControl {
   #fillPostalCodes() {
     const namesByCp = new Map();
     for (const [cp, matches] of postalIndex) {
-      const names = matches.slice(0, 2).map(l => l.name);
+      const names = matches.slice(0, 2).map((l) => l.name);
       const extra = matches.length - names.length;
       namesByCp.set(cp, `${cp} · ${names.join(" / ")}${extra > 0 ? ` (+${extra})` : ""}`);
     }
-    const options = [...namesByCp.entries()].sort((a, b) => a[0].localeCompare(b[0], "es", { numeric: true }));
+    const options = [...namesByCp.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0], "es", { numeric: true }),
+    );
     this.cp.replaceChildren(new Option("Selecciona un código postal", ""));
     options.forEach(([cp, label]) => this.cp.add(new Option(label, cp)));
     this.cp.disabled = false;
@@ -107,7 +151,7 @@ class TerritoryControl {
       const provinceName = this.province.value;
       this.#fillCityOptions(provinceName);
       if (!provinceName) return;
-      const enProvincia = locations.filter(l => l.province === provinceName);
+      const enProvincia = locations.filter((l) => l.province === provinceName);
       if (enProvincia.length === 1) {
         this.city.value = enProvincia[0].id;
         this.cp.value = enProvincia[0].postalCodes[0] || "";
@@ -129,7 +173,7 @@ class TerritoryControl {
     this.cp.addEventListener("change", () => {
       const matches = postalIndex.get(this.cp.value) || [];
       if (!matches.length) return;
-      const target = matches.find(l => l.province === this.province.value) || matches[0];
+      const target = matches.find((l) => l.province === this.province.value) || matches[0];
       this.city.value = target.id;
       this.province.value = target.province;
     });
@@ -137,7 +181,8 @@ class TerritoryControl {
     // Los tres controles usan el mismo combo con buscador en todos los
     // formularios. El select sigue guardando el valor real: la serialización
     // no cambia.
-    if (this.province.dataset.combo !== "true") makeSelectSearchable(this.province, "Buscar provincia…");
+    if (this.province.dataset.combo !== "true")
+      makeSelectSearchable(this.province, "Buscar provincia…");
     if (this.city.dataset.combo !== "true") makeSelectSearchable(this.city, "Buscar municipio…");
     if (this.cp.dataset.combo !== "true") makeSelectSearchable(this.cp, "Buscar código postal…");
   }
@@ -145,13 +190,17 @@ class TerritoryControl {
   /** Hidrata los tres controles a partir de los valores guardados (nombres). */
   set(cityName, provinceName, cp) {
     if (!this.ready) return;
-    const match = cityName && (
-      locations.find(l => l.name === cityName && (!provinceName || l.province === provinceName)) ||
-      locations.find(l => l.name === cityName)
-    ) || null;
+    const match =
+      (cityName &&
+        (locations.find(
+          (l) => l.name === cityName && (!provinceName || l.province === provinceName),
+        ) ||
+          locations.find((l) => l.name === cityName))) ||
+      null;
     if (!match) {
       if (this.filteredProvince) this.#fillCityOptions("");
-      this.province.value = provinceName && PROVINCE_LIST.includes(provinceName) ? provinceName : "";
+      this.province.value =
+        provinceName && PROVINCE_LIST.includes(provinceName) ? provinceName : "";
       this.city.value = "";
       this.cp.value = "";
       return;
@@ -159,7 +208,7 @@ class TerritoryControl {
     if (this.filteredProvince) this.#fillCityOptions("");
     this.province.value = match.province;
     this.city.value = match.id;
-    this.cp.value = cp && match.postalCodes.includes(cp) ? cp : (match.postalCodes[0] || "");
+    this.cp.value = cp && match.postalCodes.includes(cp) ? cp : match.postalCodes[0] || "";
   }
 
   /** Vuelve al estado inicial (placeholders). */
@@ -185,7 +234,7 @@ const controls = new Set();
  */
 export function setupTerritory(formEl) {
   if (!formEl) return null;
-  let control = [...controls].find(c => c.form === formEl);
+  let control = [...controls].find((c) => c.form === formEl);
   if (!control) {
     control = new TerritoryControl(formEl);
     controls.add(control);
@@ -200,23 +249,25 @@ export function populateLocations(data) {
       id,
       name: value.nombre,
       province: PROVINCES[id.slice(0, 2)],
-      postalCodes: value.codigos_postales
+      postalCodes: value.codigos_postales,
     }))
-    .filter(location => location.province)
-    .sort((a, b) => a.name.localeCompare(b.name, "es") || a.province.localeCompare(b.province, "es"));
+    .filter((location) => location.province)
+    .sort(
+      (a, b) => a.name.localeCompare(b.name, "es") || a.province.localeCompare(b.province, "es"),
+    );
 
-  locationsById = new Map(locations.map(location => [location.id, location]));
+  locationsById = new Map(locations.map((location) => [location.id, location]));
   postalIndex = new Map();
 
-  locations.forEach(location => {
-    location.postalCodes.forEach(postalCode => {
+  locations.forEach((location) => {
+    location.postalCodes.forEach((postalCode) => {
       const matches = postalIndex.get(postalCode) || [];
       matches.push(location);
       postalIndex.set(postalCode, matches);
     });
   });
 
-  controls.forEach(control => control.rebuild());
+  controls.forEach((control) => control.rebuild());
 }
 
 export function loadLocations() {

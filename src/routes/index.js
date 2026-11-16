@@ -16,20 +16,30 @@ import {
   sameOrigin,
   visibleData,
   allowed,
+  policyData,
   publicUser,
   requirePermission,
 } from "../security.js";
 import { resourceAccess, notificationAccess } from "../access.js";
-import { recordAudit } from "../audit.js";
 import {
   listAdminEmails,
   listOwnerNotifications,
-  listDocuments,
-  listDocumentFolders,
+  listDocumentFoldersForEntities,
+  listDocumentsForEntities,
   getSettings,
 } from "../db.js";
 
 const router = Router();
+
+function groupByEntity(rows) {
+  const grouped = new Map();
+  for (const row of rows) {
+    const list = grouped.get(row.entityId);
+    if (list) list.push(row);
+    else grouped.set(row.entityId, [row]);
+  }
+  return grouped;
+}
 router.use(auditRequests);
 router.use(sameOrigin);
 router.use((req, res, next) => {
@@ -50,6 +60,7 @@ router.use(requireSession);
 router.use((req, res, next) => {
   const settings = getSettings();
   if (!settings.mantenimiento) return next();
+  const policy = policyData();
   const isAdmin = [
     "admin:settings",
     "admin:users",
@@ -57,7 +68,7 @@ router.use((req, res, next) => {
     "admin:providers",
     "audit:read",
     "community:create",
-  ].some((permission) => allowed(req.user, permission));
+  ].some((permission) => allowed(req.user, permission, "", policy));
   if (isAdmin) return next();
   return res.status(503).json({
     error:
@@ -67,56 +78,59 @@ router.use((req, res, next) => {
   });
 });
 router.get("/audit", requirePermission("audit:read"), (req, res, next) => {
-  try { res.json(listAudit(req.query)); }
-  catch (error) { if (error.status) res.status(error.status).json({ error: error.message }); else next(error); }
+  try {
+    res.json(listAudit(req.query));
+  } catch (error) {
+    if (error.status) res.status(error.status).json({ error: error.message });
+    else next(error);
+  }
 });
 router.use(resourceAccess);
 
 router.get("/bootstrap", (req, res) => {
-  const visible = visibleData(req.user);
-  const canReadDocuments = (entityId) =>
-    allowed(req.user, "document:read", entityId);
+  // Una sola instantánea de la política por petición: reconstruirla por cada
+  // entidad multiplicaba las consultas y bloqueaba el hilo con censos medianos.
+  const policy = policyData();
+  const visible = visibleData(req.user, policy);
+  const canReadDocuments = (entityId) => allowed(req.user, "document:read", entityId, policy);
+  const readableIds = (rows) => rows.map((row) => row.id).filter(canReadDocuments);
+  const communityIds = readableIds(visible.communities);
+  const propertyIds = readableIds(visible.properties);
+  const tenantIds = readableIds(visible.tenants);
+  const communityDocuments = groupByEntity(listDocumentsForEntities("community", communityIds));
+  const communityStatutes = groupByEntity(
+    listDocumentsForEntities("community", communityIds, "statutes"),
+  );
+  const communityFolders = groupByEntity(listDocumentFoldersForEntities("community", communityIds));
+  const propertyDocuments = groupByEntity(listDocumentsForEntities("property", propertyIds));
+  const propertyFolders = groupByEntity(listDocumentFoldersForEntities("property", propertyIds));
+  const tenantDocuments = groupByEntity(listDocumentsForEntities("tenant", tenantIds));
+  const tenantFolders = groupByEntity(listDocumentFoldersForEntities("tenant", tenantIds));
   res.json({
     communities: visible.communities.map((community) => ({
       ...community,
-      documents: canReadDocuments(community.id)
-        ? listDocuments("community", community.id)
-        : [],
-      statutes: canReadDocuments(community.id)
-        ? listDocuments("community", community.id, "statutes")
-        : [],
-      documentFolders: canReadDocuments(community.id)
-        ? listDocumentFolders("community", community.id)
-        : [],
+      documents: communityDocuments.get(community.id) || [],
+      statutes: communityStatutes.get(community.id) || [],
+      documentFolders: communityFolders.get(community.id) || [],
     })),
     owners: visible.owners,
     properties: visible.properties.map((property) => ({
       ...property,
-      documents: canReadDocuments(property.id)
-        ? listDocuments("property", property.id)
-        : [],
-      documentFolders: canReadDocuments(property.id)
-        ? listDocumentFolders("property", property.id)
-        : [],
+      documents: propertyDocuments.get(property.id) || [],
+      documentFolders: propertyFolders.get(property.id) || [],
     })),
     tenants: visible.tenants.map((tenant) => ({
       ...tenant,
       // `documents` contiene el expediente fijo (DNI, contrato…); la
       // biblioteca genérica con carpetas se expone aparte.
-      libraryDocuments: canReadDocuments(tenant.id)
-        ? listDocuments("tenant", tenant.id)
-        : [],
-      documentFolders: canReadDocuments(tenant.id)
-        ? listDocumentFolders("tenant", tenant.id)
-        : [],
+      libraryDocuments: tenantDocuments.get(tenant.id) || [],
+      documentFolders: tenantFolders.get(tenant.id) || [],
     })),
-    adminEmails: allowed(req.user, "admin_notification:read")
-      ? listAdminEmails().filter((n) =>
-          allowed(req.user, "owner:read", n.ownerId),
-        )
+    adminEmails: allowed(req.user, "admin_notification:read", "", policy)
+      ? listAdminEmails().filter((n) => allowed(req.user, "owner:read", n.ownerId, policy))
       : [],
     ownerNotifications: listOwnerNotifications().filter((n) =>
-      allowed(req.user, "owner_notification:read", n.ownerId),
+      allowed(req.user, "owner_notification:read", n.ownerId, policy),
     ),
     users: visible.users,
     roles: visible.roles,
@@ -138,39 +152,11 @@ router.use(
   "/admin",
   (req, res, next) => {
     const section = req.path.split("/")[1];
-    if (
-      section === "roles" &&
-      req.method === "GET" &&
-      allowed(req.user, "admin:users")
-    )
+    if (section === "roles" && req.method === "GET" && allowed(req.user, "admin:users"))
       return next();
     return requirePermission(`admin:${section}`)(req, res, next);
   },
   adminRouter,
 );
-
-
-// Auditoría de errores: registra operaciones que terminan en error (4xx/5xx)
-router.use((req, res, next) => {
-  const originalJson = res.json;
-  res.json = function (body) {
-    if (res.statusCode >= 400 && req.user) {
-      try {
-        recordAudit({
-          action: 'error.' + req.method.toLowerCase(),
-          outcome: 'failure',
-          req,
-          details: {
-            ruta: req.path,
-            estado: res.statusCode,
-            mensaje: typeof body === 'object' && body !== null ? body.error || body.message || '' : '',
-          },
-        });
-      } catch { /* no bloquear la respuesta por un error de auditoría */ }
-    }
-    return originalJson.call(this, body);
-  };
-  next();
-});
 
 export default router;

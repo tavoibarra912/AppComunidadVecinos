@@ -39,7 +39,7 @@ const instancias = new Set();
 export function aplicarFilasPorPagina(filas) {
   const valor = Number(filas);
   if (!valor) return;
-  instancias.forEach(tabla => tabla.setPageSize?.(valor));
+  instancias.forEach((tabla) => tabla.setPageSize?.(valor));
 }
 
 function crearInstancia(options) {
@@ -54,23 +54,26 @@ function crearInstancia(options) {
     pageSizeOptions = [5, 10, 25],
     defaultPageSize = 5,
     emptyTitle = "No hay registros que mostrar",
-    emptyText = "Crea un registro o ajusta los criterios de búsqueda."
+    emptyText = "Crea un registro o ajusta los criterios de búsqueda.",
   } = options;
 
   if (!mount) throw new Error("createDataTable: falta el elemento mount.");
-  if (!Array.isArray(columns) || columns.length === 0) throw new Error("createDataTable: faltan columnas.");
+  if (!Array.isArray(columns) || columns.length === 0)
+    throw new Error("createDataTable: faltan columnas.");
 
   // --- Estado ---
   // Solo son visibles por defecto las columnas con defaultVisible === true;
   // las no ocultables (acciones) se fuerzan visibles.
-  const visible = new Map(columns.map(col => [col.key, col.hideable === false ? true : col.defaultVisible === true]));
+  const visible = new Map(
+    columns.map((col) => [col.key, col.hideable === false ? true : col.defaultVisible === true]),
+  );
   const storageKey = options.storageKey ? `table-engine:${options.storageKey}` : null;
   if (storageKey) {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
       if (Array.isArray(saved.hidden)) {
-        saved.hidden.forEach(key => {
-          const col = columns.find(item => item.key === key);
+        saved.hidden.forEach((key) => {
+          const col = columns.find((item) => item.key === key);
           if (col && col.hideable !== false) visible.set(key, false);
         });
       }
@@ -84,40 +87,51 @@ function crearInstancia(options) {
   const persistState = () => {
     if (!storageKey) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify({
-        hidden: columns.filter(col => col.hideable !== false && !visible.get(col.key)).map(col => col.key),
-        pageSize,
-        order: columnOrder
-      }));
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          hidden: columns
+            .filter((col) => col.hideable !== false && !visible.get(col.key))
+            .map((col) => col.key),
+          pageSize,
+          order: columnOrder,
+        }),
+      );
     } catch {
       /* almacenamiento no disponible */
     }
   };
 
   // Orden de columnas (reordenable arrastrando los encabezados)
-  const byKey = new Map(columns.map(col => [col.key, col]));
-  let columnOrder = columns.map(col => col.key);
+  const byKey = new Map(columns.map((col) => [col.key, col]));
+  let columnOrder = columns.map((col) => col.key);
   if (storageKey) {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
       if (Array.isArray(saved.order)) {
-        const valid = saved.order.filter(key => byKey.has(key));
-        const missing = columns.map(col => col.key).filter(key => !valid.includes(key));
+        const valid = saved.order.filter((key) => byKey.has(key));
+        const missing = columns.map((col) => col.key).filter((key) => !valid.includes(key));
         columnOrder = [...valid, ...missing];
       }
     } catch {
       /* preferencias corruptas: se ignoran */
     }
   }
-  const orderedColumns = () => columnOrder.map(key => byKey.get(key));
-  const sortableKeys = new Set(columns.filter(col => col.sortable !== false && col.hideable !== false).map(col => col.key));
-  const groupableCols = columns.filter(col => col.groupable !== false && col.hideable !== false);
+  const orderedColumns = () => columnOrder.map((key) => byKey.get(key));
+  const sortableKeys = new Set(
+    columns.filter((col) => col.sortable !== false && col.hideable !== false).map((col) => col.key),
+  );
+  const groupableCols = columns.filter((col) => col.groupable !== false && col.hideable !== false);
   let sortKey = null;
   let sortDir = "asc";
   let groupKey = "";
   let page = 1;
   let pageSize = defaultPageSize;
-  if (state.settings?.filasPorPagina && pageSizeOptions.includes(Number(state.settings.filasPorPagina)) && !options.defaultPageSize) {
+  if (
+    state.settings?.filasPorPagina &&
+    pageSizeOptions.includes(Number(state.settings.filasPorPagina)) &&
+    !options.defaultPageSize
+  ) {
     pageSize = Number(state.settings.filasPorPagina);
   }
 
@@ -131,7 +145,7 @@ function crearInstancia(options) {
   groupLabel.append(el("span", null, "Agrupar por"));
   const groupSelect = el("select", "filter-select");
   groupSelect.append(new Option("Sin agrupación", ""));
-  groupableCols.forEach(col => groupSelect.add(new Option(col.label, col.key)));
+  groupableCols.forEach((col) => groupSelect.add(new Option(col.label, col.key)));
   groupLabel.append(groupSelect);
   controls.append(groupLabel);
 
@@ -161,11 +175,13 @@ function crearInstancia(options) {
 
   function buildHead() {
     headRow.replaceChildren();
-    orderedColumns().forEach(col => {
+    orderedColumns().forEach((col) => {
       const th = el("th");
       th.dataset.col = col.key;
       if (!visible.get(col.key)) th.hidden = true;
-      const labelNode = col.srOnlyLabel ? el("span", "sr-only", col.label) : el("span", "th-sort-label", col.label);
+      const labelNode = col.srOnlyLabel
+        ? el("span", "sr-only", col.label)
+        : el("span", "th-sort-label", col.label);
       if (sortableKeys.has(col.key)) {
         const btn = el("button", "th-sort-btn");
         btn.type = "button";
@@ -192,24 +208,30 @@ function crearInstancia(options) {
       // Reordenar columnas arrastrando el encabezado
       th.draggable = true;
       th.title = "Arrastra para reordenar columnas";
-      th.addEventListener("dragstart", event => {
+      th.addEventListener("dragstart", (event) => {
         dragKey = col.key;
         event.dataTransfer.effectAllowed = "move";
-        try { event.dataTransfer.setData("text/plain", col.key); } catch { /* IE */ }
+        try {
+          event.dataTransfer.setData("text/plain", col.key);
+        } catch {
+          /* IE */
+        }
         th.classList.add("th-dragging");
       });
       th.addEventListener("dragend", () => {
         dragKey = null;
-        headRow.querySelectorAll(".th-drag-over").forEach(node => node.classList.remove("th-drag-over"));
+        headRow
+          .querySelectorAll(".th-drag-over")
+          .forEach((node) => node.classList.remove("th-drag-over"));
         th.classList.remove("th-dragging");
       });
-      th.addEventListener("dragover", event => {
+      th.addEventListener("dragover", (event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
         if (dragKey && dragKey !== col.key) th.classList.add("th-drag-over");
       });
       th.addEventListener("dragleave", () => th.classList.remove("th-drag-over"));
-      th.addEventListener("drop", event => {
+      th.addEventListener("drop", (event) => {
         event.preventDefault();
         th.classList.remove("th-drag-over");
         if (!dragKey || dragKey === col.key) return;
@@ -236,7 +258,7 @@ function crearInstancia(options) {
   const sizeLabel = el("label", "table-page-size");
   sizeLabel.append(el("span", null, "Mostrar"));
   const sizeSelect = el("select", "pagination-select");
-  pageSizeOptions.forEach(size => sizeSelect.add(new Option(String(size), String(size))));
+  pageSizeOptions.forEach((size) => sizeSelect.add(new Option(String(size), String(size))));
   sizeSelect.value = String(pageSize);
   sizeLabel.append(sizeSelect, el("span", null, "por página"));
   footer.append(sizeLabel);
@@ -259,7 +281,7 @@ function crearInstancia(options) {
   mount.append(footer);
 
   // --- Menú de columnas ---
-  columns.forEach(col => {
+  columns.forEach((col) => {
     if (col.hideable === false) return;
     const item = el("label", "table-column-item");
     const checkbox = document.createElement("input");
@@ -276,7 +298,7 @@ function crearInstancia(options) {
   columnsBtn.addEventListener("click", () => {
     columnsMenu.hidden = !columnsMenu.hidden;
   });
-  document.addEventListener("click", event => {
+  document.addEventListener("click", (event) => {
     if (!columnsMenu.hidden && !columnsWrap.contains(event.target)) columnsMenu.hidden = true;
   });
 
@@ -331,14 +353,23 @@ function crearInstancia(options) {
     // 1. Filtro único de texto sobre todas las columnas
     let rows = allRows;
     if (query) {
-      rows = rows.filter(row => columns.some(col => columnValue(col, row).includes(query)));
+      rows = rows.filter((row) => columns.some((col) => columnValue(col, row).includes(query)));
     }
 
     // 2. Orden
     if (sortKey) {
-      const col = columns.find(item => item.key === sortKey);
+      const col = columns.find((item) => item.key === sortKey);
       const factor = sortDir === "desc" ? -1 : 1;
-      rows = rows.slice().sort((a, b) => factor * COLLATOR.compare(String(col.value ? col.value(a) : ""), String(col.value ? col.value(b) : "")));
+      rows = rows
+        .slice()
+        .sort(
+          (a, b) =>
+            factor *
+            COLLATOR.compare(
+              String(col.value ? col.value(a) : ""),
+              String(col.value ? col.value(b) : ""),
+            ),
+        );
     }
 
     // 3. Paginación (sobre las filas filtradas; la agrupación se aplica dentro de la página)
@@ -352,7 +383,7 @@ function crearInstancia(options) {
 
     // 4. Render de celdas
     tbody.replaceChildren();
-    const visibleCols = orderedColumns().filter(col => visible.get(col.key));
+    const visibleCols = orderedColumns().filter((col) => visible.get(col.key));
 
     if (totalItems === 0) {
       emptyState.hidden = false;
@@ -363,50 +394,55 @@ function crearInstancia(options) {
     }
 
     if (groupKey) {
-      const groupCol = columns.find(item => item.key === groupKey);
+      const groupCol = columns.find((item) => item.key === groupKey);
       const groups = new Map();
-      pagedRows.forEach(row => {
+      pagedRows.forEach((row) => {
         const rawValue = groupCol.value ? groupCol.value(row) : "";
         const key = rawValue || "—";
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(row);
       });
       const orderedKeys = [...groups.keys()].sort((a, b) => COLLATOR.compare(a, b));
-      orderedKeys.forEach(key => {
+      orderedKeys.forEach((key) => {
         const groupRows = groups.get(key);
         const groupRow = el("tr", "table-group-row");
         const cell = el("td");
         cell.colSpan = String(visibleCols.length);
         cell.append(
           el("span", "table-group-label", key),
-          el("span", "table-group-count", `${groupRows.length} ${groupRows.length === 1 ? entitySingular : entityPlural}`)
+          el(
+            "span",
+            "table-group-count",
+            `${groupRows.length} ${groupRows.length === 1 ? entitySingular : entityPlural}`,
+          ),
         );
         groupRow.append(cell);
         tbody.append(groupRow);
-        groupRows.forEach(row => tbody.append(buildRow(row, visibleCols)));
+        groupRows.forEach((row) => tbody.append(buildRow(row, visibleCols)));
       });
     } else {
-      pagedRows.forEach(row => tbody.append(buildRow(row, visibleCols)));
+      pagedRows.forEach((row) => tbody.append(buildRow(row, visibleCols)));
     }
 
     // Visibilidad y orden de columnas en el thead
     buildHead();
-    columns.forEach(col => {
+    columns.forEach((col) => {
       const th = thead.querySelector(`th[data-col="${col.key}"]`);
       if (th) th.hidden = !visible.get(col.key);
     });
 
     // 5. Pie de tabla
     const shown = pagedRows.length;
-    info.textContent = totalItems === 0
-      ? `Sin ${entityPlural}`
-      : `Mostrando ${start + 1}–${start + shown} de ${totalItems} ${totalItems === 1 ? entitySingular : entityPlural}`;
+    info.textContent =
+      totalItems === 0
+        ? `Sin ${entityPlural}`
+        : `Mostrando ${start + 1}–${start + shown} de ${totalItems} ${totalItems === 1 ? entitySingular : entityPlural}`;
     sizeLabel.style.visibility = totalItems === 0 ? "hidden" : "visible";
     pager.style.visibility = totalItems === 0 || totalPages <= 1 ? "hidden" : "visible";
 
     prevBtn.disabled = page <= 1;
     nextBtn.disabled = page >= totalPages;
-    pager.querySelectorAll(".pager-page").forEach(node => node.remove());
+    pager.querySelectorAll(".pager-page").forEach((node) => node.remove());
     for (let i = 1; i <= totalPages; i++) {
       const pageBtn = el("button", "pager-btn pager-page", String(i));
       pageBtn.type = "button";
@@ -420,7 +456,7 @@ function crearInstancia(options) {
     }
 
     // Indicadores de orden
-    thead.querySelectorAll("th.th-sortable").forEach(th => {
+    thead.querySelectorAll("th.th-sortable").forEach((th) => {
       const indicator = th.querySelector(".sort-ind");
       if (!indicator) return;
       if (th.dataset.col === sortKey) {
@@ -440,7 +476,7 @@ function crearInstancia(options) {
 
   function buildRow(row, visibleCols) {
     const tr = el("tr");
-    visibleCols.forEach(col => {
+    visibleCols.forEach((col) => {
       const td = el("td");
       const rendered = col.render ? col.render(row) : null;
       if (rendered instanceof Node) {
@@ -465,7 +501,7 @@ function crearInstancia(options) {
       page = 1;
       sizeSelect.value = String(pageSize);
       refresh();
-    }
+    },
   };
   return tabla;
 }

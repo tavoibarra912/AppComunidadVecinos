@@ -9,32 +9,36 @@ import path from "node:path";
 process.env.APP_DATA_DIR = mkdtempSync(path.join(tmpdir(), "penarrubia-test-"));
 process.env.APP_UPLOADS_DIR = path.join(process.env.APP_DATA_DIR, "uploads");
 
-const { db, ownerFromRow, communityFromRow, propertyFromRow, tenantFromRow } = await import("../../src/db.js");
-const { syncOwnerProperties, applyOwnerPropertyLink, rebuildOwnersPropertyIds, upsertTenant } = await import("../../src/domain.js");
+const { db, ownerFromRow, communityFromRow, propertyFromRow, tenantFromRow } =
+  await import("../../src/db.js");
+const { syncOwnerProperties, applyOwnerPropertyLink, rebuildOwnersPropertyIds, upsertTenant } =
+  await import("../../src/domain.js");
 
 // ---------- Helpers ----------
 function createCommunity(id, name = "Comunidad Test") {
   db.prepare(
-    `INSERT INTO communities (id, name, nif, adminUserId, currency) VALUES (?, ?, ?, '', 'EUR')`
+    `INSERT INTO communities (id, name, nif, adminUserId, currency) VALUES (?, ?, ?, '', 'EUR')`,
   ).run(id, name, "H12345674");
 }
 
 function createOwner(id, name = "Propietario", surname = "Test", userId = "") {
   db.prepare(
     `INSERT INTO owners (id, name, surname, documentType, dni, isMember, communityId, communityName, propertyId, propertyIds, documents, userId)
-     VALUES (?, ?, ?, 'DNI', ?, 1, '', '', '', '[]', '{}', ?)`
+     VALUES (?, ?, ?, 'DNI', ?, 1, '', '', '', '[]', '{}', ?)`,
   ).run(id, name, surname, id.toUpperCase(), userId);
 }
 
 function createProperty(id, communityId, ownerIds = []) {
   db.prepare(
     `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, ownerPercentages)
-     VALUES (?, ?, '', ?, '[]', 'vivienda', ?, 'Calle Test 1', '{}')`
+     VALUES (?, ?, '', ?, '[]', 'vivienda', ?, 'Calle Test 1', '{}')`,
   ).run(id, communityId, JSON.stringify(ownerIds), "Inmueble " + id);
 }
 
 function ownerIdsOf(propertyId) {
-  return JSON.parse(db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propertyId).ownerIds);
+  return JSON.parse(
+    db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propertyId).ownerIds,
+  );
 }
 
 function ownerPropertyIdsOf(ownerId) {
@@ -50,56 +54,69 @@ before(() => {
 
 after(() => {
   db.close();
-  try { rmSync(process.env.APP_DATA_DIR, { recursive: true, force: true }); } catch {}
+  try {
+    rmSync(process.env.APP_DATA_DIR, { recursive: true, force: true });
+  } catch {}
 });
 
 // ---------- Roles: semilla migrada ----------
 test("migración de roles: los 4 roles del sistema existen", () => {
-  const roles = db.prepare("SELECT nombre FROM roles").all().map(r => r.nombre);
+  const roles = db
+    .prepare("SELECT nombre FROM roles")
+    .all()
+    .map((r) => r.nombre);
   for (const expected of ["super_admin", "administrator", "community_admin", "user"]) {
     assert.ok(roles.includes(expected), `falta rol ${expected}`);
   }
 });
 
 test("migración de roles: los roles viejos fueron eliminados", () => {
-  const roles = db.prepare("SELECT nombre FROM roles").all().map(r => r.nombre);
+  const roles = db
+    .prepare("SELECT nombre FROM roles")
+    .all()
+    .map((r) => r.nombre);
   assert.ok(!roles.includes("administrador"), "rol viejo 'administrador' aún existe");
   assert.ok(!roles.includes("propietario"), "rol viejo 'propietario' aún existe");
 });
 test("migración de inmuebles: referencia catastral normalizada y única", () => {
-  const index = db.prepare(
-    "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_properties_cadastral_unique'"
-  ).get();
+  const index = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_properties_cadastral_unique'",
+    )
+    .get();
   assert.ok(index, "falta el índice único de referencia catastral");
   db.prepare(
     `INSERT INTO properties (id, communityId, propertyType, plot, cadastralRef)
-     VALUES ('prop-catastral-1', 'com-1', 'vivienda', 'Catastral 1', '12345678901234567890')`
+     VALUES ('prop-catastral-1', 'com-1', 'vivienda', 'Catastral 1', '12345678901234567890')`,
   ).run();
   assert.throws(
-    () => db.prepare(
-      `INSERT INTO properties (id, communityId, propertyType, plot, cadastralRef)
-       VALUES ('prop-catastral-2', 'com-1', 'vivienda', 'Catastral 2', ' 12345678901234567890 ')`
-    ).run(),
-    /UNIQUE/i
+    () =>
+      db
+        .prepare(
+          `INSERT INTO properties (id, communityId, propertyType, plot, cadastralRef)
+       VALUES ('prop-catastral-2', 'com-1', 'vivienda', 'Catastral 2', ' 12345678901234567890 ')`,
+        )
+        .run(),
+    /UNIQUE/i,
   );
 });
 
 // ---------- Usuarios: semilla ----------
 test("semilla de usuarios: cuentas estándar de demostración", () => {
   const usuarios = db.prepare("SELECT usuario, rol FROM users").all();
-  assert.ok(usuarios.some(u => u.usuario === "super_admin" && u.rol === "super_admin"));
-  assert.ok(usuarios.some(u => u.usuario === "admin" && u.rol === "administrator"));
-  assert.ok(usuarios.some(u => u.usuario === "ca1" && u.rol === "community_admin"));
-  assert.ok(usuarios.some(u => u.usuario === "ca2" && u.rol === "community_admin"));
-  assert.ok(usuarios.some(u => u.usuario === "urusp1" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "urucp1" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "urucp2" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "urucp3" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "uruci1" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "uruci2" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "uruci3" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "urucpci1" && u.rol === "user"));
-  assert.ok(usuarios.some(u => u.usuario === "urucpci2" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "super_admin" && u.rol === "super_admin"));
+  assert.ok(usuarios.some((u) => u.usuario === "admin" && u.rol === "administrator"));
+  assert.ok(usuarios.some((u) => u.usuario === "ca1" && u.rol === "community_admin"));
+  assert.ok(usuarios.some((u) => u.usuario === "ca2" && u.rol === "community_admin"));
+  assert.ok(usuarios.some((u) => u.usuario === "urusp1" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "urucp1" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "urucp2" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "urucp3" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "uruci1" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "uruci2" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "uruci3" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "urucpci1" && u.rol === "user"));
+  assert.ok(usuarios.some((u) => u.usuario === "urucpci2" && u.rol === "user"));
 });
 
 // ---------- syncOwnerProperties (N:M propietario ↔ inmuebles) ----------
@@ -150,7 +167,9 @@ test("syncOwnerProperties: ignora IDs de inmueble inexistentes", () => {
 test("applyOwnerPropertyLink: vincula propietario a un inmueble y actualiza datos denormalizados", () => {
   createOwner("own-5");
   createProperty("prop-6", "com-1");
-  db.prepare("UPDATE properties SET cadastralRef = 'REF123', participationCoef = '50' WHERE id = 'prop-6'").run();
+  db.prepare(
+    "UPDATE properties SET cadastralRef = 'REF123', participationCoef = '50' WHERE id = 'prop-6'",
+  ).run();
 
   applyOwnerPropertyLink("own-5", "prop-6");
 
@@ -166,7 +185,10 @@ test("rebuildOwnersPropertyIds: rearma propertyIds desde los ownerIds de los inm
   createOwner("own-6");
   createProperty("prop-7", "com-1");
   // vincular manualmente sin reconstruir
-  db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?").run(JSON.stringify(["own-6"]), "prop-7");
+  db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?").run(
+    JSON.stringify(["own-6"]),
+    "prop-7",
+  );
   db.prepare("UPDATE owners SET propertyIds = '[]' WHERE id = 'own-6'").run();
 
   rebuildOwnersPropertyIds();
@@ -179,17 +201,20 @@ test("upsertTenant: crea inquilino vinculado a inmueble y propietario", () => {
   createOwner("own-7");
   createProperty("prop-8", "com-1", ["own-7"]);
 
-  upsertTenant({
-    ownerId: "own-7",
-    propertyId: "prop-8",
-    name: "Inquilino",
-    surname: "Test",
-    documentType: "DNI",
-    documentId: "11111111H",
-    contractStart: "2026-01-01",
-    phone: "600000000",
-    email: "inquilino@test.es"
-  }, "tenant-test-1");
+  upsertTenant(
+    {
+      ownerId: "own-7",
+      propertyId: "prop-8",
+      name: "Inquilino",
+      surname: "Test",
+      documentType: "DNI",
+      documentId: "11111111H",
+      contractStart: "2026-01-01",
+      phone: "600000000",
+      email: "inquilino@test.es",
+    },
+    "tenant-test-1",
+  );
 
   const tenant = db.prepare("SELECT * FROM tenants WHERE id = 'tenant-test-1'").get();
   assert.ok(tenant);
@@ -199,16 +224,24 @@ test("upsertTenant: crea inquilino vinculado a inmueble y propietario", () => {
 
 test("upsertTenant: falla si el inmueble no existe", () => {
   assert.throws(
-    () => upsertTenant({ ownerId: "own-7", propertyId: "prop-fantasma", name: "X", surname: "Y" }, "t-x"),
-    /inmueble.*no existe/i
+    () =>
+      upsertTenant(
+        { ownerId: "own-7", propertyId: "prop-fantasma", name: "X", surname: "Y" },
+        "t-x",
+      ),
+    /inmueble.*no existe/i,
   );
 });
 
 test("upsertTenant: falla si el propietario no existe", () => {
   createProperty("prop-9", "com-1");
   assert.throws(
-    () => upsertTenant({ ownerId: "own-fantasma", propertyId: "prop-9", name: "X", surname: "Y" }, "t-y"),
-    /propietario.*no existe/i
+    () =>
+      upsertTenant(
+        { ownerId: "own-fantasma", propertyId: "prop-9", name: "X", surname: "Y" },
+        "t-y",
+      ),
+    /propietario.*no existe/i,
   );
 });
 
@@ -222,7 +255,7 @@ test("ownerFromRow: mapea userId", () => {
 test("propertyFromRow: mapea ownerPercentages y currency", () => {
   db.prepare(
     `INSERT INTO properties (id, communityId, communityName, ownerIds, ownerPercentages, currency, propertyType, plot, address)
-     VALUES (?, 'com-1', '', '[]', ?, 'EUR', 'vivienda', 'P', 'Dirección')`
+     VALUES (?, 'com-1', '', '[]', ?, 'EUR', 'vivienda', 'P', 'Dirección')`,
   ).run("prop-10", JSON.stringify({ "own-1": 100 }));
   const prop = propertyFromRow(db.prepare("SELECT * FROM properties WHERE id = 'prop-10'").get());
   assert.equal(prop.currency, "EUR");
@@ -258,7 +291,14 @@ test("roles del sistema: incluyen los permisos granulares de creación y edició
     assert.ok(administrator.includes(permiso), `administrator: falta ${permiso}`);
   }
   const communityAdmin = permisosDe("community_admin");
-  for (const permiso of ["community:edit", "owner:create", "property:create", "tenant:create", "comm:publicar", "comm:moderar"]) {
+  for (const permiso of [
+    "community:edit",
+    "owner:create",
+    "property:create",
+    "tenant:create",
+    "comm:publicar",
+    "comm:moderar",
+  ]) {
     assert.ok(communityAdmin.includes(permiso), `community_admin: falta ${permiso}`);
   }
   assert.ok(!communityAdmin.includes("community:create"));
@@ -273,17 +313,8 @@ test("rich text: conserva el formato permitido y elimina HTML peligroso", async 
     sanitizeRichText('<a href="https://ejemplo.test" onclick="alert(1)">Enlace</a>'),
     '<a href="https://ejemplo.test" target="_blank" rel="noopener noreferrer">Enlace</a>',
   );
-  assert.equal(
-    sanitizeRichText('<a href="javascript:alert(1)">Malicioso</a>'),
-    "Malicioso",
-  );
-  assert.equal(
-    sanitizeRichText("<b><i>Anidado</b></i>"),
-    "<b><i>Anidado</i></b>",
-  );
-  assert.equal(
-    sanitizeRichText("<script>alert(1)</script>"),
-    "alert(1)",
-  );
+  assert.equal(sanitizeRichText('<a href="javascript:alert(1)">Malicioso</a>'), "Malicioso");
+  assert.equal(sanitizeRichText("<b><i>Anidado</b></i>"), "<b><i>Anidado</i></b>");
+  assert.equal(sanitizeRichText("<script>alert(1)</script>"), "alert(1)");
   assert.equal(sanitizeRichText("Texto plano"), "Texto plano");
 });

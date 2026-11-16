@@ -1,6 +1,7 @@
+import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db, propertyFromRow, listDocuments } from "../db.js";
+import { db, propertyFromRow, listProperties, listDocuments } from "../db.js";
 import { rebuildOwnersPropertyIds, rebuildPropertyTenantReferences } from "../domain.js";
 import { removeEntityFiles } from "./documents.js";
 
@@ -14,13 +15,20 @@ function findProperty(id) {
 function hasAssessment(propertyId) {
   const assessment =
     db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_assessments'").get() &&
-    db.prepare(`SELECT 1 FROM fee_assessments a, json_each(a.data, '$.propertyIds') p
-      WHERE a.cancelledAt='' AND p.value=? LIMIT 1`).get(propertyId);
+    db
+      .prepare(
+        `SELECT 1 FROM fee_assessments a, json_each(a.data, '$.propertyIds') p
+      WHERE a.cancelledAt='' AND p.value=? LIMIT 1`,
+      )
+      .get(propertyId);
   if (assessment) return true;
-  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name='service_bills'").get())
-    return false;
-  return db.prepare(`SELECT 1 FROM service_bills s, json_each(s.data, '$.propertyIds') p
-      WHERE s.cancelledAt='' AND p.value=? LIMIT 1`).get(propertyId);
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE name='service_bills'").get()) return false;
+  return db
+    .prepare(
+      `SELECT 1 FROM service_bills s, json_each(s.data, '$.propertyIds') p
+      WHERE s.cancelledAt='' AND p.value=? LIMIT 1`,
+    )
+    .get(propertyId);
 }
 
 function propertyPayload(property) {
@@ -28,11 +36,15 @@ function propertyPayload(property) {
 }
 
 function normalizeCadastralRef(value) {
-  return String(value || "").replace(/\s+/g, "").toUpperCase();
+  return String(value || "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
 }
 
 function normalizeParticipationCoef(value) {
-  return String(value ?? "").trim().replace(",", ".");
+  return String(value ?? "")
+    .trim()
+    .replace(",", ".");
 }
 
 /** Comunidades en las que el propietario ya tiene algún inmueble. */
@@ -40,14 +52,16 @@ function ownerCommunityIds(ownerId) {
   const ids = new Set();
   const owner = db.prepare("SELECT communityId FROM owners WHERE id = ?").get(ownerId);
   if (owner?.communityId) ids.add(owner.communityId);
-  db.prepare("SELECT DISTINCT communityId FROM properties WHERE ownerIds LIKE ? AND communityId <> ''")
+  db.prepare(
+    "SELECT DISTINCT communityId FROM properties WHERE ownerIds LIKE ? AND communityId <> ''",
+  )
     .all(`%"${ownerId}"%`)
-    .forEach(row => ids.add(row.communityId));
+    .forEach((row) => ids.add(row.communityId));
   return ids;
 }
 
 router.get("/", (req, res) => {
-  res.json(db.prepare("SELECT * FROM properties ORDER BY plot").all().map(propertyFromRow).map(propertyPayload));
+  res.json(listProperties().map(propertyPayload));
 });
 
 router.get("/:id", (req, res) => {
@@ -85,14 +99,20 @@ function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } 
     }
   }
   for (const tenantId of data.tenantIds || []) {
-    const tenant = db.prepare(
-      `SELECT t.id, t.propertyId, p.communityId AS propertyCommunityId
+    const tenant = db
+      .prepare(
+        `SELECT t.id, t.propertyId, p.communityId AS propertyCommunityId
        FROM tenants t LEFT JOIN properties p ON p.id = t.propertyId
-       WHERE t.id = ?`
-    ).get(tenantId);
+       WHERE t.id = ?`,
+      )
+      .get(tenantId);
     if (!tenant) return "Uno de los inquilinos seleccionados no existe.";
-    if (community && tenant.propertyId && tenant.propertyCommunityId &&
-        tenant.propertyCommunityId !== community.id) {
+    if (
+      community &&
+      tenant.propertyId &&
+      tenant.propertyCommunityId &&
+      tenant.propertyCommunityId !== community.id
+    ) {
       return "Todos los inquilinos deben pertenecer a la comunidad del inmueble.";
     }
   }
@@ -102,9 +122,11 @@ function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } 
     if (!/^[A-Z0-9]{20}$/.test(cadastralRef)) {
       return "La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.";
     }
-    const duplicate = db.prepare(
-      "SELECT id FROM properties WHERE UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) = ? AND id <> ?"
-    ).get(cadastralRef, excludeId);
+    const duplicate = db
+      .prepare(
+        "SELECT id FROM properties WHERE UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) = ? AND id <> ?",
+      )
+      .get(cadastralRef, excludeId);
     if (duplicate) return "Ya existe otro inmueble con la misma referencia catastral.";
   }
 
@@ -116,7 +138,11 @@ function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } 
     return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
   }
   const participationNumber = Number(participationCoef);
-  if (!Number.isFinite(participationNumber) || participationNumber < 0.0001 || participationNumber > 100) {
+  if (
+    !Number.isFinite(participationNumber) ||
+    participationNumber < 0.0001 ||
+    participationNumber > 100
+  ) {
     return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
   }
 
@@ -131,7 +157,8 @@ function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } 
  */
 function normalizeOwnerPercentages(data) {
   const ownerIds = Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [];
-  const input = data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
+  const input =
+    data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
   const percentages = {};
   const missing = [];
   let total = 0;
@@ -144,7 +171,9 @@ function normalizeOwnerPercentages(data) {
     }
     const pct = Number(raw);
     if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
-      return { error: "El porcentaje de titularidad de cada propietario debe estar entre 0 y 100." };
+      return {
+        error: "El porcentaje de titularidad de cada propietario debe estar entre 0 y 100.",
+      };
     }
     percentages[ownerId] = pct;
     total += pct;
@@ -158,9 +187,11 @@ function normalizeOwnerPercentages(data) {
     const remaining = 100 - total;
     const share = Math.round((remaining / missing.length) * 10000) / 10000;
     if (share <= 0) {
-      return { error: "No queda porcentaje de titularidad disponible para el resto de propietarios." };
+      return {
+        error: "No queda porcentaje de titularidad disponible para el resto de propietarios.",
+      };
     }
-    missing.forEach(ownerId => {
+    missing.forEach((ownerId) => {
       percentages[ownerId] = share;
     });
   }
@@ -169,11 +200,16 @@ function normalizeOwnerPercentages(data) {
 }
 
 function storeProperty(id, data, community) {
-  const ownerIds = JSON.stringify(Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : []);
-  const tenantIds = JSON.stringify(Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : []);
+  const ownerIds = JSON.stringify(
+    Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [],
+  );
+  const tenantIds = JSON.stringify(
+    Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : [],
+  );
   const ownerPercentages = JSON.stringify(normalizeOwnerPercentages(data).percentages || {});
-  return db.prepare(
-    `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, communityFee, cadastralRef,
+  return db
+    .prepare(
+      `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, communityFee, cadastralRef,
        registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province, currency, ownerPercentages)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
@@ -200,24 +236,48 @@ function storeProperty(id, data, community) {
        city = excluded.city,
        province = excluded.province,
        currency = excluded.currency,
-       ownerPercentages = excluded.ownerPercentages`
-  ).run(
-    id, community ? community.id : "", community ? community.name : "", ownerIds, tenantIds, data.propertyType, data.plot, data.address || "",
-    data.staircase || "", data.energyCertificate || "", data.communityFee || "",
-    normalizeCadastralRef(data.cadastralRef), data.registryNumber || "", data.floor || "", data.door || "",
-    data.areaM2 || "", normalizeParticipationCoef(data.participationCoef), data.propertyUse || "",
-    data.receiptStatus === "pending" ? "pending" : "current",
-    data.notes || "", data.postalCode || "", data.city || "", data.province || "",
-    data.currency || "", ownerPercentages
-  );
+       ownerPercentages = excluded.ownerPercentages`,
+    )
+    .run(
+      id,
+      community ? community.id : "",
+      community ? community.name : "",
+      ownerIds,
+      tenantIds,
+      data.propertyType,
+      data.plot,
+      data.address || "",
+      data.staircase || "",
+      data.energyCertificate || "",
+      data.communityFee || "",
+      normalizeCadastralRef(data.cadastralRef),
+      data.registryNumber || "",
+      data.floor || "",
+      data.door || "",
+      data.areaM2 || "",
+      normalizeParticipationCoef(data.participationCoef),
+      data.propertyUse || "",
+      data.receiptStatus === "pending" ? "pending" : "current",
+      data.notes || "",
+      data.postalCode || "",
+      data.city || "",
+      data.province || "",
+      data.currency || "",
+      ownerPercentages,
+    );
 }
 
 /** Sincroniza los inquilinos del inmueble: los tenantIds pasan a apuntar al inmueble. */
 function syncTenantsForProperty(propertyId, tenantIds) {
-  db.prepare("UPDATE tenants SET propertyId = '' WHERE propertyId = ? AND id NOT IN (SELECT j.value FROM json_each(?) j)")
-    .run(propertyId, JSON.stringify(tenantIds));
-  const owners = JSON.parse(db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propertyId).ownerIds || "[]");
-  const setTenant = db.prepare("UPDATE tenants SET propertyId = ?, ownerId = CASE WHEN ownerId IN (SELECT value FROM json_each(?)) THEN ownerId ELSE ? END WHERE id = ?");
+  db.prepare(
+    "UPDATE tenants SET propertyId = '' WHERE propertyId = ? AND id NOT IN (SELECT j.value FROM json_each(?) j)",
+  ).run(propertyId, JSON.stringify(tenantIds));
+  const owners = JSON.parse(
+    db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propertyId).ownerIds || "[]",
+  );
+  const setTenant = db.prepare(
+    "UPDATE tenants SET propertyId = ?, ownerId = CASE WHEN ownerId IN (SELECT value FROM json_each(?)) THEN ownerId ELSE ? END WHERE id = ?",
+  );
   for (const tenantId of tenantIds) {
     setTenant.run(propertyId, JSON.stringify(owners), owners[0] || "", tenantId);
   }
@@ -229,7 +289,9 @@ router.post("/", (req, res) => {
   const id = data.id || crypto.randomUUID();
   const error = validatePropertyPayload(data, { excludeId: id });
   if (error) return res.status(400).json({ error });
-  const community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
+  const community = db
+    .prepare("SELECT id, name FROM communities WHERE id = ?")
+    .get(data.communityId);
 
   db.exec("BEGIN");
   try {
@@ -245,38 +307,59 @@ router.post("/", (req, res) => {
   res.status(201).json(propertyPayload(findProperty(id)));
 });
 
-router.put("/:id", (req, res) => {
-  const existing = findProperty(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
-  const data = req.body || {};
-  if ((data.communityId || "") !== existing.communityId && hasAssessment(existing.id))
-    return res.status(409).json({ error: "No se puede cambiar de comunidad un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto." });
-  const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
-  if (error) return res.status(400).json({ error });
-  const community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
+router.put(
+  "/:id",
+  versionedUpdate("properties", (req, res) => {
+    const existing = findProperty(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
+    const data = req.body || {};
+    if ((data.communityId || "") !== existing.communityId && hasAssessment(existing.id))
+      return res.status(409).json({
+        error:
+          "No se puede cambiar de comunidad un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto.",
+      });
+    const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
+    if (error) return res.status(400).json({ error });
+    const community = db
+      .prepare("SELECT id, name FROM communities WHERE id = ?")
+      .get(data.communityId);
 
-  db.exec("BEGIN");
-  try {
-    storeProperty(existing.id, data, community);
-    syncTenantsForProperty(existing.id, Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : []);
-    rebuildOwnersPropertyIds();
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
+    db.exec("SAVEPOINT entity_update");
+    try {
+      storeProperty(existing.id, data, community);
+      syncTenantsForProperty(
+        existing.id,
+        Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : [],
+      );
+      rebuildOwnersPropertyIds();
+      db.exec("RELEASE entity_update");
+    } catch (error) {
+      db.exec("ROLLBACK TO entity_update");
+      throw error;
+    }
 
-  res.json(propertyPayload(findProperty(existing.id)));
-});
+    res.json(propertyPayload(findProperty(existing.id)));
+  }),
+);
 
 router.delete("/:id", (req, res) => {
   if (hasAssessment(req.params.id))
-    return res.status(409).json({ error: "No se puede eliminar un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto." });
-  if (db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() && db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=?").get(req.params.id))
-    return res.status(409).json({ error: "No se puede eliminar un inmueble con historial de cuotas." });
+    return res.status(409).json({
+      error:
+        "No se puede eliminar un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto.",
+    });
+  if (
+    db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() &&
+    db.prepare("SELECT 1 FROM fee_receipts WHERE propertyId=?").get(req.params.id)
+  )
+    return res
+      .status(409)
+      .json({ error: "No se puede eliminar un inmueble con historial de cuotas." });
   const existing = findProperty(req.params.id);
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
-  const inquilinos = db.prepare("SELECT COUNT(*) AS n FROM tenants WHERE propertyId = ?").get(existing.id).n;
+  const inquilinos = db
+    .prepare("SELECT COUNT(*) AS n FROM tenants WHERE propertyId = ?")
+    .get(existing.id).n;
   if (inquilinos > 0)
     return res.status(409).json({
       error: `No se puede eliminar el inmueble: tiene ${inquilinos === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvincula primero al inquilino.`,

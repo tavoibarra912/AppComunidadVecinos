@@ -32,9 +32,7 @@ function openMenu(last = false) {
   const choices = items();
   choices[last ? choices.length - 1 : 0]?.focus();
 }
-toggle.addEventListener("click", () =>
-  menu.hidden ? openMenu() : closeMenu(true),
-);
+toggle.addEventListener("click", () => (menu.hidden ? openMenu() : closeMenu(true)));
 toggle.addEventListener("keydown", (event) => {
   if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
   event.preventDefault();
@@ -53,10 +51,7 @@ menu.addEventListener("keydown", (event) => {
   let index = choices.indexOf(document.activeElement);
   if (event.key === "Home") index = 0;
   else if (event.key === "End") index = choices.length - 1;
-  else
-    index =
-      (index + (event.key === "ArrowDown" ? 1 : -1) + choices.length) %
-      choices.length;
+  else index = (index + (event.key === "ArrowDown" ? 1 : -1) + choices.length) % choices.length;
   choices[index]?.focus();
 });
 document.addEventListener("pointerdown", (event) => {
@@ -71,8 +66,7 @@ window.addEventListener("auth:expired", () => closeMenu());
 export function renderAccountMenu() {
   const view = accountView(state, ROLE_LABELS);
   document.querySelector("#user-menu-name").textContent = view.displayName;
-  document.querySelector("#user-menu-email").textContent =
-    view.user?.email || view.roleLabel;
+  document.querySelector("#user-menu-email").textContent = view.user?.email || view.roleLabel;
   document.querySelector("#account-menu-community").textContent =
     state.activeRole === "owner" ? "Mi comunidad" : "Comunidades";
   if (!view.user) closeMenu();
@@ -128,26 +122,18 @@ function openProfile() {
   closeMenu();
   profileDialog.showModal();
 }
-document
-  .querySelector("#account-menu-profile")
-  .addEventListener("click", openProfile);
-document
-  .querySelector("#account-menu-community")
-  .addEventListener("click", () => {
-    closeMenu();
-    navigateToSection("#comunidades");
-  });
-document
-  .querySelector("#account-menu-password")
-  .addEventListener("click", () => {
-    closeMenu();
-    passwordForm.reset();
-    passwordError.textContent = "";
-    passwordDialog.showModal();
-  });
-document
-  .querySelector("#user-logout-btn")
-  .addEventListener("click", () => closeMenu());
+document.querySelector("#account-menu-profile").addEventListener("click", openProfile);
+document.querySelector("#account-menu-community").addEventListener("click", () => {
+  closeMenu();
+  navigateToSection("#comunidades");
+});
+document.querySelector("#account-menu-password").addEventListener("click", () => {
+  closeMenu();
+  passwordForm.reset();
+  passwordError.textContent = "";
+  passwordDialog.showModal();
+});
+document.querySelector("#user-logout-btn").addEventListener("click", () => closeMenu());
 for (const button of document.querySelectorAll("[data-close-account-dialog]")) {
   button.addEventListener("click", () =>
     document.getElementById(button.dataset.closeAccountDialog).close(),
@@ -163,8 +149,7 @@ passwordForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (passwordSubmit.disabled) return;
   passwordError.textContent = "";
-  const { currentPassword, newPassword, confirmPassword } =
-    passwordForm.elements;
+  const { currentPassword, newPassword, confirmPassword } = passwordForm.elements;
   if (!currentPassword.value) {
     passwordError.textContent = "Indica tu contraseña actual.";
     currentPassword.focus();
@@ -176,8 +161,7 @@ passwordForm.addEventListener("submit", async (event) => {
     return;
   }
   if (newPassword.value.length < 8 || newPassword.value.length > 128) {
-    passwordError.textContent =
-      "La contraseña debe tener entre 8 y 128 caracteres.";
+    passwordError.textContent = "La contraseña debe tener entre 8 y 128 caracteres.";
     newPassword.focus();
     return;
   }
@@ -200,8 +184,7 @@ passwordForm.addEventListener("submit", async (event) => {
       try {
         await api.getCurrentUser();
       } catch (sessionError) {
-        if (sessionError.status === 401)
-          window.dispatchEvent(new Event("auth:expired"));
+        if (sessionError.status === 401) window.dispatchEvent(new Event("auth:expired"));
         else passwordError.textContent = sessionError.message;
         return;
       }

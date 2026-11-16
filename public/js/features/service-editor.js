@@ -34,12 +34,7 @@ export function buildServiceEditor(ctx, service, ui) {
     el("p", "SERVICIOS", "eyebrow"),
     el("h2", editing ? "Editar servicio" : "Nuevo servicio"),
   );
-  const close = iconButton(
-    "Cerrar formulario de servicio",
-    requestClose,
-    "cancel",
-    "close",
-  );
+  const close = iconButton("Cerrar formulario de servicio", requestClose, "cancel", "close");
   close.classList.add("btn-lg");
   close.querySelector("svg").setAttribute("width", "20");
   close.querySelector("svg").setAttribute("height", "20");
@@ -47,7 +42,7 @@ export function buildServiceEditor(ctx, service, ui) {
   shell.append(header);
   info(
     shell,
-    "Los campos marcados con * son obligatorios. Guardá el borrador y revisá la vista previa antes de emitir los recibos.",
+    "Los campos marcados con * son obligatorios. Guarda el borrador y revisa la vista previa antes de emitir los recibos.",
   );
   const error = el("p", undefined, "fee-error");
   error.dataset.feeError = "";
@@ -65,13 +60,7 @@ export function buildServiceEditor(ctx, service, ui) {
     ["split", "Reparto"],
     ["readings", "Lecturas"],
   ];
-  const nav = tabBar(
-    form,
-    sections,
-    "general",
-    activate,
-    "Secciones del servicio",
-  );
+  const nav = tabBar(form, sections, "general", activate, "Secciones del servicio");
   const sectionId = `service-${ctx.id}`;
   for (const [id, label] of sections) {
     const pane = el("section", undefined, "fee-editor-pane");
@@ -130,7 +119,7 @@ export function buildServiceEditor(ctx, service, ui) {
   discard.hidden = true;
   discard.setAttribute("role", "alert");
   discard.append(
-    el("p", "Tenés cambios sin guardar. ¿Querés descartarlos?"),
+    el("p", "Tienes cambios sin guardar. ¿Quieres descartarlos?"),
     button("Seguir editando", () => {
       discard.hidden = true;
     }),
@@ -162,19 +151,9 @@ export function buildServiceEditor(ctx, service, ui) {
   );
   serviceInput.required = true;
   serviceInput.dataset.noCombo = "";
-  const supplier = field(
-    grid,
-    "Proveedor (opcional)",
-    "text",
-    service?.supplier || "",
-  );
+  const supplier = field(grid, "Proveedor (opcional)", "text", service?.supplier || "");
   supplier.maxLength = 120;
-  const invoice = field(
-    grid,
-    "Número de factura (opcional)",
-    "text",
-    service?.invoiceNumber || "",
-  );
+  const invoice = field(grid, "Número de factura (opcional)", "text", service?.invoiceNumber || "");
   invoice.maxLength = 80;
   const period = field(
     grid,
@@ -197,11 +176,7 @@ export function buildServiceEditor(ctx, service, ui) {
     service?.dueDate || defaultDueDate(),
   );
   dueDate.required = true;
-  const total = euroField(
-    grid,
-    "Importe total de la factura (€) *",
-    service?.totalAmount ?? "",
-  );
+  const total = euroField(grid, "Importe total de la factura (€) *", service?.totalAmount ?? "");
   hint(total, "Importe íntegro que se repartirá entre los inmuebles.");
   const legalBasis = field(
     grid,
@@ -213,7 +188,7 @@ export function buildServiceEditor(ctx, service, ui) {
   legalBasis.closest(".fee-field").classList.add("fee-field-wide");
   hint(
     legalBasis,
-    "Necesaria para repartos distintos del coeficiente. Indicá el acuerdo, la norma o el criterio aprobado.",
+    "Necesaria para repartos distintos del coeficiente. Indica el acuerdo, la norma o el criterio aprobado.",
   );
   const centralHeating = field(
     grid,
@@ -226,11 +201,7 @@ export function buildServiceEditor(ctx, service, ui) {
     "Marcá esta casilla solo si la factura corresponde al sistema centralizado del edificio (no a un equipo individual de la vivienda). No cambia el reparto: activa un aviso si la parte variable queda fuera del 60–75 % recomendado por el RD 736/2020.",
   );
   const notesWrap = el("div", undefined, "fee-field fee-field-wide rich-text-field");
-  const notesLabel = el(
-    "span",
-    "Observaciones (opcional)",
-    "rich-text-label",
-  );
+  const notesLabel = el("span", "Observaciones (opcional)", "rich-text-label");
   notesLabel.id = `${sectionId}-notes-label`;
   const notesEditorBox = el("div", undefined, "rich-text-editor");
   const notesToolbar = el("div", undefined, "rich-text-toolbar");
@@ -321,22 +292,16 @@ export function buildServiceEditor(ctx, service, ui) {
   const variableShareField = variableShare.closest(".fee-field");
 
   const properties = ctx.data.properties || [];
-  const selected = new Set(
-    service?.propertyIds || properties.map((property) => property.id),
-  );
+  const selected = new Set(service?.propertyIds || properties.map((property) => property.id));
   const manualInputs = new Map();
-  const selectedHeading = el(
-    "div",
-    undefined,
-    "detail-section-heading fee-included-heading",
-  );
+  const selectedHeading = el("div", undefined, "detail-section-heading fee-included-heading");
   const selectedCopy = el("div");
   const selectedTitle = el("h4");
   selectedCopy.append(
     selectedTitle,
     el(
       "p",
-      "Buscá y vinculá los inmuebles que participan en el servicio. Podés quitar cualquiera antes de guardar.",
+      "Busca y vincula los inmuebles que participan en el servicio. Puedes quitar cualquiera antes de guardar.",
       "detail-section-subtitle",
     ),
   );
@@ -358,18 +323,14 @@ export function buildServiceEditor(ctx, service, ui) {
   propertyActions.append(all, link);
   selectedHeading.append(selectedCopy, propertyActions);
   split.append(selectedHeading);
-  const picker = el(
-    "div",
-    undefined,
-    "community-edit-link-panel fee-property-picker",
-  );
+  const picker = el("div", undefined, "community-edit-link-panel fee-property-picker");
   picker.hidden = true;
   const select = field(picker, "Inmueble a vincular (opcional)", "select");
   const confirm = iconButton(
     "Agregar inmueble seleccionado",
     () => {
       if (!select.value) {
-        fail("Elegí un inmueble en el buscador.", "split");
+        fail("Elige un inmueble en el buscador.", "split");
         return;
       }
       selected.add(select.value);
@@ -390,11 +351,7 @@ export function buildServiceEditor(ctx, service, ui) {
     ),
   );
   split.append(picker);
-  const propertyList = el(
-    "div",
-    undefined,
-    "community-properties-list fee-selected-properties",
-  );
+  const propertyList = el("div", undefined, "community-properties-list fee-selected-properties");
   const selectionSummary = el("p", undefined, "fee-selection-summary");
   selectionSummary.setAttribute("aria-live", "polite");
   split.append(propertyList, selectionSummary);
@@ -424,23 +381,15 @@ export function buildServiceEditor(ctx, service, ui) {
   }
   function effectiveCoefficients() {
     const entries = properties.filter((property) => selected.has(property.id));
-    const sum = entries.reduce(
-      (total, property) => total + formatCoefficient(property),
-      0,
-    );
+    const sum = entries.reduce((total, property) => total + formatCoefficient(property), 0);
     return new Map(
-      entries.map((property) => [
-        property.id,
-        sum ? (formatCoefficient(property) / sum) * 100 : 0,
-      ]),
+      entries.map((property) => [property.id, sum ? (formatCoefficient(property) / sum) * 100 : 0]),
     );
   }
   function renderProperties() {
     propertyList.replaceChildren();
     selectedTitle.textContent = `Inmuebles incluidos (${selected.size}) *`;
-    const available = properties.filter(
-      (property) => !selected.has(property.id),
-    );
+    const available = properties.filter((property) => !selected.has(property.id));
     select.replaceChildren();
     for (const [value, label] of [
       ["", "Buscar inmueble…"],
@@ -476,15 +425,9 @@ export function buildServiceEditor(ctx, service, ui) {
       input.required = !input.disabled;
       input.closest(".fee-field").hidden = method.value !== "manual";
       if (!selected.has(property.id)) continue;
-      const card = el(
-        "div",
-        undefined,
-        "community-property-card fee-property-card",
-      );
+      const card = el("div", undefined, "community-property-card fee-property-card");
       const copy = el("div", undefined, "community-property-info");
-      const live = state.properties.find(
-        (candidate) => candidate.id === property.id,
-      );
+      const live = state.properties.find((candidate) => candidate.id === property.id);
       const coefficient = effective.get(property.id) || 0;
       copy.append(
         el("span", property.plot, "community-property-title"),
@@ -517,7 +460,7 @@ export function buildServiceEditor(ctx, service, ui) {
     if (!selected.size)
       info(
         propertyList,
-        "No hay inmuebles incluidos. Usá el botón de vincular o agregá todos los de la comunidad.",
+        "No hay inmuebles incluidos. Usa el botón de vincular o agrega todos los de la comunidad.",
       );
     updateSummary();
     renderReadings();
@@ -550,18 +493,18 @@ export function buildServiceEditor(ctx, service, ui) {
     if (!["reading", "mixed"].includes(method.value)) {
       info(
         readingsIntro,
-        "Este reparto no usa lecturas. Elegí «Por lecturas de contador» o «Mixto» en Reparto para cargar los contadores.",
+        "Este reparto no usa lecturas. Elige «Por lecturas de contador» o «Mixto» en Reparto para cargar los contadores.",
       );
       readingsSummary.textContent = "";
       return;
     }
     info(
       readingsIntro,
-      "La lectura anterior se propone desde la última factura del mismo suministro. Podés corregirla antes de guardar.",
+      "La lectura anterior se propone desde la última factura del mismo suministro. Puedes corregirla antes de guardar.",
     );
     const entries = properties.filter((property) => selected.has(property.id));
     if (!entries.length) {
-      info(readingsIntro, "Agregá inmuebles en Reparto para cargar sus lecturas.");
+      info(readingsIntro, "Agrega inmuebles en Reparto para cargar sus lecturas.");
       readingsSummary.textContent = "";
       return;
     }
@@ -580,22 +523,12 @@ export function buildServiceEditor(ctx, service, ui) {
           "fee-field-hint",
         ),
       );
-      const previous = field(
-        card,
-        "Lectura anterior (m³) *",
-        "text",
-        value.previous,
-      );
+      const previous = field(card, "Lectura anterior (m³) *", "text", value.previous);
       previous.inputMode = "decimal";
       previous.maxLength = 12;
       previous.dataset.reading = "previous";
       previous.required = true;
-      const current = field(
-        card,
-        "Lectura actual (m³) *",
-        "text",
-        value.current,
-      );
+      const current = field(card, "Lectura actual (m³) *", "text", value.current);
       current.inputMode = "decimal";
       current.maxLength = 12;
       current.dataset.reading = "current";
@@ -630,11 +563,7 @@ export function buildServiceEditor(ctx, service, ui) {
 
       const photos = el("div", undefined, "fee-reading-photos");
       photos.append(
-        el(
-          "span",
-          "Fotos del contador (opcional)",
-          "fee-field-label",
-        ),
+        el("span", "Fotos del contador (opcional)", "fee-field-label"),
         el(
           "span",
           "Adjuntá una o más fotos como referencia de la lectura. Máximo 6 por inmueble y 10 MB por archivo.",
@@ -642,9 +571,7 @@ export function buildServiceEditor(ctx, service, ui) {
         ),
       );
       const existingPhotos = (service?.attachments || []).filter(
-        (attachment) =>
-          attachment.kind === "reading" &&
-          attachment.propertyId === property.id,
+        (attachment) => attachment.kind === "reading" && attachment.propertyId === property.id,
       );
       for (const photo of existingPhotos) {
         const row = el("div", undefined, "fee-proof");
@@ -654,10 +581,7 @@ export function buildServiceEditor(ctx, service, ui) {
         row.append(link);
         row.append(
           button("Quitar", async () => {
-            await api.fees(
-              `/service-attachments/${encodeURIComponent(photo.id)}`,
-              "DELETE",
-            );
+            await api.fees(`/service-attachments/${encodeURIComponent(photo.id)}`, "DELETE");
             service.attachments = (service.attachments || []).filter(
               (item) => item.id !== photo.id,
             );
@@ -673,19 +597,13 @@ export function buildServiceEditor(ctx, service, ui) {
       fileInput.multiple = true;
       fileInput.id = `service-reading-photos-${property.id}`;
       const fileLabel = el("label", undefined, "fee-field");
-      const fileCaption = el(
-        "span",
-        "Agregar fotos",
-        "fee-field-label",
-      );
+      const fileCaption = el("span", "Agregar fotos", "fee-field-label");
       fileCaption.htmlFor = fileInput.id;
       fileLabel.append(fileCaption, fileInput);
       const pendingList = el("ul", undefined, "fee-reading-photo-list");
       function renderPending() {
         pendingList.replaceChildren();
-        for (const [index, file] of (
-          pendingReadingPhotos.get(property.id) || []
-        ).entries()) {
+        for (const [index, file] of (pendingReadingPhotos.get(property.id) || []).entries()) {
           const item = el("li", file.name);
           const remove = el("button", "Quitar", "text-link-button");
           remove.type = "button";
@@ -703,9 +621,7 @@ export function buildServiceEditor(ctx, service, ui) {
       fileInput.addEventListener("change", () => {
         const list = pendingReadingPhotos.get(property.id) || [];
         const existingCount = (service?.attachments || []).filter(
-          (attachment) =>
-            attachment.kind === "reading" &&
-            attachment.propertyId === property.id,
+          (attachment) => attachment.kind === "reading" && attachment.propertyId === property.id,
         ).length;
         let total = existingCount + list.length;
         for (const file of fileInput.files || []) {
@@ -739,16 +655,12 @@ export function buildServiceEditor(ctx, service, ui) {
   }
   function readingError() {
     if (!["reading", "mixed"].includes(method.value)) return "";
-    for (const property of properties.filter((item) =>
-      selected.has(item.id),
-    )) {
+    for (const property of properties.filter((item) => selected.has(item.id))) {
       const value = ensureReading(property.id),
         previous = parseReadingInput(value.previous),
         current = parseReadingInput(value.current);
-      if (previous === null)
-        return `${property.plot}: la lectura anterior no es válida.`;
-      if (current === null)
-        return `${property.plot}: la lectura actual no es válida.`;
+      if (previous === null) return `${property.plot}: la lectura anterior no es válida.`;
+      if (current === null) return `${property.plot}: la lectura actual no es válida.`;
       if (current < previous)
         return `${property.plot}: la lectura actual no puede ser menor que la anterior.`;
     }
@@ -757,11 +669,7 @@ export function buildServiceEditor(ctx, service, ui) {
 
   const footer = el("div", undefined, "fee-editor-footer");
   const footerSummary = el("p", undefined, "fee-editor-summary");
-  const save = button(
-    editing ? "Guardar cambios" : "Crear servicio",
-    saveDraft,
-    true,
-  );
+  const save = button(editing ? "Guardar cambios" : "Crear servicio", saveDraft, true);
   const back = button("Volver a servicios", requestClose);
   const footerActions = el("div", undefined, "fee-row-actions");
   footerActions.append(back, save);
@@ -771,8 +679,7 @@ export function buildServiceEditor(ctx, service, ui) {
   function updateSummary() {
     const expected = parseMoneyInput(total.value) || 0;
     const manualSum = [...selected].reduce(
-      (sum, id) =>
-        sum + (parseMoneyInput(manualInputs.get(id)?.value) || 0),
+      (sum, id) => sum + (parseMoneyInput(manualInputs.get(id)?.value) || 0),
       0,
     );
     selectionSummary.textContent =
@@ -824,22 +731,21 @@ export function buildServiceEditor(ctx, service, ui) {
         input.setCustomValidity(
           parseReadingInput(input.value) !== null
             ? ""
-            : "Introducí una lectura válida con hasta tres decimales.",
+            : "Introduce una lectura válida con hasta tres decimales.",
         );
       if (!input.checkValidity())
         return fail(
-          `${input.labels?.[0]?.textContent || "Revisá el campo"}: ${input.validationMessage}`,
+          `${input.labels?.[0]?.textContent || "Revisa el campo"}: ${input.validationMessage}`,
           input.closest("[data-service-pane]")?.dataset.servicePane,
           input,
         );
     }
-    if (!selected.size) return fail("Elegí al menos un inmueble.", "split");
+    if (!selected.size) return fail("Elige al menos un inmueble.", "split");
     const expected = parseMoneyInput(total.value);
     if (
       method.value === "manual" &&
       [...selected].reduce(
-        (sum, id) =>
-          sum + (parseMoneyInput(manualInputs.get(id)?.value) || 0),
+        (sum, id) => sum + (parseMoneyInput(manualInputs.get(id)?.value) || 0),
         0,
       ) !== expected
     )
@@ -873,16 +779,11 @@ export function buildServiceEditor(ctx, service, ui) {
           legalBasis: legalBasis.value,
           notes: notes.value,
           propertyIds: [...selected],
-          manual: Object.fromEntries(
-            [...selected].map((id) => [id, manualInputs.get(id).value]),
-          ),
+          manual: Object.fromEntries([...selected].map((id) => [id, manualInputs.get(id).value])),
           readings: Object.fromEntries(
             [...selected].map((id) => {
               const value = ensureReading(id);
-              return [
-                id,
-                { previous: value.previous, current: value.current },
-              ];
+              return [id, { previous: value.previous, current: value.current }];
             }),
           ),
         },
@@ -902,8 +803,7 @@ export function buildServiceEditor(ctx, service, ui) {
             );
           } catch (failure) {
             const plot =
-              state.properties.find((property) => property.id === propertyId)
-                ?.plot || propertyId;
+              state.properties.find((property) => property.id === propertyId)?.plot || propertyId;
             photoErrors.push(`${plot} · ${file.name}: ${failure.message}`);
           }
         }
@@ -912,9 +812,7 @@ export function buildServiceEditor(ctx, service, ui) {
       ctx.serviceEditor = null;
       await reloadAll();
       toast(
-        editing
-          ? "Servicio actualizado."
-          : "Servicio guardado. Todavía no se emitieron recibos.",
+        editing ? "Servicio actualizado." : "Servicio guardado. Todavía no se emitieron recibos.",
       );
       showService(saved.id);
       if (photoErrors.length)
@@ -923,10 +821,7 @@ export function buildServiceEditor(ctx, service, ui) {
           "El servicio se guardó, pero algunas fotos no se pudieron subir",
         );
     } catch (failure) {
-      showValidationErrors(
-        [failure.message],
-        "No se pudo guardar el servicio",
-      );
+      showValidationErrors([failure.message], "No se pudo guardar el servicio");
     } finally {
       saving = false;
       save.disabled = close.disabled = back.disabled = false;

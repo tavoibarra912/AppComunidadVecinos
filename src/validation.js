@@ -1,4 +1,10 @@
-import { isValidCommunityNif, isValidIdentityDocument, normalizeIdentityDocument } from "../public/js/utils.js";
+import {
+  isValidCommunityNif,
+  isValidIdentityDocument,
+  normalizeIdentityDocument,
+  digitsIban,
+  isValidIban,
+} from "../public/js/utils.js";
 
 export { normalizeIdentityDocument };
 
@@ -30,8 +36,7 @@ export function contactError(data) {
   for (const key of ["phone", "otherPhone", "emergencyPhone"]) {
     if (
       data[key] &&
-      (typeof data[key] !== "string" ||
-        !/^[6-9]\d{8}$/.test(data[key].replace(/[\s()-]/g, "")))
+      (typeof data[key] !== "string" || !/^[6-9]\d{8}$/.test(data[key].replace(/[\s()-]/g, "")))
     )
       return "El teléfono debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.";
   }
@@ -39,19 +44,33 @@ export function contactError(data) {
     return "El código postal debe tener 5 dígitos.";
   return null;
 }
+/** El mismo formato español y MOD-97 que valida el formulario. Vacío es opcional. */
+export function bankAccountError(data) {
+  if (data.iban === undefined) return null;
+  if (typeof data.iban !== "string") return "El IBAN debe ser texto.";
+  const normalized = digitsIban(data.iban);
+  if (!isValidIban(normalized))
+    return "El IBAN no es válido. Comprueba el formato y los dígitos de control.";
+  data.iban = normalized;
+  return null;
+}
 export function communityFinanceError(data, year = new Date().getFullYear()) {
-  for (const key of ["constitutionYear", "reserveFund"]) if (data[key] != null && !["string", "number"].includes(typeof data[key])) return "El año y el fondo de reserva deben ser valores numéricos válidos.";
+  for (const key of ["constitutionYear", "reserveFund"])
+    if (data[key] != null && !["string", "number"].includes(typeof data[key]))
+      return "El año y el fondo de reserva deben ser valores numéricos válidos.";
   const constitution = String(data.constitutionYear ?? "").trim();
-  if (constitution && (!/^\d{4}$/.test(constitution) || Number(constitution) < 1000 || Number(constitution) > year)) return `El año de constitución debe estar entre 1000 y ${year}.`;
+  if (
+    constitution &&
+    (!/^\d{4}$/.test(constitution) || Number(constitution) < 1000 || Number(constitution) > year)
+  )
+    return `El año de constitución debe estar entre 1000 y ${year}.`;
   const reserve = String(data.reserveFund ?? "").trim();
-  if (reserve && !/^\d{1,12}(\.\d{1,2})?$/.test(reserve)) return "El fondo de reserva debe ser un importe positivo o cero, con hasta dos decimales.";
+  if (reserve && !/^\d{1,12}(\.\d{1,2})?$/.test(reserve))
+    return "El fondo de reserva debe ser un importe positivo o cero, con hasta dos decimales.";
   return null;
 }
 export function dateError(value) {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
-    return true;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return true;
   const date = new Date(`${value}T00:00:00Z`);
-  return (
-    Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value
-  );
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value;
 }

@@ -1,11 +1,6 @@
 import { escapeHtml } from "../html.js";
 import { api } from "../api.js";
-import {
-  state,
-  getCurrentOwnerProfileId,
-  hasPermission,
-  requirePermission,
-} from "../state.js";
+import { state, getCurrentOwnerProfileId, hasPermission, requirePermission } from "../state.js";
 import { toast } from "../utils.js";
 import { openOwnerDetail } from "./propietarios.js";
 
@@ -13,12 +8,8 @@ const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
 const inboxBadgeCount = document.querySelector("#inbox-badge-count");
 const notificationsDialog = document.querySelector("#notifications-dialog");
 const notificationsTabs = document.querySelector("#notifications-tabs");
-const notificationTabButtons = [
-  ...document.querySelectorAll("[data-notification-tab]"),
-];
-const notificationPanes = [
-  ...document.querySelectorAll("[data-notification-pane]"),
-];
+const notificationTabButtons = [...document.querySelectorAll("[data-notification-tab]")];
+const notificationPanes = [...document.querySelectorAll("[data-notification-pane]")];
 const adminTabCount = document.querySelector("#admin-tab-count");
 const ownerTabCount = document.querySelector("#owner-tab-count");
 const adminInboxList = document.querySelector("#admin-inbox-list");
@@ -26,12 +17,8 @@ const adminEmailDialog = document.querySelector("#admin-email-dialog");
 const emailGotoApprovalBtn = document.querySelector("#email-goto-approval-btn");
 const emailMailtoLink = document.querySelector("#email-mailto-link");
 const ownerInboxList = document.querySelector("#owner-inbox-list");
-const closeNotificationsDialog = document.querySelector(
-  "#close-notifications-dialog",
-);
-const markAllOwnerNotifsReadBtn = document.querySelector(
-  "#mark-all-owner-notifs-read-btn",
-);
+const closeNotificationsDialog = document.querySelector("#close-notifications-dialog");
+const markAllOwnerNotifsReadBtn = document.querySelector("#mark-all-owner-notifs-read-btn");
 let activeInboxTab = "admin";
 const inboxViews = {
   admin: { filter: "all", search: "" },
@@ -52,9 +39,7 @@ function inboxSummary(kind, items) {
     .forEach((button) =>
       button.setAttribute(
         "aria-pressed",
-        String(
-          button.dataset[`${kind}InboxFilter`] === inboxViews[kind].filter,
-        ),
+        String(button.dataset[`${kind}InboxFilter`] === inboxViews[kind].filter),
       ),
     );
   return unread;
@@ -147,10 +132,7 @@ export function getOwnerDocStatus(owner) {
 
   // Si los 3 documentos están formalmente aprobados por el Administrador
   const allApproved = keys.every(
-    (k) =>
-      docs[k] &&
-      docs[k].adminApproval &&
-      docs[k].adminApproval.status === "approved",
+    (k) => docs[k] && docs[k].adminApproval && docs[k].adminApproval.status === "approved",
   );
   if (uploaded.length === 3 && allApproved) return "approved";
 
@@ -177,9 +159,7 @@ export function getDocBadgeClass(status) {
 
 export function getDocBadgeText(status, owner) {
   const docs = (owner && owner.documents) || {};
-  const count = ["dni", "bankReceipt", "propertyDeed"].filter(
-    (k) => !!docs[k],
-  ).length;
+  const count = ["dni", "bankReceipt", "propertyDeed"].filter((k) => !!docs[k]).length;
   switch (status) {
     case "approved":
       return "✓ Aprobada (3/3)";
@@ -266,12 +246,7 @@ export function updateInboxBadge() {
 export function updateOwnerInboxBadge() {
   updateNotificationBadges();
 }
-export async function addOwnerNotification({
-  ownerId,
-  title,
-  type = "info",
-  message,
-}) {
+export async function addOwnerNotification({ ownerId, title, type = "info", message }) {
   try {
     const result = await api.createOwnerNotification({
       ownerId: ownerId || getCurrentOwnerProfileId(),
@@ -311,8 +286,7 @@ export function renderOwnerInbox() {
   if (!hasPermission("owner_notification:read")) return;
   const notifications = ownerVisibleNotifications();
   const unread = inboxSummary("owner", notifications);
-  markAllOwnerNotifsReadBtn.disabled =
-    ownerBulkBusy || ownerReadPending.size > 0 || unread === 0;
+  markAllOwnerNotifsReadBtn.disabled = ownerBulkBusy || ownerReadPending.size > 0 || unread === 0;
   markAllOwnerNotifsReadBtn.querySelector("span").textContent = ownerBulkBusy
     ? "Marcando avisos…"
     : unread
@@ -321,15 +295,8 @@ export function renderOwnerInbox() {
   markAllOwnerNotifsReadBtn.title = unread
     ? "Se aplica a todos tus avisos sin leer, incluso con filtros activos."
     : "No tienes avisos pendientes de lectura.";
-  ownerInboxList.setAttribute(
-    "aria-busy",
-    String(ownerBulkBusy || ownerReadPending.size > 0),
-  );
-  const visible = visibleInbox(
-    "owner",
-    notifications,
-    (n) => `${n.title} ${n.message}`,
-  );
+  ownerInboxList.setAttribute("aria-busy", String(ownerBulkBusy || ownerReadPending.size > 0));
+  const visible = visibleInbox("owner", notifications, (n) => `${n.title} ${n.message}`);
   inboxResults("owner", visible.length, notifications.length);
   if (!visible.length) {
     inboxEmpty(ownerInboxList, "owner", notifications.length);
@@ -355,9 +322,13 @@ export function renderOwnerInbox() {
     }
     ownerInboxList.append(card);
     if (n.feeReceiptId) {
-      const receiptButton = document.createElement("button");receiptButton.type = "button";
-      receiptButton.className = "secondary-button";receiptButton.textContent = "Ver recibo de cuota";
-      receiptButton.addEventListener("click", () => window.dispatchEvent(new CustomEvent("fees:receipt", { detail: { id: n.feeReceiptId } })));
+      const receiptButton = document.createElement("button");
+      receiptButton.type = "button";
+      receiptButton.className = "secondary-button";
+      receiptButton.textContent = "Ver recibo de cuota";
+      receiptButton.addEventListener("click", () =>
+        window.dispatchEvent(new CustomEvent("fees:receipt", { detail: { id: n.feeReceiptId } })),
+      );
       card.querySelector(".notification-message-footer").append(receiptButton);
     }
   }
@@ -378,15 +349,11 @@ async function markOwnerRead(id) {
     ownerReadPending.delete(id);
     updateOwnerInboxBadge();
     if (notificationsDialog?.open && activeInboxTab === "owner") {
-      const card = [...ownerInboxList.children].find(
-        (el) => el.dataset.notificationId === id,
-      );
+      const card = [...ownerInboxList.children].find((el) => el.dataset.notificationId === id);
       const focus =
         card?.querySelector("button,h3") ||
         ownerInboxList.querySelector("button") ||
-        document.querySelector(
-          '[data-owner-inbox-filter][aria-pressed="true"]',
-        );
+        document.querySelector('[data-owner-inbox-filter][aria-pressed="true"]');
       if (focus) {
         if (focus.tagName === "H3") focus.tabIndex = -1;
         focus.focus({ preventScroll: true });
@@ -442,9 +409,7 @@ export function renderAdminInbox() {
     item.type = "button";
     item.className = `notification-admin-item ${email.read ? "" : "unread"}`;
     const docs = Array.isArray(email.docs) ? email.docs : [];
-    const context = [email.ownerCommunity, email.ownerPlot]
-      .filter(Boolean)
-      .join(" · ");
+    const context = [email.ownerCommunity, email.ownerPlot].filter(Boolean).join(" · ");
     item.innerHTML = `<span class="notification-item-icon">${mailIcon}</span><span class="notification-item-content"><span class="notification-message-header"><span class="notification-category">${docs.length ? "Documentación" : "Gestión administrativa"}</span><span class="notification-read-state ${email.read ? "" : "is-unread"}">${email.read ? "Leído" : "Sin leer"}</span></span><strong class="notification-item-title">${escapeHtml(email.subject || "Aviso administrativo")}</strong><span class="notification-item-owner">${escapeHtml(email.ownerName || "Propietario sin identificar")}</span>${context ? `<span class="notification-item-context">${escapeHtml(context)}</span>` : ""}${docs.length ? `<span class="notification-item-docs">${docs.length} ${docs.length === 1 ? "documento" : "documentos"} · ${docs.map((d) => escapeHtml(d.title || d.fileName || "Documento")).join(" · ")}</span>` : ""}<span class="notification-message-footer"><span class="notification-date">${escapeHtml(notificationDate(email))}</span><span class="notification-open-label">Ver detalle <span aria-hidden="true">→</span></span></span></span>`;
     item.addEventListener("click", () => openAdminEmail(email.id));
     row.append(item);
@@ -476,12 +441,7 @@ export async function openAdminEmail(id) {
   body.replaceChildren();
   for (const doc of email.docs || []) {
     const row = document.createElement("tr");
-    for (const value of [
-      doc.title,
-      doc.fileName,
-      doc.validation,
-      doc.legibility,
-    ]) {
+    for (const value of [doc.title, doc.fileName, doc.validation, doc.legibility]) {
       const cell = document.createElement("td");
       cell.textContent = value || "";
       row.append(cell);
@@ -492,27 +452,24 @@ export async function openAdminEmail(id) {
   emailGotoApprovalBtn.onclick = () => {
     adminEmailDialog.close();
     notificationsDialog.close();
-    if (email.feeReceiptId) window.dispatchEvent(new CustomEvent("fees:receipt", { detail: { id: email.feeReceiptId } }));
+    if (email.feeReceiptId)
+      window.dispatchEvent(new CustomEvent("fees:receipt", { detail: { id: email.feeReceiptId } }));
     else openOwnerDetail(email.ownerId);
   };
-  emailGotoApprovalBtn.textContent = email.feeReceiptId ? "Ver recibo de cuota" : "Ir al expediente";
+  emailGotoApprovalBtn.textContent = email.feeReceiptId
+    ? "Ver recibo de cuota"
+    : "Ir al expediente";
   if (!adminEmailDialog.open) adminEmailDialog.showModal();
 }
 if (topbarInboxBtn)
   topbarInboxBtn.addEventListener("click", () => {
     const available = ["admin", "owner"].filter(canOpenInbox);
     if (!available.length) return;
-    openNotifications(
-      available.includes(activeInboxTab) ? activeInboxTab : available[0],
-    );
+    openNotifications(available.includes(activeInboxTab) ? activeInboxTab : available[0]);
   });
-closeNotificationsDialog?.addEventListener("click", () =>
-  notificationsDialog.close(),
-);
+closeNotificationsDialog?.addEventListener("click", () => notificationsDialog.close());
 notificationTabButtons.forEach((button) =>
-  button.addEventListener("click", () =>
-    setInboxTab(button.dataset.notificationTab),
-  ),
+  button.addEventListener("click", () => setInboxTab(button.dataset.notificationTab)),
 );
 notificationsTabs?.addEventListener("keydown", (event) => {
   if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -521,17 +478,14 @@ notificationsTabs?.addEventListener("keydown", (event) => {
   event.preventDefault();
   const current = Math.max(
     0,
-    available.findIndex(
-      (button) => button.dataset.notificationTab === activeInboxTab,
-    ),
+    available.findIndex((button) => button.dataset.notificationTab === activeInboxTab),
   );
   const next =
     event.key === "Home"
       ? 0
       : event.key === "End"
         ? available.length - 1
-        : (current + (event.key === "ArrowRight" ? 1 : -1) + available.length) %
-          available.length;
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + available.length) % available.length;
   setInboxTab(available[next].dataset.notificationTab);
   available[next].focus();
 });
@@ -543,17 +497,13 @@ for (const kind of ["admin", "owner"]) {
       render();
     }),
   );
-  document
-    .querySelector(`#${kind}-inbox-search`)
-    .addEventListener("input", (event) => {
-      inboxViews[kind].search = event.target.value;
-      render();
-    });
+  document.querySelector(`#${kind}-inbox-search`).addEventListener("input", (event) => {
+    inboxViews[kind].search = event.target.value;
+    render();
+  });
 }
 for (const id of ["#close-admin-email-dialog", "#close-admin-email-btn"])
-  document
-    .querySelector(id)
-    ?.addEventListener("click", () => adminEmailDialog.close());
+  document.querySelector(id)?.addEventListener("click", () => adminEmailDialog.close());
 markAllOwnerNotifsReadBtn?.addEventListener("click", async () => {
   if (ownerBulkBusy || ownerReadPending.size) return;
   if (!requirePermission("owner_notification:read")) return;
@@ -569,9 +519,7 @@ markAllOwnerNotifsReadBtn?.addEventListener("click", async () => {
     for (const ownerId of ownerIds) {
       try {
         await api.markAllOwnerNotificationsRead(ownerId);
-        const markedIds = new Set(
-          pending.filter((n) => n.ownerId === ownerId).map((n) => n.id),
-        );
+        const markedIds = new Set(pending.filter((n) => n.ownerId === ownerId).map((n) => n.id));
         state.ownerNotifications.forEach((n) => {
           if (markedIds.has(n.id)) n.read = true;
         });
@@ -585,9 +533,7 @@ markAllOwnerNotifsReadBtn?.addEventListener("click", async () => {
       `${marked} ${marked === 1 ? "aviso marcado como leído" : "avisos marcados como leídos"}.`,
     );
   } catch (error) {
-    const partial = marked
-      ? ` Se marcaron ${marked} de ${pending.length}.`
-      : "";
+    const partial = marked ? ` Se marcaron ${marked} de ${pending.length}.` : "";
     setOwnerFeedback(`${error.message}${partial}`, true);
   } finally {
     ownerBulkBusy = false;
@@ -597,8 +543,6 @@ markAllOwnerNotifsReadBtn?.addEventListener("click", async () => {
       activeInboxTab === "owner" &&
       markAllOwnerNotifsReadBtn.disabled
     )
-      document
-        .querySelector('[data-owner-inbox-filter][aria-pressed="true"]')
-        .focus();
+      document.querySelector('[data-owner-inbox-filter][aria-pressed="true"]').focus();
   }
 });

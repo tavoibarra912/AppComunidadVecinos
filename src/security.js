@@ -9,11 +9,10 @@ import {
   listRoles,
   listUsers,
 } from "./db.js";
-import { can } from "../public/js/permissions.js";
+import { createPermissionChecker } from "../public/js/permissions.js";
 
 const COOKIE = "penarrubia_session";
-const digest = (token) =>
-  crypto.createHash("sha256").update(token).digest("hex");
+const digest = (token) => crypto.createHash("sha256").update(token).digest("hex");
 export function policyData() {
   return {
     communities: listCommunities(),
@@ -23,13 +22,14 @@ export function policyData() {
     roles: listRoles(),
   };
 }
-export function allowed(
-  user,
-  permission,
-  resourceId = "",
-  data = policyData(),
-) {
-  return can(user, permission, resourceId, data);
+const policyCheckers = new WeakMap();
+export function allowed(user, permission, resourceId = "", data = policyData()) {
+  if (!user) return false;
+  let users = policyCheckers.get(data);
+  if (!users) policyCheckers.set(data, (users = new WeakMap()));
+  let check = users.get(user);
+  if (!check) users.set(user, (check = createPermissionChecker(user, data)));
+  return check(permission, resourceId);
 }
 export function publicUser(user) {
   const { passwordHash, resetToken, resetTokenExpira, ssoId, ...safe } = user;
@@ -38,14 +38,14 @@ export function publicUser(user) {
 export function createSession(user, res) {
   const token = crypto.randomBytes(32).toString("hex");
   const configuredHours = Number(getSettings().duracionSesionHoras);
-  const hours = Number.isFinite(configuredHours)
-    ? Math.min(720, Math.max(1, configuredHours))
-    : 8;
+  const hours = Number.isFinite(configuredHours) ? Math.min(720, Math.max(1, configuredHours)) : 8;
   const maxAge = hours * 60 * 60 * 1000;
   db.prepare("DELETE FROM sessions WHERE expiresAt < ?").run(Date.now());
-  db.prepare(
-    "INSERT INTO sessions (tokenHash, userId, expiresAt) VALUES (?, ?, ?)",
-  ).run(digest(token), user.id, Date.now() + maxAge);
+  db.prepare("INSERT INTO sessions (tokenHash, userId, expiresAt) VALUES (?, ?, ?)").run(
+    digest(token),
+    user.id,
+    Date.now() + maxAge,
+  );
   res.cookie(COOKIE, token, {
     httpOnly: true,
     sameSite: "strict",
@@ -70,8 +70,7 @@ export function sessionUser(req) {
   return row || null;
 }
 export function endSession(req, res) {
-  if (req.sessionHash)
-    db.prepare("DELETE FROM sessions WHERE tokenHash = ?").run(req.sessionHash);
+  if (req.sessionHash) db.prepare("DELETE FROM sessions WHERE tokenHash = ?").run(req.sessionHash);
   res.clearCookie(COOKIE, {
     httpOnly: true,
     sameSite: "strict",
@@ -81,8 +80,7 @@ export function endSession(req, res) {
 }
 export function requireSession(req, res, next) {
   req.user = sessionUser(req);
-  if (!req.user)
-    return res.status(401).json({ error: "Inicia sesión para continuar." });
+  if (!req.user) return res.status(401).json({ error: "Inicia sesión para continuar." });
   next();
 }
 export function sameOrigin(req, res, next) {
@@ -92,9 +90,7 @@ export function sameOrigin(req, res, next) {
       req.get("sec-fetch-site") === "cross-site" ||
       (origin && origin !== `${req.protocol}://${req.get("host")}`)
     ) {
-      return res
-        .status(403)
-        .json({ error: "Origen de la petición no permitido." });
+      return res.status(403).json({ error: "Origen de la petición no permitido." });
     }
   }
   next();
@@ -103,22 +99,25 @@ export function requirePermission(permission) {
   return (req, res, next) =>
     allowed(req.user, permission)
       ? next()
-      : res
-          .status(403)
-          .json({ error: "No tienes permiso para esta operación." });
+      : res.status(403).json({ error: "No tienes permiso para esta operación." });
 }
 
-export function visibleData(user) {
-  const data = policyData();
+export function visibleData(user, data = policyData()) {
   const permits = (p, id) => allowed(user, p, id, data);
-  const tenants = data.tenants.filter((t) => permits("tenant:read", t.id));
+  // Los expedientes embebidos (data URLs) solo se entregan con document:read.
+  const withoutDocuments = (entity) =>
+    permits("document:read", entity.id)
+      ? entity
+      : {
+          ...entity,
+          documents: Array.isArray(entity.documents) ? [] : {},
+        };
+  const tenants = data.tenants.filter((t) => permits("tenant:read", t.id)).map(withoutDocuments);
   return {
-    communities: data.communities.filter((c) =>
-      permits("community:read", c.id),
-    ),
+    communities: data.communities.filter((c) => permits("community:read", c.id)),
     owners: data.owners.flatMap((o) =>
       permits("owner:read", o.id)
-        ? [o]
+        ? [withoutDocuments(o)]
         : tenants.some((t) => t.userId === user.id && t.ownerId === o.id)
           ? [{ id: o.id, name: o.name, surname: o.surname, propertyIds: [] }]
           : [],

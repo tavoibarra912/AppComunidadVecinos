@@ -30,12 +30,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     el("p", "DERRAMAS", "eyebrow"),
     el("h2", editing ? "Editar derrama" : "Nueva derrama"),
   );
-  const close = iconButton(
-    "Cerrar formulario de derrama",
-    requestClose,
-    "cancel",
-    "close",
-  );
+  const close = iconButton("Cerrar formulario de derrama", requestClose, "cancel", "close");
   close.classList.add("btn-lg");
   close.querySelector("svg").setAttribute("width", "20");
   close.querySelector("svg").setAttribute("height", "20");
@@ -43,7 +38,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   shell.append(header);
   info(
     shell,
-    "Los campos marcados con * son obligatorios. Completá las secciones y guardá el borrador antes de emitir recibos.",
+    "Los campos marcados con * son obligatorios. Completa las secciones y guarda el borrador antes de emitir recibos.",
   );
   const error = el("p", undefined, "fee-error");
   error.dataset.feeError = "";
@@ -61,13 +56,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     ["properties", "Inmuebles"],
     ["installments", "Plazos"],
   ];
-  const nav = tabBar(
-    form,
-    sections,
-    "general",
-    activate,
-    "Secciones de la derrama",
-  );
+  const nav = tabBar(form, sections, "general", activate, "Secciones de la derrama");
   const sectionId = `assessment-${ctx.id}`;
   for (const [id, label] of sections) {
     const pane = el("section", undefined, "fee-editor-pane");
@@ -126,7 +115,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   discard.hidden = true;
   discard.setAttribute("role", "alert");
   discard.append(
-    el("p", "Tenés cambios sin guardar. ¿Querés descartarlos?"),
+    el("p", "Tienes cambios sin guardar. ¿Quieres descartarlos?"),
     button("Seguir editando", () => {
       discard.hidden = true;
     }),
@@ -148,12 +137,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   const general = panes.get("general");
   const grid = el("div", undefined, "fee-form-grid");
   general.append(grid);
-  const name = field(
-    grid,
-    "Nombre de la derrama *",
-    "text",
-    assessment?.name || "",
-  );
+  const name = field(grid, "Nombre de la derrama *", "text", assessment?.name || "");
   name.required = true;
   name.maxLength = 120;
   name.closest(".fee-field").classList.add("fee-field-wide");
@@ -167,18 +151,10 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   agreement.required = true;
   agreement.maxLength = 300;
   hint(agreement, "Fecha de la Junta o referencia del acta.");
-  const total = euroField(
-    grid,
-    "Importe total de la derrama (€) *",
-    assessment?.totalAmount ?? "",
-  );
+  const total = euroField(grid, "Importe total de la derrama (€) *", assessment?.totalAmount ?? "");
   hint(total, "Importe aprobado para todos los inmuebles y plazos.");
   const rich = el("div", undefined, "rich-text-field fee-field-wide");
-  const richLabel = el(
-    "span",
-    "Motivo de la derrama (opcional)",
-    "rich-text-label",
-  );
+  const richLabel = el("span", "Motivo de la derrama (opcional)", "rich-text-label");
   richLabel.id = `${sectionId}-purpose-label`;
   const richBox = el("div", undefined, "rich-text-editor");
   const toolbar = el("div", undefined, "rich-text-toolbar");
@@ -244,18 +220,14 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   const properties = ctx.data.properties || [];
   const selected = new Set(assessment?.propertyIds || []);
   const manualInputs = new Map();
-  const selectedHeading = el(
-    "div",
-    undefined,
-    "detail-section-heading fee-included-heading",
-  );
+  const selectedHeading = el("div", undefined, "detail-section-heading fee-included-heading");
   const selectedCopy = el("div");
   const selectedTitle = el("h4");
   selectedCopy.append(
     selectedTitle,
     el(
       "p",
-      "Buscá y vinculá los inmuebles que participan en la derrama. Podés quitar cualquiera antes de guardar.",
+      "Busca y vincula los inmuebles que participan en la derrama. Puedes quitar cualquiera antes de guardar.",
       "detail-section-subtitle",
     ),
   );
@@ -277,18 +249,14 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   propertyActions.append(all, link);
   selectedHeading.append(selectedCopy, propertyActions);
   propertiesPane.append(selectedHeading);
-  const picker = el(
-    "div",
-    undefined,
-    "community-edit-link-panel fee-property-picker",
-  );
+  const picker = el("div", undefined, "community-edit-link-panel fee-property-picker");
   picker.hidden = true;
   const select = field(picker, "Inmueble a vincular (opcional)", "select");
   const confirm = iconButton(
     "Agregar inmueble seleccionado",
     () => {
       if (!select.value) {
-        fail("Elegí un inmueble en el buscador.", "properties");
+        fail("Elige un inmueble en el buscador.", "properties");
         return;
       }
       selected.add(select.value);
@@ -309,11 +277,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     ),
   );
   propertiesPane.append(picker);
-  const propertyList = el(
-    "div",
-    undefined,
-    "community-properties-list fee-selected-properties",
-  );
+  const propertyList = el("div", undefined, "community-properties-list fee-selected-properties");
   const selectionSummary = el("p", undefined, "fee-selection-summary");
   selectionSummary.setAttribute("aria-live", "polite");
   propertiesPane.append(propertyList, selectionSummary);
@@ -324,10 +288,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     select.replaceChildren();
     for (const [value, text] of [
       ["", "Buscar inmueble…"],
-      ...available.map((p) => [
-        p.id,
-        `${p.plot} · coeficiente ${p.coefficient} %`,
-      ]),
+      ...available.map((p) => [p.id, `${p.plot} · coeficiente ${p.coefficient} %`]),
     ]) {
       const option = el("option", text);
       option.value = value;
@@ -355,11 +316,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
       input.required = !input.disabled;
       input.closest(".fee-field").hidden = mode.value !== "manual";
       if (!selected.has(property.id)) continue;
-      const card = el(
-        "div",
-        undefined,
-        "community-property-card fee-property-card",
-      );
+      const card = el("div", undefined, "community-property-card fee-property-card");
       const copy = el("div", undefined, "community-property-info");
       const live = state.properties.find((p) => p.id === property.id);
       copy.append(
@@ -389,7 +346,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     if (!selected.size)
       info(
         propertyList,
-        "No hay inmuebles incluidos. Usá el botón de vincular o agregá todos los de la comunidad.",
+        "No hay inmuebles incluidos. Usa el botón de vincular o agrega todos los de la comunidad.",
       );
     updateSummary();
   }
@@ -401,7 +358,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   installmentCopy.append(
     el(
       "p",
-      "Definí el importe y el vencimiento de cada plazo. La suma debe coincidir con el total aprobado.",
+      "Define el importe y el vencimiento de cada plazo. La suma debe coincidir con el total aprobado.",
       "detail-section-subtitle",
     ),
   );
@@ -424,9 +381,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     const date = new Date(`${previous}T12:00:00Z`),
       day = date.getUTCDate();
     date.setUTCMonth(date.getUTCMonth() + 1, 1);
-    const last = new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
-    ).getUTCDate();
+    const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
     date.setUTCDate(Math.min(day, last));
     return date.toISOString().slice(0, 10);
   }
@@ -435,18 +390,11 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     const row = el("div", undefined, "fee-installment-row");
     const title = el("strong", undefined, "fee-installment-number");
     const fields = el("div", undefined, "fee-installment-fields");
-    const amountInput = euroField(
-      fields,
-      "Importe del plazo (€) *",
-      item?.amount ?? "",
-    );
+    const amountInput = euroField(fields, "Importe del plazo (€) *", item?.amount ?? "");
     if (!item && rows.length) {
       const remaining =
         (parseMoneyInput(total.value) || 0) -
-        rows.reduce(
-          (sum, row) => sum + (parseMoneyInput(row.amount.value) || 0),
-          0,
-        );
+        rows.reduce((sum, row) => sum + (parseMoneyInput(row.amount.value) || 0), 0);
       if (remaining > 0) amountInput.value = amount(remaining);
     }
     const dueInput = field(
@@ -483,11 +431,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
 
   const footer = el("div", undefined, "fee-editor-footer");
   const footerSummary = el("p", undefined, "fee-editor-summary");
-  const save = button(
-    editing ? "Guardar cambios" : "Crear derrama",
-    saveDraft,
-    true,
-  );
+  const save = button(editing ? "Guardar cambios" : "Crear derrama", saveDraft, true);
   const back = button("Volver a derramas", requestClose);
   const footerActions = el("div", undefined, "fee-row-actions");
   footerActions.append(back, save);
@@ -495,33 +439,25 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   form.append(footer);
   function updateSummary() {
     const expected = parseMoneyInput(total.value) || 0;
-    const sum = rows.reduce(
-      (sum, row) => sum + (parseMoneyInput(row.amount.value) || 0),
-      0,
-    );
+    const sum = rows.reduce((sum, row) => sum + (parseMoneyInput(row.amount.value) || 0), 0);
     rows.forEach((row, index) => {
       row.title.textContent = `Plazo ${index + 1}`;
       row.remove.disabled = rows.length === 1;
       row.remove.setAttribute("aria-label", `Eliminar plazo ${index + 1}`);
       row.remove.title =
-        rows.length === 1
-          ? "Debe quedar al menos un plazo"
-          : `Eliminar plazo ${index + 1}`;
+        rows.length === 1 ? "Debe quedar al menos un plazo" : `Eliminar plazo ${index + 1}`;
     });
     add.disabled = rows.length >= 36;
     add.dataset.feeDisabled = String(rows.length >= 36);
     const balance = !expected
-      ? "Completá el importe total en General"
+      ? "Completa el importe total en General"
       : sum === expected
         ? "Correcto"
         : sum > expected
           ? `Exceso de ${money(sum - expected)}`
           : `Faltan por distribuir ${money(expected - sum)}`;
     installmentsSummary.textContent = `Total aprobado: ${money(expected)} · Suma de plazos: ${money(sum)} · ${balance}`;
-    installmentsSummary.classList.toggle(
-      "is-balanced",
-      sum === expected && expected > 0,
-    );
+    installmentsSummary.classList.toggle("is-balanced", sum === expected && expected > 0);
     const manualSum = [...selected].reduce(
       (sum, id) => sum + (parseMoneyInput(manualInputs.get(id)?.value) || 0),
       0,
@@ -540,53 +476,32 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     if (saving) return;
     error.hidden = true;
     for (const input of form.querySelectorAll("input,select,textarea")) {
-      if (
-        input.disabled ||
-        input === purpose ||
-        input.closest(".fee-property-picker")
-      )
-        continue;
+      if (input.disabled || input === purpose || input.closest(".fee-property-picker")) continue;
       if (input.dataset.money !== undefined)
         input.setCustomValidity(
           parseMoneyInput(input.value) > 0
             ? ""
-            : "Introducí un importe positivo con un máximo de dos decimales.",
+            : "Introduce un importe positivo con un máximo de dos decimales.",
         );
       if (!input.checkValidity())
         return fail(
-          `${input.labels?.[0]?.textContent || "Revisá el campo"}: ${input.validationMessage}`,
+          `${input.labels?.[0]?.textContent || "Revisa el campo"}: ${input.validationMessage}`,
           input.closest("[data-assessment-pane]")?.dataset.assessmentPane,
           input,
         );
     }
     if (htmlToText(purposeEditor.sync()).length > 2000)
-      return fail(
-        "El motivo no puede superar 2000 caracteres.",
-        "general",
-        editor,
-      );
-    if (!selected.size)
-      return fail("Elegí al menos un inmueble.", "properties");
+      return fail("El motivo no puede superar 2000 caracteres.", "general", editor);
+    if (!selected.size) return fail("Elige al menos un inmueble.", "properties");
     const expected = parseMoneyInput(total.value);
-    const sum = rows.reduce(
-      (sum, row) => sum + (parseMoneyInput(row.amount.value) || 0),
-      0,
-    );
+    const sum = rows.reduce((sum, row) => sum + (parseMoneyInput(row.amount.value) || 0), 0);
     if (sum !== expected)
       return fail(
         `La suma de los plazos (${money(sum)}) debe coincidir con el total (${money(expected)}).`,
         "installments",
       );
-    if (
-      rows.some(
-        (row, index) =>
-          index && row.dueDate.value <= rows[index - 1].dueDate.value,
-      )
-    )
-      return fail(
-        "Los vencimientos de los plazos deben ser crecientes.",
-        "installments",
-      );
+    if (rows.some((row, index) => index && row.dueDate.value <= rows[index - 1].dueDate.value))
+      return fail("Los vencimientos de los plazos deben ser crecientes.", "installments");
     if (
       mode.value === "manual" &&
       [...selected].reduce(
@@ -614,9 +529,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
           totalAmount: total.value,
           mode: mode.value,
           propertyIds: [...selected],
-          manual: Object.fromEntries(
-            [...selected].map((id) => [id, manualInputs.get(id).value]),
-          ),
+          manual: Object.fromEntries([...selected].map((id) => [id, manualInputs.get(id).value])),
           installments: rows.map((row) => ({
             amount: row.amount.value,
             dueDate: row.dueDate.value,
@@ -626,9 +539,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
       ctx.assessmentEditor = null;
       await reloadAll();
       toast(
-        editing
-          ? "Derrama actualizada."
-          : "Derrama guardada. Todavía no se emitieron recibos.",
+        editing ? "Derrama actualizada." : "Derrama guardada. Todavía no se emitieron recibos.",
       );
       showAssessment(saved.id);
     } catch (failure) {

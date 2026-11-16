@@ -9,10 +9,7 @@ function key() {
   const configured = process.env.APP_PROVIDER_KEY;
   if (configured) {
     if (!/^[a-f0-9]{64}$/i.test(configured))
-      throw problem(
-        "APP_PROVIDER_KEY debe contener 64 caracteres hexadecimales.",
-        503,
-      );
+      throw problem("APP_PROVIDER_KEY debe contener 64 caracteres hexadecimales.", 503);
     return Buffer.from(configured, "hex");
   }
   const file = path.join(DATA_DIR, "provider-key");
@@ -27,8 +24,7 @@ function key() {
     }
   }
   const value = fs.readFileSync(file);
-  if (value.length !== 32)
-    throw problem("La clave local de proveedores no es válida.", 503);
+  if (value.length !== 32) throw problem("La clave local de proveedores no es válida.", 503);
   return value;
 }
 export function seal(value) {
@@ -36,21 +32,15 @@ export function seal(value) {
   const iv = crypto.randomBytes(12),
     cipher = crypto.createCipheriv("aes-256-gcm", key(), iv);
   const data = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
-  return [iv, cipher.getAuthTag(), data]
-    .map((b) => b.toString("base64"))
-    .join(".");
+  return [iv, cipher.getAuthTag(), data].map((b) => b.toString("base64")).join(".");
 }
 export function unseal(value) {
   if (!value) return "";
   try {
-    const [iv, tag, data] = value
-      .split(".")
-      .map((v) => Buffer.from(v, "base64"));
+    const [iv, tag, data] = value.split(".").map((v) => Buffer.from(v, "base64"));
     const cipher = crypto.createDecipheriv("aes-256-gcm", key(), iv);
     cipher.setAuthTag(tag);
-    return Buffer.concat([cipher.update(data), cipher.final()]).toString(
-      "utf8",
-    );
+    return Buffer.concat([cipher.update(data), cipher.final()]).toString("utf8");
   } catch {
     throw problem(
       "No se pudo descifrar la credencial del proveedor. Revisa la clave del servidor.",
@@ -86,9 +76,7 @@ const defaults = () => ({
   },
 });
 export function providers(masked = true) {
-  const saved = db
-    .prepare("SELECT data FROM communication_providers WHERE id='global'")
-    .get();
+  const saved = db.prepare("SELECT data FROM communication_providers WHERE id='global'").get();
   const result = saved ? JSON.parse(saved.data) : defaults();
   for (const channel of ["smtp", "sms", "whatsapp"]) {
     const field = channel === "smtp" ? "password" : "token";
@@ -104,11 +92,8 @@ const clean = (value, max = 500) => {
   return value.trim();
 };
 export function saveProviders(input) {
-  if (!input || typeof input !== "object")
-    throw problem("Configuración no válida.");
-  const row = db
-    .prepare("SELECT data FROM communication_providers WHERE id='global'")
-    .get();
+  if (!input || typeof input !== "object") throw problem("Configuración no válida.");
+  const row = db.prepare("SELECT data FROM communication_providers WHERE id='global'").get();
   const old = row ? JSON.parse(row.data) : defaults();
   const result = defaults();
   for (const channel of ["smtp", "sms", "whatsapp"]) {
@@ -117,33 +102,19 @@ export function saveProviders(input) {
       throw problem("Completa la configuración de los tres canales.");
     const out = result[channel];
     out.enabled = s.enabled === true;
-    out.provider =
-      channel === "smtp"
-        ? "smtp"
-        : s.provider === "brevo" ? "brevo" : "twilio";
+    out.provider = channel === "smtp" ? "smtp" : s.provider === "brevo" ? "brevo" : "twilio";
     const fields =
       channel === "smtp"
         ? ["host", "user", "from", "fromName"]
-        : [
-            "accountSid",
-            "from",
-            ...(channel === "whatsapp" ? ["contentSid"] : []),
-          ];
+        : ["accountSid", "from", ...(channel === "whatsapp" ? ["contentSid"] : [])];
     for (const field of fields) out[field] = clean(s[field] || "");
     const secret = channel === "smtp" ? "password" : "token";
     if (
       s[secret] !== undefined &&
-      (typeof s[secret] !== "string" ||
-        s[secret].length > 1000 ||
-        /[\r\n\0]/.test(s[secret]))
+      (typeof s[secret] !== "string" || s[secret].length > 1000 || /[\r\n\0]/.test(s[secret]))
     )
       throw problem("La credencial no es válida.");
-    out[secret] =
-      s.clearSecret === true
-        ? ""
-        : s[secret]
-          ? seal(s[secret])
-          : old[channel][secret];
+    out[secret] = s.clearSecret === true ? "" : s[secret] ? seal(s[secret]) : old[channel][secret];
     if (channel === "smtp") {
       if (out.provider === "brevo") {
         out.port = Number(s.port) || 587;
@@ -158,18 +129,14 @@ export function saveProviders(input) {
       if (out.enabled) {
         if (out.provider === "brevo") {
           if (!emailAddress(out.from) || !out.password)
-            throw problem(
-              "Brevo necesita la API key (campo contraseña) y el email remitente.",
-            );
+            throw problem("Brevo necesita la API key (campo contraseña) y el email remitente.");
         } else if (
           !/^[a-z0-9.:-]+$/i.test(out.host) ||
           !emailAddress(out.from) ||
           !out.user ||
           !out.password
         )
-          throw problem(
-            "SMTP necesita servidor, remitente, usuario y contraseña.",
-          );
+          throw problem("SMTP necesita servidor, remitente, usuario y contraseña.");
       }
     } else {
       if (!["twilio", "brevo"].includes(s.provider))
@@ -177,23 +144,15 @@ export function saveProviders(input) {
       out.provider = s.provider;
       if (out.enabled) {
         if (s.provider === "twilio") {
-          if (
-            !/^AC[a-f0-9]{32}$/i.test(out.accountSid) ||
-            !phoneNumber(out.from) ||
-            !out.token
-          )
-            throw problem(
-              `${channel}: indica Account SID, token y número emisor internacional.`,
-            );
+          if (!/^AC[a-f0-9]{32}$/i.test(out.accountSid) || !phoneNumber(out.from) || !out.token)
+            throw problem(`${channel}: indica Account SID, token y número emisor internacional.`);
         } else if (channel === "whatsapp") {
           if (!out.token || !/^\d{8,15}$/.test(out.from))
             throw problem(
               "WhatsApp (Brevo): indica la API key y el número de WhatsApp emisor con código de país (solo dígitos).",
             );
           if (out.contentSid && !/^\d+$/.test(out.contentSid))
-            throw problem(
-              "WhatsApp (Brevo): el ID de plantilla debe ser numérico.",
-            );
+            throw problem("WhatsApp (Brevo): el ID de plantilla debe ser numérico.");
         } else if (!out.token || !/^[a-zA-Z0-9 -]{2,11}$/.test(out.from)) {
           throw problem(
             `${channel} (Brevo): indica la API key y un nombre de remitente de 2 a 11 caracteres alfanuméricos.`,
@@ -240,13 +199,7 @@ export function smtpTransport(s) {
     disableUrlAccess: true,
   });
 }
-export async function sendMessage(
-  channel,
-  to,
-  message,
-  config = providers(false),
-  asunto = "",
-) {
+export async function sendMessage(channel, to, message, config = providers(false), asunto = "") {
   const s = config[channel === "email" ? "smtp" : channel];
   if (!s?.enabled) throw problem("El proveedor está desactivado.", 503);
   if (channel === "email") {
@@ -260,8 +213,7 @@ export async function sendMessage(
         subject: asunto || "Nueva comunicación de tu comunidad",
         text: message,
       });
-      if (!result.accepted?.length)
-        throw problem("El servidor SMTP rechazó el destinatario.", 502);
+      if (!result.accepted?.length) throw problem("El servidor SMTP rechazó el destinatario.", 502);
       return result.messageId || "smtp-accepted";
     } finally {
       transport.close();
@@ -290,10 +242,7 @@ export async function sendMessage(
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok)
-      throw problem(
-        `Brevo rechazó el envío${result.message ? `: ${result.message}` : "."}`,
-        502,
-      );
+      throw problem(`Brevo rechazó el envío${result.message ? `: ${result.message}` : "."}`, 502);
     return result.messageId || "brevo-accepted";
   }
   if (s.provider === "brevo") {
@@ -315,10 +264,7 @@ export async function sendMessage(
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok)
-      throw problem(
-        `Brevo rechazó el envío${result.message ? `: ${result.message}` : "."}`,
-        502,
-      );
+      throw problem(`Brevo rechazó el envío${result.message ? `: ${result.message}` : "."}`, 502);
     return result.messageId || result.reference || "brevo-accepted";
   }
   const body = new URLSearchParams({
@@ -343,11 +289,7 @@ export async function sendMessage(
     },
   );
   const result = await response.json();
-  if (
-    !response.ok ||
-    !result.sid ||
-    ["failed", "undelivered", "canceled"].includes(result.status)
-  )
+  if (!response.ok || !result.sid || ["failed", "undelivered", "canceled"].includes(result.status))
     throw problem(
       `Twilio rechazó el envío${Number.isInteger(result.code) ? ` (código ${result.code})` : ""}.`,
       502,

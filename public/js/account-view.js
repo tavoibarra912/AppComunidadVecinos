@@ -1,51 +1,45 @@
 // Datos de presentación derivados únicamente de la sesión y sus vínculos reales.
+import { isTenantContractActive, isTenantContractEnded } from "./permissions.js";
+
 export function accountView(data, roleLabels = {}) {
-  const user =
-    data.users.find((item) => item.id === data.currentUserId) || null;
+  const user = data.users.find((item) => item.id === data.currentUserId) || null;
   const displayName = user
     ? `${user.nombre || ""} ${user.apellido || ""}`.trim() || user.usuario
     : "";
-  const role = data.roles.find(
-    (item) => item.id === user?.rol || item.nombre === user?.rol,
-  );
-  const owners = user
-    ? data.owners.filter((item) => item.userId === user.id)
-    : [];
-  const tenants = user
-    ? data.tenants.filter((item) => item.userId === user.id)
-    : [];
+  const role = data.roles.find((item) => item.id === user?.rol || item.nombre === user?.rol);
+  const owners = user ? data.owners.filter((item) => item.userId === user.id) : [];
+  const tenants = user ? data.tenants.filter((item) => item.userId === user.id) : [];
+  const activeTenants = tenants.filter((item) => isTenantContractActive(item));
+  const formerTenants = tenants.filter((item) => isTenantContractEnded(item));
   const ownerIds = new Set(owners.map((item) => item.id));
-  const propertyIds = new Set(tenants.map((item) => item.propertyId));
+  const propertyIds = new Set(activeTenants.map((item) => item.propertyId));
   const communityIds = new Set(
     data.properties
-      .filter(
-        (item) =>
-          item.ownerIds?.some((id) => ownerIds.has(id)) ||
-          propertyIds.has(item.id),
-      )
+      .filter((item) => item.ownerIds?.some((id) => ownerIds.has(id)) || propertyIds.has(item.id))
       .map((item) => item.communityId),
   );
   for (const community of data.communities)
-    if (user && community.adminUserId === user.id)
-      communityIds.add(community.id);
-  const communities = data.communities.filter((item) =>
-    communityIds.has(item.id),
-  );
+    if (user && community.adminUserId === user.id) communityIds.add(community.id);
+  const communities = data.communities.filter((item) => communityIds.has(item.id));
   const hasProfile = owners.length > 0 || tenants.length > 0;
   let communityTitle = "Perfil pendiente de vinculación";
   let communityMessage =
     "Tu cuenta todavía no está vinculada a un propietario o inquilino. Pedile a un administrador que vincule tu perfil para acceder a tu comunidad.";
   if (communities.length) {
     communityTitle =
-      owners.length && tenants.length
+      owners.length && activeTenants.length
         ? "Propietario e inquilino"
         : owners.length
           ? "Perfil de propietario"
-          : tenants.length
+          : activeTenants.length
             ? "Perfil de inquilino"
             : "Administración de comunidad";
     communityMessage =
       "Estas son las comunidades vinculadas a tu perfil. Puedes consultar sus datos en modo de lectura.";
+  } else if (formerTenants.length && !activeTenants.length) {
+    communityTitle = "Contrato finalizado";
+    communityMessage =
+      "Tu contrato de alquiler ha finalizado y ya no tienes acceso a la comunidad. Puedes consultar tu historial propio si el rol de tu cuenta conserva ese permiso.";
   } else if (hasProfile) {
     communityTitle = "Sin comunidad asignada";
     communityMessage =

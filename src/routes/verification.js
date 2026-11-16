@@ -6,22 +6,19 @@ import { nombrePlataforma } from "../textos-envio.js";
 
 const router = Router();
 
-db.exec(`CREATE TABLE IF NOT EXISTS contact_verification_challenges (
-  id TEXT PRIMARY KEY,
-  tipo TEXT NOT NULL,
-  destino TEXT NOT NULL,
-  codigo TEXT NOT NULL,
-  createdAt INTEGER NOT NULL,
-  expiresAt INTEGER NOT NULL,
-  confirmed INTEGER NOT NULL DEFAULT 0,
-  attempts INTEGER NOT NULL DEFAULT 0
-)`);
 const challengeCols = db
   .prepare("PRAGMA table_info(contact_verification_challenges)")
   .all()
   .map((c) => c.name);
-if (!challengeCols.includes("attempts")) {
-  db.exec("ALTER TABLE contact_verification_challenges ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0");
+for (const [column, definition] of [
+  ["attempts", "INTEGER NOT NULL DEFAULT 0"],
+  ["userId", "TEXT NOT NULL DEFAULT ''"],
+  ["confirmedAt", "INTEGER NOT NULL DEFAULT 0"],
+  ["consumedAt", "INTEGER NOT NULL DEFAULT 0"],
+]) {
+  if (!challengeCols.includes(column)) {
+    db.exec(`ALTER TABLE contact_verification_challenges ADD COLUMN ${column} ${definition}`);
+  }
 }
 db.exec(
   "CREATE INDEX IF NOT EXISTS idx_contact_challenges_destino ON contact_verification_challenges(tipo, destino, createdAt)",
@@ -43,7 +40,10 @@ const config = {
   email: {
     canal: "email",
     campo: "email",
-    normalizar: (v) => String(v || "").trim().toLowerCase(),
+    normalizar: (v) =>
+      String(v || "")
+        .trim()
+        .toLowerCase(),
     validar: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
     destino: (v) => v,
     enmascarar: (v) => {
@@ -71,17 +71,19 @@ router.post("/:tipo/send", async (req, res) => {
   const cooldownMs = Math.max(0, Number(settings.otpReenvioSegundos) || 0) * 1000;
   const now = Date.now();
 
-  // Cooldown por destino: evita bombardear el canal y proteger el coste del proveedor.
+  // Cooldown por cuenta y destino: evita bombardear el canal y proteger el
+  // coste del proveedor sin que un tercero pueda bloquear el código de otro.
   const ultimo = db
     .prepare(
-      "SELECT createdAt FROM contact_verification_challenges WHERE tipo=? AND destino=? AND confirmed=0 ORDER BY createdAt DESC LIMIT 1",
+      "SELECT createdAt FROM contact_verification_challenges WHERE tipo=? AND destino=? AND userId=? AND confirmed=0 ORDER BY createdAt DESC LIMIT 1",
     )
-    .get(tipo, destino);
+    .get(tipo, destino, req.user.id);
   if (ultimo && now - ultimo.createdAt < cooldownMs) {
     const segundos = Math.ceil((cooldownMs - (now - ultimo.createdAt)) / 1000);
-    return res
-      .status(429)
-      .json({ error: `Espera ${segundos} segundos para pedir otro código de verificación.`, reenvioSegundos: segundos });
+    return res.status(429).json({
+      error: `Espera ${segundos} segundos para pedir otro código de verificación.`,
+      reenvioSegundos: segundos,
+    });
   }
 
   const codigo = String(crypto.randomInt(100000, 999999));
@@ -89,14 +91,15 @@ router.post("/:tipo/send", async (req, res) => {
 
   db.exec("BEGIN IMMEDIATE");
   try {
-    // Un solo código activo por destino: los anteriores dejan de valer.
+    // Un solo código activo por cuenta y destino: los anteriores dejan de valer,
+    // pero los retos de otras cuentas para el mismo destino no se tocan.
     db.prepare(
-      "DELETE FROM contact_verification_challenges WHERE tipo=? AND destino=? AND confirmed=0",
-    ).run(tipo, destino);
+      "DELETE FROM contact_verification_challenges WHERE tipo=? AND destino=? AND userId=? AND confirmed=0",
+    ).run(tipo, destino, req.user.id);
     db.prepare("DELETE FROM contact_verification_challenges WHERE expiresAt < ?").run(now);
     db.prepare(
-      "INSERT INTO contact_verification_challenges (id, tipo, destino, codigo, createdAt, expiresAt) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run(id, tipo, destino, digest(codigo), now, now + ttlMs);
+      "INSERT INTO contact_verification_challenges (id, tipo, destino, codigo, createdAt, expiresAt, userId) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(id, tipo, destino, digest(codigo), now, now + ttlMs, req.user.id);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -128,28 +131,42 @@ router.post("/:tipo/confirm", (req, res) => {
   const tipo = req.params.tipo;
   if (!config[tipo]) return res.status(400).json({ error: "Tipo de verificación no válido." });
   const { challengeId, code } = req.body || {};
-  if (!challengeId || !code)
-    return res.status(400).json({ error: "Faltan datos para confirmar." });
+  if (!challengeId || !code) return res.status(400).json({ error: "Faltan datos para confirmar." });
 
   const row = db
     .prepare("SELECT * FROM contact_verification_challenges WHERE id = ? AND confirmed = 0")
     .get(challengeId);
-  if (!row || row.expiresAt < Date.now()) {
+  if (!row || row.expiresAt < Date.now() || row.tipo !== tipo) {
     db.prepare("DELETE FROM contact_verification_challenges WHERE id = ?").run(challengeId);
     return res.status(410).json({ error: "El código ha caducado. Solicita uno nuevo." });
   }
+  if (row.userId && row.userId !== req.user.id)
+    return res.status(403).json({ error: "Este código pertenece a otra cuenta." });
+  // Retos heredados sin cuenta: se vinculan a quien demuestra poseer el código.
+  if (!row.userId)
+    db.prepare(
+      "UPDATE contact_verification_challenges SET userId = ? WHERE id = ? AND userId = ''",
+    ).run(req.user.id, challengeId);
   if (row.codigo !== digest(String(code).trim())) {
     const intentos = Number(row.attempts || 0) + 1;
     if (intentos >= MAX_ATTEMPTS) {
       db.prepare("DELETE FROM contact_verification_challenges WHERE id = ?").run(challengeId);
-      return res.status(410).json({ error: "Demasiados intentos con códigos incorrectos. Solicita uno nuevo." });
+      return res
+        .status(410)
+        .json({ error: "Demasiados intentos con códigos incorrectos. Solicita uno nuevo." });
     }
-    db.prepare("UPDATE contact_verification_challenges SET attempts = ? WHERE id = ?").run(intentos, challengeId);
+    db.prepare("UPDATE contact_verification_challenges SET attempts = ? WHERE id = ?").run(
+      intentos,
+      challengeId,
+    );
     return res.status(400).json({ error: "El código no es correcto." });
   }
 
-  db.prepare("UPDATE contact_verification_challenges SET confirmed = 1 WHERE id = ?").run(challengeId);
-  res.json({ verified: true, verifiedAt: new Date().toISOString() });
+  const confirmedAt = Date.now();
+  db.prepare(
+    "UPDATE contact_verification_challenges SET confirmed = 1, confirmedAt = ? WHERE id = ?",
+  ).run(confirmedAt, challengeId);
+  res.json({ verified: true, verifiedAt: new Date(confirmedAt).toISOString() });
 });
 
 export default router;

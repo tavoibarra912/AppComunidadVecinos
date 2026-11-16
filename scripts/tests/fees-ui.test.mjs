@@ -118,8 +118,7 @@ function fixture(manage = true) {
     api: {
       fees: async (route, method, body) => {
         calls.push([route, method, body]);
-        if (route.startsWith("/receipts/"))
-          return { ...receipt, canManage: manage };
+        if (route.startsWith("/receipts/")) return { ...receipt, canManage: manage };
         if (route.endsWith("/preview"))
           return {
             period: body.period,
@@ -212,9 +211,7 @@ test("cuotas UI: una comunidad que no usa euros no ofrece configurar ni emitir",
     f.w.feeTest.renderFeesPage();
     await flush();
     const root = f.w.document.querySelector("#fees-page .fee-panel");
-    const labels = [...root.querySelectorAll("button")].map(
-      (b) => b.textContent,
-    );
+    const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
     assert.equal(labels.includes("1 · Configurar acuerdo"), false);
     assert.equal(labels.includes("2 · Emitir recibos"), false);
     assert.equal(labels.includes("Nueva derrama"), false);
@@ -236,26 +233,16 @@ test("cuotas UI: Mis cuotas usa la consulta consolidada sin acciones de gestión
     assert.equal(f.w.feeTest.feeNavigation().title, "Mis cuotas");
     assert.ok(f.calls.some((c) => c[0] === "/mine"));
     assert.equal(
-      [...root.querySelectorAll("button")].some(
-        (b) => b.textContent === "2 · Emitir recibos",
-      ),
+      [...root.querySelectorAll("button")].some((b) => b.textContent === "2 · Emitir recibos"),
       false,
     );
     click(f.w, "Ver recibo", root);
     await flush();
     const body = f.w.document.querySelector("#fee-dialog-body");
-    assert.match(
-      body.textContent,
-      /Aceptar un justificante no registra un cobro/,
-    );
+    assert.match(body.textContent, /Aceptar un justificante no registra un cobro/);
+    assert.equal(body.querySelector("input[type=file]").accept, ".pdf,.jpg,.jpeg,.png,.webp");
     assert.equal(
-      body.querySelector("input[type=file]").accept,
-      ".pdf,.jpg,.jpeg,.png,.webp",
-    );
-    assert.equal(
-      [...body.querySelectorAll("button")].some(
-        (b) => b.textContent === "Anular recibo",
-      ),
+      [...body.querySelectorAll("button")].some((b) => b.textContent === "Anular recibo"),
       false,
     );
   } finally {
@@ -270,9 +257,7 @@ test("cuotas UI: una carga tardía no muestra datos de la ficha anterior", async
       release = resolve;
     });
     f.w.api.fees = (route) =>
-      route.endsWith("/c1")
-        ? first
-        : Promise.resolve({ ...f.data, receipts: [] });
+      route.endsWith("/c1") ? first : Promise.resolve({ ...f.data, receipts: [] });
     const root = f.w.document.querySelector("#community-editor-fees");
     f.w.feeTest.mountFees(root, "community", "c1");
     f.w.feeTest.mountFees(root, "community", "c2");
@@ -296,10 +281,7 @@ test("cuotas UI: cambiar el periodo elimina la confirmación y descarta respuest
     month.value = "2026-11";
     click(f.w, "Calcular vista previa");
     await flush();
-    assert.match(
-      f.w.document.querySelector("#fee-dialog-body").textContent,
-      /Confirmar emisión/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog-body").textContent, /Confirmar emisión/);
     month.value = "2026-12";
     month.dispatchEvent(new f.w.Event("input"));
     assert.doesNotMatch(
@@ -360,34 +342,24 @@ test("cuotas UI: valida importes dentro del diálogo y conserva los datos al fal
     value.value = "50,00";
     value.dispatchEvent(new f.w.Event("input"));
     assert.equal(error.hidden, true);
-    assert.match(
-      f.w.document.querySelector(".fee-payment-summary").textContent,
-      /30,00.*20,00/,
-    );
+    assert.match(f.w.document.querySelector(".fee-payment-summary").textContent, /30,00.*20,00/);
     const original = f.w.api.fees;
     f.w.api.fees = (route, method, payload) =>
       route.endsWith("/payments")
         ? Promise.reject(
-            Object.assign(
-              new Error("Posible cobro duplicado: revisa la referencia"),
-              { status: 409 },
-            ),
+            Object.assign(new Error("Posible cobro duplicado: revisa la referencia"), {
+              status: 409,
+            }),
           )
         : original(route, method, payload);
     click(f.w, "Guardar cobro");
     await flush();
     assert.equal(value.value, "50,00");
     assert.match(error.textContent, /Posible cobro duplicado/);
-    const duplicate = control(
-      f.w,
-      "Confirmo que es otro cobro si coincide con uno registrado",
-    );
+    const duplicate = control(f.w, "Confirmo que es otro cobro si coincide con uno registrado");
     assert.equal(duplicate.closest("label").hidden, false);
     assert.equal(duplicate.checked, false);
-    assert.equal(
-      f.w.document.querySelector("[data-fee-close]").disabled,
-      false,
-    );
+    assert.equal(f.w.document.querySelector("[data-fee-close]").disabled, false);
     assert.equal(
       f.calls.some((c) => c[0] === "toast"),
       false,
@@ -409,10 +381,7 @@ test("cuotas UI: filtros y paginación no pierden el foco del buscador", async (
     await flush();
     const root = f.w.document.querySelector("#fees-page"),
       search = control(f.w, "Buscar recibos");
-    assert.equal(
-      root.querySelectorAll(".fee-receipts-results tbody tr").length,
-      10,
-    );
+    assert.equal(root.querySelectorAll(".fee-receipts-results tbody tr").length, 10);
     click(f.w, "Siguiente", root);
     await flush();
     assert.match(root.textContent, /11–20 de 23/);
@@ -421,10 +390,7 @@ test("cuotas UI: filtros y paginación no pierden el foco del buscador", async (
     search.dispatchEvent(new f.w.Event("input"));
     assert.equal(f.w.document.activeElement, search);
     assert.equal(control(f.w, "Buscar recibos"), search);
-    assert.equal(
-      root.querySelectorAll(".fee-receipts-results tbody tr").length,
-      1,
-    );
+    assert.equal(root.querySelectorAll(".fee-receipts-results tbody tr").length, 1);
     const filter = control(f.w, "Estado");
     filter.value = "paid";
     filter.dispatchEvent(new f.w.Event("change"));
@@ -577,8 +543,7 @@ test("derramas UI: valida y crea reparto manual con selección y plazos; emite c
     await openAssessments(f);
     click(f.w, "Nueva derrama");
     control(f.w, "Nombre de la derrama").value = "Obras de fachada";
-    control(f.w, "Acuerdo de Junta que la aprueba").value =
-      "Junta extraordinaria";
+    control(f.w, "Acuerdo de Junta que la aprueba").value = "Junta extraordinaria";
     const total = control(f.w, "Importe total de la derrama (€)");
     total.value = "200";
     total.dispatchEvent(new f.w.Event("input"));
@@ -587,24 +552,17 @@ test("derramas UI: valida y crea reparto manual con selección y plazos; emite c
     mode.dispatchEvent(new f.w.Event("change"));
     click(f.w, "Agregar todos");
     control(f.w, "Parcela 1 · importe (€)").value = "200";
-    const first = f.w.document.querySelector(
-      ".fee-installment-row input[data-money]",
-    );
+    const first = f.w.document.querySelector(".fee-installment-row input[data-money]");
     first.value = "100";
     first.dispatchEvent(new f.w.Event("input"));
-    f.w.document.querySelector(
-      '.fee-installment-row input[type="date"]',
-    ).value = "2030-12-10";
+    f.w.document.querySelector('.fee-installment-row input[type="date"]').value = "2030-12-10";
     click(f.w, "Agregar plazo");
     const second = f.w.document.querySelectorAll(".fee-installment-row")[1];
     second.querySelector("input[data-money]").value = "90";
     second.querySelector('input[type="date"]').value = "2031-01-10";
     click(f.w, "Crear derrama");
     await flush();
-    assert.match(
-      f.w.document.querySelector("[data-fee-error]").textContent,
-      /suma de los plazos/,
-    );
+    assert.match(f.w.document.querySelector("[data-fee-error]").textContent, /suma de los plazos/);
     assert.equal(
       f.calls.some((c) => c[0].endsWith?.("/assessments") && c[1] === "POST"),
       false,
@@ -612,9 +570,7 @@ test("derramas UI: valida y crea reparto manual con selección y plazos; emite c
     second.querySelector("input[data-money]").value = "100";
     click(f.w, "Crear derrama");
     await flush();
-    const saved = f.calls.find(
-      (c) => c[0] === "/communities/c1/assessments" && c[1] === "POST",
-    );
+    const saved = f.calls.find((c) => c[0] === "/communities/c1/assessments" && c[1] === "POST");
     assert.equal(saved[2].mode, "manual");
     assert.equal(saved[2].manual.p1, "200");
     assert.deepEqual(Array.from(saved[2].propertyIds), ["p1"]);
@@ -625,10 +581,7 @@ test("derramas UI: valida y crea reparto manual con selección y plazos; emite c
     assert.equal(f.w.document.querySelector("#fee-dialog-body img"), null);
     click(f.w, "Emitir plazo 1");
     await flush();
-    assert.match(
-      f.w.document.querySelector("#fee-dialog-body").textContent,
-      /Vista previa.*1\/2/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog-body").textContent, /Vista previa.*1\/2/);
     click(f.w, "Confirmar emisión del plazo");
     await flush();
     const issued = f.calls.find((c) => c[0] === "/assessments/a1/issue");
@@ -647,27 +600,17 @@ test("derramas UI: editar un borrador mantiene los euros de todos los plazos", a
     await flush();
     click(f.w, "Editar derrama");
     await flush();
-    assert.equal(
-      control(f.w, "Importe total de la derrama (€)").value,
-      "200.00",
-    );
+    assert.equal(control(f.w, "Importe total de la derrama (€)").value, "200.00");
     assert.deepEqual(
-      [
-        ...f.w.document.querySelectorAll(
-          ".fee-installment-row input[data-money]",
-        ),
-      ].map((i) => i.value),
+      [...f.w.document.querySelectorAll(".fee-installment-row input[data-money]")].map(
+        (i) => i.value,
+      ),
       ["100.00", "100.00"],
     );
-    assert.match(
-      f.w.document.querySelector(".fee-payment-summary").textContent,
-      /Correcto/,
-    );
+    assert.match(f.w.document.querySelector(".fee-payment-summary").textContent, /Correcto/);
     click(f.w, "Guardar cambios");
     await flush();
-    const request = f.calls.find(
-      (c) => c[0] === "/assessments/a1" && c[1] === "PUT",
-    );
+    const request = f.calls.find((c) => c[0] === "/assessments/a1" && c[1] === "PUT");
     assert.deepEqual(
       Array.from(request[2].installments, (i) => i.amount),
       ["100.00", "100.00"],
@@ -690,16 +633,13 @@ test("derramas UI: anula un plazo pendiente con motivo y oculta edición y reemi
     const request = f.calls.find((c) => c[0] === "/assessments/a1/cancel");
     assert.equal(request[2].installment, 1);
     assert.equal(request[2].reason, "Acuerdo revocado");
-    const buttons = [
-      ...f.w.document.querySelectorAll("#fee-dialog-body button"),
-    ].map((b) => b.textContent);
+    const buttons = [...f.w.document.querySelectorAll("#fee-dialog-body button")].map(
+      (b) => b.textContent,
+    );
     assert.equal(buttons.includes("Emitir plazo 1"), false);
     assert.equal(buttons.includes("Emitir plazo 2"), true);
     assert.equal(buttons.includes("Editar derrama"), false);
-    assert.match(
-      f.w.document.querySelector("#fee-dialog-body").textContent,
-      /Anulado/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog-body").textContent, /Anulado/);
   } finally {
     f.dom.window.close();
   }
@@ -723,18 +663,15 @@ test("derramas UI: cobros aplicados bloquean la anulación del plazo y de la der
     const body = f.w.document.querySelector("#fee-dialog-body");
     const firstRow = body.querySelector("tbody tr");
     assert.equal(
-      [...firstRow.querySelectorAll("button")].some(
-        (b) => b.textContent === "Anular plazo",
-      ),
+      [...firstRow.querySelectorAll("button")].some((b) => b.textContent === "Anular plazo"),
       false,
     );
     assert.equal(
-      [...body.querySelectorAll("button")].find(
-        (b) => b.textContent === "Anular derrama completa",
-      ).disabled,
+      [...body.querySelectorAll("button")].find((b) => b.textContent === "Anular derrama completa")
+        .disabled,
       true,
     );
-    assert.match(body.textContent, /primero revertí los cobros/);
+    assert.match(body.textContent, /primero revierte los cobros/);
   } finally {
     f.dom.window.close();
   }
@@ -761,17 +698,12 @@ test("derramas UI: Mis cuotas y CSV identifican nombre y plazo sin ofrecer gesti
     const root = f.w.document.querySelector("#fees-page");
     assert.match(root.textContent, /Derrama.*plazo 1\/2/);
     assert.equal(
-      [...root.querySelectorAll("button")].some(
-        (b) => b.textContent === "Nueva derrama",
-      ),
+      [...root.querySelectorAll("button")].some((b) => b.textContent === "Nueva derrama"),
       false,
     );
     click(f.w, "Ver recibo");
     await flush();
-    assert.match(
-      f.w.document.querySelector("#fee-dialog h2").textContent,
-      /Recibo de derrama/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog h2").textContent, /Recibo de derrama/);
     assert.match(
       f.w.document.querySelector("#fee-dialog-body").textContent,
       /Reparar el revestimiento/,
@@ -813,10 +745,7 @@ test("derramas UI: pestañas separan los recibos y el editor integrado conserva 
     click(f.w, "Derramas");
     assert.equal(control(f.w, "Nombre de la derrama").value, "Mi borrador");
     click(f.w, "Cerrar formulario de derrama");
-    assert.equal(
-      f.w.document.querySelector(".fee-discard-notice").hidden,
-      false,
-    );
+    assert.equal(f.w.document.querySelector(".fee-discard-notice").hidden, false);
     click(f.w, "Descartar cambios");
     assert.equal(f.w.document.querySelector(".fee-assessment-editor"), null);
   } finally {
@@ -832,9 +761,7 @@ test("derramas UI: busca y vincula inmuebles sin duplicarlos, permite quitarlos 
     const form = f.w.document.querySelector(".fee-assessment-form");
     click(f.w, "Inmuebles", form);
     click(f.w, "Vincular inmueble");
-    const search = form.querySelector(
-      '[aria-label="Buscar inmueble para vincular"]',
-    );
+    const search = form.querySelector('[aria-label="Buscar inmueble para vincular"]');
     search.focus();
     search.value = "Parcela";
     search.dispatchEvent(new f.w.Event("input"));
@@ -844,10 +771,7 @@ test("derramas UI: busca y vincula inmuebles sin duplicarlos, permite quitarlos 
     click(f.w, "Agregar inmueble seleccionado");
     await flush();
     assert.equal(form.querySelectorAll(".fee-property-card").length, 1);
-    assert.equal(
-      form.querySelector('.fee-property-picker select option[value="p1"]'),
-      null,
-    );
+    assert.equal(form.querySelector('.fee-property-picker select option[value="p1"]'), null);
     const mode = control(f.w, "Criterio de reparto");
     mode.value = "manual";
     mode.dispatchEvent(new f.w.Event("change"));
@@ -859,9 +783,7 @@ test("derramas UI: busca y vincula inmuebles sin duplicarlos, permite quitarlos 
     await flush();
     assert.equal(control(f.w, "Parcela 1 · importe (€)").value, "200");
     assert.equal(
-      [...form.querySelectorAll("button")].find(
-        (b) => b.textContent === "Agregar todos",
-      ).disabled,
+      [...form.querySelectorAll("button")].find((b) => b.textContent === "Agregar todos").disabled,
       true,
     );
   } finally {
@@ -893,14 +815,8 @@ test("derramas UI: agrega y elimina plazos con botones estándar, renumera y con
     remove.click();
     await flush();
     assert.equal(form.querySelectorAll(".fee-installment-row").length, 1);
-    assert.equal(
-      form.querySelector(".fee-installment-number").textContent,
-      "Plazo 1",
-    );
-    assert.equal(
-      form.querySelector(".fee-installment-row button").disabled,
-      true,
-    );
+    assert.equal(form.querySelector(".fee-installment-number").textContent, "Plazo 1");
+    assert.equal(form.querySelector(".fee-installment-row button").disabled, true);
   } finally {
     f.dom.window.close();
   }
@@ -913,14 +829,8 @@ test("derramas UI: valida campos requeridos en pestañas ocultas y conserva el m
     await openAssessments(f);
     click(f.w, "Abrir derrama");
     await flush();
-    assert.ok(
-      f.w.document.querySelector("#fee-dialog .fee-rich-content strong"),
-    );
-    assert.ok(
-      f.w.document
-        .querySelector("[data-fee-close]")
-        .classList.contains("btn-cancel"),
-    );
+    assert.ok(f.w.document.querySelector("#fee-dialog .fee-rich-content strong"));
+    assert.ok(f.w.document.querySelector("[data-fee-close]").classList.contains("btn-cancel"));
     assert.ok(f.w.document.querySelector("[data-fee-close] svg"));
     click(f.w, "Editar derrama");
     await flush();
@@ -932,10 +842,7 @@ test("derramas UI: valida campos requeridos en pestañas ocultas y conserva el m
     click(f.w, "Plazos", form);
     click(f.w, "Guardar cambios");
     await flush();
-    assert.equal(
-      form.querySelector('[data-assessment-pane="general"]').hidden,
-      false,
-    );
+    assert.equal(form.querySelector('[data-assessment-pane="general"]').hidden, false);
     assert.equal(f.w.document.activeElement, name);
     assert.equal(
       f.calls.some((c) => c[1] === "PUT"),
@@ -1058,8 +965,7 @@ function serviceFixture(manage = true) {
   };
   const original = f.w.api.fees;
   f.w.api.fees = async (route, method = "GET", body) => {
-    if (route === "/receipts/svc-r1")
-      return { ...serviceReceipt, canManage: manage };
+    if (route === "/receipts/svc-r1") return { ...serviceReceipt, canManage: manage };
     if (route === "/services/s1/preview") {
       f.calls.push([route, method, body]);
       return preview;
@@ -1155,9 +1061,7 @@ test("servicios UI: pestaña propia, listado y editor integrado que conserva el 
     assert.ok(form);
     assert.equal(control(f.w, "Tipo de suministro").value, "agua");
     assert.equal(
-      [...form.querySelectorAll(".fee-editor-pane")].filter(
-        (pane) => !pane.hidden,
-      ).length,
+      [...form.querySelectorAll(".fee-editor-pane")].filter((pane) => !pane.hidden).length,
       1,
     );
     click(f.w, "Cuotas ordinarias");
@@ -1185,17 +1089,11 @@ test("servicios UI: carga lecturas, propone la anterior, calcula consumo y guard
     const rows = form.querySelectorAll(".fee-reading-row");
     assert.equal(rows.length, 2);
     const first = rows[0];
-    assert.equal(
-      first.querySelector('[data-reading="previous"]').value,
-      "100",
-    );
+    assert.equal(first.querySelector('[data-reading="previous"]').value, "100");
     const current = first.querySelector('[data-reading="current"]');
     current.value = "120";
     current.dispatchEvent(new f.w.Event("input", { bubbles: true }));
-    assert.match(
-      first.querySelector(".fee-reading-consumption").textContent,
-      /Consumo: 20 m³/,
-    );
+    assert.match(first.querySelector(".fee-reading-consumption").textContent, /Consumo: 20 m³/);
     const second = rows[1];
     second.querySelector('[data-reading="previous"]').value = "0";
     second
@@ -1219,10 +1117,7 @@ test("servicios UI: carga lecturas, propone la anterior, calcula consumo y guard
       p1: { previous: "100", current: "120" },
       p2: { previous: "0", current: "30" },
     });
-    assert.match(
-      f.w.document.querySelector("#fee-dialog h2").textContent,
-      /Servicio de Agua/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog h2").textContent, /Servicio de Agua/);
   } finally {
     f.dom.window.close();
   }
@@ -1268,14 +1163,10 @@ test("servicios UI: observaciones con formato y fotos de contador se envían al 
     fileInput.dispatchEvent(new f.w.Event("change", { bubbles: true }));
     click(f.w, "Guardar cambios");
     await flush();
-    const put = f.calls.find(
-      (call) => call[0] === "/services/s1" && call[1] === "PUT",
-    );
+    const put = f.calls.find((call) => call[0] === "/services/s1" && call[1] === "PUT");
     assert.ok(put, "No se guardó el servicio");
     assert.match(put[2].notes, /<strong>anual<\/strong>/);
-    const upload = f.calls.find(
-      (call) => call[0] === "/services/s1/reading-photos/p1",
-    );
+    const upload = f.calls.find((call) => call[0] === "/services/s1/reading-photos/p1");
     assert.ok(upload, "No se subió la foto del contador");
     assert.equal(upload[1], "POST");
     assert.ok(upload[2] instanceof f.w.FormData);
@@ -1289,10 +1180,7 @@ test("servicios UI: revisa el reparto, emite con token y bloquea una segunda emi
   try {
     f.w.feeTest.showService("s1");
     await flush();
-    assert.match(
-      f.w.document.querySelector("#fee-dialog h2").textContent,
-      /Servicio de Agua/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog h2").textContent, /Servicio de Agua/);
     let body = f.w.document.querySelector("#fee-dialog-body");
     assert.match(body.textContent, /Reparto congelado/);
     click(f.w, "Revisar y emitir");
@@ -1302,16 +1190,11 @@ test("servicios UI: revisa el reparto, emite con token y bloquea una segunda emi
     assert.match(body.textContent, /Se crearán 1 recibos/);
     click(f.w, "Confirmar emisión de recibos");
     await flush();
-    const issued = f.calls.find(
-      (call) => call[0] === "/services/s1/issue",
-    );
+    const issued = f.calls.find((call) => call[0] === "/services/s1/issue");
     assert.deepEqual(JSON.parse(JSON.stringify(issued[2])), {
       token: "service-token",
     });
-    assert.match(
-      f.w.document.querySelector("#fee-dialog-body").textContent,
-      /Reparto congelado/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog-body").textContent, /Reparto congelado/);
     assert.equal(
       [...f.w.document.querySelectorAll("#fee-dialog-body button")].some(
         (button) => button.textContent === "Revisar y emitir",
@@ -1371,7 +1254,7 @@ test("servicios UI: el propietario ve repartos informativos sin deuda y sin gest
     f.w.feeTest.renderFeesPage();
     await flush();
     let page = f.w.document.querySelector("#fees-page");
-    assert.match(page.textContent, /Tenés 1 reparto informativo/);
+    assert.match(page.textContent, /Tienes 1 reparto informativo/);
     assert.equal(
       [...page.querySelectorAll("button")].some(
         (button) => button.textContent === "Nuevo servicio",
@@ -1382,19 +1265,14 @@ test("servicios UI: el propietario ve repartos informativos sin deuda y sin gest
     await flush();
     page = f.w.document.querySelector("#fees-page");
     assert.match(page.textContent, /Repartos informativos/);
-    assert.match(
-      page.textContent,
-      /Facturas de servicios repartidas solo a efectos informativos/,
-    );
+    assert.match(page.textContent, /Facturas de servicios repartidas solo a efectos informativos/);
     assert.match(page.textContent, /100,00/);
     click(f.w, "Ver reparto", page);
     const body = f.w.document.querySelector("#fee-dialog-body");
     assert.match(body.textContent, /Solo reparto informativo/);
     assert.match(body.textContent, /Este reparto no genera recibos ni deuda/);
     assert.match(body.textContent, /Factura adjunta/);
-    const link = body.querySelector(
-      'a[href="/api/fees/service-attachments/a1/download"]',
-    );
+    const link = body.querySelector('a[href="/api/fees/service-attachments/a1/download"]');
     assert.ok(link);
     assert.equal(link.download, "factura.pdf");
   } finally {
@@ -1417,9 +1295,7 @@ test("servicios UI: el recibo de servicio enlaza la factura adjunta", async () =
     await flush();
     const body = f.w.document.querySelector("#fee-dialog-body");
     assert.match(body.textContent, /Factura adjunta/);
-    const link = body.querySelector(
-      'a[href="/api/fees/service-attachments/a1/download"]',
-    );
+    const link = body.querySelector('a[href="/api/fees/service-attachments/a1/download"]');
     assert.ok(link);
     assert.equal(link.download, "factura.pdf");
   } finally {
@@ -1442,10 +1318,7 @@ test("servicios UI: el recibo muestra proveedor y lecturas y descarga un CSV pro
     await openServices(f);
     click(f.w, "Ver recibo");
     await flush();
-    assert.match(
-      f.w.document.querySelector("#fee-dialog h2").textContent,
-      /Recibo de servicio/,
-    );
+    assert.match(f.w.document.querySelector("#fee-dialog h2").textContent, /Recibo de servicio/);
     const body = f.w.document.querySelector("#fee-dialog-body");
     assert.match(body.textContent, /Canal de Isabel II/);
     assert.match(body.textContent, /Lectura anterior: 100 m³/);

@@ -32,7 +32,15 @@ test("NIE: X/Y/Z + 7 dígitos y letra de control", () => {
 });
 
 test("CIF: letra inicial, 7 dígitos y control dígito/letra según el tipo", () => {
-  for (const value of ["A58818501", "B12345674", "H12345674", "P1234567D", "Q1234567D", "C12345674", "C1234567D"]) {
+  for (const value of [
+    "A58818501",
+    "B12345674",
+    "H12345674",
+    "P1234567D",
+    "Q1234567D",
+    "C12345674",
+    "C1234567D",
+  ]) {
     assert.equal(isValidCif(value), true, value);
   }
   for (const value of [
@@ -41,7 +49,7 @@ test("CIF: letra inicial, 7 dígitos y control dígito/letra según el tipo", ()
     "P12345674", // P exige letra de control
     "A1234567D", // A exige dígito de control
     "O12345674", // letra inicial no válida
-    "B1234567",  // falta el control
+    "B1234567", // falta el control
   ]) {
     assert.equal(isValidCif(value), false, value);
   }
@@ -60,13 +68,7 @@ test("NIF y NIF de comunidad", () => {
 });
 
 test("documentos identificativos: se normalizan minúsculas, espacios y separadores", () => {
-  for (const value of [
-    "h28654325",
-    "H 28654325",
-    "H-28654325",
-    "H.286.543.25",
-    " h-28.654.325 ",
-  ]) {
+  for (const value of ["h28654325", "H 28654325", "H-28654325", "H.286.543.25", " h-28.654.325 "]) {
     assert.equal(isValidCommunityNif(value), true, value);
   }
   // El dígito de control sigue siendo obligatorio.

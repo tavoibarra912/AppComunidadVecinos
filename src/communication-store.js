@@ -2,42 +2,7 @@ import crypto from "node:crypto";
 import { db, getSettings } from "./db.js";
 import { allowed, policyData, publicUser } from "./security.js";
 import { getLocalDateInputValue } from "./domain.js";
-
-db.exec(`
-CREATE TABLE IF NOT EXISTS communication_posts (
- id TEXT PRIMARY KEY, communityId TEXT NOT NULL, data TEXT NOT NULL,
- createdBy TEXT NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1
-);
-CREATE INDEX IF NOT EXISTS idx_communication_community ON communication_posts(communityId);
-CREATE TABLE IF NOT EXISTS communication_recipients (
- postId TEXT NOT NULL, userId TEXT NOT NULL, readAt TEXT NOT NULL DEFAULT '', receiptAt TEXT NOT NULL DEFAULT '',
- rsvp TEXT NOT NULL DEFAULT 'pending', attended INTEGER NOT NULL DEFAULT 0,
- PRIMARY KEY(postId,userId)
-);
-CREATE TABLE IF NOT EXISTS communication_comments (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, body TEXT NOT NULL,
- createdAt TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS communication_ballots (
- postId TEXT NOT NULL, userId TEXT NOT NULL, choices TEXT NOT NULL, createdAt TEXT NOT NULL,
- PRIMARY KEY(postId,userId)
-);
-CREATE TABLE IF NOT EXISTS communication_files (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL, content BLOB NOT NULL,
- kind TEXT NOT NULL, final INTEGER NOT NULL DEFAULT 0, createdAt TEXT NOT NULL, createdBy TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS communication_audit (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, action TEXT NOT NULL, createdAt TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS communication_preferences (userId TEXT PRIMARY KEY, data TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS communication_providers (id TEXT PRIMARY KEY, data TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS communication_outbox (
- id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, channel TEXT NOT NULL, kind TEXT NOT NULL,
- version INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending', error TEXT NOT NULL DEFAULT '',
- providerId TEXT NOT NULL DEFAULT '', createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL,
- UNIQUE(postId,userId,channel,kind,version)
-);
-`);
+import { isTenantContractActive } from "../public/js/permissions.js";
 
 const spanishDemoCopy = new Map([
   [
@@ -62,14 +27,14 @@ const spanishDemoCopy = new Map([
     },
   ],
   [
-    "Junta general de propietarios — 2.º trimestre\u0000Convocatoria de la junta general. Si no podés asistir, delegá tu voto respondiendo a este aviso.",
+    "Junta general de propietarios — 2.º trimestre\u0000Convocatoria de la junta general. Si no puedes asistir, delega tu voto respondiendo a este aviso.",
     {
       title: "Junta general de propietarios — 2.º trimestre",
       body: "Convocatoria de la junta general. Si no puedes asistir, delega tu voto respondiendo a este aviso.",
     },
   ],
   [
-    "Encuesta: ¿qué actividades querés en el centro social?\u0000El centro social reabre el mes próximo y queremos programarlo con ustedes. Elegí las actividades que te interesan (podés marcar varias).",
+    "Encuesta: ¿qué actividades quieres en el centro social?\u0000El centro social reabre el mes próximo y queremos programarlo con ustedes. Elige las actividades que te interesan (puedes marcar varias).",
     {
       title: "Encuesta: ¿qué actividades te gustaría hacer en el centro social?",
       body: "El centro social reabre el mes próximo y queremos organizar el programa entre todos. Elige las actividades que te interesan (puedes marcar varias).",
@@ -99,7 +64,7 @@ const spanishDemoCopy = new Map([
     },
   ],
   [
-    "Bienvenida a la nueva plataforma de la comunidad\u0000Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo querés recibir los avisos.",
+    "Bienvenida a la nueva plataforma de la comunidad\u0000Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo quieres recibir los avisos.",
     {
       title: "Bienvenida a la nueva plataforma de la comunidad",
       body: "Estrenamos plataforma para gestionar todo: pagos, documentos, incidencias y comunicación. Mis canales permite elegir cómo quieres recibir los avisos.",
@@ -140,7 +105,9 @@ const spanishDemoCopy = new Map([
 if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'spanish-demo-copy-v1'").get()) {
   db.exec("BEGIN");
   try {
-    const update = db.prepare("UPDATE communication_posts SET data = ?, version = version + 1 WHERE id = ?");
+    const update = db.prepare(
+      "UPDATE communication_posts SET data = ?, version = version + 1 WHERE id = ?",
+    );
     for (const row of db.prepare("SELECT id, data FROM communication_posts").all()) {
       const post = JSON.parse(row.data);
       const correction = spanishDemoCopy.get(`${post.title}\u0000${post.body}`);
@@ -178,9 +145,7 @@ export function superAdmin(user, data = policyData()) {
   return (
     !!user?.activo &&
     data.roles.some(
-      (r) =>
-        (r.id === user.rol || r.nombre === user.rol) &&
-        r.nombre === "super_admin",
+      (r) => (r.id === user.rol || r.nombre === user.rol) && r.nombre === "super_admin",
     )
   );
 }
@@ -188,21 +153,13 @@ export function manages(user, communityId, data = policyData()) {
   return allowed(user, "community:manage", communityId, data);
 }
 export function canPublish(user, communityId, data = policyData()) {
-  return (
-    manages(user, communityId, data) ||
-    allowed(user, "comm:publicar", communityId, data)
-  );
+  return manages(user, communityId, data) || allowed(user, "comm:publicar", communityId, data);
 }
 export function canModerate(user, communityId, data = policyData()) {
-  return (
-    manages(user, communityId, data) ||
-    allowed(user, "comm:moderar", communityId, data)
-  );
+  return manages(user, communityId, data) || allowed(user, "comm:moderar", communityId, data);
 }
 export function postById(id) {
-  const row = db
-    .prepare("SELECT * FROM communication_posts WHERE id=?")
-    .get(id);
+  const row = db.prepare("SELECT * FROM communication_posts WHERE id=?").get(id);
   return row
     ? {
         ...JSON.parse(row.data),
@@ -213,9 +170,7 @@ export function postById(id) {
         updatedAt: row.updatedAt,
         version: row.version,
         distributed: !!db
-          .prepare(
-            "SELECT 1 FROM communication_audit WHERE postId=? AND action='published'",
-          )
+          .prepare("SELECT 1 FROM communication_audit WHERE postId=? AND action='published'")
           .get(id),
       }
     : null;
@@ -227,18 +182,11 @@ export function allPosts() {
     .map((r) => postById(r.id));
 }
 export function profiles(communityId, data = policyData()) {
-  const properties = data.properties.filter(
-    (p) => p.communityId === communityId,
-  );
-  const owners = data.owners.filter((o) =>
-    properties.some((p) => p.ownerIds.includes(o.id)),
-  );
+  const properties = data.properties.filter((p) => p.communityId === communityId);
+  const owners = data.owners.filter((o) => properties.some((p) => p.ownerIds.includes(o.id)));
   const today = getLocalDateInputValue();
   const tenants = data.tenants.filter(
-    (t) =>
-      properties.some((p) => p.id === t.propertyId) &&
-      (!t.contractStart || t.contractStart <= today) &&
-      (!t.contractEnd || t.contractEnd >= today),
+    (t) => properties.some((p) => p.id === t.propertyId) && isTenantContractActive(t, today),
   );
   return { properties, owners, tenants };
 }
@@ -253,24 +201,18 @@ export function resolveAudience(communityId, audience, data = policyData()) {
       (o) =>
         audience.ownerIds.includes(o.id) ||
         members.properties.some(
-          (p) =>
-            audience.propertyIds.includes(p.id) && p.ownerIds.includes(o.id),
+          (p) => audience.propertyIds.includes(p.id) && p.ownerIds.includes(o.id),
         ),
     );
     tenants = tenants.filter(
-      (t) =>
-        audience.tenantIds.includes(t.id) ||
-        audience.propertyIds.includes(t.propertyId),
+      (t) => audience.tenantIds.includes(t.id) || audience.propertyIds.includes(t.propertyId),
     );
   }
-  const ids = new Set(
-    [...owners, ...tenants].map((p) => p.userId).filter(Boolean),
-  );
+  const ids = new Set([...owners, ...tenants].map((p) => p.userId).filter(Boolean));
   // La administración recibe las publicaciones generales, sin convertirse en votante propietario.
   const users = db.prepare("SELECT * FROM users WHERE activo=1").all();
   if (audience.mode === "all")
-    for (const user of users)
-      if (canPublish(user, communityId, data)) ids.add(user.id);
+    for (const user of users) if (canPublish(user, communityId, data)) ids.add(user.id);
   const recipients = users.filter((u) => ids.has(u.id));
   const unlinked = [...owners, ...tenants].filter(
     (p) => !recipients.some((u) => u.id === p.userId),
@@ -285,17 +227,14 @@ export function isMember(user, communityId, data = policyData()) {
   );
 }
 export function canRead(user, post, data = policyData()) {
-  if (!post || !data.communities.some((c) => c.id === post.communityId))
-    return false;
+  if (!post || !data.communities.some((c) => c.id === post.communityId)) return false;
   if (canPublish(user, post.communityId, data)) return true;
   return (
     post.status !== "draft" &&
     new Date(post.publishAt).getTime() <= Date.now() &&
     isMember(user, post.communityId, data) &&
     !!db
-      .prepare(
-        "SELECT 1 FROM communication_recipients WHERE postId=? AND userId=?",
-      )
+      .prepare("SELECT 1 FROM communication_recipients WHERE postId=? AND userId=?")
       .get(post.id, user.id)
   );
 }
@@ -318,9 +257,7 @@ export function audit(postId, userId, action) {
   );
 }
 export function getPreferences(user) {
-  const row = db
-    .prepare("SELECT data FROM communication_preferences WHERE userId=?")
-    .get(user.id);
+  const row = db.prepare("SELECT data FROM communication_preferences WHERE userId=?").get(user.id);
   return row
     ? JSON.parse(row.data)
     : {
@@ -341,16 +278,7 @@ export function queue(post, kind = "publication") {
       if (channel === "email" && !emailEnabled) continue;
       db.prepare(
         "INSERT OR IGNORE INTO communication_outbox (id,postId,userId,channel,kind,version,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?)",
-      ).run(
-        crypto.randomUUID(),
-        post.id,
-        r.userId,
-        channel,
-        kind,
-        post.version,
-        now,
-        now,
-      );
+      ).run(crypto.randomUUID(), post.id, r.userId, channel, kind, post.version, now, now);
     }
   }
 }
@@ -365,17 +293,11 @@ export function materialize(now = Date.now()) {
       continue;
     // Una instantánea por publicación: no se envían avisos históricos a vecinos nuevos.
     const marker = db
-      .prepare(
-        "SELECT 1 FROM communication_audit WHERE postId=? AND action='published'",
-      )
+      .prepare("SELECT 1 FROM communication_audit WHERE postId=? AND action='published'")
       .get(post.id);
     if (!marker && post.status !== "cancelled")
       transaction(() => {
-        const { recipients } = resolveAudience(
-          post.communityId,
-          post.audience,
-          data,
-        );
+        const { recipients } = resolveAudience(post.communityId, post.audience, data);
         for (const user of recipients)
           db.prepare(
             "INSERT OR IGNORE INTO communication_recipients(postId,userId) VALUES (?,?)",
@@ -401,9 +323,7 @@ export function votingSuspended(user, communityId, data = policyData()) {
 export function mayVote(user, post, data = policyData()) {
   if (!post.poll || !canRead(user, post, data)) return false;
   const invited = db
-    .prepare(
-      "SELECT 1 FROM communication_recipients WHERE postId=? AND userId=?",
-    )
+    .prepare("SELECT 1 FROM communication_recipients WHERE postId=? AND userId=?")
     .get(post.id, user.id);
   if (!invited) return false;
   if (post.poll.electorate !== "owners") return true;
@@ -422,9 +342,7 @@ export function pollOpen(post, now = Date.now()) {
 export function summary(post, user, data = policyData()) {
   const manager = canPublish(user, post.communityId, data);
   const mine = db
-    .prepare(
-      "SELECT * FROM communication_recipients WHERE postId=? AND userId=?",
-    )
+    .prepare("SELECT * FROM communication_recipients WHERE postId=? AND userId=?")
     .get(post.id, user.id);
   return {
     ...post,
@@ -438,27 +356,18 @@ export function summary(post, user, data = policyData()) {
       post.poll.electorate === "owners" &&
       votingSuspended(user, post.communityId, data),
     pollOpen: pollOpen(post),
-    communityName:
-      data.communities.find((c) => c.id === post.communityId)?.name || "",
+    communityName: data.communities.find((c) => c.id === post.communityId)?.name || "",
     recipientCount: manager
-      ? db
-          .prepare(
-            "SELECT COUNT(*) n FROM communication_recipients WHERE postId=?",
-          )
-          .get(post.id).n
+      ? db.prepare("SELECT COUNT(*) n FROM communication_recipients WHERE postId=?").get(post.id).n
       : undefined,
   };
 }
 export function detail(post, user) {
   const result = summary(post, user);
-  const users = db
-    .prepare("SELECT id,nombre,apellido,usuario FROM users")
-    .all();
+  const users = db.prepare("SELECT id,nombre,apellido,usuario FROM users").all();
   const name = (id) => {
     const u = users.find((u) => u.id === id);
-    return u
-      ? `${u.nombre} ${u.apellido}`.trim() || u.usuario
-      : "Cuenta eliminada";
+    return u ? `${u.nombre} ${u.apellido}`.trim() || u.usuario : "Cuenta eliminada";
   };
   result.comments = db
     .prepare(
@@ -479,20 +388,15 @@ export function detail(post, user) {
     .filter((f) => f.kind !== "minutes" || f.final || result.canManage);
   if (post.poll) {
     const ballots = db
-      .prepare(
-        "SELECT userId,choices FROM communication_ballots WHERE postId=?",
-      )
+      .prepare("SELECT userId,choices FROM communication_ballots WHERE postId=?")
       .all(post.id);
-    result.ballot = JSON.parse(
-      ballots.find((b) => b.userId === user.id)?.choices || "[]",
-    );
+    result.ballot = JSON.parse(ballots.find((b) => b.userId === user.id)?.choices || "[]");
     result.pollResults =
       !pollOpen(post) || post.poll.resultsLive
         ? {
             total: ballots.length,
             counts: post.poll.options.map(
-              (_, i) =>
-                ballots.filter((b) => JSON.parse(b.choices).includes(i)).length,
+              (_, i) => ballots.filter((b) => JSON.parse(b.choices).includes(i)).length,
             ),
           }
         : null;

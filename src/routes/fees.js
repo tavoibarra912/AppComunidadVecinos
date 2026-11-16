@@ -92,21 +92,15 @@ function community(req) {
 }
 function manage(req, id) {
   if (!canManage(req.user, id))
-    throw problem(
-      "No tienes permiso para gestionar cuotas de esta comunidad.",
-      403,
-    );
+    throw problem("No tienes permiso para gestionar cuotas de esta comunidad.", 403);
 }
 function authorizedReceipt(req) {
   const row = receiptById(req.params.receiptId);
-  if (!canReadReceipt(req.user, row))
-    throw problem("No tienes acceso a este recibo.", 403);
+  if (!canReadReceipt(req.user, row)) throw problem("No tienes acceso a este recibo.", 403);
   return row;
 }
 function payment(req) {
-  const p = db
-    .prepare("SELECT * FROM fee_payments WHERE id=?")
-    .get(req.params.paymentId);
+  const p = db.prepare("SELECT * FROM fee_payments WHERE id=?").get(req.params.paymentId);
   if (!p) throw problem("Cobro no encontrado.", 404);
   manage(req, p.communityId);
   return p;
@@ -124,16 +118,11 @@ function service(req) {
 function canReadServiceBill(user, row) {
   if (canManage(user, row.communityId)) return true;
   const policy = policyData();
-  const receipts = db
-    .prepare("SELECT * FROM fee_receipts WHERE serviceBillId=?")
-    .all(row.id);
-  if (receipts.some((receipt) => canReadReceipt(user, receipt, policy)))
-    return true;
+  const receipts = db.prepare("SELECT * FROM fee_receipts WHERE serviceBillId=?").all(row.id);
+  if (receipts.some((receipt) => canReadReceipt(user, receipt, policy))) return true;
   if (!allowed(user, "fee:read", row.communityId, policy)) return false;
   if (user.rol !== "user") {
-    const role = policy.roles.find(
-      (r) => r.nombre === user.rol || r.id === user.rol,
-    );
+    const role = policy.roles.find((r) => r.nombre === user.rol || r.id === user.rol);
     if (role && role.nombre !== "user") return true;
   }
   const ownerIds = policy.owners
@@ -151,11 +140,8 @@ function canReadServiceBill(user, row) {
 function data(user, rows, communityId = "", informativeOwnerIds) {
   const policy = policyData();
   const visible = rows.filter((r) => canReadReceipt(user, r, policy));
-  const ownIds = policy.owners
-    .filter((o) => o.userId === user.id)
-    .map((o) => o.id);
-  const serviceOwnerIds =
-    informativeOwnerIds === null ? [] : informativeOwnerIds || ownIds;
+  const ownIds = policy.owners.filter((o) => o.userId === user.id).map((o) => o.id);
+  const serviceOwnerIds = informativeOwnerIds === null ? [] : informativeOwnerIds || ownIds;
   const payments = db
     .prepare(
       `SELECT * FROM fee_payments ${communityId ? "WHERE communityId=?" : ""} ORDER BY createdAt DESC`,
@@ -177,14 +163,16 @@ function data(user, rows, communityId = "", informativeOwnerIds) {
   return {
     receipts,
     payments,
-    informativeServices: informativeServicesFor(serviceOwnerIds, communityId),
+    // Cada reparto informativo se autoriza por su propia comunidad: un
+    // administrador local no puede ver facturas de otra comunidad aunque el
+    // propietario consultado tenga inmuebles en ambas.
+    informativeServices: informativeServicesFor(serviceOwnerIds, communityId).filter((service) => {
+      const row = serviceBillById(service.id);
+      return !!row && canReadServiceBill(user, row);
+    }),
     totals: {
-      issued: receipts
-        .filter((r) => !r.cancelledAt)
-        .reduce((s, r) => s + r.amount, 0),
-      paid: receipts
-        .filter((r) => !r.cancelledAt)
-        .reduce((s, r) => s + r.paid, 0),
+      issued: receipts.filter((r) => !r.cancelledAt).reduce((s, r) => s + r.amount, 0),
+      paid: receipts.filter((r) => !r.cancelledAt).reduce((s, r) => s + r.paid, 0),
       pending: receipts.reduce((s, r) => s + r.outstanding, 0),
       credit: payments.reduce((s, p) => s + p.credit, 0),
     },
@@ -201,15 +189,10 @@ router.get(
     const rows = db
       .prepare("SELECT * FROM fee_receipts ORDER BY period DESC,createdAt DESC")
       .all()
-      .filter((r) =>
-        JSON.parse(r.snapshot).owners.some((o) => ids.includes(o.id)),
-      );
+      .filter((r) => JSON.parse(r.snapshot).owners.some((o) => ids.includes(o.id)));
     const result = data(req.user, rows);
     result.payments = result.payments.filter((p) => ids.includes(p.ownerId));
-    result.totals.credit = result.payments.reduce(
-      (sum, p) => sum + p.credit,
-      0,
-    );
+    result.totals.credit = result.payments.reduce((sum, p) => sum + p.credit, 0);
     result.canManage = false;
     res.json(result);
   }),
@@ -217,17 +200,10 @@ router.get(
 router.get(
   "/summary",
   wrap((req, res) => {
-    const communityId =
-      typeof req.query.communityId === "string" ? req.query.communityId : "";
-    if (
-      communityId &&
-      !db.prepare("SELECT 1 FROM communities WHERE id=?").get(communityId)
-    )
+    const communityId = typeof req.query.communityId === "string" ? req.query.communityId : "";
+    if (communityId && !db.prepare("SELECT 1 FROM communities WHERE id=?").get(communityId))
       throw problem("Comunidad no encontrada.", 404);
-    if (
-      !allowed(req.user, "fee:read", "", policyData()) &&
-      !canManage(req.user, "")
-    )
+    if (!allowed(req.user, "fee:read", "", policyData()) && !canManage(req.user, ""))
       throw problem("No tienes permiso para consultar cuotas.", 403);
     if (
       communityId &&
@@ -284,13 +260,9 @@ router.get(
     const result = data(
       req.user,
       db
-        .prepare(
-          "SELECT * FROM fee_receipts ORDER BY period DESC,createdAt DESC",
-        )
+        .prepare("SELECT * FROM fee_receipts ORDER BY period DESC,createdAt DESC")
         .all()
-        .filter((r) =>
-          JSON.parse(r.snapshot).owners.some((o) => o.id === owner.id),
-        ),
+        .filter((r) => JSON.parse(r.snapshot).owners.some((o) => o.id === owner.id)),
       "",
       [owner.id],
     );
@@ -365,9 +337,7 @@ router.post(
   "/assessments/:assessmentId/issue",
   wrap((req, res) => {
     const row = assessment(req);
-    res
-      .status(201)
-      .json(issueAssessment(row.id, req.body || {}, req.user));
+    res.status(201).json(issueAssessment(row.id, req.body || {}, req.user));
   }),
 );
 router.post(
@@ -456,18 +426,14 @@ router.post("/services/:serviceId/attachments", (req, res, next) => {
       const mime =
         b.subarray(0, 5).toString() === "%PDF-"
           ? "application/pdf"
-          : b
-                .subarray(0, 8)
-                .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+          : b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
             ? "image/png"
             : b[0] === 255 && b[1] === 216 && b[2] === 255
               ? "image/jpeg"
-              : b.subarray(0, 4).toString() === "RIFF" &&
-                  b.subarray(8, 12).toString() === "WEBP"
+              : b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP"
                 ? "image/webp"
                 : "";
-      if (!mime)
-        throw problem("El contenido del archivo no es PDF, PNG, JPG ni WebP.");
+      if (!mime) throw problem("El contenido del archivo no es PDF, PNG, JPG ni WebP.");
       if (
         db
           .prepare(
@@ -497,15 +463,7 @@ router.post("/services/:serviceId/attachments", (req, res, next) => {
       transaction(() => {
         db.prepare(
           "INSERT INTO service_attachments(id,serviceBillId,fileName,diskName,mime,createdAt,actorId) VALUES(?,?,?,?,?,?,?)",
-        ).run(
-          id,
-          row.id,
-          fileName,
-          id,
-          mime,
-          new Date().toISOString(),
-          req.user.id,
-        );
+        ).run(id, row.id, fileName, id, mime, new Date().toISOString(), req.user.id);
         recordAudit({
           actor: req.user,
           action: "fee.service.attachment",
@@ -521,123 +479,111 @@ router.post("/services/:serviceId/attachments", (req, res, next) => {
     }
   });
 });
-router.post(
-  "/services/:serviceId/reading-photos/:propertyId",
-  (req, res, next) => {
-    let row;
-    try {
-      row = service(req);
-      if (row.cancelledAt) throw problem("El servicio está anulado.");
-      const data = JSON.parse(row.data),
-        propertyId = req.params.propertyId;
-      if (!(data.propertyIds || []).includes(propertyId))
-        throw problem("El inmueble no participa en este servicio.");
-      if (
-        !listProperties().some(
-          (property) =>
-            property.id === propertyId &&
-            property.communityId === row.communityId,
-        )
+router.post("/services/:serviceId/reading-photos/:propertyId", (req, res, next) => {
+  let row;
+  try {
+    row = service(req);
+    if (row.cancelledAt) throw problem("El servicio está anulado.");
+    const data = JSON.parse(row.data),
+      propertyId = req.params.propertyId;
+    if (!(data.propertyIds || []).includes(propertyId))
+      throw problem("El inmueble no participa en este servicio.");
+    if (
+      !listProperties().some(
+        (property) => property.id === propertyId && property.communityId === row.communityId,
       )
-        throw problem("Inmueble no encontrado.", 404);
-    } catch (error) {
-      return next(error);
-    }
-    serviceUpload(req, res, (error) => {
-      if (error)
-        return next(
-          problem(
-            error.code === "LIMIT_FILE_SIZE"
-              ? "La foto supera 10 MB."
-              : "Subí una única foto sin campos adicionales.",
-          ),
+    )
+      throw problem("Inmueble no encontrado.", 404);
+  } catch (error) {
+    return next(error);
+  }
+  serviceUpload(req, res, (error) => {
+    if (error)
+      return next(
+        problem(
+          error.code === "LIMIT_FILE_SIZE"
+            ? "La foto supera 10 MB."
+            : "Subí una única foto sin campos adicionales.",
+        ),
+      );
+    let diskPath;
+    try {
+      const file = req.file;
+      if (!file) throw problem("Adjuntá una foto del contador en PNG, JPG o WebP.");
+      const b = file.buffer;
+      const mime = b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        ? "image/png"
+        : b[0] === 255 && b[1] === 216 && b[2] === 255
+          ? "image/jpeg"
+          : b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP"
+            ? "image/webp"
+            : "";
+      if (!mime) throw problem("La foto debe ser PNG, JPG o WebP.");
+      const propertyId = req.params.propertyId;
+      if (
+        db
+          .prepare(
+            "SELECT COUNT(*) AS n FROM service_attachments WHERE serviceBillId=? AND kind='reading' AND propertyId=?",
+          )
+          .get(row.id, propertyId).n >= 6
+      )
+        throw problem("Ese contador ya tiene 6 fotos de referencia.");
+      const id = crypto.randomUUID(),
+        originalName =
+          path
+            .basename(file.originalname)
+            .replace(/[\x00-\x1f\x7f]/g, "")
+            .slice(0, 140) || "contador";
+      const extension = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+      }[mime];
+      const fileName = originalName.toLowerCase().endsWith(extension)
+        ? originalName
+        : originalName + extension;
+      fs.mkdirSync(serviceFilesDir, { recursive: true });
+      diskPath = path.join(serviceFilesDir, id);
+      fs.writeFileSync(diskPath, b, { flag: "wx" });
+      transaction(() => {
+        db.prepare(
+          "INSERT INTO service_attachments(id,serviceBillId,fileName,diskName,mime,kind,propertyId,createdAt,actorId) VALUES(?,?,?,?,?,?,?,?,?)",
+        ).run(
+          id,
+          row.id,
+          fileName,
+          id,
+          mime,
+          "reading",
+          propertyId,
+          new Date().toISOString(),
+          req.user.id,
         );
-      let diskPath;
-      try {
-        const file = req.file;
-        if (!file) throw problem("Adjuntá una foto del contador en PNG, JPG o WebP.");
-        const b = file.buffer;
-        const mime =
-          b
-            .subarray(0, 8)
-            .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-            ? "image/png"
-            : b[0] === 255 && b[1] === 216 && b[2] === 255
-              ? "image/jpeg"
-              : b.subarray(0, 4).toString() === "RIFF" &&
-                  b.subarray(8, 12).toString() === "WEBP"
-                ? "image/webp"
-                : "";
-        if (!mime)
-          throw problem("La foto debe ser PNG, JPG o WebP.");
-        const propertyId = req.params.propertyId;
-        if (
-          db
-            .prepare(
-              "SELECT COUNT(*) AS n FROM service_attachments WHERE serviceBillId=? AND kind='reading' AND propertyId=?",
-            )
-            .get(row.id, propertyId).n >= 6
-        )
-          throw problem("Ese contador ya tiene 6 fotos de referencia.");
-        const id = crypto.randomUUID(),
-          originalName =
-            path
-              .basename(file.originalname)
-              .replace(/[\x00-\x1f\x7f]/g, "")
-              .slice(0, 140) || "contador";
-        const extension = {
-          "image/png": ".png",
-          "image/jpeg": ".jpg",
-          "image/webp": ".webp",
-        }[mime];
-        const fileName = originalName.toLowerCase().endsWith(extension)
-          ? originalName
-          : originalName + extension;
-        fs.mkdirSync(serviceFilesDir, { recursive: true });
-        diskPath = path.join(serviceFilesDir, id);
-        fs.writeFileSync(diskPath, b, { flag: "wx" });
-        transaction(() => {
-          db.prepare(
-            "INSERT INTO service_attachments(id,serviceBillId,fileName,diskName,mime,kind,propertyId,createdAt,actorId) VALUES(?,?,?,?,?,?,?,?,?)",
-          ).run(
-            id,
-            row.id,
-            fileName,
-            id,
-            mime,
-            "reading",
-            propertyId,
-            new Date().toISOString(),
-            req.user.id,
-          );
-          recordAudit({
-            actor: req.user,
-            action: "fee.service.reading_photo",
-            resourceType: "fee",
-            resourceId: row.id,
-            details: { attachmentId: id, propertyId },
-          });
+        recordAudit({
+          actor: req.user,
+          action: "fee.service.reading_photo",
+          resourceType: "fee",
+          resourceId: row.id,
+          details: { attachmentId: id, propertyId },
         });
-        res.status(201).json({ id, fileName, mime, kind: "reading", propertyId });
-      } catch (failure) {
-        if (diskPath && fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
-        next(failure);
-      }
-    });
-  },
-);
+      });
+      res.status(201).json({ id, fileName, mime, kind: "reading", propertyId });
+    } catch (failure) {
+      if (diskPath && fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+      next(failure);
+    }
+  });
+});
 router.get(
   "/service-attachments/:attachmentId/download",
   wrap((req, res) => {
     const attachment = serviceAttachmentById(req.params.attachmentId),
       row = serviceBillById(attachment.serviceBillId);
     if (!canReadServiceBill(req.user, row))
-      throw problem("No tenés acceso a la factura del servicio.", 403);
-    if (!/^[a-f0-9-]{36}$/.test(attachment.diskName))
-      throw problem("Archivo no válido.", 404);
+      throw problem("No tienes acceso a la factura del servicio.", 403);
+    if (!/^[a-f0-9-]{36}$/.test(attachment.diskName)) throw problem("Archivo no válido.", 404);
     const file = path.join(serviceFilesDir, attachment.diskName);
-    if (!fs.existsSync(file))
-      throw problem("El archivo no está disponible.", 404);
+    if (!fs.existsSync(file)) throw problem("El archivo no está disponible.", 404);
     res.set("Content-Type", attachment.mime);
     res.set(
       "Content-Disposition",
@@ -707,14 +653,12 @@ router.get(
       canManage: canManage(req.user, row.communityId),
       ...(row.serviceBillId
         ? {
-            serviceAttachments: serviceAttachments(row.serviceBillId).map(
-              (attachment) => ({
-                id: attachment.id,
-                fileName: attachment.fileName,
-                mime: attachment.mime,
-                createdAt: attachment.createdAt,
-              }),
-            ),
+            serviceAttachments: serviceAttachments(row.serviceBillId).map((attachment) => ({
+              id: attachment.id,
+              fileName: attachment.fileName,
+              mime: attachment.mime,
+              createdAt: attachment.createdAt,
+            })),
           }
         : {}),
     });
@@ -734,15 +678,10 @@ router.post("/receipts/:receiptId/proofs", (req, res, next) => {
   try {
     row = authorizedReceipt(req);
     owner = JSON.parse(row.snapshot).owners.find((o) =>
-      db
-        .prepare("SELECT 1 FROM owners WHERE id=? AND userId=?")
-        .get(o.id, req.user.id),
+      db.prepare("SELECT 1 FROM owners WHERE id=? AND userId=?").get(o.id, req.user.id),
     );
     if (!owner)
-      throw problem(
-        "Solo un titular vinculado a tu cuenta puede aportar el justificante.",
-        403,
-      );
+      throw problem("Solo un titular vinculado a tu cuenta puede aportar el justificante.", 403);
     if (row.cancelledAt || receiptView(row).outstanding <= 0)
       throw problem("El recibo está anulado o pagado.");
   } catch (error) {
@@ -765,23 +704,17 @@ router.post("/receipts/:receiptId/proofs", (req, res, next) => {
       const mime =
         b.subarray(0, 5).toString() === "%PDF-"
           ? "application/pdf"
-          : b
-                .subarray(0, 8)
-                .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+          : b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
             ? "image/png"
             : b[0] === 255 && b[1] === 216 && b[2] === 255
               ? "image/jpeg"
-              : b.subarray(0, 4).toString() === "RIFF" &&
-                  b.subarray(8, 12).toString() === "WEBP"
+              : b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP"
                 ? "image/webp"
                 : "";
-      if (!mime)
-        throw problem("El contenido del archivo no es PDF, PNG, JPG ni WebP.");
+      if (!mime) throw problem("El contenido del archivo no es PDF, PNG, JPG ni WebP.");
       if (
         db
-          .prepare(
-            "SELECT COUNT(*) AS n FROM fee_proofs WHERE receiptId=? AND ownerId=?",
-          )
+          .prepare("SELECT COUNT(*) AS n FROM fee_proofs WHERE receiptId=? AND ownerId=?")
           .get(row.id, owner.id).n >= 20
       )
         throw problem("Este recibo ya tiene 20 justificantes de este titular.");
@@ -806,21 +739,8 @@ router.post("/receipts/:receiptId/proofs", (req, res, next) => {
       transaction(() => {
         db.prepare(
           "INSERT INTO fee_proofs(id,receiptId,ownerId,fileName,diskName,mime,createdAt,actorId) VALUES(?,?,?,?,?,?,?,?)",
-        ).run(
-          id,
-          row.id,
-          owner.id,
-          fileName,
-          id,
-          mime,
-          new Date().toISOString(),
-          req.user.id,
-        );
-        adminNotice(
-          row,
-          owner.id,
-          `Justificante pendiente de revisión · ${receiptConcept(row)}`,
-        );
+        ).run(id, row.id, owner.id, fileName, id, mime, new Date().toISOString(), req.user.id);
+        adminNotice(row, owner.id, `Justificante pendiente de revisión · ${receiptConcept(row)}`);
         recordAudit({
           actor: req.user,
           action: "fee.proof",
@@ -839,24 +759,18 @@ router.post("/receipts/:receiptId/proofs", (req, res, next) => {
 router.get(
   "/proofs/:proofId/download",
   wrap((req, res) => {
-    const proof = db
-      .prepare("SELECT * FROM fee_proofs WHERE id=?")
-      .get(req.params.proofId);
+    const proof = db.prepare("SELECT * FROM fee_proofs WHERE id=?").get(req.params.proofId);
     if (!proof) throw problem("Justificante no encontrado.", 404);
     const row = receiptById(proof.receiptId);
     if (
       !canReadReceipt(req.user, row) ||
       (!canManage(req.user, row.communityId) &&
-        !db
-          .prepare("SELECT 1 FROM owners WHERE id=? AND userId=?")
-          .get(proof.ownerId, req.user.id))
+        !db.prepare("SELECT 1 FROM owners WHERE id=? AND userId=?").get(proof.ownerId, req.user.id))
     )
       throw problem("No tienes acceso al justificante.", 403);
-    if (!/^[a-f0-9-]{36}$/.test(proof.diskName))
-      throw problem("Archivo no válido.", 404);
+    if (!/^[a-f0-9-]{36}$/.test(proof.diskName)) throw problem("Archivo no válido.", 404);
     const file = path.join(filesDir, proof.diskName);
-    if (!fs.existsSync(file))
-      throw problem("El archivo no está disponible.", 404);
+    if (!fs.existsSync(file)) throw problem("El archivo no está disponible.", 404);
     res.set("Content-Type", proof.mime);
     res.set(
       "Content-Disposition",
@@ -868,9 +782,7 @@ router.get(
 router.post(
   "/proofs/:proofId/review",
   wrap((req, res) => {
-    const proof = db
-      .prepare("SELECT * FROM fee_proofs WHERE id=?")
-      .get(req.params.proofId);
+    const proof = db.prepare("SELECT * FROM fee_proofs WHERE id=?").get(req.params.proofId);
     if (!proof) throw problem("Justificante no encontrado.", 404);
     const row = receiptById(proof.receiptId);
     manage(req, row.communityId);
@@ -880,21 +792,14 @@ router.post(
       !req.body.note.trim() ||
       req.body.note.length > 500
     )
-      throw problem(
-        "Elige el resultado e indica el motivo (máximo 500 caracteres).",
-      );
+      throw problem("Elige el resultado e indica el motivo (máximo 500 caracteres).");
     transaction(() => {
       if (
         !db
           .prepare(
             "UPDATE fee_proofs SET status=?,note=?,reviewedAt=? WHERE id=? AND status='pending'",
           )
-          .run(
-            req.body.status,
-            req.body.note.trim(),
-            new Date().toISOString(),
-            proof.id,
-          ).changes
+          .run(req.body.status, req.body.note.trim(), new Date().toISOString(), proof.id).changes
       )
         throw problem("El justificante ya fue revisado.", 409);
       notify(
@@ -921,8 +826,7 @@ router.post(
   }),
 );
 router.use((error, _req, res, next) => {
-  if (error.status)
-    return res.status(error.status).json({ error: error.message });
+  if (error.status) return res.status(error.status).json({ error: error.message });
   next(error);
 });
 export default router;

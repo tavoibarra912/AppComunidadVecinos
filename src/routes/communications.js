@@ -39,24 +39,16 @@ const route = (fn) => (req, res, next) =>
   Promise.resolve()
     .then(() => fn(req, res))
     .catch((error) =>
-      error.status
-        ? res.status(error.status).json({ error: error.message })
-        : next(error),
+      error.status ? res.status(error.status).json({ error: error.message }) : next(error),
     );
 const adminOnly = (req) => {
   if (!allowed(req.user, "admin:providers", "", policyData()))
-    throw problem(
-      "No tienes permiso para configurar los proveedores de comunicación.",
-      403,
-    );
+    throw problem("No tienes permiso para configurar los proveedores de comunicación.", 403);
 };
 function find(req, manage = false) {
   materialize();
   const post = postById(req.params.id);
-  if (
-    !post ||
-    !(manage ? canPublish(req.user, post.communityId) : canRead(req.user, post))
-  )
+  if (!post || !(manage ? canPublish(req.user, post.communityId) : canRead(req.user, post)))
     throw problem("Publicación no encontrada o sin acceso.", 404);
   return post;
 }
@@ -87,8 +79,7 @@ router.post(
   route(async (req, res) => {
     adminOnly(req);
     const { channel, to } = req.body || {};
-    if (!["email", "sms", "whatsapp"].includes(channel))
-      throw problem("Canal no válido.");
+    if (!["email", "sms", "whatsapp"].includes(channel)) throw problem("Canal no válido.");
     if (Date.now() - (testTimes.get(req.user.id) || 0) < 10000)
       throw problem("Espera 10 segundos antes de enviar otra prueba.", 429);
     testTimes.set(req.user.id, Date.now());
@@ -131,9 +122,7 @@ router.put(
     if ((p.email || p.emailEnabled) && !emailAddress(p.email))
       throw problem("Indica un email válido para recibir avisos.");
     if ((p.phone || p.smsEnabled || p.whatsappEnabled) && !phoneNumber(p.phone))
-      throw problem(
-        "Indica un teléfono internacional, por ejemplo +34600111222.",
-      );
+      throw problem("Indica un teléfono internacional, por ejemplo +34600111222.");
     db.prepare(
       "INSERT INTO communication_preferences(userId,data) VALUES (?,?) ON CONFLICT(userId) DO UPDATE SET data=excluded.data",
     ).run(req.user.id, JSON.stringify(p));
@@ -145,9 +134,7 @@ router.get(
   route((req, res) => {
     const data = policyData();
     const communities = data.communities.filter(
-      (c) =>
-        canPublish(req.user, c.id, data) ||
-        canAccessCommunity(req.user, c.id, data),
+      (c) => canPublish(req.user, c.id, data) || canAccessCommunity(req.user, c.id, data),
     );
     res.json({
       superAdmin: superAdmin(req.user, data),
@@ -174,10 +161,7 @@ router.get(
             })),
             properties: members.properties.map((p) => ({
               id: p.id,
-              name:
-                [p.plot, p.floor, p.door, p.address]
-                  .filter(Boolean)
-                  .join(" · ") || p.id,
+              name: [p.plot, p.floor, p.door, p.address].filter(Boolean).join(" · ") || p.id,
             })),
           };
         }),
@@ -186,9 +170,7 @@ router.get(
 );
 function canAccessCommunity(user, id, data) {
   const { members } = resolveAudience(id, { mode: "all" }, data);
-  return [...members.owners, ...members.tenants].some(
-    (p) => p.userId === user.id,
-  );
+  return [...members.owners, ...members.tenants].some((p) => p.userId === user.id);
 }
 router.post(
   "/preview",
@@ -196,19 +178,12 @@ router.post(
     const data = policyData();
     materialize();
     const existing = req.body?.id ? postById(req.body.id) : null;
-    if (
-      req.body?.id &&
-      (!existing || !canPublish(req.user, existing.communityId, data))
-    )
+    if (req.body?.id && (!existing || !canPublish(req.user, existing.communityId, data)))
       throw problem("Publicación no encontrada o sin acceso.", 404);
     const p = validatePost(req.body, existing, data);
     if (!canPublish(req.user, p.communityId, data))
       throw problem("No puedes publicar en esta comunidad.", 403);
-    let { recipients, unlinked } = resolveAudience(
-      p.communityId,
-      p.audience,
-      data,
-    );
+    let { recipients, unlinked } = resolveAudience(p.communityId, p.audience, data);
     if (existing?.distributed) {
       recipients = db
         .prepare(
@@ -227,8 +202,7 @@ router.post(
           c,
           {
             enabled: config[c === "email" ? "smtp" : c].enabled,
-            optedIn: recipients.filter((u) => getPreferences(u)[`${c}Enabled`])
-              .length,
+            optedIn: recipients.filter((u) => getPreferences(u)[`${c}Enabled`]).length,
           },
         ]),
       ),
@@ -284,30 +258,21 @@ router.put(
     const old = find(req, true),
       p = validatePost(req.body, old, policyData());
     if (req.body.version !== old.version)
-      throw problem("La publicación cambió. Recargala antes de guardar.", 409);
+      throw problem("La publicación cambió. Recárgala antes de guardar.", 409);
     transaction(() => {
       db.prepare(
         "UPDATE communication_posts SET data=?,updatedAt=?,version=version+1 WHERE id=?",
       ).run(JSON.stringify(p), new Date().toISOString(), old.id);
-      audit(
-        old.id,
-        req.user.id,
-        p.status === "cancelled" ? "cancelled" : "updated",
-      );
+      audit(old.id, req.user.id, p.status === "cancelled" ? "cancelled" : "updated");
       if (
         db
-          .prepare(
-            "SELECT 1 FROM communication_audit WHERE postId=? AND action='published'",
-          )
+          .prepare("SELECT 1 FROM communication_audit WHERE postId=? AND action='published'")
           .get(old.id)
       ) {
-        db.prepare(
-          "UPDATE communication_recipients SET readAt='',receiptAt='' WHERE postId=?",
-        ).run(old.id);
-        queue(
-          postById(old.id),
-          p.status === "cancelled" ? "cancelled" : "updated",
+        db.prepare("UPDATE communication_recipients SET readAt='',receiptAt='' WHERE postId=?").run(
+          old.id,
         );
+        queue(postById(old.id), p.status === "cancelled" ? "cancelled" : "updated");
       }
     });
     materialize();
@@ -329,16 +294,14 @@ router.post(
   route((req, res) => {
     const p = find(req);
     mutable(p);
-    if (!p.receiptRequired)
-      throw problem("Esta publicación no solicita confirmación.");
+    if (!p.receiptRequired) throw problem("Esta publicación no solicita confirmación.");
     const now = new Date().toISOString();
     const result = db
       .prepare(
         "UPDATE communication_recipients SET readAt=CASE WHEN readAt='' THEN ? ELSE readAt END,receiptAt=CASE WHEN receiptAt='' THEN ? ELSE receiptAt END WHERE postId=? AND userId=?",
       )
       .run(now, now, p.id, req.user.id);
-    if (!result.changes)
-      throw problem("No eres destinatario de esta publicación.", 403);
+    if (!result.changes) throw problem("No eres destinatario de esta publicación.", 403);
     res.json({ ok: true });
   }),
 );
@@ -349,8 +312,7 @@ router.post(
     mutable(p);
     if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
       throw problem("No tienes permiso para participar en Comunicación (comentar).", 403);
-    if (!p.commentsEnabled)
-      throw problem("Los comentarios están desactivados.", 409);
+    if (!p.commentsEnabled) throw problem("Los comentarios están desactivados.", 409);
     const body = req.body?.body;
     if (typeof body !== "string" || !body.trim() || body.trim().length > 3000)
       throw problem("El comentario debe tener entre 1 y 3000 caracteres.");
@@ -363,13 +325,7 @@ router.post(
       throw problem("Espera un momento antes de volver a comentar.", 429);
     db.prepare(
       "INSERT INTO communication_comments(id,postId,userId,body,createdAt) VALUES (?,?,?,?,?)",
-    ).run(
-      crypto.randomUUID(),
-      p.id,
-      req.user.id,
-      body.trim(),
-      new Date().toISOString(),
-    );
+    ).run(crypto.randomUUID(), p.id, req.user.id, body.trim(), new Date().toISOString());
     res.status(201).json({ ok: true });
   }),
 );
@@ -380,15 +336,10 @@ router.delete(
       comment = db
         .prepare("SELECT * FROM communication_comments WHERE id=? AND postId=?")
         .get(req.params.commentId, p.id);
-    if (
-      !comment ||
-      (comment.userId !== req.user.id && !canModerate(req.user, p.communityId))
-    )
+    if (!comment || (comment.userId !== req.user.id && !canModerate(req.user, p.communityId)))
       throw problem("No puedes eliminar este comentario.", 403);
     transaction(() => {
-      db.prepare(
-        "UPDATE communication_comments SET deleted=1,body='' WHERE id=?",
-      ).run(comment.id);
+      db.prepare("UPDATE communication_comments SET deleted=1,body='' WHERE id=?").run(comment.id);
       audit(p.id, req.user.id, "comment-deleted");
     });
     res.json({ ok: true });
@@ -412,16 +363,12 @@ router.post(
       !choices.length ||
       new Set(choices).size !== choices.length ||
       (!p.poll.multiple && choices.length !== 1) ||
-      choices.some(
-        (c) => !Number.isInteger(c) || c < 0 || c >= p.poll.options.length,
-      )
+      choices.some((c) => !Number.isInteger(c) || c < 0 || c >= p.poll.options.length)
     )
       throw problem("Selecciona opciones válidas.");
     if (
       db
-        .prepare(
-          "SELECT 1 FROM communication_ballots WHERE postId=? AND userId=?",
-        )
+        .prepare("SELECT 1 FROM communication_ballots WHERE postId=? AND userId=?")
         .get(p.id, req.user.id)
     )
       throw problem("Ya registraste tu respuesta.", 409);
@@ -439,7 +386,10 @@ router.post(
   route((req, res) => {
     const p = find(req);
     if (!allowed(req.user, "comm:participacion", p.communityId, policyData()))
-      throw problem("No tienes permiso para participar en Comunicación (confirmar asistencia).", 403);
+      throw problem(
+        "No tienes permiso para participar en Comunicación (confirmar asistencia).",
+        403,
+      );
     mutable(p);
     if (p.type !== "meeting" || Date.now() >= Date.parse(p.endsAt))
       throw problem("La reunión no admite confirmaciones.", 409);
@@ -447,9 +397,7 @@ router.post(
       throw problem("Respuesta no válida.");
     if (
       !db
-        .prepare(
-          "UPDATE communication_recipients SET rsvp=? WHERE postId=? AND userId=?",
-        )
+        .prepare("UPDATE communication_recipients SET rsvp=? WHERE postId=? AND userId=?")
         .run(req.body.rsvp, p.id, req.user.id).changes
     )
       throw problem("No estás invitado a esta reunión.", 403);
@@ -464,9 +412,7 @@ router.post(
       throw problem("Asistencia no válida.");
     if (
       !db
-        .prepare(
-          "UPDATE communication_recipients SET attended=? WHERE postId=? AND userId=?",
-        )
+        .prepare("UPDATE communication_recipients SET attended=? WHERE postId=? AND userId=?")
         .run(req.body.attended ? 1 : 0, p.id, req.body.userId || "").changes
     )
       throw problem("Participante no encontrado.", 404);
@@ -495,14 +441,9 @@ const upload = multer({
 function fileType(file) {
   const b = file.buffer,
     n = file.originalname.toLowerCase();
-  if (n.endsWith(".pdf") && b.subarray(0, 5).toString() === "%PDF-")
-    return "application/pdf";
-  if (/\.jpe?g$/.test(n) && b[0] === 255 && b[1] === 216 && b[2] === 255)
-    return "image/jpeg";
-  if (
-    n.endsWith(".png") &&
-    b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-  )
+  if (n.endsWith(".pdf") && b.subarray(0, 5).toString() === "%PDF-") return "application/pdf";
+  if (/\.jpe?g$/.test(n) && b[0] === 255 && b[1] === 216 && b[2] === 255) return "image/jpeg";
+  if (n.endsWith(".png") && b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
     return "image/png";
   return "";
 }
@@ -521,9 +462,7 @@ router.post(
   (req, res, next) =>
     upload(req, res, (error) =>
       error
-        ? res
-            .status(400)
-            .json({ error: "Adjunta un único PDF, JPG o PNG de hasta 10 MB." })
+        ? res.status(400).json({ error: "Adjunta un único PDF, JPG o PNG de hasta 10 MB." })
         : next(),
     ),
   route((req, res) => {
@@ -537,18 +476,12 @@ router.post(
       (kind === "minutes" && p.type !== "meeting")
     )
       throw problem("Archivo o tipo de documento no válido.");
-    if (
-      db
-        .prepare("SELECT COUNT(*) n FROM communication_files WHERE postId=?")
-        .get(p.id).n >= 30
-    )
+    if (db.prepare("SELECT COUNT(*) n FROM communication_files WHERE postId=?").get(p.id).n >= 30)
       throw problem("Se admiten hasta 30 documentos por publicación.");
     const id = crypto.randomUUID(),
       name = f.originalname.replace(/[\x00-\x1f/\\]/g, "_").slice(0, 180);
     transaction(() => {
-      db.prepare(
-        "INSERT INTO communication_files VALUES (?,?,?,?,?,?,?,?,?)",
-      ).run(
+      db.prepare("INSERT INTO communication_files VALUES (?,?,?,?,?,?,?,?,?)").run(
         id,
         p.id,
         name,
@@ -559,11 +492,7 @@ router.post(
         new Date().toISOString(),
         req.user.id,
       );
-      audit(
-        p.id,
-        req.user.id,
-        kind === "minutes" ? "minutes-uploaded" : "attachment-uploaded",
-      );
+      audit(p.id, req.user.id, kind === "minutes" ? "minutes-uploaded" : "attachment-uploaded");
     });
     res.status(201).json({ id });
   }),
@@ -575,10 +504,7 @@ router.get(
       f = db
         .prepare("SELECT * FROM communication_files WHERE id=? AND postId=?")
         .get(req.params.fileId, p.id);
-    if (
-      !f ||
-      (f.kind === "minutes" && !f.final && !canPublish(req.user, p.communityId))
-    )
+    if (!f || (f.kind === "minutes" && !f.final && !canPublish(req.user, p.communityId)))
       throw problem("Documento no encontrado.", 404);
     res
       .set({
@@ -600,23 +526,17 @@ router.post(
     if (f.final) throw problem("Esta versión del acta ya está publicada.", 409);
     if (
       !db
-        .prepare(
-          "SELECT 1 FROM communication_audit WHERE postId=? AND action='published'",
-        )
+        .prepare("SELECT 1 FROM communication_audit WHERE postId=? AND action='published'")
         .get(p.id)
     )
-      throw problem(
-        "Publica la convocatoria antes de distribuir el acta.",
-        409,
-      );
+      throw problem("Publica la convocatoria antes de distribuir el acta.", 409);
     transaction(() => {
       db.prepare("UPDATE communication_files SET final=1 WHERE id=?").run(f.id);
-      db.prepare(
-        "UPDATE communication_posts SET version=version+1,updatedAt=? WHERE id=?",
-      ).run(new Date().toISOString(), p.id);
-      db.prepare(
-        "UPDATE communication_recipients SET readAt='' WHERE postId=?",
-      ).run(p.id);
+      db.prepare("UPDATE communication_posts SET version=version+1,updatedAt=? WHERE id=?").run(
+        new Date().toISOString(),
+        p.id,
+      );
+      db.prepare("UPDATE communication_recipients SET readAt='' WHERE postId=?").run(p.id);
       audit(p.id, req.user.id, "minutes-published");
       queue(postById(p.id), "minutes");
     });
@@ -628,19 +548,12 @@ router.delete(
   route((req, res) => {
     const p = find(req, true),
       f = db
-        .prepare(
-          "SELECT final FROM communication_files WHERE id=? AND postId=?",
-        )
+        .prepare("SELECT final FROM communication_files WHERE id=? AND postId=?")
         .get(req.params.fileId, p.id);
     if (!f) throw problem("Documento no encontrado.", 404);
     if (f.final)
-      throw problem(
-        "El acta publicada se conserva. Sube una nueva versión para corregirla.",
-        409,
-      );
-    db.prepare("DELETE FROM communication_files WHERE id=?").run(
-      req.params.fileId,
-    );
+      throw problem("El acta publicada se conserva. Sube una nueva versión para corregirla.", 409);
+    db.prepare("DELETE FROM communication_files WHERE id=?").run(req.params.fileId);
     audit(p.id, req.user.id, "attachment-deleted");
     res.json({ ok: true });
   }),

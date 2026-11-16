@@ -1,5 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { mkdtempSync, rmSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -21,27 +22,18 @@ function client() {
     const response = await fetch(base + route, {
       method,
       headers: {
-        ...(body instanceof FormData
-          ? {}
-          : { "Content-Type": "application/json" }),
+        ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
         ...(cookie ? { Cookie: cookie } : {}),
         ...extra,
       },
-      body:
-        body === undefined
-          ? undefined
-          : body instanceof FormData
-            ? body
-            : JSON.stringify(body),
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     });
     const setCookie = response.headers.get("set-cookie");
     if (setCookie) cookie = setCookie.split(";")[0];
     const type = response.headers.get("content-type") || "";
     return {
       status: response.status,
-      data: type.includes("application/json")
-        ? await response.json()
-        : await response.text(),
+      data: type.includes("application/json") ? await response.json() : await response.text(),
       cookie: setCookie,
       headers: response.headers,
     };
@@ -51,9 +43,7 @@ before(async () => {
   const app = express();
   app.use(express.json({ limit: "60mb" }));
   app.use("/api", router);
-  app.use((error, _req, res, _next) =>
-    res.status(500).json({ error: error.message }),
-  );
+  app.use((error, _req, res, _next) => res.status(500).json({ error: error.message }));
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -105,14 +95,7 @@ test("login: cookie HttpOnly, contraseña incorrecta y origen ajeno", async () =
   assert.match(login.cookie, /HttpOnly/i);
   assert.match(login.cookie, /SameSite=Strict/i);
   assert.equal(
-    (
-      await request(
-        "/admin/settings",
-        "PUT",
-        {},
-        { Origin: "https://example.invalid" },
-      )
-    ).status,
+    (await request("/admin/settings", "PUT", {}, { Origin: "https://example.invalid" })).status,
     403,
   );
 });
@@ -164,19 +147,22 @@ test("inquilinos: varios contratos no se sobrescriben y se conserva userId", asy
     contractEnd: "",
   };
   for (const id of ["api-tenant-1", "api-tenant-2"])
-    assert.equal(
-      (await admin("/tenants", "POST", { ...payload, id })).status,
-      201,
-    );
+    assert.equal((await admin("/tenants", "POST", { ...payload, id })).status, 201);
   let property = (await admin("/properties/prop-seed-1")).data;
   assert.ok(property.tenantIds.includes("api-tenant-1"));
   assert.ok(property.tenantIds.includes("api-tenant-2"));
   await admin("/tenants/api-tenant-1", "PUT", {
     ...payload,
     userId: "user-urusp1",
+    version: (await admin("/tenants/api-tenant-1")).data.version,
   });
   assert.equal(
-    (await admin("/tenants/api-tenant-1", "PUT", payload)).data.userId,
+    (
+      await admin("/tenants/api-tenant-1", "PUT", {
+        ...payload,
+        version: (await admin("/tenants/api-tenant-1")).data.version,
+      })
+    ).data.userId,
     "user-urusp1",
   );
   assert.equal((await admin("/tenants/api-tenant-2", "DELETE")).status, 200);
@@ -215,7 +201,7 @@ test("inmuebles: propietarios e inquilinos deben pertenecer a la comunidad", asy
   assert.match(crossOwner.data.error, /comunidad del inmueble/i);
 
   db.prepare(
-    "INSERT INTO tenants (id, ownerId, propertyId, name, surname) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO tenants (id, ownerId, propertyId, name, surname) VALUES (?, ?, ?, ?, ?)",
   ).run("tenant-cross-community", "own-seed-1", "prop-seed-4", "Inquilino", "Otra comunidad");
   try {
     const target = (await admin("/properties/prop-seed-1")).data;
@@ -266,17 +252,11 @@ test("administración: contraseñas explícitas y respuestas sin secretos", asyn
 test("protección del último superadministrador y del último administrador general", async () => {
   const users = (await admin("/admin/users")).data;
   for (const role of ["super_admin", "administrator"]) {
-    const target = users.find(u => u.rol === role);
+    const target = users.find((u) => u.rol === role);
     assert.ok(target, `falta la cuenta ${role}`);
     assert.equal((await admin(`/admin/users/${target.id}`, "DELETE")).status, 409);
-    assert.equal(
-      (await admin(`/admin/users/${target.id}`, "PUT", { activo: false })).status,
-      409,
-    );
-    assert.equal(
-      (await admin(`/admin/users/${target.id}`, "PUT", { rol: "user" })).status,
-      409,
-    );
+    assert.equal((await admin(`/admin/users/${target.id}`, "PUT", { activo: false })).status, 409);
+    assert.equal((await admin(`/admin/users/${target.id}`, "PUT", { rol: "user" })).status, 409);
   }
 });
 test("no se puede borrar un usuario con perfil de propietario o inquilino", async () => {
@@ -303,7 +283,8 @@ test("no se puede borrar un usuario con perfil de propietario o inquilino", asyn
   assert.match(ownerBlocked.data.error, /propietario/);
   await admin(`/admin/users/${userId}/link-owner`, "PUT", { ownerId: "" });
   assert.equal(
-    (await admin(`/admin/users/${userId}/link-tenant`, "PUT", { tenantId: "ten-perfil-vinculado" })).status,
+    (await admin(`/admin/users/${userId}/link-tenant`, "PUT", { tenantId: "ten-perfil-vinculado" }))
+      .status,
     200,
   );
   const tenantBlocked = await admin(`/admin/users/${userId}`, "DELETE");
@@ -382,10 +363,7 @@ test("roles personalizados: permisos efectivos, sin borrar roles asignados por I
     ).status,
     403,
   );
-  assert.equal(
-    (await admin(`/admin/roles/${role.data.id}`, "DELETE")).status,
-    409,
-  );
+  assert.equal((await admin(`/admin/roles/${role.data.id}`, "DELETE")).status, 409);
   await admin(`/admin/roles/${role.data.id}`, "PUT", {
     nombre: "Renombrado",
     permisos: ["community:read", "community:create"],
@@ -422,10 +400,7 @@ test("propietario: no puede cambiar perfiles, titularidad ni aprobar sus documen
   assert.equal(changed.data.legalRepresentative, before.legalRepresentative);
   assert.equal(changed.data.notificationPreference, before.notificationPreference);
   assert.notEqual(changed.data.documents.dni.adminApproval?.status, "approved");
-  assert.equal(
-    (await owner("/owners/own-seed-1")).data.propertyId,
-    before.propertyId,
-  );
+  assert.equal((await owner("/owners/own-seed-1")).data.propertyId, before.propertyId);
 });
 test("propietario: la administración persiste los datos LPH en la ficha", async () => {
   const before = (await admin("/owners/own-seed-2")).data;
@@ -438,10 +413,7 @@ test("propietario: la administración persiste los datos LPH en la ficha", async
     });
     assert.equal(changed.status, 200, JSON.stringify(changed.data));
     assert.equal(changed.data.votingRights, "suspended");
-    assert.equal(
-      changed.data.legalRepresentative,
-      "Apoderado de Prueba · 12345678Z",
-    );
+    assert.equal(changed.data.legalRepresentative, "Apoderado de Prueba · 12345678Z");
     assert.equal(changed.data.notificationPreference, "postal");
     const saved = (await admin("/owners/own-seed-2")).data;
     assert.equal(saved.votingRights, "suspended");
@@ -456,6 +428,21 @@ test("propietario: la administración persiste los datos LPH en la ficha", async
     });
   }
 });
+test("buzones: marcar todas sin ownerId se rechaza (400)", async () => {
+  const sinOwner = await owner("/notifications/owner-notifications", "PATCH", {
+    read: true,
+  });
+  assert.ok(
+    sinOwner.status === 400 || sinOwner.status === 403,
+    "sin ownerId debe rechazarse (400/403)",
+  );
+  const conOwner = await owner("/notifications/owner-notifications", "PATCH", {
+    ownerId: "own-seed-1",
+    read: true,
+  });
+  assert.equal(conOwner.status, 200);
+});
+
 test("buzones: avisos persisten y solo el destinatario los puede marcar leídos", async () => {
   const n = await admin("/notifications/owner-notifications", "POST", {
     ownerId: "own-seed-1",
@@ -464,9 +451,7 @@ test("buzones: avisos persisten y solo el destinatario los puede marcar leídos"
   });
   assert.equal(n.status, 201);
   assert.ok(
-    (await owner("/notifications/owner-notifications")).data.some(
-      (row) => row.id === n.data.id,
-    ),
+    (await owner("/notifications/owner-notifications")).data.some((row) => row.id === n.data.id),
   );
   assert.equal(
     (
@@ -496,28 +481,17 @@ test("subidas: errores no dejan archivos, entidades inexistentes y contenido fal
     const form = new FormData();
     form.append("entityType", entityType);
     form.append("entityId", entityId);
-    form.append(
-      "files",
-      new Blob([content], { type: "application/pdf" }),
-      "file.pdf",
-    );
+    form.append("files", new Blob([content], { type: "application/pdf" }), "file.pdf");
     assert.equal((await admin("/documents", "POST", form)).status, 400);
     assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
   }
   const form = new FormData();
   form.append("entityType", "property");
   form.append("entityId", "prop-seed-1");
-  form.append(
-    "files",
-    new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
-    "valid.pdf",
-  );
+  form.append("files", new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }), "valid.pdf");
   const uploaded = await admin("/documents", "POST", form);
   assert.equal(uploaded.status, 201);
-  assert.equal(
-    (await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status,
-    200,
-  );
+  assert.equal((await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status, 200);
   assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
 });
 test("validaciones de servidor rechazan NIF y contacto inválidos", async () => {
@@ -580,8 +554,7 @@ test("comunidades: el servidor rechaza importes y años inválidos y conserva el
     { constitutionYear: String(new Date().getFullYear() + 1) },
   ]) {
     assert.equal(
-      (await admin("/communities/com-seed-1", "PUT", { ...original, ...patch }))
-        .status,
+      (await admin("/communities/com-seed-1", "PUT", { ...original, ...patch })).status,
       400,
     );
   }
@@ -596,11 +569,13 @@ test("comunidades: el servidor rechaza importes y años inválidos y conserva el
   const zero = await admin("/communities/com-seed-1", "PUT", {
     ...original,
     reserveFund: 0,
+    version: valid.data.version,
   });
   assert.equal(zero.status, 200);
   assert.equal(zero.data.reserveFund, "0");
   assert.equal(
-    (await admin("/communities/com-seed-1", "PUT", original)).status,
+    (await admin("/communities/com-seed-1", "PUT", { ...original, version: zero.data.version }))
+      .status,
     200,
   );
 });
@@ -619,11 +594,15 @@ test("observaciones de comunidad: el servidor conserva formato y sanea el HTML",
     const plain = await admin("/communities/com-seed-1", "PUT", {
       ...original,
       notes: "Texto plano",
+      version: formatted.data.version,
     });
     assert.equal(plain.status, 200);
     assert.equal(plain.data.notes, "Texto plano");
   } finally {
-    await admin("/communities/com-seed-1", "PUT", original);
+    await admin("/communities/com-seed-1", "PUT", {
+      ...original,
+      version: (await admin("/communities/com-seed-1")).data.version,
+    });
   }
 });
 
@@ -641,28 +620,140 @@ test("SSO y recuperación sin configurar no autentican ni filtran tokens", async
   assert.ok(reset.data.mensaje && !reset.data.token);
 });
 test("auditoría: tab y API responden al permiso audit:read del rol", async () => {
-  assert.equal((await admin("/admin/roles", "POST", { nombre: "auditor-tab", descripcion: "solo auditoría", permisos: ["audit:read"] })).status, 201);
-  assert.equal((await admin("/admin/roles", "POST", { nombre: "sin-audit-tab", descripcion: "sin auditoría", permisos: ["community:read"] })).status, 201);
-  assert.equal((await admin("/admin/users", "POST", { nombre: "Auditor", apellido: "Tab", usuario: "auditor-tab-1", password: "clave-auditoria-1", rol: "auditor-tab", activo: true })).status, 201);
-  assert.equal((await admin("/admin/users", "POST", { nombre: "Sin", apellido: "Audit", usuario: "sin-audit-tab-1", password: "clave-sinaudito-1", rol: "sin-audit-tab", activo: true })).status, 201);
+  assert.equal(
+    (
+      await admin("/admin/roles", "POST", {
+        nombre: "auditor-tab",
+        descripcion: "solo auditoría",
+        permisos: ["audit:read"],
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await admin("/admin/roles", "POST", {
+        nombre: "sin-audit-tab",
+        descripcion: "sin auditoría",
+        permisos: ["community:read"],
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await admin("/admin/users", "POST", {
+        nombre: "Auditor",
+        apellido: "Tab",
+        usuario: "auditor-tab-1",
+        password: "clave-auditoria-1",
+        rol: "auditor-tab",
+        activo: true,
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await admin("/admin/users", "POST", {
+        nombre: "Sin",
+        apellido: "Audit",
+        usuario: "sin-audit-tab-1",
+        password: "clave-sinaudito-1",
+        rol: "sin-audit-tab",
+        activo: true,
+      })
+    ).status,
+    201,
+  );
   const con = client();
   const sin = client();
-  assert.equal((await con("/auth/signin", "POST", { usuario: "auditor-tab-1", password: "clave-auditoria-1" })).status, 200);
-  assert.equal((await sin("/auth/signin", "POST", { usuario: "sin-audit-tab-1", password: "clave-sinaudito-1" })).status, 200);
+  assert.equal(
+    (await con("/auth/signin", "POST", { usuario: "auditor-tab-1", password: "clave-auditoria-1" }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (
+      await sin("/auth/signin", "POST", {
+        usuario: "sin-audit-tab-1",
+        password: "clave-sinaudito-1",
+      })
+    ).status,
+    200,
+  );
   assert.equal((await con("/audit")).status, 200);
   assert.equal((await sin("/audit")).status, 403);
   assert.equal((await sin("/admin/users")).status, 403);
 });
 
 test("proveedores de comunicación: visible solo con el permiso admin:providers", async () => {
-  assert.equal((await admin("/admin/roles", "POST", { nombre: "proveedor-tab", descripcion: "solo proveedores", permisos: ["admin:providers"] })).status, 201);
-  assert.equal((await admin("/admin/roles", "POST", { nombre: "sin-proveedores", descripcion: "sin proveedores", permisos: ["community:read"] })).status, 201);
-  assert.equal((await admin("/admin/users", "POST", { nombre: "Proveedor", apellido: "Tab", usuario: "proveedor-tab-1", password: "clave-proveedores-1", rol: "proveedor-tab", activo: true })).status, 201);
-  assert.equal((await admin("/admin/users", "POST", { nombre: "Sin", apellido: "Proveedor", usuario: "sin-proveedor-1", password: "clave-sinprovee-1", rol: "sin-proveedores", activo: true })).status, 201);
+  assert.equal(
+    (
+      await admin("/admin/roles", "POST", {
+        nombre: "proveedor-tab",
+        descripcion: "solo proveedores",
+        permisos: ["admin:providers"],
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await admin("/admin/roles", "POST", {
+        nombre: "sin-proveedores",
+        descripcion: "sin proveedores",
+        permisos: ["community:read"],
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await admin("/admin/users", "POST", {
+        nombre: "Proveedor",
+        apellido: "Tab",
+        usuario: "proveedor-tab-1",
+        password: "clave-proveedores-1",
+        rol: "proveedor-tab",
+        activo: true,
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await admin("/admin/users", "POST", {
+        nombre: "Sin",
+        apellido: "Proveedor",
+        usuario: "sin-proveedor-1",
+        password: "clave-sinprovee-1",
+        rol: "sin-proveedores",
+        activo: true,
+      })
+    ).status,
+    201,
+  );
   const con = client();
   const sin = client();
-  assert.equal((await con("/auth/signin", "POST", { usuario: "proveedor-tab-1", password: "clave-proveedores-1" })).status, 200);
-  assert.equal((await sin("/auth/signin", "POST", { usuario: "sin-proveedor-1", password: "clave-sinprovee-1" })).status, 200);
+  assert.equal(
+    (
+      await con("/auth/signin", "POST", {
+        usuario: "proveedor-tab-1",
+        password: "clave-proveedores-1",
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await sin("/auth/signin", "POST", {
+        usuario: "sin-proveedor-1",
+        password: "clave-sinprovee-1",
+      })
+    ).status,
+    200,
+  );
   assert.equal((await con("/communications/providers")).status, 200);
   assert.equal((await sin("/communications/providers")).status, 403);
   assert.equal((await sin("/communications/providers", "PUT", {})).status, 403);
@@ -672,13 +763,21 @@ test("propietario con inmueble con inquilino no se puede eliminar", async () => 
   const owners = (await admin("/owners")).data;
   const properties = (await admin("/properties")).data;
   const tenants = (await admin("/tenants")).data || [];
-  const conInquilino = owners.find(o => properties.some(p => (p.ownerIds || []).includes(o.id) && tenants.some(t => t.propertyId === p.id)));
+  const conInquilino = owners.find((o) =>
+    properties.some(
+      (p) => (p.ownerIds || []).includes(o.id) && tenants.some((t) => t.propertyId === p.id),
+    ),
+  );
   if (conInquilino) {
     const res = await admin("/owners/" + conInquilino.id, "DELETE");
     assert.equal(res.status, 409);
     assert.match(res.data.error, /inquilino/i);
   }
-  const sinVinculos = owners.find(o => !properties.some(p => (p.ownerIds || []).includes(o.id)) && !tenants.some(t => t.ownerId === o.id));
+  const sinVinculos = owners.find(
+    (o) =>
+      !properties.some((p) => (p.ownerIds || []).includes(o.id)) &&
+      !tenants.some((t) => t.ownerId === o.id),
+  );
   if (sinVinculos) {
     const res = await admin("/owners/" + sinVinculos.id, "DELETE");
     assert.equal(res.status, 200);
@@ -689,9 +788,15 @@ test("propietario sin inmuebles con inquilino antiguo se puede eliminar", async 
   const ownerId = "own-stale-test";
   const propertyId = "prop-stale-test";
   const tenantId = "ten-stale-test";
-  db.prepare("INSERT INTO owners (id, name, surname, documentType, dni) VALUES (?, 'Sin', 'Inmuebles', 'DNI', '12345678Z')").run(ownerId);
-  db.prepare("INSERT INTO properties (id, ownerIds, tenantIds) VALUES (?, '[]', '[]')").run(propertyId);
-  db.prepare("INSERT INTO tenants (id, ownerId, propertyId, name, surname) VALUES (?, ?, ?, 'Inquilino', 'Antiguo')").run(tenantId, ownerId, propertyId);
+  db.prepare(
+    "INSERT INTO owners (id, name, surname, documentType, dni) VALUES (?, 'Sin', 'Inmuebles', 'DNI', '12345678Z')",
+  ).run(ownerId);
+  db.prepare("INSERT INTO properties (id, ownerIds, tenantIds) VALUES (?, '[]', '[]')").run(
+    propertyId,
+  );
+  db.prepare(
+    "INSERT INTO tenants (id, ownerId, propertyId, name, surname) VALUES (?, ?, ?, 'Inquilino', 'Antiguo')",
+  ).run(tenantId, ownerId, propertyId);
 
   const res = await admin("/owners/" + ownerId, "DELETE");
   assert.equal(res.status, 200, JSON.stringify(res.data));
@@ -793,11 +898,7 @@ test("la API rechaza perfiles inexistentes, listas inválidas y aprobaciones sin
   );
   const documents = structuredClone(payload.documents);
   documents.dni.adminApproval = { status: "approved" };
-  assert.equal(
-    (await admin("/owners/own-seed-1", "PUT", { ...payload, documents }))
-      .status,
-    400,
-  );
+  assert.equal((await admin("/owners/own-seed-1", "PUT", { ...payload, documents })).status, 400);
 });
 
 test("registro nuevo: sesión propia sin perfiles ni comunidades de otra cuenta", async () => {
@@ -916,10 +1017,7 @@ test("configuración: autorizaciones de inquilinos y avisos por tipo de recibo",
       { tenantAuthorizations: { "com-seed-1": [{ id: "id inválido", label: "Zona" }] } },
       /identificador/,
     ],
-    [
-      { tenantAuthorizations: { "com-seed-1": [{ id: "zona", label: " " }] } },
-      /nombre/,
-    ],
+    [{ tenantAuthorizations: { "com-seed-1": [{ id: "zona", label: " " }] } }, /nombre/],
     [{ assessmentBeforeDays: -1 }, /assessmentBeforeDays/],
     [{ serviceRepeatDays: 1.5 }, /serviceRepeatDays/],
     [{ serviceEmail: "yes" }, /booleanos/],
@@ -953,17 +1051,30 @@ test("configuración: autorizaciones de inquilinos y avisos por tipo de recibo",
   assert.equal(saved.data.serviceBeforeDays, 4);
   assert.equal(saved.data.serviceRepeatDays, 2);
   assert.equal(saved.data.serviceEmail, true);
-  assert.equal((await admin("/admin/settings", "PUT", {
-    tenantAuthorizations: {},
-    assessmentBeforeDays: 3,
-    assessmentEmail: false,
-    serviceBeforeDays: 3,
-    serviceRepeatDays: 0,
-    serviceEmail: false,
-  })).status, 200);
+  assert.equal(
+    (
+      await admin("/admin/settings", "PUT", {
+        tenantAuthorizations: {},
+        assessmentBeforeDays: 3,
+        assessmentEmail: false,
+        serviceBeforeDays: 3,
+        serviceRepeatDays: 0,
+        serviceEmail: false,
+      })
+    ).status,
+    200,
+  );
 });
 test("configuración: registro y recuperación se pueden deshabilitar", async () => {
-  assert.equal((await admin("/admin/settings", "PUT", { permitirRegistro: false, permitirRecuperacion: false })).status, 200);
+  assert.equal(
+    (
+      await admin("/admin/settings", "PUT", {
+        permitirRegistro: false,
+        permitirRecuperacion: false,
+      })
+    ).status,
+    200,
+  );
   const signup = await client()("/auth/signup", "POST", {
     nombre: "Nuevo",
     apellido: "Vecino",
@@ -976,7 +1087,11 @@ test("configuración: registro y recuperación se pueden deshabilitar", async ()
   const forgot = await client()("/auth/forgot-password", "POST", { email: "urucp1@example.test" });
   assert.equal(forgot.status, 403);
   assert.match(forgot.data.error, /recuperación/i);
-  assert.equal((await admin("/admin/settings", "PUT", { permitirRegistro: true, permitirRecuperacion: true })).status, 200);
+  assert.equal(
+    (await admin("/admin/settings", "PUT", { permitirRegistro: true, permitirRecuperacion: true }))
+      .status,
+    200,
+  );
   const reset = await admin("/admin/settings");
   assert.equal(reset.data.permitirRegistro, true);
   assert.equal(reset.data.permitirRecuperacion, true);
@@ -1012,28 +1127,25 @@ test("configuración: los tipos y el máximo de archivos se aplican a las subida
   many.append("entityType", "property");
   many.append("entityId", "prop-seed-1");
   for (const name of ["uno.pdf", "dos.pdf"])
-    many.append(
-      "files",
-      new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
-      name,
-    );
+    many.append("files", new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }), name);
   assert.equal((await admin("/documents", "POST", many)).status, 400);
   assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
   const single = new FormData();
   single.append("entityType", "property");
   single.append("entityId", "prop-seed-1");
-  single.append(
-    "files",
-    new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
-    "valido.pdf",
-  );
+  single.append("files", new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }), "valido.pdf");
   const uploaded = await admin("/documents", "POST", single);
   assert.equal(uploaded.status, 201);
   assert.equal((await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status, 200);
-  assert.equal((await admin("/admin/settings", "PUT", {
-    documentosTiposPermitidos: ["pdf", "jpg", "jpeg", "png", "webp"],
-    documentosMaxArchivos: 20,
-  })).status, 200);
+  assert.equal(
+    (
+      await admin("/admin/settings", "PUT", {
+        documentosTiposPermitidos: ["pdf", "jpg", "jpeg", "png", "webp"],
+        documentosMaxArchivos: 20,
+      })
+    ).status,
+    200,
+  );
   assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
 });
 test("configuración: el modo mantenimiento bloquea vecinos y deja pasar a administración", async () => {
@@ -1048,10 +1160,16 @@ test("configuración: el modo mantenimiento bloquea vecinos y deja pasar a admin
   assert.equal(blocked.data.error, "Mantenimiento programado para hoy.");
   assert.equal((await tenant("/bootstrap")).status, 503);
   assert.equal((await admin("/bootstrap")).status, 200);
-  assert.equal((await admin("/admin/settings", "PUT", {
-    mantenimiento: false,
-    mensajeMantenimiento: "La plataforma está en mantenimiento. Vuelve a intentar en unos minutos.",
-  })).status, 200);
+  assert.equal(
+    (
+      await admin("/admin/settings", "PUT", {
+        mantenimiento: false,
+        mensajeMantenimiento:
+          "La plataforma está en mantenimiento. Vuelve a intentar en unos minutos.",
+      })
+    ).status,
+    200,
+  );
   assert.equal((await owner("/bootstrap")).status, 200);
 });
 test("roles de plataforma: editar super_admin no exige perfiles y desvincular no se bloquea", async () => {
@@ -1059,7 +1177,8 @@ test("roles de plataforma: editar super_admin no exige perfiles y desvincular no
   const ownerRow = db.prepare("SELECT id FROM owners WHERE id = 'own-seed-1'").get();
   // Vincular un perfil a un rol de plataforma sigue rechazado.
   assert.equal(
-    (await admin(`/admin/users/${platformAdmin.id}/link-owner`, "PUT", { ownerId: ownerRow.id })).status,
+    (await admin(`/admin/users/${platformAdmin.id}/link-owner`, "PUT", { ownerId: ownerRow.id }))
+      .status,
     409,
   );
   // Desvincular (aunque no tenga perfil) permite guardar el usuario sin error.
@@ -1089,11 +1208,7 @@ function pdfForm(entityType, entityId, name, { folderId = "", category = "" } = 
   form.append("entityId", entityId);
   if (folderId) form.append("folderId", folderId);
   if (category) form.append("category", category);
-  form.append(
-    "files",
-    new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }),
-    name,
-  );
+  form.append("files", new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }), name);
   return form;
 }
 
@@ -1193,39 +1308,24 @@ test("biblioteca documental: carpetas, duplicados, mudanza y borrado en cascada"
     400,
   );
   // Listado con jerarquía.
-  const listing = await admin(
-    "/documents?entityType=community&entityId=com-seed-1",
-  );
+  const listing = await admin("/documents?entityType=community&entityId=com-seed-1");
   assert.equal(listing.status, 200);
-  assert.deepEqual(
-    listing.data.folders.map((folder) => folder.name).sort(),
-    ["2026", "Actas"],
-  );
+  assert.deepEqual(listing.data.folders.map((folder) => folder.name).sort(), ["2026", "Actas"]);
   assert.equal(listing.data.documents.length, 2);
   // Sin confirmación no se borra nada y se informan los recuentos.
-  const blocked = await admin(
-    `/documents/folders/${root.data.id}`,
-    "DELETE",
-  );
+  const blocked = await admin(`/documents/folders/${root.data.id}`, "DELETE");
   assert.equal(blocked.status, 409);
   assert.equal(blocked.data.requiresConfirmation, true);
   assert.deepEqual(blocked.data.counts, { folders: 2, documents: 1 });
-  const deleted = await admin(
-    `/documents/folders/${root.data.id}?confirm=1`,
-    "DELETE",
-  );
+  const deleted = await admin(`/documents/folders/${root.data.id}?confirm=1`, "DELETE");
   assert.equal(deleted.status, 200, JSON.stringify(deleted.data));
   assert.equal(deleted.data.deletedFolders, 2);
   assert.equal(deleted.data.deletedDocuments, 1);
   // El documento que quedó en la raíz se elimina aparte.
-  assert.equal(
-    (await admin(`/documents/${rootDocument.data[0].id}`, "DELETE")).status,
-    200,
-  );
+  assert.equal((await admin(`/documents/${rootDocument.data[0].id}`, "DELETE")).status, 200);
   assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
   assert.equal(
-    (await admin("/documents?entityType=community&entityId=com-seed-1")).data
-      .documents.length,
+    (await admin("/documents?entityType=community&entityId=com-seed-1")).data.documents.length,
     0,
   );
 });
@@ -1268,15 +1368,11 @@ test("biblioteca documental: cinco niveles como máximo", async () => {
     ).status,
     400,
   );
-  const deleted = await admin(
-    `/documents/folders/${created[0]}?confirm=1`,
-    "DELETE",
-  );
+  const deleted = await admin(`/documents/folders/${created[0]}?confirm=1`, "DELETE");
   assert.equal(deleted.status, 200);
   assert.equal(deleted.data.deletedFolders, 5);
   assert.equal(
-    (await admin(`/documents/folders/${other.data.id}?confirm=1`, "DELETE"))
-      .status,
+    (await admin(`/documents/folders/${other.data.id}?confirm=1`, "DELETE")).status,
     200,
   );
 });
@@ -1349,10 +1445,7 @@ test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", as
   const ownerPreview = await owner(`/documents/${statute.id}/preview`);
   assert.equal(ownerPreview.status, 200);
   assert.match(String(ownerPreview.data), /%PDF/);
-  assert.equal(
-    (await owner(`/documents/${statute.id}/download`)).status,
-    200,
-  );
+  assert.equal((await owner(`/documents/${statute.id}/download`)).status, 200);
   const tenantListing = await tenant(
     "/documents?entityType=community&entityId=com-seed-1&category=statutes",
   );
@@ -1374,8 +1467,7 @@ test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", as
   // Limpieza.
   assert.equal((await admin(`/documents/${statute.id}`, "DELETE")).status, 200);
   assert.equal(
-    (await admin(`/documents/folders/${folder.data.id}?confirm=1`, "DELETE"))
-      .status,
+    (await admin(`/documents/folders/${folder.data.id}?confirm=1`, "DELETE")).status,
     200,
   );
   assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
@@ -1405,18 +1497,12 @@ test("biblioteca documental: alcance de administradores de comunidad", async () 
     403,
   );
   assert.equal(
-    (
-      await communityAdmin(
-        "/documents",
-        "POST",
-        pdfForm("community", "com-seed-2", "Ajeno.pdf"),
-      )
-    ).status,
+    (await communityAdmin("/documents", "POST", pdfForm("community", "com-seed-2", "Ajeno.pdf")))
+      .status,
     403,
   );
   assert.equal(
-    (await communityAdmin(`/documents/folders/${ownFolder.data.id}?confirm=1`, "DELETE"))
-      .status,
+    (await communityAdmin(`/documents/folders/${ownFolder.data.id}?confirm=1`, "DELETE")).status,
     200,
   );
 });
@@ -1432,14 +1518,8 @@ test("vista previa: la CSP permite encuadrar el documento en el mismo origen", a
   const preview = await admin(`/documents/${uploaded.data[0].id}/preview`);
   assert.equal(preview.status, 200);
   assert.match(String(preview.data), /%PDF/);
-  assert.equal(
-    preview.headers.get("content-security-policy"),
-    "frame-ancestors 'self'",
-  );
-  assert.equal(
-    (await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status,
-    200,
-  );
+  assert.equal(preview.headers.get("content-security-policy"), "frame-ancestors 'self'");
+  assert.equal((await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status, 200);
   assert.deepEqual(readdirSync(UPLOADS_DIR).sort(), before);
 });
 
@@ -1470,18 +1550,9 @@ test("documentos Word: sólo descarga, sin vista previa", async () => {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   );
   assert.equal(uploaded.data[0].previewUrl, undefined);
-  assert.equal(
-    (await admin(`/documents/${uploaded.data[0].id}/preview`)).status,
-    415,
-  );
-  assert.equal(
-    (await admin(`/documents/${uploaded.data[0].id}/download`)).status,
-    200,
-  );
-  assert.equal(
-    (await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status,
-    200,
-  );
+  assert.equal((await admin(`/documents/${uploaded.data[0].id}/preview`)).status, 415);
+  assert.equal((await admin(`/documents/${uploaded.data[0].id}/download`)).status, 200);
+  assert.equal((await admin(`/documents/${uploaded.data[0].id}`, "DELETE")).status, 200);
   assert.equal(
     (
       await admin("/admin/settings", "PUT", {
@@ -1491,4 +1562,634 @@ test("documentos Word: sólo descarga, sin vista previa", async () => {
     ).status,
     200,
   );
+});
+
+function roleByName(roles, name) {
+  return roles.find((role) => role.nombre === name);
+}
+
+test("F03 · inquilino: contrato finalizado o futuro no da acceso a la comunidad", async () => {
+  const original = (await admin("/tenants/tenant-seed-1")).data;
+  const request = client();
+  assert.equal(
+    (await request("/auth/signin", "POST", { usuario: "uruci1", password: "uruci1" })).status,
+    200,
+  );
+  const setContract = async (contractStart, contractEnd) =>
+    assert.equal(
+      (
+        await admin("/tenants/tenant-seed-1", "PUT", {
+          ...original,
+          version: (await admin("/tenants/tenant-seed-1")).data.version,
+          contractStart,
+          contractEnd,
+        })
+      ).status,
+      200,
+    );
+  try {
+    // Contrato finalizado: pierde comunidad, inmueble, ficha y documentación.
+    await setContract("2000-01-01", "2001-01-01");
+    let boot = (await request("/bootstrap")).data;
+    assert.deepEqual(boot.communities, []);
+    assert.deepEqual(boot.properties, []);
+    assert.deepEqual(boot.tenants, []);
+    assert.equal((await request("/communities/com-seed-1")).status, 403);
+    assert.equal((await request("/properties/prop-seed-1")).status, 403);
+    assert.equal((await request("/tenants/tenant-seed-1")).status, 403);
+    assert.equal(
+      (await request("/documents?entityType=community&entityId=com-seed-1&category=document"))
+        .status,
+      403,
+    );
+
+    // Contrato futuro: tampoco concede pertenencia antes de su inicio.
+    await setContract("2099-01-01", "");
+    boot = (await request("/bootstrap")).data;
+    assert.deepEqual(boot.communities, []);
+    assert.deepEqual(boot.properties, []);
+    assert.deepEqual(boot.tenants, []);
+
+    // Permiso configurable: conserva solo su ficha e historial propio.
+    await setContract("2000-01-01", "2001-01-01");
+    const roles = (await admin("/admin/roles")).data;
+    const userRole = roleByName(roles, "user");
+    assert.equal(
+      (
+        await admin(`/admin/roles/${userRole.id}`, "PUT", {
+          permisos: [...userRole.permisos, "tenant:history:read"],
+        })
+      ).status,
+      200,
+    );
+    try {
+      boot = (await request("/bootstrap")).data;
+      assert.deepEqual(
+        boot.tenants.map((t) => t.id),
+        ["tenant-seed-1"],
+      );
+      assert.deepEqual(boot.communities, []);
+      assert.deepEqual(boot.properties, []);
+      assert.equal((await request("/tenants/tenant-seed-1")).status, 200);
+      assert.equal((await request("/communities/com-seed-1")).status, 403);
+      assert.equal((await request("/properties/prop-seed-1")).status, 403);
+    } finally {
+      await admin(`/admin/roles/${userRole.id}`, "PUT", { permisos: userRole.permisos });
+    }
+
+    // Un segundo contrato vigente conserva únicamente su propio ámbito.
+    const second = await admin("/tenants", "POST", {
+      id: "api-tenant-f03",
+      ownerId: "own-seed-3",
+      propertyId: "prop-seed-4",
+      name: "Inquilino",
+      surname: "Segundo Vigente",
+      documentId: "12345678Z",
+      phone: "600000000",
+      email: "segundo.vigente@example.test",
+      contractStart: "2026-01-01",
+      contractEnd: "",
+      userId: "user-uruci1",
+    });
+    assert.equal(second.status, 201, JSON.stringify(second.data));
+    try {
+      boot = (await request("/bootstrap")).data;
+      assert.deepEqual(
+        boot.communities.map((c) => c.id),
+        ["com-seed-2"],
+      );
+      assert.deepEqual(
+        boot.properties.map((p) => p.id),
+        ["prop-seed-4"],
+      );
+      assert.deepEqual(
+        boot.tenants.map((t) => t.id),
+        ["api-tenant-f03"],
+      );
+      assert.equal((await request("/tenants/tenant-seed-1")).status, 403);
+      assert.equal((await request("/tenants/api-tenant-f03")).status, 200);
+    } finally {
+      await admin("/tenants/api-tenant-f03", "DELETE");
+    }
+  } finally {
+    await admin("/tenants/tenant-seed-1", "PUT", {
+      ...original,
+      version: (await admin("/tenants/tenant-seed-1")).data.version,
+    });
+  }
+});
+
+test("F04 · document:read protege los expedientes embebidos y la edición no los borra", async () => {
+  const roles = (await admin("/admin/roles")).data;
+  const communityAdminRole = roleByName(roles, "community_admin");
+  const originalPermissions = [...communityAdminRole.permisos];
+  const withoutDocumentRead = originalPermissions.filter((p) => p !== "document:read");
+  const file = {
+    fileName: "expediente-sintetico.pdf",
+    dataUrl: "data:application/pdf;base64,JVBERi0xLjQK",
+    adminApproval: { status: "pending" },
+  };
+  const ownerDocs = { dni: { ...file, fileName: "dni-own-seed-1.pdf" } };
+  const tenantDocs = { dni: { ...file, fileName: "dni-tenant-seed-1.pdf" } };
+  db.prepare("UPDATE owners SET documents = ? WHERE id = 'own-seed-1'").run(
+    JSON.stringify(ownerDocs),
+  );
+  db.prepare("UPDATE tenants SET documents = ? WHERE id = 'tenant-seed-1'").run(
+    JSON.stringify(tenantDocs),
+  );
+  const communityAdmin = client();
+  assert.equal(
+    (await communityAdmin("/auth/signin", "POST", { usuario: "ca1", password: "ca1" })).status,
+    200,
+  );
+  try {
+    await admin(`/admin/roles/${communityAdminRole.id}`, "PUT", {
+      permisos: withoutDocumentRead,
+    });
+    // Sin document:read ni la ficha, ni los listados, ni bootstrap entregan bytes.
+    assert.equal(
+      (
+        await communityAdmin(
+          "/documents?entityType=tenant&entityId=tenant-seed-1&category=document",
+        )
+      ).status,
+      403,
+    );
+    const ownerDetail = await communityAdmin("/owners/own-seed-1");
+    assert.equal(ownerDetail.status, 200);
+    assert.deepEqual(ownerDetail.data.documents, {});
+    const tenantDetail = await communityAdmin("/tenants/tenant-seed-1");
+    assert.equal(tenantDetail.status, 200);
+    assert.deepEqual(tenantDetail.data.documents, {});
+    const ownerList = (await communityAdmin("/owners")).data;
+    assert.deepEqual(ownerList.find((o) => o.id === "own-seed-1").documents, {});
+    const tenantList = (await communityAdmin("/tenants")).data;
+    assert.deepEqual(tenantList.find((t) => t.id === "tenant-seed-1").documents, {});
+    let boot = (await communityAdmin("/bootstrap")).data;
+    assert.deepEqual(boot.owners.find((o) => o.id === "own-seed-1").documents, {});
+    assert.deepEqual(boot.tenants.find((t) => t.id === "tenant-seed-1").documents, {});
+
+    // Guardar la ficha con la copia redactada no debe borrar el expediente.
+    assert.equal(
+      (
+        await communityAdmin("/owners/own-seed-1", "PUT", {
+          ...ownerDetail.data,
+          documents: {},
+        })
+      ).status,
+      200,
+    );
+    const storedDocs = JSON.parse(
+      db.prepare("SELECT documents FROM owners WHERE id = 'own-seed-1'").get().documents,
+    );
+    assert.equal(storedDocs.dni.dataUrl, ownerDocs.dni.dataUrl);
+
+    // El mismo rol con document:read recupera el acceso previsto.
+    await admin(`/admin/roles/${communityAdminRole.id}`, "PUT", {
+      permisos: [...withoutDocumentRead, "document:read"],
+    });
+    const restored = await communityAdmin("/owners/own-seed-1");
+    assert.equal(restored.status, 200);
+    assert.equal(restored.data.documents.dni.dataUrl, ownerDocs.dni.dataUrl);
+    boot = (await communityAdmin("/bootstrap")).data;
+    assert.equal(
+      boot.owners.find((o) => o.id === "own-seed-1").documents.dni.dataUrl,
+      ownerDocs.dni.dataUrl,
+    );
+    assert.equal(
+      boot.tenants.find((t) => t.id === "tenant-seed-1").documents.dni.dataUrl,
+      tenantDocs.dni.dataUrl,
+    );
+  } finally {
+    await admin(`/admin/roles/${communityAdminRole.id}`, "PUT", {
+      permisos: originalPermissions,
+    });
+    db.prepare("UPDATE owners SET documents = '{}' WHERE id = 'own-seed-1'").run();
+    db.prepare("UPDATE tenants SET documents = '{}' WHERE id = 'tenant-seed-1'").run();
+  }
+});
+
+test("F06 · editar un propietario en una comunidad no altera sus vínculos en otra", async () => {
+  const ownerBefore = (await admin("/owners/own-seed-1")).data;
+  const propertyBefore = (await admin("/properties/prop-seed-6")).data;
+  try {
+    assert.equal(
+      (
+        await admin("/owners/own-seed-1", "PUT", {
+          ...ownerBefore,
+          propertyIds: [...new Set([...(ownerBefore.propertyIds || []), "prop-seed-6"])],
+        })
+      ).status,
+      200,
+    );
+    const propertyLinked = (await admin("/properties/prop-seed-6")).data;
+    assert.ok(propertyLinked.ownerIds.includes("own-seed-1"));
+    const percentagesBefore = propertyLinked.ownerPercentages;
+    // Contrato de la comunidad B cuyo titular es el propietario compartido.
+    const foreignTenant = await admin("/tenants", "POST", {
+      id: "api-tenant-f06",
+      ownerId: "own-seed-1",
+      propertyId: "prop-seed-6",
+      name: "Inquilino",
+      surname: "Comunidad B",
+      documentId: "12345678Z",
+      phone: "600000001",
+      email: "inquilino.b@example.test",
+      contractStart: "2026-01-01",
+      contractEnd: "",
+    });
+    assert.equal(foreignTenant.status, 201, JSON.stringify(foreignTenant.data));
+
+    const communityAdmin = client();
+    assert.equal(
+      (await communityAdmin("/auth/signin", "POST", { usuario: "ca1", password: "ca1" })).status,
+      200,
+    );
+    const visibleOwner = (await communityAdmin("/owners/own-seed-1")).data;
+    assert.ok(visibleOwner.propertyIds.includes("prop-seed-6"));
+    // Solo envía el inmueble visible de su comunidad: el de com-seed-3 se conserva.
+    const saved = await communityAdmin("/owners/own-seed-1", "PUT", {
+      ...visibleOwner,
+      propertyIds: ["prop-seed-1"],
+    });
+    assert.equal(saved.status, 200, JSON.stringify(saved.data));
+    assert.ok(saved.data.propertyIds.includes("prop-seed-6"));
+    const propertyAfter = (await admin("/properties/prop-seed-6")).data;
+    assert.ok(propertyAfter.ownerIds.includes("own-seed-1"));
+    assert.deepEqual(propertyAfter.ownerPercentages, percentagesBefore);
+    assert.equal((await admin("/tenants/api-tenant-f06")).data.ownerId, "own-seed-1");
+    assert.deepEqual((await admin("/owners/own-seed-1")).data.propertyIds.sort(), [
+      "prop-seed-1",
+      "prop-seed-6",
+    ]);
+
+    // Tampoco puede crear un vínculo nuevo en otra comunidad.
+    assert.equal(
+      (
+        await communityAdmin("/owners/own-seed-1", "PUT", {
+          ...saved.data,
+          propertyIds: [...saved.data.propertyIds, "prop-seed-7"],
+        })
+      ).status,
+      403,
+    );
+    assert.ok(!(await admin("/properties/prop-seed-7")).data.ownerIds.includes("own-seed-1"));
+  } finally {
+    await admin("/tenants/api-tenant-f06", "DELETE");
+    db.prepare(
+      "UPDATE properties SET ownerIds = ?, ownerPercentages = ? WHERE id = 'prop-seed-6'",
+    ).run(JSON.stringify(propertyBefore.ownerIds), JSON.stringify(propertyBefore.ownerPercentages));
+    db.prepare("UPDATE owners SET propertyIds = ?, propertyId = ? WHERE id = 'own-seed-1'").run(
+      JSON.stringify(ownerBefore.propertyIds),
+      ownerBefore.propertyId,
+    );
+  }
+});
+
+test("F15 · cuotas por propietario no exponen servicios de una comunidad ajena", async () => {
+  const propertyBefore = (await admin("/properties/prop-seed-6")).data;
+  const { saveService, previewService, issueService } = await import("../../src/services.js");
+  const actor = db.prepare("SELECT * FROM users WHERE usuario = 'super_admin'").get();
+  try {
+    db.prepare("UPDATE properties SET ownerIds = ? WHERE id = 'prop-seed-6'").run(
+      JSON.stringify([...new Set([...propertyBefore.ownerIds, "own-seed-1"])]),
+    );
+    const service = saveService(
+      "com-seed-3",
+      {
+        service: "agua",
+        supplier: "Proveedor ajeno",
+        invoiceNumber: "F15-1",
+        period: "2026-11",
+        issueDate: "2026-11-01",
+        dueDate: "2026-11-20",
+        totalAmount: "100",
+        billing: "informative",
+        method: "manual",
+        propertyIds: ["prop-seed-6"],
+        manual: { "prop-seed-6": "100" },
+        legalBasis: "Acuerdo sintético",
+        notes: "",
+      },
+      actor,
+    );
+    issueService(service.id, { token: previewService(service.id).token }, actor);
+
+    const communityAdmin = client();
+    assert.equal(
+      (await communityAdmin("/auth/signin", "POST", { usuario: "ca1", password: "ca1" })).status,
+      200,
+    );
+    const foreign = await communityAdmin("/fees/owners/own-seed-1");
+    assert.equal(foreign.status, 200, JSON.stringify(foreign.data));
+    assert.ok(
+      !(foreign.data.informativeServices || []).some(
+        (item) => item.id === service.id || item.communityId === "com-seed-3",
+      ),
+    );
+
+    // El propio propietario sí conserva el reparto que le corresponde.
+    const ownerClient = client();
+    assert.equal(
+      (await ownerClient("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" })).status,
+      200,
+    );
+    const own = await ownerClient("/fees/owners/own-seed-1");
+    assert.equal(own.status, 200, JSON.stringify(own.data));
+    assert.ok((own.data.informativeServices || []).some((item) => item.id === service.id));
+  } finally {
+    db.prepare("DELETE FROM fee_receipts WHERE serviceBillId = ?").run(
+      db.prepare("SELECT id FROM service_bills WHERE invoiceNumber = 'F15-1'").get()?.id || "",
+    );
+    db.prepare(
+      "DELETE FROM service_attachments WHERE serviceBillId IN (SELECT id FROM service_bills WHERE invoiceNumber = 'F15-1')",
+    ).run();
+    db.prepare("DELETE FROM service_bills WHERE invoiceNumber = 'F15-1'").run();
+    db.prepare("UPDATE properties SET ownerIds = ? WHERE id = 'prop-seed-6'").run(
+      JSON.stringify(propertyBefore.ownerIds),
+    );
+  }
+});
+
+test("F05 · los documentos JSON rechazan los mismos tipos y tamaños que la biblioteca", async () => {
+  const ownerClient = client();
+  assert.equal(
+    (await ownerClient("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" })).status,
+    200,
+  );
+  const before = (await ownerClient("/owners/own-seed-1")).data;
+  try {
+    const fake = {
+      fileName: "archivo.exe",
+      fileType: "application/x-msdownload",
+      dataUrl: "data:application/x-msdownload;base64,TVqQAAMAAAA=",
+      size: 1,
+      adminApproval: { status: "pending" },
+    };
+    const rejected = await ownerClient("/owners/own-seed-1", "PUT", {
+      ...before,
+      documents: { ...before.documents, dni: fake },
+    });
+    assert.equal(rejected.status, 400, JSON.stringify(rejected.data));
+    assert.ok(
+      !String(
+        db.prepare("SELECT documents FROM owners WHERE id = 'own-seed-1'").get().documents,
+      ).includes("archivo.exe"),
+    );
+
+    // Extensión permitida con bytes ejecutables: tampoco pasa.
+    const spoofed = await ownerClient("/owners/own-seed-1", "PUT", {
+      ...before,
+      documents: {
+        ...before.documents,
+        dni: {
+          ...fake,
+          fileName: "falso.pdf",
+          fileType: "application/pdf",
+          dataUrl: "data:application/pdf;base64,TVqQAAMAAAA=",
+        },
+      },
+    });
+    assert.equal(spoofed.status, 400, JSON.stringify(spoofed.data));
+
+    const validPdf = {
+      fileName: "dni-valido.pdf",
+      fileType: "application/pdf",
+      dataUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0Y=",
+      adminApproval: { status: "pending" },
+    };
+    const accepted = await ownerClient("/owners/own-seed-1", "PUT", {
+      ...before,
+      documents: { ...before.documents, dni: validPdf },
+    });
+    assert.equal(accepted.status, 200, JSON.stringify(accepted.data));
+    assert.equal(accepted.data.documents.dni.fileName, "dni-valido.pdf");
+    assert.equal(accepted.data.documents.dni.fileType, "application/pdf");
+    assert.ok(accepted.data.documents.dni.fileSize > 0);
+  } finally {
+    db.prepare("UPDATE owners SET documents = ? WHERE id = 'own-seed-1'").run(
+      JSON.stringify(before.documents || {}),
+    );
+  }
+});
+
+test("F11 · una verificación OTP confirmada sobrevive al guardar y no se falsifica", async () => {
+  const ownerClient = client();
+  assert.equal(
+    (await ownerClient("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" })).status,
+    200,
+  );
+  const original = (await ownerClient("/owners/own-seed-1")).data;
+  const hash = (code) => crypto.createHash("sha256").update(code).digest("hex");
+  const challengeId = crypto.randomUUID();
+  const otherAccountChallenge = crypto.randomUUID();
+  try {
+    assert.equal(
+      (
+        await ownerClient("/owners/own-seed-1", "PUT", {
+          ...original,
+          phone: "600123499",
+          phoneVerified: false,
+          phoneVerifiedAt: "",
+        })
+      ).status,
+      200,
+    );
+    const now = Date.now();
+    db.prepare(
+      "INSERT INTO contact_verification_challenges(id,tipo,destino,codigo,createdAt,expiresAt) VALUES (?,?,?,?,?,?)",
+    ).run(challengeId, "phone", "600123499", hash("123456"), now, now + 60_000);
+    const confirmed = await ownerClient("/owners/contact/phone/confirm", "POST", {
+      challengeId,
+      code: "123456",
+    });
+    assert.equal(confirmed.status, 200, JSON.stringify(confirmed.data));
+    assert.equal(confirmed.data.verified, true);
+    const saved = await ownerClient("/owners/own-seed-1", "PUT", {
+      ...original,
+      version: (await ownerClient("/owners/own-seed-1")).data.version,
+      phone: "600123499",
+      phoneVerified: true,
+      phoneVerifiedAt: confirmed.data.verifiedAt,
+    });
+    assert.equal(saved.status, 200, JSON.stringify(saved.data));
+    assert.equal(saved.data.phoneVerified, true);
+    assert.ok(saved.data.phoneVerifiedAt);
+    assert.equal((await ownerClient("/owners/own-seed-1")).data.phoneVerified, true);
+
+    // Cambiar el contacto invalida la verificación anterior.
+    const invalidated = await ownerClient("/owners/own-seed-1", "PUT", {
+      ...saved.data,
+      phone: "600123488",
+      phoneVerified: true,
+      phoneVerifiedAt: saved.data.phoneVerifiedAt,
+    });
+    assert.equal(invalidated.status, 200, JSON.stringify(invalidated.data));
+    assert.equal(invalidated.data.phoneVerified, false);
+
+    // Un reto vinculado a otra cuenta no se puede confirmar desde esta sesión.
+    db.prepare(
+      "INSERT INTO contact_verification_challenges(id,tipo,destino,codigo,createdAt,expiresAt,userId) VALUES (?,?,?,?,?,?,?)",
+    ).run(
+      otherAccountChallenge,
+      "phone",
+      "600123488",
+      hash("654321"),
+      now,
+      now + 60_000,
+      "user-urucp1",
+    );
+    const foreignConfirm = await admin("/owners/contact/phone/confirm", "POST", {
+      challengeId: otherAccountChallenge,
+      code: "654321",
+    });
+    assert.equal(foreignConfirm.status, 403);
+  } finally {
+    db.prepare(
+      "UPDATE owners SET phone = ?, phoneVerified = ?, phoneVerifiedAt = ? WHERE id = 'own-seed-1'",
+    ).run(original.phone, original.phoneVerified ? 1 : 0, original.phoneVerifiedAt || "");
+    db.prepare("DELETE FROM contact_verification_challenges WHERE id IN (?, ?)").run(
+      challengeId,
+      otherAccountChallenge,
+    );
+  }
+});
+
+test("F07 · los cuatro CRUD rechazan ediciones simultáneas y versiones ausentes", async () => {
+  for (const [route, field] of [
+    ["/communities/com-seed-1", "president"],
+    ["/owners/own-seed-2", "name"],
+    ["/properties/prop-seed-2", "plot"],
+    ["/tenants/tenant-seed-2", "name"],
+  ]) {
+    const first = await admin(route);
+    assert.equal(first.status, 200);
+    assert.ok(Number.isSafeInteger(first.data.version));
+    const a = { ...first.data, [field]: "Edición A" };
+    const b = { ...first.data, [field]: "Edición B" };
+    const results = await Promise.all([admin(route, "PUT", a), admin(route, "PUT", b)]);
+    assert.deepEqual(results.map((r) => r.status).sort(), [200, 409], route);
+    const saved = results.find((r) => r.status === 200).data;
+    assert.ok(saved.version > first.data.version);
+    assert.equal(results.find((r) => r.status === 409).data.code, "EDIT_CONFLICT");
+    assert.equal((await admin(route)).data[field], saved[field]);
+    const { version, ...missing } = saved;
+    assert.equal((await admin(route, "PUT", missing)).status, 428);
+    assert.equal((await admin(route, "PUT", { ...saved, version: "1" })).status, 428);
+    assert.equal(
+      (await admin(route, "PUT", { ...first.data, version: saved.version })).status,
+      200,
+    );
+  }
+});
+
+test("F07 · la edición propia y los cambios indirectos tampoco permiten pisar versiones", async () => {
+  const request = client();
+  assert.equal(
+    (await request("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" })).status,
+    200,
+  );
+  const before = (await request("/owners/own-seed-1")).data;
+  db.prepare("UPDATE owners SET name=? WHERE id=?").run("Cambio externo", before.id);
+  const stale = await request(`/owners/${before.id}`, "PUT", {
+    ...before,
+    name: "Formulario viejo",
+  });
+  assert.equal(stale.status, 409, JSON.stringify(stale.data));
+  assert.equal((await request(`/owners/${before.id}`)).data.name, "Cambio externo");
+  const missing = { ...before };
+  delete missing.version;
+  assert.equal((await request(`/owners/${before.id}`, "PUT", missing)).status, 428);
+  const current = (await request(`/owners/${before.id}`)).data;
+  assert.equal(
+    (await request(`/owners/${before.id}`, "PUT", { ...before, version: current.version })).status,
+    200,
+  );
+});
+
+test("F07 · propietario y porcentajes se guardan juntos y rechazan inmuebles obsoletos", async () => {
+  const before = (await admin("/owners/own-seed-2")).data;
+  const property = (await admin(`/properties/${before.propertyIds[0]}`)).data;
+  const share = { propertyId: property.id, version: property.version, percentage: 50 };
+  db.prepare("UPDATE properties SET address=? WHERE id=?").run("Domicilio cambiado", property.id);
+  const stale = await admin(`/owners/${before.id}`, "PUT", {
+    ...before,
+    name: "No guardar",
+    propertyShares: [share],
+  });
+  assert.equal(stale.status, 409, JSON.stringify(stale.data));
+  assert.equal((await admin(`/owners/${before.id}`)).data.name, before.name);
+  const currentProperty = (await admin(`/properties/${property.id}`)).data;
+  const saved = await admin(`/owners/${before.id}`, "PUT", {
+    ...before,
+    name: "Guardado atómico",
+    propertyShares: [{ ...share, version: currentProperty.version }],
+  });
+  assert.equal(saved.status, 200, JSON.stringify(saved.data));
+  assert.equal((await admin(`/properties/${property.id}`)).data.ownerPercentages[before.id], 50);
+  const invalid = await admin(`/owners/${before.id}`, "PUT", {
+    ...saved.data,
+    name: "No guardar",
+    propertyShares: [
+      {
+        ...share,
+        version: (await admin(`/properties/${property.id}`)).data.version,
+        percentage: 101,
+      },
+    ],
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal((await admin(`/owners/${before.id}`)).data.name, "Guardado atómico");
+});
+
+test("F10 · más de 40 accesos válidos comparten IP sin agotar el cupo", async () => {
+  const request = client();
+  for (let i = 0; i < 45; i++) {
+    const response = await request("/auth/signin", "POST", {
+      usuario: "super_admin",
+      password: "super_admin",
+    });
+    assert.equal(response.status, 200, JSON.stringify(response.data));
+  }
+  for (let i = 0; i < 15; i++)
+    assert.equal(
+      (
+        await request("/auth/signin", "POST", {
+          usuario: "vecino-inexistente-f10",
+          password: "fallo",
+        })
+      ).status,
+      401,
+    );
+  const limited = await request("/auth/signin", "POST", {
+    usuario: "vecino-inexistente-f10",
+    password: "fallo",
+  });
+  assert.equal(limited.status, 429);
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
+  // Otra identidad y otra operación siguen funcionando desde la misma red.
+  assert.equal(
+    (await request("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" })).status,
+    200,
+  );
+  assert.equal((await request("/auth/sso", "POST")).status, 503);
+  assert.equal((await request("/auth/logout", "POST")).status, 200);
+});
+
+test("F07 · desvincular un inmueble comprueba su versión antes de modificar relaciones", async () => {
+  const owner = (await admin("/owners/own-seed-2")).data;
+  const property = (await admin(`/properties/${owner.propertyIds[0]}`)).data;
+  db.prepare("UPDATE properties SET address=? WHERE id=?").run(
+    "Cambio durante la edición",
+    property.id,
+  );
+  const response = await admin(`/owners/${owner.id}`, "PUT", {
+    ...owner,
+    propertyIds: [],
+    propertyShares: [],
+    propertyVersions: { [property.id]: property.version },
+  });
+  assert.equal(response.status, 409, JSON.stringify(response.data));
+  assert.deepEqual((await admin(`/owners/${owner.id}`)).data.propertyIds, owner.propertyIds);
+  assert.ok((await admin(`/properties/${property.id}`)).data.ownerIds.includes(owner.id));
 });

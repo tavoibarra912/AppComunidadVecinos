@@ -21,6 +21,7 @@ export const PERMISSIONS = [
   "tenant:create",
   "tenant:manage",
   "tenant:delete",
+  "tenant:history:read",
   "document:read",
   "document:upload",
   "document:approve",
@@ -39,121 +40,142 @@ export const PERMISSIONS = [
   "owner_notification:send",
 ];
 
+/** Fecha local en formato ISO (YYYY-MM-DD), sin conversiones UTC. */
+export function localDateISO(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** Pertenencia vigente por contrato: ni antes del inicio ni después del fin. */
+export function isTenantContractActive(tenant, today = localDateISO()) {
+  return (
+    !!tenant &&
+    (!tenant.contractStart || tenant.contractStart <= today) &&
+    (!tenant.contractEnd || tenant.contractEnd >= today)
+  );
+}
+
+/** Contrato ya finalizado (conserva historial propio, no pertenencia). */
+export function isTenantContractEnded(tenant, today = localDateISO()) {
+  return !!tenant?.contractEnd && tenant.contractEnd < today;
+}
+
 export function can(user, permission, resourceId = "", data) {
   if (!user?.activo || !PERMISSIONS.includes(permission)) return false;
-  const {
-    owners = [],
-    tenants = [],
-    properties = [],
-    communities = [],
-    roles = [],
-  } = data;
+  return createPermissionChecker(user, data)(permission, resourceId);
+}
+
+// Una instantánea se usa durante una petición. No se guarda estado global:
+// el siguiente bootstrap reconstruye los permisos y ve todos los cambios.
+export function createPermissionChecker(user, data) {
+  if (!user?.activo) return () => false;
+  const { owners = [], tenants = [], properties = [], communities = [], roles = [] } = data;
   const role = roles.find((r) => r.id === user.rol || r.nombre === user.rol);
-  if (!role) return false;
-  if (role.nombre === "super_admin") return true;
-  // The global security history is not a community-scoped resource.
-  // Permisos globales: nunca para roles de comunidad o usuario final.
-  if (permission === "audit:read" || permission === "admin:providers") return !["user", "community_admin"].includes(role.nombre) && !!role.permisos?.includes(permission);
-  const ownOwners = owners.filter((o) => o.userId === user.id).map((o) => o.id);
-  const ownTenants = tenants.filter((t) => t.userId === user.id);
-  const ownedProperties = properties.filter((p) =>
-    p.ownerIds?.some((id) => ownOwners.includes(id)),
-  );
-  const assigned = communities
-    .filter((c) => c.adminUserId === user.id)
-    .map((c) => c.id);
+  if (!role) return () => false;
+  if (role.nombre === "super_admin") return (permission) => PERMISSIONS.includes(permission);
+  const permissions = new Set(role.permisos || []);
+  if (!["user", "community_admin"].includes(role.nombre))
+    return (permission) => PERMISSIONS.includes(permission) && permissions.has(permission);
+  const today = localDateISO();
+  const ownersById = new Map(owners.map((o) => [o.id, o]));
+  const tenantsById = new Map(tenants.map((t) => [t.id, t]));
+  const propertiesById = new Map(properties.map((p) => [p.id, p]));
+  const communityIds = new Set(communities.map((c) => c.id));
+  const ownOwners = new Set(owners.filter((o) => o.userId === user.id).map((o) => o.id));
+  const ownTenantProfiles = tenants.filter((t) => t.userId === user.id);
+  const ownTenants = ownTenantProfiles.filter((t) => isTenantContractActive(t, today));
+  const tenantHistory = permissions.has("tenant:history:read");
+  const formerOwnTenants = tenantHistory
+    ? ownTenantProfiles.filter((t) => isTenantContractEnded(t, today))
+    : [];
+  const activeTenantIds = new Set(ownTenants.map((t) => t.id));
+  const formerTenantIds = new Set(formerOwnTenants.map((t) => t.id));
+  const ownedProperties = properties.filter((p) => p.ownerIds?.some((id) => ownOwners.has(id)));
+  const ownedPropertyIds = new Set(ownedProperties.map((p) => p.id));
+  const ownedCommunityIds = new Set(ownedProperties.map((p) => p.communityId));
+  const assigned = new Set(communities.filter((c) => c.adminUserId === user.id).map((c) => c.id));
   const ownCommunities = new Set([
-    ...ownedProperties.map((p) => p.communityId),
-    ...ownTenants.map(
-      (t) => properties.find((p) => p.id === t.propertyId)?.communityId,
-    ),
+    ...ownedCommunityIds,
+    ...ownTenants.map((t) => propertiesById.get(t.propertyId)?.communityId),
   ]);
-  const owner = owners.find((o) => o.id === resourceId);
-  const tenant = tenants.find((t) => t.id === resourceId);
-  const property = properties.find((p) => p.id === resourceId);
-
-  if (role.nombre === "user") {
-    if (!role.permisos?.includes(permission)) return false;
-    switch (permission) {
-      case "fee:read":
-        return resourceId ? ownOwners.includes(resourceId) || ownedProperties.some(p => p.communityId === resourceId) : ownOwners.length > 0;
-      case "community:read":
-        return resourceId
-          ? ownCommunities.has(resourceId)
-          : ownCommunities.size > 0;
-      case "owner:read":
-      case "owner:edit":
-      case "owner:documents:submit":
-      case "owner_notification:read":
-        return resourceId
-          ? ownOwners.includes(resourceId)
-          : ownOwners.length > 0;
-      case "comm:participacion":
-      case "comm:publicar":
-      case "comm:moderar":
-        return resourceId ? ownCommunities.has(resourceId) : ownCommunities.size > 0;
-      case "property:read":
-        return resourceId
-          ? ownedProperties.some((p) => p.id === resourceId) ||
-              ownTenants.some((t) => t.propertyId === resourceId)
-          : ownedProperties.length > 0 || ownTenants.length > 0;
-      case "tenant:read":
-        return resourceId
-          ? ownOwners.includes(resourceId) ||
-              (!!tenant &&
-                (ownOwners.includes(tenant.ownerId) ||
-                  tenant.userId === user.id))
-          : ownOwners.length > 0 || ownTenants.length > 0;
-      case "tenant:manage":
-      case "tenant:delete":
-        return resourceId
-          ? ownOwners.includes(resourceId) ||
-              (!!tenant && ownOwners.includes(tenant.ownerId))
-          : ownOwners.length > 0;
-      case "document:read": {
-        const readablePropertyIds = new Set([
-          ...ownedProperties.map((p) => p.id),
-          ...ownTenants.map((t) => t.propertyId),
-        ]);
-        const readableTenantIds = new Set([
-          ...ownTenants.map((t) => t.id),
-          ...tenants
-            .filter((t) => readablePropertyIds.has(t.propertyId))
-            .map((t) => t.id),
-        ]);
-        return resourceId
-          ? ownCommunities.has(resourceId) ||
-              readablePropertyIds.has(resourceId) ||
-              readableTenantIds.has(resourceId)
-          : ownOwners.length > 0 || ownTenants.length > 0;
-      }
-      case "document:upload":
-        return ownOwners.length > 0 || ownTenants.length > 0;
-      default:
-        return false;
+  const readablePropertyIds = new Set([
+    ...ownedPropertyIds,
+    ...ownTenants.map((t) => t.propertyId),
+  ]);
+  const readableTenantIds = new Set([
+    ...activeTenantIds,
+    ...formerTenantIds,
+    ...tenants.filter((t) => readablePropertyIds.has(t.propertyId)).map((t) => t.id),
+  ]);
+  const ownerCommunities = new Map();
+  for (const property of properties)
+    for (const ownerId of property.ownerIds || []) {
+      if (!ownerCommunities.has(ownerId)) ownerCommunities.set(ownerId, new Set());
+      ownerCommunities.get(ownerId).add(property.communityId);
     }
-  }
-
-  if (!role.permisos?.includes(permission)) return false;
-  if (role.nombre !== "community_admin") return true;
-  if (permission.startsWith("admin:")) return false;
-  if (!resourceId) return assigned.length > 0;
-  // El identificador puede ser de una comunidad, un propietario, un inmueble,
-  // un inquilino o una entidad documental. Se resuelve su comunidad para
-  // aplicar el ámbito del administrador de comunidad.
-  let communityIds;
-  if (communities.some((c) => c.id === resourceId)) communityIds = [resourceId];
-  else if (owner)
-    communityIds = properties
-      .filter((p) => p.ownerIds?.includes(owner.id))
-      .map((p) => p.communityId);
-  else if (property) communityIds = [property.communityId];
-  else if (tenant)
-    communityIds = [
-      properties.find((p) => p.id === tenant.propertyId)?.communityId,
-    ];
-  else return false;
-  return communityIds.some((id) => assigned.includes(id));
+  return (permission, resourceId = "") => {
+    if (!PERMISSIONS.includes(permission) || !permissions.has(permission)) return false;
+    if (permission === "audit:read" || permission === "admin:providers")
+      return !["user", "community_admin"].includes(role.nombre);
+    const owner = ownersById.get(resourceId);
+    const tenant = tenantsById.get(resourceId);
+    const property = propertiesById.get(resourceId);
+    if (role.nombre === "user") {
+      switch (permission) {
+        case "fee:read":
+          return resourceId
+            ? ownOwners.has(resourceId) || ownedCommunityIds.has(resourceId)
+            : ownOwners.size > 0;
+        case "community:read":
+        case "comm:participacion":
+        case "comm:publicar":
+        case "comm:moderar":
+          return resourceId ? ownCommunities.has(resourceId) : ownCommunities.size > 0;
+        case "owner:read":
+        case "owner:edit":
+        case "owner:documents:submit":
+        case "owner_notification:read":
+          return resourceId ? ownOwners.has(resourceId) : ownOwners.size > 0;
+        case "property:read":
+          return resourceId ? readablePropertyIds.has(resourceId) : readablePropertyIds.size > 0;
+        case "tenant:read":
+          if (!resourceId)
+            return ownOwners.size > 0 || activeTenantIds.size > 0 || formerTenantIds.size > 0;
+          return (
+            ownOwners.has(resourceId) ||
+            (!!tenant &&
+              (ownOwners.has(tenant.ownerId) ||
+                activeTenantIds.has(tenant.id) ||
+                formerTenantIds.has(tenant.id)))
+          );
+        case "tenant:manage":
+        case "tenant:delete":
+          return resourceId
+            ? ownOwners.has(resourceId) || (!!tenant && ownOwners.has(tenant.ownerId))
+            : ownOwners.size > 0;
+        case "document:read":
+          return resourceId
+            ? ownOwners.has(resourceId) ||
+                ownCommunities.has(resourceId) ||
+                readablePropertyIds.has(resourceId) ||
+                readableTenantIds.has(resourceId)
+            : ownOwners.size > 0 || activeTenantIds.size > 0 || formerTenantIds.size > 0;
+        case "document:upload":
+          return ownOwners.size > 0 || activeTenantIds.size > 0;
+        default:
+          return false;
+      }
+    }
+    if (role.nombre !== "community_admin") return true;
+    if (permission.startsWith("admin:")) return false;
+    if (!resourceId) return assigned.size > 0;
+    if (communityIds.has(resourceId)) return assigned.has(resourceId);
+    if (owner) return [...(ownerCommunities.get(owner.id) || [])].some((id) => assigned.has(id));
+    if (property) return assigned.has(property.communityId);
+    if (tenant) return assigned.has(propertiesById.get(tenant.propertyId)?.communityId);
+    return false;
+  };
 }
 
 // Etiquetas legibles para los mensajes de «permiso insuficiente».
@@ -179,6 +201,7 @@ const ETIQUETAS_PERMISO = {
   "tenant:create": "crear inquilinos",
   "tenant:manage": "administrar inquilinos",
   "tenant:delete": "eliminar inquilinos",
+  "tenant:history:read": "conservar el historial propio como antiguo inquilino",
   "document:read": "ver documentos",
   "document:upload": "subir documentos",
   "document:approve": "aprobar documentos",

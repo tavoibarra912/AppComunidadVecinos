@@ -3,15 +3,9 @@ import multer from "multer";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import {
-  db,
-  documentFromRow,
-  documentFolderFromRow,
-  UPLOADS_DIR,
-  getSettings,
-  listDocuments,
-} from "../db.js";
+import { db, documentFromRow, documentFolderFromRow, UPLOADS_DIR, listDocuments } from "../db.js";
 import { allowed } from "../security.js";
+import { allowedDocumentLabels, detectContentType, documentLimits } from "../document-policy.js";
 import {
   DOCUMENT_ENTITY_TABLES,
   createFolder,
@@ -35,27 +29,12 @@ const tables = DOCUMENT_ENTITY_TABLES;
 const storage = multer.diskStorage({
   destination: UPLOADS_DIR,
   filename: (_req, file, cb) =>
-    cb(
-      null,
-      `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`,
-    ),
+    cb(null, `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`),
 });
-const maxBytes = () =>
-  Math.min(50, Math.max(1, Number(getSettings().documentosMaxSizeMb) || 15)) *
-  1024 *
-  1024;
-const maxFiles = () =>
-  Math.min(50, Math.max(1, Number(getSettings().documentosMaxArchivos) || 20));
-const allowedExtensions = () =>
-  new Set(
-    getSettings().documentosTiposPermitidos.map(
-      (tipo) => `.${String(tipo).toLowerCase()}`,
-    ),
-  );
-const allowedLabels = () =>
-  [...allowedExtensions()]
-    .map((extension) => extension.slice(1).toUpperCase())
-    .join(", ");
+const maxBytes = () => documentLimits().maxBytes;
+const maxFiles = () => documentLimits().maxFiles;
+const allowedExtensions = () => documentLimits().allowed;
+const allowedLabels = () => allowedDocumentLabels();
 const upload = (req, res, done) =>
   multer({
     storage,
@@ -117,42 +96,10 @@ function contentType(file) {
   } finally {
     fs.closeSync(fd);
   }
-  const sample = head.subarray(0, length);
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (ext === ".pdf" && sample.subarray(0, 5).toString() === "%PDF-")
-    return "application/pdf";
-  if (
-    [".jpg", ".jpeg"].includes(ext) &&
-    sample[0] === 255 &&
-    sample[1] === 216 &&
-    sample[2] === 255
-  )
-    return "image/jpeg";
-  if (
-    ext === ".png" &&
-    sample.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-  )
-    return "image/png";
-  if (
-    ext === ".webp" &&
-    sample.subarray(0, 4).toString() === "RIFF" &&
-    sample.subarray(8, 12).toString() === "WEBP"
-  )
-    return "image/webp";
-  if (
-    ext === ".doc" &&
-    sample
-      .subarray(0, 8)
-      .equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))
-  )
-    return "application/msword";
-  if (
-    ext === ".docx" &&
-    sample.subarray(0, 4).toString() === "PK\u0003\u0004" &&
-    sample.includes("[Content_Types].xml")
-  )
-    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  return null;
+  return (
+    detectContentType(head.subarray(0, length), path.extname(file.originalname).toLowerCase()) ||
+    null
+  );
 }
 export function documentPath(row) {
   if (!row.storedName || path.basename(row.storedName) !== row.storedName)
@@ -167,13 +114,11 @@ export function removeEntityFiles(entityType, entityId) {
       fs.unlinkSync(documentPath(row));
     } catch {}
   }
-  db.prepare("DELETE FROM documents WHERE entityType=? AND entityId=?").run(
+  db.prepare("DELETE FROM documents WHERE entityType=? AND entityId=?").run(entityType, entityId);
+  db.prepare("DELETE FROM document_folders WHERE entityType=? AND entityId=?").run(
     entityType,
     entityId,
   );
-  db.prepare(
-    "DELETE FROM document_folders WHERE entityType=? AND entityId=?",
-  ).run(entityType, entityId);
 }
 function canRead(user, entityType, entityId) {
   return (
@@ -188,12 +133,11 @@ function canWrite(user, entityType, entityId) {
 function permissionFor(action) {
   return action === "delete" ? "document:delete" : "document:upload";
 }
-function deny(res, message = "No tenés permiso para esta operación.") {
+function deny(res, message = "No tienes permiso para esta operación.") {
   return res.status(403).json({ error: message });
 }
 function sendServiceError(res, error) {
-  if (error?.status)
-    return res.status(error.status).json({ error: error.message });
+  if (error?.status) return res.status(error.status).json({ error: error.message });
   throw error;
 }
 function targetFromBody(body) {
@@ -206,8 +150,7 @@ function targetFromBody(body) {
 function validateTarget(res, { entityType, entityId, category, folderId }) {
   if (!entityType || !entityId)
     return res.status(400).json({ error: "La entidad indicada no es válida." });
-  if (!category)
-    return res.status(400).json({ error: "La categoría documental no es válida." });
+  if (!category) return res.status(400).json({ error: "La categoría documental no es válida." });
   if (category === "statutes" && entityType !== "community")
     return res
       .status(400)
@@ -215,13 +158,9 @@ function validateTarget(res, { entityType, entityId, category, folderId }) {
   if (!entityExists(entityType, entityId))
     return res.status(400).json({ error: "La entidad indicada no existe." });
   if (category === "statutes" && folderId)
-    return res
-      .status(400)
-      .json({ error: "Los estatutos no se organizan en carpetas." });
+    return res.status(400).json({ error: "Los estatutos no se organizan en carpetas." });
   if (folderId && !getFolderRow(entityType, entityId, folderId))
-    return res
-      .status(400)
-      .json({ error: "La carpeta de destino no existe." });
+    return res.status(400).json({ error: "La carpeta de destino no existe." });
   return null;
 }
 function validateFiles(res, files) {
@@ -238,15 +177,7 @@ function validateFiles(res, files) {
   }
   return true;
 }
-function uploadRecord({
-  entityType,
-  entityId,
-  category,
-  folderId,
-  file,
-  fileType,
-  user,
-}) {
+function uploadRecord({ entityType, entityId, category, folderId, file, fileType, user }) {
   const uploader = uploaderFromUser(user);
   const row = {
     id: crypto.randomUUID(),
@@ -286,17 +217,10 @@ router.get("/", (req, res) => {
   const error = validateTarget(res, { ...target, folderId: "" });
   if (error) return error;
   if (!canRead(req.user, target.entityType, target.entityId))
-    return deny(res, "No tenés acceso a la documentación de este registro.");
+    return deny(res, "No tienes acceso a la documentación de este registro.");
   res.json({
-    documents: listDocuments(
-      target.entityType,
-      target.entityId,
-      target.category,
-    ),
-    folders:
-      target.category === "document"
-        ? listFolders(target.entityType, target.entityId)
-        : [],
+    documents: listDocuments(target.entityType, target.entityId, target.category),
+    folders: target.category === "document" ? listFolders(target.entityType, target.entityId) : [],
   });
 });
 
@@ -321,18 +245,9 @@ router.post("/", (req, res, next) =>
       }
       if (!canWrite(req.user, target.entityType, target.entityId)) {
         removeFiles(files);
-        return deny(
-          res,
-          "No tienes permiso para adjuntar documentos a este registro.",
-        );
+        return deny(res, "No tienes permiso para adjuntar documentos a este registro.");
       }
-      if (
-        !allowed(
-          req.user,
-          permissionFor("upload"),
-          target.entityId,
-        )
-      ) {
+      if (!allowed(req.user, permissionFor("upload"), target.entityId)) {
         removeFiles(files);
         return deny(res, "No tienes permiso para subir documentos.");
       }
@@ -399,18 +314,14 @@ router.post("/folders", (req, res, next) => {
     const validation = validateTarget(res, { ...target, folderId: "" });
     if (validation) return validation;
     if (target.category !== "document")
-      return res
-        .status(400)
-        .json({ error: "Los estatutos no se organizan en carpetas." });
+      return res.status(400).json({ error: "Los estatutos no se organizan en carpetas." });
     if (!canWrite(req.user, target.entityType, target.entityId))
-      return deny(res, "No tenés permiso para crear carpetas en este registro.");
+      return deny(res, "No tienes permiso para crear carpetas en este registro.");
     if (!allowed(req.user, permissionFor("upload"), target.entityId))
-      return deny(res, "No tenés permiso para gestionar documentos.");
+      return deny(res, "No tienes permiso para gestionar documentos.");
     const parentId = String(req.body?.parentId || "");
     if (parentId && !getFolderRow(target.entityType, target.entityId, parentId))
-      return res
-        .status(400)
-        .json({ error: "La carpeta de destino no existe." });
+      return res.status(400).json({ error: "La carpeta de destino no existe." });
     const folder = createFolder({
       entityType: target.entityType,
       entityId: target.entityId,
@@ -426,28 +337,20 @@ router.post("/folders", (req, res, next) => {
 
 router.patch("/folders/:id", (req, res, next) => {
   try {
-    const row = db
-      .prepare("SELECT * FROM document_folders WHERE id=?")
-      .get(req.params.id);
-    if (!row)
-      return res.status(404).json({ error: "Carpeta no encontrada." });
+    const row = db.prepare("SELECT * FROM document_folders WHERE id=?").get(req.params.id);
+    if (!row) return res.status(404).json({ error: "Carpeta no encontrada." });
     if (!canWrite(req.user, row.entityType, row.entityId))
-      return deny(res, "No tenés permiso para editar carpetas en este registro.");
+      return deny(res, "No tienes permiso para editar carpetas en este registro.");
     if (!allowed(req.user, permissionFor("upload"), row.entityId))
-      return deny(res, "No tenés permiso para gestionar documentos.");
+      return deny(res, "No tienes permiso para gestionar documentos.");
     if (req.body?.name === undefined && req.body?.parentId === undefined)
-      return res
-        .status(400)
-        .json({ error: "Indicá el nuevo nombre o la carpeta de destino." });
+      return res.status(400).json({ error: "Indica el nuevo nombre o la carpeta de destino." });
     const folder = updateFolder({
       entityType: row.entityType,
       entityId: row.entityId,
       folderId: row.id,
       name: req.body?.name,
-      parentId:
-        req.body?.parentId === undefined
-          ? undefined
-          : String(req.body.parentId || ""),
+      parentId: req.body?.parentId === undefined ? undefined : String(req.body.parentId || ""),
       user: req.user,
     });
     res.json(folder);
@@ -458,33 +361,23 @@ router.patch("/folders/:id", (req, res, next) => {
 
 router.delete("/folders/:id", (req, res, next) => {
   try {
-    const row = db
-      .prepare("SELECT * FROM document_folders WHERE id=?")
-      .get(req.params.id);
-    if (!row)
-      return res.status(404).json({ error: "Carpeta no encontrada." });
+    const row = db.prepare("SELECT * FROM document_folders WHERE id=?").get(req.params.id);
+    if (!row) return res.status(404).json({ error: "Carpeta no encontrada." });
     if (!canWrite(req.user, row.entityType, row.entityId))
-      return deny(
-        res,
-        "No tenés permiso para eliminar carpetas en este registro.",
-      );
+      return deny(res, "No tienes permiso para eliminar carpetas en este registro.");
     if (!allowed(req.user, permissionFor("delete"), row.entityId))
-      return deny(res, "No tenés permiso para eliminar documentos.");
-    const folderIds = [
-      row.id,
-      ...folderDescendantIds(row.entityType, row.entityId, row.id),
-    ];
+      return deny(res, "No tienes permiso para eliminar documentos.");
+    const folderIds = [row.id, ...folderDescendantIds(row.entityType, row.entityId, row.id)];
     const placeholders = folderIds.map(() => "?").join(",");
     const documentCount = db
       .prepare(
         `SELECT COUNT(*) AS total FROM documents WHERE entityType=? AND entityId=? AND folderId IN (${placeholders})`,
       )
       .get(row.entityType, row.entityId, ...folderIds).total;
-    const confirmed =
-      req.query.confirm === "1" || req.body?.confirm === true;
+    const confirmed = req.query.confirm === "1" || req.body?.confirm === true;
     if (!confirmed)
       return res.status(409).json({
-        error: "La carpeta contiene elementos. Confirmá el borrado en cascada.",
+        error: "La carpeta contiene elementos. Confirma el borrado en cascada.",
         requiresConfirmation: true,
         counts: { folders: folderIds.length, documents: documentCount },
       });
@@ -509,16 +402,11 @@ router.patch("/:id", (req, res, next) => {
     const row = db.prepare("SELECT * FROM documents WHERE id=?").get(req.params.id);
     if (!row) return res.status(404).json({ error: "Documento no encontrado." });
     if (!canWrite(req.user, row.entityType, row.entityId))
-      return deny(
-        res,
-        "No tenés permiso para editar documentos de este registro.",
-      );
+      return deny(res, "No tienes permiso para editar documentos de este registro.");
     if (!allowed(req.user, permissionFor("upload"), row.entityId))
-      return deny(res, "No tenés permiso para gestionar documentos.");
+      return deny(res, "No tienes permiso para gestionar documentos.");
     if (req.body?.name === undefined && req.body?.folderId === undefined)
-      return res
-        .status(400)
-        .json({ error: "Indicá el nuevo nombre o la carpeta de destino." });
+      return res.status(400).json({ error: "Indica el nuevo nombre o la carpeta de destino." });
     let document = documentFromRow(row);
     if (req.body?.name !== undefined)
       document = renameDocument({
@@ -553,23 +441,18 @@ router.post("/:id/replace", (req, res, next) =>
       });
     }
     try {
-      const row = db
-        .prepare("SELECT * FROM documents WHERE id=?")
-        .get(req.params.id);
+      const row = db.prepare("SELECT * FROM documents WHERE id=?").get(req.params.id);
       if (!row) {
         removeFiles(file);
         return res.status(404).json({ error: "Documento no encontrado." });
       }
       if (!canWrite(req.user, row.entityType, row.entityId)) {
         removeFiles(file);
-        return deny(
-          res,
-          "No tenés permiso para reemplazar documentos de este registro.",
-        );
+        return deny(res, "No tienes permiso para reemplazar documentos de este registro.");
       }
       if (!allowed(req.user, permissionFor("upload"), row.entityId)) {
         removeFiles(file);
-        return deny(res, "No tenés permiso para reemplazar documentos.");
+        return deny(res, "No tienes permiso para reemplazar documentos.");
       }
       if (!file.length || !validateFiles(res, file)) return;
       const fileType = contentType(file[0]);
@@ -607,11 +490,7 @@ router.post("/:id/replace", (req, res, next) =>
       );
       if (row.storedName && row.storedName !== file[0].filename)
         removeStoredFiles([row.storedName]);
-      res.json(
-        documentFromRow(
-          db.prepare("SELECT * FROM documents WHERE id=?").get(row.id),
-        ),
-      );
+      res.json(documentFromRow(db.prepare("SELECT * FROM documents WHERE id=?").get(row.id)));
     } catch (e) {
       removeFiles(file);
       next(e);
@@ -620,15 +499,10 @@ router.post("/:id/replace", (req, res, next) =>
 );
 
 router.delete("/:id", (req, res) => {
-  const row = db
-    .prepare("SELECT * FROM documents WHERE id=?")
-    .get(req.params.id);
+  const row = db.prepare("SELECT * FROM documents WHERE id=?").get(req.params.id);
   if (!row) return res.status(404).json({ error: "Documento no encontrado." });
   if (!canWrite(req.user, row.entityType, row.entityId))
-    return deny(
-      res,
-      "No tienes permiso para eliminar documentos de este registro.",
-    );
+    return deny(res, "No tienes permiso para eliminar documentos de este registro.");
   if (!allowed(req.user, permissionFor("delete"), row.entityId))
     return deny(res, "No tienes permiso para eliminar documentos.");
   removeStoredFiles([row.storedName]);
@@ -637,9 +511,7 @@ router.delete("/:id", (req, res) => {
 });
 
 router.get("/:id/download", (req, res) => {
-  const row = db
-    .prepare("SELECT * FROM documents WHERE id=?")
-    .get(req.params.id);
+  const row = db.prepare("SELECT * FROM documents WHERE id=?").get(req.params.id);
   if (!row) return res.status(404).json({ error: "Documento no encontrado." });
   if (!canRead(req.user, row.entityType, row.entityId))
     return deny(res, "No tienes acceso a este documento.");
@@ -649,17 +521,11 @@ router.get("/:id/download", (req, res) => {
 });
 
 router.get("/:id/preview", (req, res) => {
-  const row = db
-    .prepare("SELECT * FROM documents WHERE id=?")
-    .get(req.params.id);
+  const row = db.prepare("SELECT * FROM documents WHERE id=?").get(req.params.id);
   if (!row) return res.status(404).json({ error: "Documento no encontrado." });
   if (!canRead(req.user, row.entityType, row.entityId))
-    return deny(res, "No tenés acceso a este documento.");
-  if (
-    !["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(
-      row.fileType,
-    )
-  )
+    return deny(res, "No tienes acceso a este documento.");
+  if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(row.fileType))
     return res
       .status(415)
       .json({ error: "Este formato no admite vista previa. Descargalo para abrirlo." });

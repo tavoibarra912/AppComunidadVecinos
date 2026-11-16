@@ -6,7 +6,7 @@ Aplicación web completa para la gestión de la Asociación de Propietarios de P
 
 - **Backend**: Node.js + Express + SQLite (`node:sqlite`, sin dependencias nativas). API REST, subida de archivos (`multer`) y control de acceso por sesiones.
 - **Frontend**: vanilla JavaScript en módulos ES (sin build step), servido por el propio backend. Persistencia íntegra en base de datos — ya no se usa `localStorage`.
-- **Datos demo**: la base se inicializa con datos de ejemplo **solo si está vacía** al arrancar; los cambios persisten entre reinicios.
+- **Datos demo**: fuera de producción, el arranque llama a `seedIfEmpty()` y carga el censo de ejemplo **solo si no hay comunidades**; los cambios persisten entre reinicios.
 
 ## Cuotas ordinarias
 
@@ -201,47 +201,6 @@ mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
 su entidad. La categoría `statutes` separa los estatutos de la documentación
 general y no admite carpetas.
 
-## Estatutos y biblioteca documental
-
-Los estatutos de cada comunidad se gestionan en la pestaña **Estatutos** del
-editor y de la ficha de comunidad, y también desde el acceso directo **Estatutos
-de la comunidad** del inicio. Una comunidad puede tener uno o varios documentos
-vigentes o históricos. Todos los residentes con acceso a la comunidad pueden
-consultarlos, previsualizarlos y descargarlos; subirlos, reemplazarlos,
-renombrarlos o borrarlos requiere ser administrador de esa comunidad y tener los
-permisos documentales correspondientes. La ficha muestra nombre, tipo, tamaño,
-fecha de subida y la cuenta que subió cada archivo.
-
-La documentación general de comunidades, inmuebles e inquilinos usa una
-**biblioteca documental reutilizable** con carpetas:
-
-- Crear, renombrar y eliminar carpetas, con hasta **cinco niveles** de
-  anidamiento (la raíz no cuenta como nivel). Las carpetas y los archivos se
-  mueven con arrastrar y soltar o con **Mover a…**.
-- Navegación por migas de pan, búsqueda por nombre, orden por nombre, fecha o
-  tamaño y vistas de lista o cuadrícula.
-- Subida directa dentro de la carpeta abierta. Se mantienen los límites y
-  formatos configurados en Administración → Configuración (PDF, JPG, PNG, WebP,
-  DOC y DOCX; tamaño y cantidad máximos), con validación del contenido en el
-  servidor. Los formatos Word solo se descargan, sin vista previa.
-- No se permiten dos carpetas con el mismo nombre en el mismo nivel ni dos
-  archivos con el mismo nombre en la misma carpeta, sin distinguir mayúsculas ni
-  acentos. Sí puede repetirse un nombre en carpetas distintas.
-- Al eliminar una carpeta con contenido se muestra primero el recuento de
-  carpetas y archivos afectados; tras confirmar, el borrado es en cascada y
-  elimina también los archivos físicos. Una carpeta no puede moverse dentro de
-  sí misma.
-- Los permisos existentes se aplican sin cambios: `document:read` para consultar,
-  y el permiso de gestión de la entidad más `document:upload` o
-  `document:delete` para escribir. Los administradores de comunidad solo operan
-  sobre sus comunidades asignadas; los vecinos acceden en modo lectura a sus
-  comunidades, inmuebles e inquilinos.
-
-La migración `document-library-v1` añade las columnas y la tabla de carpetas sin
-mover ni borrar archivos: todos los documentos existentes quedan en la raíz de
-su entidad. La categoría `statutes` separa los estatutos de la documentación
-general y no admite carpetas.
-
 La migración `community-nif-v1` corrige los NIF de demostración que quedaron con
 un dígito de control incorrecto en bases creadas con semillas antiguas; solo
 actúa si el valor guardado sigue siendo exactamente el heredado.
@@ -262,15 +221,15 @@ coinciden (por ejemplo, `super_admin` / `super_admin`), salvo que hayas cambiado
 
 Cuentas demo estándar (usuario = contraseña = email local = nombre):
 
-| Usuario | Rol | Escenario |
-| --- | --- | --- |
-| `super_admin` | super_admin | Acceso total, sin perfil |
-| `admin` | administrator | Crea y administra todas las comunidades |
-| `comm_admin` | community_admin | Administra la comunidad asignada (Peñarrubia) |
-| `usuario_r_user_s_perfil` | user | Sin perfil vinculado |
-| `usuario_r_user_c_propietario` | user | Con perfil de propietario |
-| `usuario_r_user_c_inquilino` | user | Con perfil de inquilino |
-| `usuario_r_user_c_propietario_c_inquilino` | user | Con perfiles de propietario e inquilino |
+| Usuario                                    | Rol             | Escenario                                     |
+| ------------------------------------------ | --------------- | --------------------------------------------- |
+| `super_admin`                              | super_admin     | Acceso total, sin perfil                      |
+| `admin`                                    | administrator   | Crea y administra todas las comunidades       |
+| `comm_admin`                               | community_admin | Administra la comunidad asignada (Peñarrubia) |
+| `usuario_r_user_s_perfil`                  | user            | Sin perfil vinculado                          |
+| `usuario_r_user_c_propietario`             | user            | Con perfil de propietario                     |
+| `usuario_r_user_c_inquilino`               | user            | Con perfil de inquilino                       |
+| `usuario_r_user_c_propietario_c_inquilino` | user            | Con perfiles de propietario e inquilino       |
 
 Permisos destacados configurables por rol (Administración → Roles):
 
@@ -284,7 +243,7 @@ Permisos destacados configurables por rol (Administración → Roles):
   siempre participa.
 
 **Avisos por email de cambios de perfiles**: en Configuración → General, la
-clave *Email(s) para avisar cambios de perfiles* acepta una o varias
+clave _Email(s) para avisar cambios de perfiles_ acepta una o varias
 direcciones separadas por comas (vacío = desactivado). Cada vez que un
 propietario se edita, la plataforma envía un correo con quién lo modificó y
 el detalle campo por campo. El envío usa el correo habilitado en Proveedores
@@ -345,6 +304,7 @@ máxima de ocho horas y se revoca al cerrar sesión o cambiar la contraseña.
 Las contraseñas nuevas se guardan con scrypt; las antiguas se actualizan al iniciar sesión.
 
 Los roles y sus permisos se comparten entre backend y frontend:
+
 - Super Administrador: administración completa, incluido usuarios, roles y configuración.
 - Administrador: los permisos definidos en su rol.
 - Administrador de Comunidad: permisos limitados a las comunidades asignadas.
@@ -448,26 +408,31 @@ protección de sus copias de seguridad para producción.
 ## Funcionalidad principal
 
 ### Inicio
+
 - Panel con métricas de los registros visibles para la cuenta, filtro de comunidad y actualización manual. Los inmuebles con varios titulares se cuentan una sola vez; el usuario ve sus vínculos reales, incluidas varias comunidades si corresponde.
 - Gráficos de documentación e inmuebles, avisos pendientes, agenda y últimas publicaciones. La documentación de ejemplo no acredita un expediente; los contratos sin fechas válidas se identifican aparte. Los accesos se muestran según permisos, incluido el acceso directo a los estatutos de la comunidad.
 
 ### Comunidades
+
 - En **Ver**, solo están habilitados las pestañas, el cierre y la apertura de los adjuntos. No se puede editar, verificar contactos, asociar inmuebles ni abrir sus fichas desde esa vista. La edición se recupera al abrir **Editar**.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
 - CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito numérico de control, teléfonos de 9 dígitos, correo electrónico, CP contra catálogo INE con autocompletado de municipio y provincia). El NIF se normaliza antes de validar y guardar: admite minúsculas y separadores habituales (espacios, puntos y guiones), y conserva la comprobación del dígito de control.
-- Documentación adjunta con biblioteca de archivos y carpetas, y ficha detallada con propietarios censados. Pestaña **Estatutos** independiente con consulta para residentes y gestión para administradores.
+- Documentación adjunta y ficha con propietarios censados. La gestión de archivos y estatutos se describe en [Estatutos y biblioteca documental](#estatutos-y-biblioteca-documental).
 
 ### Propietarios
+
 - Formulario en tres pestañas: **1. Datos personales**, **2. Inmueble** (un único selector que vincula al propietario con un inmueble existente, igual que la asociación «Propietario» del formulario de inmuebles; si el inmueble era de otro dueño se reasigna) y **3. Documentación requerida**.
 - Contacto guardado sin exigir un proveedor de verificación todavía no configurado.
 - Expediente documental (DNI, recibo bancario, escritura) con comprobaciones de formato y revisión administrativa manual, botones de documento de prueba, aprobación/rechazo administrativo y buzones de notificación.
 - IBAN con validación MOD-97, moneda de cuotas, dirección con catálogo territorial.
 
 ### Inmuebles
+
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
 - Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
 ### Inquilinos
+
 - Alta/edición seleccionando **directamente el inmueble** (el propietario se deduce de él; si se cambia a un inmueble de otro dueño, el inquilino cambia de propietario).
 - Pestaña de documentación multi-archivo, biblioteca de archivos y carpetas, y ficha con estado del contrato (próximo, vigente, finalizado) y autorizaciones.
 
@@ -521,10 +486,40 @@ versiones anteriores no pueden recuperarse sin una copia de seguridad.
 
 ## Producción
 
-Con `NODE_ENV=production` no se cargan datos demo y las cookies requieren HTTPS.
+Con `NODE_ENV=production` no se carga automáticamente el censo de comunidades de
+ejemplo y las cookies requieren HTTPS. La provisión de cuentas y permisos demo
+se mantiene por decisión del proyecto durante esta etapa del MVP.
 Una base nueva exige `APP_ADMIN_PASSWORD` de al menos 12 caracteres para crear
 la cuenta inicial. Las bases existentes conservan su administrador. Si se desea
 escuchar fuera de la máquina local, debe configurarse `HOST` explícitamente.
+
+Detrás de un proxy inverso, configurar `TRUST_PROXY` con las IP o redes de los
+proxies de confianza, separadas por comas (por ejemplo, `loopback` si el proxy
+corre en la misma máquina, o una IP/CIDR concreta). El backend debe recibir
+conexiones solo por esa ruta de confianza. Sin esta opción, Express ignora
+`X-Forwarded-For` y usa la IP de la conexión. No se debe confiar en cualquier
+origen ni en un número fijo de saltos cuando hay varias rutas de acceso.
+
+Los intentos de autenticación se separan por operación, IP e identidad.
+Los accesos correctos no consumen intentos. El acceso limita 15 fallos por
+identidad/IP cada 15 minutos, con `Retry-After`; un barrido desde una IP tiene
+además un tope de 500 fallos por minuto. Recuperación, registro, restablecimiento
+y cambio de contraseña tienen presupuestos independientes. Estos contadores
+son locales al proceso: un despliegue con varias instancias necesita un almacén
+compartido o límites equivalentes en el proxy.
+
+La API devuelve `version` en las fichas de comunidades, propietarios, inmuebles
+e inquilinos. Cada `PUT` debe incluir la versión leída: sin ella responde `428`,
+y si cambió responde `409` con `code: "EDIT_CONFLICT"`. El formulario conserva
+los cambios pendientes; hay que revisar la ficha actual antes de reenviar.
+Las versiones también reflejan modificaciones indirectas de vínculos.
+El editor de propietario envía `propertyShares` con inmueble, versión y porcentaje,
+y guarda ficha y titularidades en una sola transacción.
+
+El bootstrap usa una instantánea de permisos por petición y carga los estados
+financieros y la biblioteca documental por lotes. `npm test` incluye una prueba
+con 1.211 inmuebles, 14.400 recibos y 1.200 documentos que comprueba tiempos de
+respuesta, disponibilidad y aislamiento entre roles en un servidor separado.
 
 Los archivos se guardan en disco y necesitan copias de seguridad junto con SQLite.
 La revisión documental es humana: el sistema no realiza OCR ni certifica la
