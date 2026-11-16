@@ -480,10 +480,12 @@ ni identificadores de GitHub.
   configuración general que los documentos (tipos permitidos, tamaño máximo por
   archivo y número máximo de archivos), con un tope adicional de 50 MB por
   reporte.
-- Los adjuntos se suben como commits a la rama `issue-attachments` del
+- Los adjuntos se suben como commits a la rama `main` del
   repositorio y se enlazan desde el cuerpo del issue. El issue nunca se publica
   como creado si GitHub devuelve un error; en ese caso se retiran los adjuntos
   que se hubieran subido.
+- Si main exige PR, la integración usa una rama temporal y la elimina después
+  de fusionar los adjuntos, sin cambiar las protecciones del repositorio.
 - El contexto automático incluye usuario, rol, fecha, pantalla, navegador,
   idioma y resolución. No se envía el correo electrónico del usuario.
 - Cada cuenta puede crear como máximo cinco reportes cada diez minutos. La API
@@ -495,7 +497,7 @@ ni identificadores de GitHub.
   GITHUB_ISSUES_TOKEN=...            # token con Issues y Contents: Read and write
   GITHUB_ISSUES_REPO=tavoibarra912/AppComunidadVecinos
   GITHUB_ISSUES_LABEL=User-Detected-Issue
-  GITHUB_ISSUES_ATTACHMENTS_BRANCH=issue-attachments
+  GITHUB_ISSUES_ATTACHMENTS_BRANCH=main
   ```
 
   Puedes obtener un token con `gh auth token`. Sin `GITHUB_ISSUES_TOKEN` el
@@ -570,6 +572,11 @@ reenviadas por Internet. `TRUST_PROXY` queda vacío en este montaje: los límite
 por IP se comparten a través del proxy; los límites por identidad se mantienen.
 `APP_DEMO_PROFILES=false` evita recrear cuentas con contraseñas previsibles sin
 borrar los perfiles existentes. El entorno local conserva su comportamiento.
+
+`APP_ALLOWED_ORIGINS` admite orígenes adicionales separados por comas, validados
+con las mismas reglas estrictas que `APP_PUBLIC_URL`. En este despliegue incluye
+`https://gestion-penarrubia.netlify.app` para permitir el acceso desde Netlify
+y desde el dominio directo de GCP. No admite comodines ni URLs con rutas.
 
 La primera transferencia usa `node scripts/snapshot-deploy.mjs --rotate-predictable`.
 Crea una copia consistente de SQLite mediante su API de backup, copia `uploads/`

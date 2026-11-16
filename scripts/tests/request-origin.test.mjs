@@ -19,6 +19,20 @@ test("local: conserva la comprobación de origen sin configuración de despliegu
   assert.equal(isSameOrigin(req({ origin: "http://35.209.188.202" })), true);
   assert.equal(isSameOrigin(req({ origin: "https://atacante.test" })), false);
 });
+
+test("proxy: permite ambos dominios explícitos y rechaza otros orígenes", () => {
+  const origins = [
+    publicOrigin("https://penarrubia.35.209.188.202.sslip.io"),
+    publicOrigin("https://gestion-penarrubia.netlify.app"),
+  ];
+  for (const origin of origins) {
+    assert.equal(isSameOrigin(req({ origin }), origins), true);
+    assert.equal(isSameOrigin(req({ origin, "sec-fetch-site": "cross-site" }), origins), false);
+  }
+  for (const origin of ["https://evil.example", "https://otra-app.netlify.app", "null"]) {
+    assert.equal(isSameOrigin(req({ origin }), origins), false);
+  }
+});
 test("configuración: rechaza rutas, credenciales y HTTP de producción", () => {
   for (const value of [
     "https://example.com/path",

@@ -15,6 +15,7 @@ process.env.GITHUB_ISSUES_LABEL = "User-Detected-Issue";
 process.env.GITHUB_ISSUES_ATTACHMENTS_BRANCH = "issue-attachments";
 
 const { db } = await import("../../src/db.js");
+const { githubIssuesConfig, createGithubIssueClient } = await import("../../src/github-issues.js");
 const { seedIfEmpty } = await import("../../src/seed.js");
 seedIfEmpty();
 const { default: router } = await import("../../src/routes/index.js");
@@ -22,6 +23,7 @@ const { default: router } = await import("../../src/routes/index.js");
 let server, mock, base, mockBase;
 const requests = [];
 const state = { labelExists: false, branchExists: false, failIssues: false };
+const temporaryBranches = new Set();
 let owner, tenant, admin, anonymous;
 
 const PNG = Buffer.from([
@@ -101,19 +103,37 @@ before(async () => {
   });
   mockApp.get("/repos/:owner/:repo/git/ref/heads/:branch", (req, res) => {
     if (req.params.branch === "main") return res.json({ object: { sha: "sha-base" } });
+    if (temporaryBranches.has(req.params.branch))
+      return res.json({ object: { sha: "sha-upload" } });
     if (state.branchExists) return res.json({ object: { sha: "sha-adjuntos" } });
     return res.status(404).json({ message: "Not Found" });
   });
-  mockApp.post("/repos/:owner/:repo/git/refs", (_req, res) => {
+  mockApp.post("/repos/:owner/:repo/git/refs", (req, res) => {
+    temporaryBranches.add(req.body.ref.replace("refs/heads/", ""));
     state.branchExists = true;
     return res.status(201).json({ ref: "refs/heads/issue-attachments" });
   });
+  mockApp.delete("/repos/:owner/:repo/git/refs/heads/:branch", (req, res) => {
+    temporaryBranches.delete(req.params.branch);
+    res.status(204).end();
+  });
+  mockApp.post("/repos/:owner/:repo/pulls", (_req, res) => res.status(201).json({ number: 99 }));
+  mockApp.put("/repos/:owner/:repo/pulls/99/merge", (_req, res) => {
+    if (state.failMerge) return res.status(403).json({ message: "Merge no autorizado" });
+    return res.json({ merged: true });
+  });
+  mockApp.patch("/repos/:owner/:repo/pulls/99", (_req, res) => res.json({ state: "closed" }));
   mockApp.get("/repos/:owner/:repo", (_req, res) =>
     res.json({ default_branch: "main", full_name: "owner/repo" }),
   );
-  mockApp.put("/repos/:owner/:repo/contents/*", (req, res) =>
-    res.status(201).json({ content: { sha: `sha-${req.params[0]}` } }),
-  );
+  mockApp.put("/repos/:owner/:repo/contents/*", (req, res) => {
+    if (state.protectedMain && req.body.branch === "main") {
+      return res
+        .status(403)
+        .json({ message: "Protected branch: Changes must be made through a pull request" });
+    }
+    return res.status(201).json({ content: { sha: `sha-${req.params[0]}` } });
+  });
   mockApp.delete("/repos/:owner/:repo/contents/*", (_req, res) => res.status(200).json({}));
   mockApp.post("/repos/:owner/:repo/issues", (req, res) => {
     if (state.failIssues) return res.status(500).json({ message: "fallo simulado" });
@@ -287,7 +307,15 @@ test("reportes: los adjuntos respetan la configuración general", async () => {
   }
 });
 
-test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces", async () => {
+test("reportes: usa main por defecto y migra la configuración de la rama retirada", () => {
+  assert.equal(githubIssuesConfig({}).attachmentsBranch, "main");
+  assert.equal(
+    githubIssuesConfig({ GITHUB_ISSUES_ATTACHMENTS_BRANCH: "issue-attachments" }).attachmentsBranch,
+    "main",
+  );
+});
+
+test("reportes: crea etiqueta e issue con los adjuntos en main sin crear ramas", async () => {
   const request = validForm({
     description:
       "<p>Al pulsar <strong>guardar</strong> no ocurre nada y no aparece ningún aviso.</p><script>alert(1)</script>",
@@ -305,14 +333,13 @@ test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces",
   const label = requests.find((item) => item.method === "POST" && item.url.endsWith("/labels"));
   assert.deepEqual(label.body.name, "User-Detected-Issue");
   const branch = requests.find((item) => item.method === "POST" && item.url.endsWith("/git/refs"));
-  assert.equal(branch.body.ref, "refs/heads/issue-attachments");
-  assert.equal(branch.body.sha, "sha-base");
+  assert.equal(branch, undefined);
 
   const uploads = requests.filter(
     (item) => item.method === "PUT" && item.url.includes("/contents/reportes/"),
   );
   assert.equal(uploads.length, 2);
-  assert.equal(uploads[0].body.branch, "issue-attachments");
+  assert.equal(uploads[0].body.branch, "main");
   assert.equal(
     Buffer.from(uploads[0].body.content, "base64").subarray(0, 8).toString("hex"),
     "89504e470d0a1a0a",
@@ -333,11 +360,11 @@ test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces",
   assert.match(issue.body.body, /\*\*Versión de la aplicación:\*\* `1\.0\.0`/);
   assert.match(
     issue.body.body,
-    /!\[captura\.png\]\(https:\/\/raw\.example\.test\/owner\/repo\/issue-attachments\/reportes\//,
+    /!\[captura\.png\]\(https:\/\/raw\.example\.test\/owner\/repo\/main\/reportes\//,
   );
   assert.match(
     issue.body.body,
-    /- \[consola\.pdf\]\(https:\/\/raw\.example\.test\/owner\/repo\/issue-attachments\/reportes\//,
+    /- \[consola\.pdf\]\(https:\/\/raw\.example\.test\/owner\/repo\/main\/reportes\//,
   );
 });
 
@@ -412,4 +439,62 @@ test("reportes: limita los envíos repetidos por usuario", async () => {
   assert.equal(blocked.status, 429);
   assert.match(blocked.data.error, /varios reportes/);
   assert.ok(Number(blocked.headers.get("retry-after")) > 0);
+});
+
+test("reportes: respeta main protegida e integra los adjuntos sin conservar ramas", async () => {
+  state.protectedMain = true;
+  const start = requests.length;
+  try {
+    const client = createGithubIssueClient();
+    const result = await client.createReport({
+      title: "Prueba de rama protegida",
+      description: "Descripción de prueba con los adjuntos en main.",
+      files: [
+        { name: "captura.png", buffer: PNG },
+        { name: "consola.pdf", buffer: PDF },
+      ],
+    });
+    assert.equal(result.attachments, 2);
+    const sent = requests.slice(start);
+    const pull = sent.find((r) => r.method === "POST" && r.url.endsWith("/pulls"));
+    assert.equal(pull.body.base, "main");
+    assert.match(pull.body.head, /^report-upload-/);
+    const merge = sent.find((r) => r.method === "PUT" && r.url.endsWith("/merge"));
+    assert.equal(merge.body.sha, "sha-upload");
+    assert.equal(temporaryBranches.size, 0);
+    const issue = sent.find((r) => r.method === "POST" && r.url.endsWith("/issues"));
+    assert.match(issue.body.body, /\/main\/reportes\//);
+    assert.doesNotMatch(issue.body.body, /report-upload-/);
+    assert.ok(
+      sent.findIndex((r) => r.method === "DELETE" && r.url.includes("/git/refs/")) <
+        sent.indexOf(issue),
+    );
+  } finally {
+    state.protectedMain = false;
+  }
+});
+
+test("reportes: si falla la PR cierra y retira la rama temporal sin publicar un issue", async () => {
+  state.protectedMain = true;
+  state.failMerge = true;
+  const start = requests.length;
+  try {
+    await assert.rejects(
+      createGithubIssueClient().createReport({
+        title: "Prueba de fallo al fusionar",
+        description: "Descripción de prueba con un adjunto.",
+        files: [{ name: "captura.png", buffer: PNG }],
+      }),
+    );
+    assert.equal(temporaryBranches.size, 0);
+    const sent = requests.slice(start);
+    assert.ok(sent.some((r) => r.method === "PATCH" && r.body.state === "closed"));
+    assert.equal(
+      sent.some((r) => r.method === "POST" && r.url.endsWith("/issues")),
+      false,
+    );
+  } finally {
+    state.protectedMain = false;
+    state.failMerge = false;
+  }
 });
