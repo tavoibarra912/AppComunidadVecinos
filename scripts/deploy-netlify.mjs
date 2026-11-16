@@ -6,6 +6,7 @@ export async function deployNetlify({
   token,
   site,
   release,
+  branch = "production",
   zip,
   fetchImpl = fetch,
   wait = setTimeout,
@@ -28,7 +29,7 @@ export async function deployNetlify({
     return data;
   }
   // production es el parámetro de la API; draft=false en la query no lo sustituye.
-  const query = new URLSearchParams({ production: "true", title: `main ${release}` });
+  const query = new URLSearchParams({ production: "true", title: `${branch} ${release}` });
   let deploy = await request(`/sites/${encodeURIComponent(site)}/deploys?${query}`, {
     method: "POST",
     headers: { "Content-Type": "application/zip" },
@@ -56,5 +57,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
     token: process.env.NETLIFY_AUTH_TOKEN,
     site: process.env.NETLIFY_SITE_ID,
     release: process.env.APP_RELEASE,
+    branch: process.env.GITHUB_REF_NAME || "production",
     zip: await readFile(process.argv[2] || "frontend.zip"),
   });
