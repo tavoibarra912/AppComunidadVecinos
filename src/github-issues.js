@@ -241,19 +241,20 @@ export function createGithubIssueClient({
     });
   }
 
-  async function uploadAttachment(file) {
+  async function uploadAttachment(file, branch = config.attachmentsBranch) {
     const extension = path.extname(file.name || "").toLowerCase();
     const day = now().toISOString().slice(0, 10);
     const storedPath = `reportes/${day}/${crypto.randomUUID()}${extension}`;
     const result = await request("PUT", `${repoPath}/contents/${storedPath}`, {
       message: `chore(issues): adjunto de reporte (${inline(file.name, 80) || "archivo"})`,
       content: file.buffer.toString("base64"),
-      branch: config.attachmentsBranch,
+      branch,
     });
     return {
       name: file.name,
       path: storedPath,
       sha: String(result?.content?.sha || ""),
+      branch,
       rawUrl: `${config.rawUrl}/${config.repository}/${config.attachmentsBranch}/${storedPath}`,
     };
   }
@@ -264,7 +265,7 @@ export function createGithubIssueClient({
       await request("DELETE", `${repoPath}/contents/${file.path}`, {
         message: `chore(issues): retirar adjunto no publicado (${inline(file.name, 80) || "archivo"})`,
         sha: file.sha,
-        branch: config.attachmentsBranch,
+        branch: file.branch || config.attachmentsBranch,
       });
     } catch (error) {
       log.warn?.(`[issues] No se pudo retirar el adjunto ${file.path}: ${error.message}`);
@@ -282,8 +283,65 @@ export function createGithubIssueClient({
     await ensureLabel();
     if (files.length) await ensureAttachmentsBranch();
     const uploaded = [];
+    let temporaryBranch = "";
+    let pullNumber = 0;
+    let merged = false;
     try {
-      for (const file of files) uploaded.push(await uploadAttachment(file));
+      for (const file of files) {
+        try {
+          uploaded.push(await uploadAttachment(file, temporaryBranch || config.attachmentsBranch));
+        } catch (error) {
+          // main puede exigir PR: se respeta su protección y no se conserva
+          // una segunda rama como almacenamiento de adjuntos.
+          if (
+            temporaryBranch ||
+            uploaded.length ||
+            config.attachmentsBranch !== "main" ||
+            ![403, 409, 422].includes(error.status) ||
+            !/protected branch|pull request|GH006|GH013/i.test(error.message)
+          )
+            throw error;
+          const base = await request("GET", `${repoPath}/git/ref/heads/main`);
+          const branch = `report-upload-${crypto.randomUUID()}`;
+          await request("POST", `${repoPath}/git/refs`, {
+            ref: `refs/heads/${branch}`,
+            sha: base.object.sha,
+          });
+          temporaryBranch = branch;
+          uploaded.push(await uploadAttachment(file, temporaryBranch));
+        }
+      }
+      if (temporaryBranch) {
+        const head = await request("GET", `${repoPath}/git/ref/heads/${temporaryBranch}`);
+        const pull = await request("POST", `${repoPath}/pulls`, {
+          title: `chore(issues): adjuntos de ${inline(title, 80)}`,
+          body: "Integra los adjuntos del formulario de reportes en main y elimina la rama temporal al terminar.",
+          head: temporaryBranch,
+          base: "main",
+        });
+        pullNumber = Number(pull.number);
+        if (!Number.isInteger(pullNumber) || pullNumber < 1) {
+          throw new GithubIssueError("GitHub no devolvió la PR de los adjuntos.");
+        }
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          try {
+            const result = await request("PUT", `${repoPath}/pulls/${pullNumber}/merge`, {
+              sha: head.object.sha,
+              merge_method: "merge",
+            });
+            if (!result.merged)
+              throw new GithubIssueError("GitHub no confirmó la integración de los adjuntos.");
+            merged = true;
+            break;
+          } catch (error) {
+            if (![405, 409].includes(error.status) || attempt === 4) throw error;
+            await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+          }
+        }
+        await request("DELETE", `${repoPath}/git/refs/heads/${temporaryBranch}`);
+        temporaryBranch = "";
+        for (const file of uploaded) file.branch = "main";
+      }
       const body = buildIssueBody({
         description,
         steps,
@@ -302,8 +360,21 @@ export function createGithubIssueClient({
       }
       return { number, url, attachments: uploaded.length };
     } catch (error) {
-      await Promise.allSettled(uploaded.map(removeAttachment));
+      if (!temporaryBranch) await Promise.allSettled(uploaded.map(removeAttachment));
       throw error;
+    } finally {
+      if (temporaryBranch) {
+        if (pullNumber && !merged) {
+          await request("PATCH", `${repoPath}/pulls/${pullNumber}`, { state: "closed" }).catch(
+            (error) => {
+              log.warn?.(`[issues] No se pudo cerrar la PR temporal: ${error.message}`);
+            },
+          );
+        }
+        await request("DELETE", `${repoPath}/git/refs/heads/${temporaryBranch}`).catch((error) => {
+          log.warn?.(`[issues] No se pudo retirar la rama temporal: ${error.message}`);
+        });
+      }
     }
   }
 

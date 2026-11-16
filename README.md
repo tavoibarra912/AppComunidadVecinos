@@ -484,6 +484,8 @@ ni identificadores de GitHub.
   repositorio y se enlazan desde el cuerpo del issue. El issue nunca se publica
   como creado si GitHub devuelve un error; en ese caso se retiran los adjuntos
   que se hubieran subido.
+- Si main exige PR, la integración usa una rama temporal y la elimina después
+  de fusionar los adjuntos, sin cambiar las protecciones del repositorio.
 - El contexto automático incluye usuario, rol, fecha, pantalla, navegador,
   idioma y resolución. No se envía el correo electrónico del usuario.
 - Cada cuenta puede crear como máximo cinco reportes cada diez minutos. La API
