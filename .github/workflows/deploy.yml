@@ -1,0 +1,99 @@
+name: Deploy a producción
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: produccion-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: bash -n scripts/update-vm.sh
+      - run: npm run build:netlify
+        env:
+          APP_RELEASE: ${{ github.sha }}
+      - name: Preparar la misma versión para ambos destinos
+        run: |
+          git archive --format=tar.gz --output=release.tar.gz HEAD .dockerignore Dockerfile package.json package-lock.json server.js src public deploy scripts/update-vm.sh
+          (cd dist && zip -qr ../frontend.zip .)
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          name: produccion-${{ github.sha }}
+          path: |
+            release.tar.gz
+            frontend.zip
+          retention-days: 7
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VM_HOST: ${{ secrets.VM_HOST }}
+      VM_USER: ${{ secrets.VM_USER }}
+      VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+      VM_KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      APP_RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: produccion-${{ github.sha }}
+      - name: Validar configuración antes de tocar producción
+        shell: bash
+        run: |
+          for key in VM_HOST VM_USER VM_SSH_KEY VM_KNOWN_HOSTS NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID; do
+            test -n "${!key}" || { echo "::error::Falta el secreto $key"; exit 1; }
+          done
+          [[ "$VM_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$VM_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/comunidad_ci
+          printf '%s\n' "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/comunidad_ci ~/.ssh/known_hosts
+          printf 'Host produccion\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/comunidad_ci\n  IdentitiesOnly yes\n  BatchMode yes\n  StrictHostKeyChecking yes\n  ConnectTimeout 20\n' "$VM_HOST" "$VM_USER" > ~/.ssh/config
+      - name: Actualizar toda la aplicación en GCP y comprobar HTTPS
+        run: |
+          remote="/home/$VM_USER/comunidad/releases/$GITHUB_SHA"
+          ssh produccion "umask 077; mkdir -p '$remote'"
+          scp release.tar.gz "produccion:$remote/source.tar.gz"
+          ssh produccion "set -e; tar -xzf '$remote/source.tar.gz' -C '$remote'; bash '$remote/scripts/update-vm.sh' '$GITHUB_SHA' '/home/$VM_USER/comunidad'"
+          node scripts/verify-production.mjs https://penarrubia.35.209.188.202.sslip.io
+      - name: Publicar frontend en Netlify y esperar producción
+        run: node scripts/deploy-netlify.mjs frontend.zip
+      - name: Verificar el acceso público de Netlify
+        run: node scripts/verify-production.mjs https://gestion-penarrubia.netlify.app
+      - name: Resumir el despliegue
+        if: always()
+        env:
+          DEPLOY_STATUS: ${{ job.status }}
+        run: |
+          printf 'Commit: `%s`\n\nResultado: **%s**\n\nGCP: https://penarrubia.35.209.188.202.sslip.io\n\nNetlify: https://gestion-penarrubia.netlify.app\n' "$GITHUB_SHA" "$DEPLOY_STATUS" >> "$GITHUB_STEP_SUMMARY"
+      - name: Retirar la clave temporal del runner
+        if: always()
+        run: rm -f ~/.ssh/comunidad_ci
