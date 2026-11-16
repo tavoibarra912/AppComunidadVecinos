@@ -557,37 +557,47 @@ No se crean máquinas, IPs, discos, bases gestionadas, dominios ni planes de pag
 La VM/IP existentes mantienen sus costes y el tráfico adicional puede consumir
 cuota. Netlify debe permanecer en Free y sin recarga automática: sus créditos
 son compartidos por los sitios del equipo y, al agotarlos, puede pausar las webs.
-El despliegue automático publica al actualizar `main`: cada publicación de Netlify
+El despliegue automático publica al actualizar `main`, `master` o la rama
+predeterminada del repositorio: cada publicación de Netlify
 consume los créditos del equipo. Una falta de créditos hace fallar la ejecución;
 no se añaden créditos ni se cambia el plan automáticamente.
 
 ### Despliegue automático con GitHub Actions
 
-El workflow `.github/workflows/deploy.yml` valida las PR y despliega al recibir un
-push en `main` (incluidos los merges). También admite _Run workflow_ sobre
-`main`; otras ramas y las PR nunca despliegan ni reciben secretos.
+Cada actualización de `main`, `master` o la rama predeterminada del repositorio
+inicia **dos workflows independientes**, tanto si llega de un merge de PR como
+de un push directo. Ambos escuchan `push`: fusionar una PR no duplica el despliegue.
+La rama predeterminada se consulta en el evento de GitHub; cambiar su nombre no
+requiere editar una lista fija. Las demás ramas y los tags no despliegan. Las PR
+hacia esas ramas ejecutan validación, sin acceso a secretos ni publicación.
 
-1. **Validación**: Node.js 24, `npm ci`, suite completa, sintaxis Bash y build del
-   frontend. Se empaquetan el código y los estáticos del mismo commit.
-2. **GCP completo**: se transfiere esa versión por SSH a
-   `/home/quantum_system/comunidad/releases/<SHA>`, sin requerir un clon de Git.
-   Se construye la imagen antes de detener el servicio. Se hace una copia privada
-   y consistente de SQLite, documentos, clave de proveedores, `.env` y Compose;
-   se actualiza solo el servicio `api` con el Compose existente. Se conservan
-   los volúmenes, credenciales, UID/GID, red, alias del proxy y límites de recursos.
-3. **Comprobación GCP**: la salud dentro del contenedor y por HTTPS debe mostrar
-   el SHA esperado. También se verifican el HTML público y `release.json`.
-4. **Netlify obligatorio**: se publica el ZIP con `production=true`, se espera
-   a que llegue a `ready` y se comprueba que sea el despliegue de producción
-   publicado. Después se validan API, HTML y estáticos desde su dominio público.
+- **Desplegar Netlify** (`.github/workflows/deploy-netlify.yml`): instala con
+  Node.js 24, ejecuta las pruebas, construye y empaqueta `dist/`, publica solo
+  los estáticos en el sitio Netlify configurado y espera la confirmación de
+  producción. Verifica `release.json` y el JavaScript público del sitio sin
+  consultar la API ni el HTML que se sirven desde GCP.
+- **Desplegar GCP** (`.github/workflows/deploy-gcp.yml`): instala con Node.js 24,
+  ejecuta las pruebas y valida Bash; transfiere el commit exacto por SSH a
+  `/home/quantum_system/comunidad/releases/<SHA>`, sin requerir un clon de Git.
+  Construye la imagen antes de detener el servicio, hace backup privado de
+  SQLite, documentos, clave de proveedores, `.env` y Compose, y actualiza solo
+  `api`. Conserva datos, credenciales, UID/GID, red, alias y límites de recursos.
+  Comprueba por HTTPS la API, el HTML y los estáticos del commit publicado.
 
-**Ambos destinos son obligatorios.** Si Netlify rechaza el despliegue, la ejecución
-queda en rojo aunque GCP ya se haya actualizado. No es una transacción entre
-proveedores: consultar el paso fallido y el resumen de Actions antes de reintentar.
-Comprobado el 16/11/2026: Netlify responde HTTP 403, «Account credit usage exceeded -
-new deploys are blocked until credits are added»; el dominio actual devuelve 401
-por protección del borrador. Mientras siga ese bloqueo, el flujo no puede declarar
-éxito completo. GCP sigue sirviendo la aplicación completa por su propia URL.
+Cada workflow tiene su propia validación, artefactos, secretos, cola y resultado.
+**Ninguno espera al otro.** Si falla Netlify, GCP continúa y puede quedar en verde;
+si falla GCP, Netlify sigue intentando publicar sus estáticos. La publicación
+completa exige éxito en ambos. La web de Netlify sigue usando la API y el HTML
+de GCP, por lo que su disponibilidad funcional depende del backend aunque sus
+publicaciones sean independientes. Al ejecutarse en paralelo puede haber un
+intervalo con versiones distintas entre proveedores.
+
+Ambos admiten _Run workflow_ sobre `main`, `master` o la rama predeterminada,
+para reintentar cada proveedor por separado. Comprobado el 16/11/2026: Netlify
+responde HTTP 403, «Account credit usage exceeded - new deploys are blocked until
+credits are added»; su dominio actual devuelve 401 por protección del borrador.
+Ese bloqueo deja en rojo solo **Desplegar Netlify**. GCP sirve la aplicación
+completa por su propia URL.
 
 Los seis secretos de Actions están configurados en el repositorio:
 
@@ -599,8 +609,10 @@ Los seis secretos de Actions están configurados en el repositorio:
 - `NETLIFY_AUTH_TOKEN`: token de la cuenta conectada de Netlify.
 - `NETLIFY_SITE_ID`: `60d02ac0-8740-489e-852d-b4f48342c744`.
 
-Solo se ejecuta un despliegue a la vez; un nuevo push no interrumpe el que ya
-está modificando producción. La VM también usa un bloqueo local. Los backups e
+Cada proveedor ejecuta un despliegue a la vez; GCP y Netlify pueden trabajar en
+paralelo. Se usa `queue: max` para encolar ejecuciones sin sustituir la pendiente
+(hasta el límite de 100 de GitHub), y no se interrumpe un despliegue en curso.
+La VM también usa un bloqueo local. Los backups e
 imágenes anteriores se conservan. Si falla el backup se reinicia la versión
 anterior; si la nueva versión no pasa salud, se informa del backup sin restaurar
 la base automáticamente, porque las migraciones pueden necesitar revisión.
@@ -659,9 +671,9 @@ bash deploy/backup.sh
 amplía el disco automáticamente. Las copias locales en la VM no cubren pérdida
 del disco: conservar también una copia privada fuera de ella.
 
-Para actualizar, fusionar la PR en `main` y seguir el workflow de Actions. Para
-reintentar un fallo, usar _Run workflow_ sobre `main`: GCP se verifica de nuevo y
-Netlify debe confirmar la publicación. Para una intervención manual, construir
+Para actualizar, fusionar una PR o hacer push a `main`, `master` o la rama
+predeterminada, y seguir los dos workflows de Actions. Para reintentar un fallo,
+usar _Run workflow_ en el workflow del proveedor afectado sobre una de esas ramas. Para una intervención manual, construir
 una imagen con etiqueta fija, hacer backup, cambiar `COMUNIDAD_IMAGE` y ejecutar
 `docker compose ... up -d --no-deps api`.
 Conservar el `.env` privado del servidor y configurar en él `GITHUB_ISSUES_TOKEN`,

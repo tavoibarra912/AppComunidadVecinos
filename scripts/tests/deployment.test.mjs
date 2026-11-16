@@ -24,17 +24,58 @@ test("deploy: pide producción y espera que Netlify publique esa versión", asyn
   ];
   const result = await deployNetlify({
     ...settings,
+    branch: "master",
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
       return response(replies.shift());
     },
   });
   assert.equal(new URL(calls[0].url).searchParams.get("production"), "true");
+  assert.equal(new URL(calls[0].url).searchParams.get("title"), `master ${release}`);
   assert.equal(calls[0].options.method, "POST");
   assert.equal(calls[0].options.body, settings.zip);
   assert.equal(calls[0].options.headers.Authorization, "Bearer test-token");
   assert.equal(calls.length, 3);
   assert.equal(result.id, "d1");
+});
+
+test("verify frontend: Netlify valida sus estáticos sin consultar el HTML ni la API de GCP", async () => {
+  const requested = [];
+  await verifyProduction({
+    url: "https://example.test",
+    release,
+    scope: "frontend",
+    wait,
+    fetchImpl: async (url) => {
+      requested.push(url.pathname);
+      if (url.pathname === "/release.json") return response({ release });
+      if (url.pathname === "/js/main.js")
+        return new Response("import './api.js';", {
+          headers: { "Content-Type": "application/javascript" },
+        });
+      throw new Error("El backend no está disponible");
+    },
+  });
+  assert.deepEqual(requested, ["/release.json", "/js/main.js"]);
+});
+
+test("verify frontend: rechaza una publicación antigua o un login en lugar del JavaScript", async () => {
+  for (const scenario of ["old", "login"]) {
+    await assert.rejects(
+      verifyProduction({
+        url: "https://example.test",
+        release,
+        scope: "frontend",
+        wait,
+        attempts: 1,
+        fetchImpl: async (url) =>
+          url.pathname === "/release.json"
+            ? response({ release: scenario === "old" ? "b".repeat(40) : release })
+            : new Response("Login", { headers: { "Content-Type": "text/html" } }),
+      }),
+      /commit esperado|JavaScript público inaccesible/,
+    );
+  }
 });
 
 test("deploy: créditos agotados o error de publicación hacen fallar el despliegue", async () => {

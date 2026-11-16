@@ -1,0 +1,78 @@
+name: Desplegar Netlify
+
+on:
+  # Un merge de PR también genera push. El filtro dinámico está en validate.
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: netlify-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  validate:
+    name: Validar Netlify
+    if: >-
+      github.event.deleted != true &&
+      (github.event_name == 'pull_request' || github.ref_type == 'branch') &&
+      ((github.base_ref || github.ref_name) == 'main' ||
+       (github.base_ref || github.ref_name) == 'master' ||
+       (github.base_ref || github.ref_name) == github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:netlify
+        env:
+          APP_RELEASE: ${{ github.sha }}
+      - name: Empaquetar los estáticos para Netlify
+        run: (cd dist && zip -qr ../frontend.zip .)
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: netlify-${{ github.sha }}
+          path: frontend.zip
+          retention-days: 7
+
+  deploy:
+    name: Publicar Netlify
+    needs: validate
+    # Si validate se omite por la rama, este job también se omite.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      APP_RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: netlify-${{ github.sha }}
+      - name: Publicar frontend en Netlify y esperar producción
+        run: node scripts/deploy-netlify.mjs frontend.zip
+      - name: Verificar estáticos de Netlify sin depender de GCP
+        run: node scripts/verify-production.mjs https://gestion-penarrubia.netlify.app frontend
+      - name: Resumir Netlify
+        if: always()
+        env:
+          DEPLOY_STATUS: ${{ job.status }}
+        run: |
+          printf 'Netlify: **%s**\n\nRama: `%s`\n\nCommit: `%s`\n\nhttps://gestion-penarrubia.netlify.app\n' "$DEPLOY_STATUS" "$GITHUB_REF_NAME" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
