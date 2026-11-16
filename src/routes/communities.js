@@ -11,6 +11,7 @@ import {
 } from "../validation.js";
 import { removeEntityFiles } from "./documents.js";
 import { sanitizeRichText } from "../rich-text.js";
+import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -64,9 +65,9 @@ router.get("/:id", (req, res) => {
 
 router.post("/", (req, res) => {
   const data = req.body || {};
-  if (!data.name || !data.nif) {
-    return res.status(400).json({ error: "El nombre y el NIF de la comunidad son obligatorios." });
-  }
+  trimEntityFields("community", data);
+  const errorObligatorio = entityRequiredError("community", data, { exigirAusentes: false });
+  if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
   if (db.prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?)").get(data.nif)) {
     return res.status(409).json({ error: "Ya existe una comunidad con ese NIF." });
   }
@@ -104,11 +105,9 @@ router.put(
     const existing = findCommunity(req.params.id);
     if (!existing) return res.status(404).json({ error: "Comunidad no encontrada." });
     const data = req.body || {};
-    if (!data.name || !data.nif) {
-      return res
-        .status(400)
-        .json({ error: "El nombre y el NIF de la comunidad son obligatorios." });
-    }
+    trimEntityFields("community", data);
+    const errorObligatorio = entityRequiredError("community", data, { exigirAusentes: false });
+    if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
     const nifOwner = db
       .prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?) AND id <> ?")
       .get(data.nif, existing.id);

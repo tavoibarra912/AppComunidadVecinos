@@ -9,6 +9,7 @@ import {
   rebuildOwnersPropertyIds,
 } from "../domain.js";
 import { contactError, bankAccountError, identityDocumentError } from "../validation.js";
+import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { avisarCambioOwner } from "../avisos-cambios.js";
 
 const router = Router();
@@ -66,11 +67,9 @@ router.get("/:id", (req, res) => {
 
 router.post("/", (req, res) => {
   const data = req.body || {};
-  if (!data.name || !data.surname || !data.dni || !data.email) {
-    return res
-      .status(400)
-      .json({ error: "Nombre, apellidos, documento y email son obligatorios." });
-  }
+  trimEntityFields("owner", data);
+  const errorObligatorio = entityRequiredError("owner", data, { exigirAusentes: false });
+  if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
   if (db.prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?)").get(String(data.dni))) {
     return res
       .status(409)
@@ -137,11 +136,9 @@ router.put(
     const existing = findOwner(req.params.id);
     if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
     const data = req.body || {};
-    if (!data.name || !data.surname || !data.dni || !data.email) {
-      return res
-        .status(400)
-        .json({ error: "Nombre, apellidos, documento y email son obligatorios." });
-    }
+    trimEntityFields("owner", data);
+    const errorObligatorio = entityRequiredError("owner", data, { exigirAusentes: false });
+    if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
     const dniOwner = db
       .prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?) AND id <> ?")
       .get(String(data.dni), existing.id);

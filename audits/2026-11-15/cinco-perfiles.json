@@ -1,0 +1,3657 @@
+{
+  "at": "2026-11-15T10:38:29.417Z",
+  "dataDir": "C:\\Users\\QSMANU~1\\AppData\\Local\\Temp\\pen-five-profiles-l2YSa9",
+  "url": "http://127.0.0.1:3199",
+  "fixture": {
+    "dualUser": "urucpci1",
+    "ownedProperties": [
+      {
+        "id": "prop-seed-4",
+        "communityId": "com-seed-2"
+      }
+    ],
+    "rentedProperty": {
+      "id": "prop-seed-6",
+      "communityId": "com-seed-3"
+    },
+    "peerTenant": "five-peer-tenant",
+    "receipts": 8,
+    "posts": 7
+  },
+  "profiles": [
+    {
+      "username": "uruci1",
+      "role": "user",
+      "permissions": [
+        "community:read",
+        "owner:read",
+        "owner:edit",
+        "owner:documents:submit",
+        "property:read",
+        "tenant:read",
+        "document:read",
+        "document:upload",
+        "comm:participacion",
+        "owner_notification:read",
+        "tenant:manage",
+        "tenant:delete",
+        "tenant:create",
+        "document:delete",
+        "owner_notification:send",
+        "fee:read"
+      ],
+      "expected": {
+        "communities": [
+          "com-seed-1"
+        ],
+        "properties": [
+          "prop-seed-1"
+        ],
+        "owners": [
+          "own-seed-1"
+        ],
+        "tenants": [
+          "tenant-seed-1"
+        ]
+      },
+      "records": {
+        "communities": [
+          "Residencial Peñarrubia"
+        ],
+        "properties": [
+          "Parcela 14"
+        ],
+        "owners": [
+          "Carlos Ruiz Mendoza"
+        ],
+        "tenants": [
+          "Laura Martínez Reyes"
+        ]
+      },
+      "checks": [
+        {
+          "label": "Inicio de sesión",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap responde",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap communities",
+          "pass": true,
+          "actual": [
+            "com-seed-1"
+          ],
+          "expected": [
+            "com-seed-1"
+          ]
+        },
+        {
+          "label": "Listado communities",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap owners",
+          "pass": true,
+          "actual": [
+            "own-seed-1"
+          ],
+          "expected": [
+            "own-seed-1"
+          ]
+        },
+        {
+          "label": "Listado owners",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap properties",
+          "pass": true,
+          "actual": [
+            "prop-seed-1"
+          ],
+          "expected": [
+            "prop-seed-1"
+          ]
+        },
+        {
+          "label": "Listado properties",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap tenants",
+          "pass": true,
+          "actual": [
+            "tenant-seed-1"
+          ],
+          "expected": [
+            "tenant-seed-1"
+          ]
+        },
+        {
+          "label": "Listado tenants",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Propietario de contrato solo como referencia own-seed-1",
+          "pass": true,
+          "keys": [
+            "id",
+            "name",
+            "surname",
+            "propertyIds"
+          ]
+        },
+        {
+          "label": "Administración restringida /admin/users",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/roles",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/settings",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /audit",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /communications/providers",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Cuotas personales",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Tablón solo comunidades permitidas",
+          "pass": true,
+          "ids": [
+            "41012eec-4a61-4a46-bf3c-c5e8d1ea1180"
+          ]
+        },
+        {
+          "label": "Publicación com-seed-7",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-3",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-2",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-6",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-5",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-4",
+          "pass": true,
+          "status": 404
+        }
+      ],
+      "passed": 111,
+      "failed": 0
+    },
+    {
+      "username": "urucp1",
+      "role": "user",
+      "permissions": [
+        "community:read",
+        "owner:read",
+        "owner:edit",
+        "owner:documents:submit",
+        "property:read",
+        "tenant:read",
+        "document:read",
+        "document:upload",
+        "comm:participacion",
+        "owner_notification:read",
+        "tenant:manage",
+        "tenant:delete",
+        "tenant:create",
+        "document:delete",
+        "owner_notification:send",
+        "fee:read"
+      ],
+      "expected": {
+        "communities": [
+          "com-seed-1"
+        ],
+        "properties": [
+          "prop-seed-1"
+        ],
+        "owners": [
+          "own-seed-1"
+        ],
+        "tenants": [
+          "tenant-seed-1"
+        ]
+      },
+      "records": {
+        "communities": [
+          "Residencial Peñarrubia"
+        ],
+        "properties": [
+          "Parcela 14"
+        ],
+        "owners": [
+          "Carlos Ruiz Mendoza"
+        ],
+        "tenants": [
+          "Laura Martínez Reyes"
+        ]
+      },
+      "checks": [
+        {
+          "label": "Inicio de sesión",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap responde",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap communities",
+          "pass": true,
+          "actual": [
+            "com-seed-1"
+          ],
+          "expected": [
+            "com-seed-1"
+          ]
+        },
+        {
+          "label": "Listado communities",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap owners",
+          "pass": true,
+          "actual": [
+            "own-seed-1"
+          ],
+          "expected": [
+            "own-seed-1"
+          ]
+        },
+        {
+          "label": "Listado owners",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap properties",
+          "pass": true,
+          "actual": [
+            "prop-seed-1"
+          ],
+          "expected": [
+            "prop-seed-1"
+          ]
+        },
+        {
+          "label": "Listado properties",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap tenants",
+          "pass": true,
+          "actual": [
+            "tenant-seed-1"
+          ],
+          "expected": [
+            "tenant-seed-1"
+          ]
+        },
+        {
+          "label": "Listado tenants",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/users",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/roles",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/settings",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /audit",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /communications/providers",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Cuotas personales",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Cuotas personales solo de titular",
+          "pass": true,
+          "ids": [
+            "five-receipt-prop-seed-1"
+          ]
+        },
+        {
+          "label": "Tablón solo comunidades permitidas",
+          "pass": true,
+          "ids": [
+            "41012eec-4a61-4a46-bf3c-c5e8d1ea1180"
+          ]
+        },
+        {
+          "label": "Publicación com-seed-7",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-3",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-2",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-6",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-5",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-4",
+          "pass": true,
+          "status": 404
+        }
+      ],
+      "passed": 111,
+      "failed": 0
+    },
+    {
+      "username": "urucpci1",
+      "role": "user",
+      "permissions": [
+        "community:read",
+        "owner:read",
+        "owner:edit",
+        "owner:documents:submit",
+        "property:read",
+        "tenant:read",
+        "document:read",
+        "document:upload",
+        "comm:participacion",
+        "owner_notification:read",
+        "tenant:manage",
+        "tenant:delete",
+        "tenant:create",
+        "document:delete",
+        "owner_notification:send",
+        "fee:read"
+      ],
+      "expected": {
+        "communities": [
+          "com-seed-3",
+          "com-seed-2"
+        ],
+        "properties": [
+          "prop-seed-6",
+          "prop-seed-4"
+        ],
+        "owners": [
+          "own-seed-3",
+          "own-seed-4"
+        ],
+        "tenants": [
+          "five-dual-tenant"
+        ]
+      },
+      "records": {
+        "communities": [
+          "Comunidad Vista Bella",
+          "Edificio Los Olivos"
+        ],
+        "properties": [
+          "Chalet 7",
+          "Piso 3º B"
+        ],
+        "owners": [
+          "Javier Gómez Alarcón",
+          "Carmen Navarro Beltrán"
+        ],
+        "tenants": [
+          "Doble perfil Contrato propio"
+        ]
+      },
+      "checks": [
+        {
+          "label": "Inicio de sesión",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap responde",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap communities",
+          "pass": true,
+          "actual": [
+            "com-seed-2",
+            "com-seed-3"
+          ],
+          "expected": [
+            "com-seed-3",
+            "com-seed-2"
+          ]
+        },
+        {
+          "label": "Listado communities",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap owners",
+          "pass": true,
+          "actual": [
+            "own-seed-3",
+            "own-seed-4"
+          ],
+          "expected": [
+            "own-seed-3",
+            "own-seed-4"
+          ]
+        },
+        {
+          "label": "Listado owners",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap properties",
+          "pass": true,
+          "actual": [
+            "prop-seed-4",
+            "prop-seed-6"
+          ],
+          "expected": [
+            "prop-seed-6",
+            "prop-seed-4"
+          ]
+        },
+        {
+          "label": "Listado properties",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap tenants",
+          "pass": true,
+          "actual": [
+            "five-dual-tenant"
+          ],
+          "expected": [
+            "five-dual-tenant"
+          ]
+        },
+        {
+          "label": "Listado tenants",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/five-dual-tenant",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/tenant-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/tenant-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Propietario de contrato solo como referencia own-seed-4",
+          "pass": true,
+          "keys": [
+            "id",
+            "name",
+            "surname",
+            "propertyIds"
+          ]
+        },
+        {
+          "label": "Administración restringida /admin/users",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/roles",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/settings",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /audit",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /communications/providers",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/five-dual-tenant",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/tenant-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-1",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Cuotas personales",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Cuotas personales solo de titular",
+          "pass": true,
+          "ids": [
+            "five-receipt-prop-seed-4"
+          ]
+        },
+        {
+          "label": "Tablón solo comunidades permitidas",
+          "pass": true,
+          "ids": [
+            "e0795244-7b10-4738-98d0-1fe03f9cd5dc",
+            "38522d0c-49f3-4412-89d0-5146a5b5ac51"
+          ]
+        },
+        {
+          "label": "Publicación com-seed-7",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-6",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-5",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-1",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-4",
+          "pass": true,
+          "status": 404
+        }
+      ],
+      "passed": 109,
+      "failed": 0
+    },
+    {
+      "username": "ca1",
+      "role": "community_admin",
+      "permissions": [
+        "community:read",
+        "community:edit",
+        "community:manage",
+        "owner:read",
+        "owner:create",
+        "owner:manage",
+        "owner:edit",
+        "owner:documents:submit",
+        "property:read",
+        "property:create",
+        "property:manage",
+        "tenant:read",
+        "tenant:create",
+        "tenant:manage",
+        "tenant:delete",
+        "document:approve",
+        "document:upload",
+        "document:delete",
+        "comm:participacion",
+        "comm:publicar",
+        "comm:moderar",
+        "owner_notification:send",
+        "document:read",
+        "fee:read",
+        "fee:manage"
+      ],
+      "expected": {
+        "communities": [
+          "com-seed-1"
+        ],
+        "properties": [
+          "prop-seed-1",
+          "prop-seed-2",
+          "prop-seed-3"
+        ],
+        "owners": [
+          "own-seed-2",
+          "own-seed-1"
+        ],
+        "tenants": [
+          "tenant-seed-1"
+        ]
+      },
+      "records": {
+        "communities": [
+          "Residencial Peñarrubia"
+        ],
+        "properties": [
+          "Parcela 14",
+          "Parcela 22",
+          "Parcela 30"
+        ],
+        "owners": [
+          "María Luisa Fernández Soto",
+          "Carlos Ruiz Mendoza"
+        ],
+        "tenants": [
+          "Laura Martínez Reyes"
+        ]
+      },
+      "checks": [
+        {
+          "label": "Inicio de sesión",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap responde",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap communities",
+          "pass": true,
+          "actual": [
+            "com-seed-1"
+          ],
+          "expected": [
+            "com-seed-1"
+          ]
+        },
+        {
+          "label": "Listado communities",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET communities/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno communities/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap owners",
+          "pass": true,
+          "actual": [
+            "own-seed-1",
+            "own-seed-2"
+          ],
+          "expected": [
+            "own-seed-2",
+            "own-seed-1"
+          ]
+        },
+        {
+          "label": "Listado owners",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno owners/own-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap properties",
+          "pass": true,
+          "actual": [
+            "prop-seed-1",
+            "prop-seed-2",
+            "prop-seed-3"
+          ],
+          "expected": [
+            "prop-seed-1",
+            "prop-seed-2",
+            "prop-seed-3"
+          ]
+        },
+        {
+          "label": "Listado properties",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno properties/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Bootstrap tenants",
+          "pass": true,
+          "actual": [
+            "tenant-seed-1"
+          ],
+          "expected": [
+            "tenant-seed-1"
+          ]
+        },
+        {
+          "label": "Listado tenants",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "GET tenants/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "PUT ajeno tenants/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/users",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/roles",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/settings",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /audit",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /communications/providers",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-3",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-9",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-5",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento property/prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/tenant-seed-2",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/five-dual-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento tenant/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/five-peer-tenant",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-6",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-11",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-7",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-4",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-8",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-10",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Cuotas personales",
+          "pass": true,
+          "status": 200,
+          "expected": "200 con listado vacío para administrador sin perfiles propietarios",
+          "actualReceiptIds": []
+        },
+        {
+          "label": "Cuotas personales solo de titular",
+          "pass": true,
+          "ids": []
+        },
+        {
+          "label": "Tablón solo comunidades permitidas",
+          "pass": true,
+          "ids": [
+            "41012eec-4a61-4a46-bf3c-c5e8d1ea1180"
+          ]
+        },
+        {
+          "label": "Publicación com-seed-7",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-3",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-2",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-6",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-5",
+          "pass": true,
+          "status": 404
+        },
+        {
+          "label": "Publicación com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-4",
+          "pass": true,
+          "status": 404
+        }
+      ],
+      "passed": 108,
+      "failed": 0
+    },
+    {
+      "username": "admin",
+      "role": "administrator",
+      "permissions": [
+        "community:read",
+        "community:create",
+        "community:edit",
+        "community:manage",
+        "owner:read",
+        "owner:create",
+        "owner:manage",
+        "owner:edit",
+        "owner:documents:submit",
+        "owner:delete",
+        "property:read",
+        "property:create",
+        "property:manage",
+        "tenant:read",
+        "tenant:create",
+        "tenant:manage",
+        "tenant:delete",
+        "document:read",
+        "document:approve",
+        "document:upload",
+        "document:delete",
+        "comm:participacion",
+        "comm:publicar",
+        "comm:moderar",
+        "admin_notification:read",
+        "owner_notification:send",
+        "fee:read",
+        "fee:manage"
+      ],
+      "expected": {
+        "communities": [
+          "com-seed-7",
+          "com-seed-3",
+          "com-seed-2",
+          "com-seed-6",
+          "com-seed-5",
+          "com-seed-1",
+          "com-seed-4"
+        ],
+        "properties": [
+          "prop-seed-6",
+          "prop-seed-9",
+          "prop-seed-1",
+          "prop-seed-2",
+          "prop-seed-3",
+          "prop-seed-11",
+          "prop-seed-7",
+          "prop-seed-4",
+          "prop-seed-5",
+          "prop-seed-8",
+          "prop-seed-10"
+        ],
+        "owners": [
+          "own-seed-2",
+          "own-seed-3",
+          "own-seed-6",
+          "own-seed-4",
+          "own-seed-8",
+          "own-seed-1",
+          "own-seed-5",
+          "own-seed-7"
+        ],
+        "tenants": [
+          "tenant-seed-2",
+          "five-dual-tenant",
+          "tenant-seed-1",
+          "five-peer-tenant"
+        ]
+      },
+      "records": {
+        "communities": [
+          "Altos de Peñarrubia",
+          "Comunidad Vista Bella",
+          "Edificio Los Olivos",
+          "Parque San Juan",
+          "Residencial Las Flores",
+          "Residencial Peñarrubia",
+          "Urbanización El Pinar"
+        ],
+        "properties": [
+          "Chalet 7",
+          "Local 1",
+          "Parcela 14",
+          "Parcela 22",
+          "Parcela 30",
+          "Parcela 31",
+          "Parcela 5",
+          "Piso 3º B",
+          "Plaza G-12",
+          "Vivienda 12-A",
+          "Ático 4"
+        ],
+        "owners": [
+          "María Luisa Fernández Soto",
+          "Javier Gómez Alarcón",
+          "Elena Morales Ortiz",
+          "Carmen Navarro Beltrán",
+          "Isabel Romero Fuentes",
+          "Carlos Ruiz Mendoza",
+          "Pedro Sánchez Gil",
+          "Roberto Vega Domínguez"
+        ],
+        "tenants": [
+          "Andrés Castro Lima",
+          "Doble perfil Contrato propio",
+          "Laura Martínez Reyes",
+          "PRIVADO Otro inquilino"
+        ]
+      },
+      "checks": [
+        {
+          "label": "Inicio de sesión",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap responde",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap communities",
+          "pass": true,
+          "actual": [
+            "com-seed-1",
+            "com-seed-2",
+            "com-seed-3",
+            "com-seed-4",
+            "com-seed-5",
+            "com-seed-6",
+            "com-seed-7"
+          ],
+          "expected": [
+            "com-seed-7",
+            "com-seed-3",
+            "com-seed-2",
+            "com-seed-6",
+            "com-seed-5",
+            "com-seed-1",
+            "com-seed-4"
+          ]
+        },
+        {
+          "label": "Listado communities",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-7",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-5",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET communities/com-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap owners",
+          "pass": true,
+          "actual": [
+            "own-seed-1",
+            "own-seed-2",
+            "own-seed-3",
+            "own-seed-4",
+            "own-seed-5",
+            "own-seed-6",
+            "own-seed-7",
+            "own-seed-8"
+          ],
+          "expected": [
+            "own-seed-2",
+            "own-seed-3",
+            "own-seed-6",
+            "own-seed-4",
+            "own-seed-8",
+            "own-seed-1",
+            "own-seed-5",
+            "own-seed-7"
+          ]
+        },
+        {
+          "label": "Listado owners",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-8",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-5",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET owners/own-seed-7",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap properties",
+          "pass": true,
+          "actual": [
+            "prop-seed-1",
+            "prop-seed-10",
+            "prop-seed-11",
+            "prop-seed-2",
+            "prop-seed-3",
+            "prop-seed-4",
+            "prop-seed-5",
+            "prop-seed-6",
+            "prop-seed-7",
+            "prop-seed-8",
+            "prop-seed-9"
+          ],
+          "expected": [
+            "prop-seed-6",
+            "prop-seed-9",
+            "prop-seed-1",
+            "prop-seed-2",
+            "prop-seed-3",
+            "prop-seed-11",
+            "prop-seed-7",
+            "prop-seed-4",
+            "prop-seed-5",
+            "prop-seed-8",
+            "prop-seed-10"
+          ]
+        },
+        {
+          "label": "Listado properties",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-9",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-11",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-7",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-5",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-8",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET properties/prop-seed-10",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Bootstrap tenants",
+          "pass": true,
+          "actual": [
+            "five-dual-tenant",
+            "five-peer-tenant",
+            "tenant-seed-1",
+            "tenant-seed-2"
+          ],
+          "expected": [
+            "tenant-seed-2",
+            "five-dual-tenant",
+            "tenant-seed-1",
+            "five-peer-tenant"
+          ]
+        },
+        {
+          "label": "Listado tenants",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/tenant-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/five-dual-tenant",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "GET tenants/five-peer-tenant",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Administración restringida /admin/users",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/roles",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /admin/settings",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /audit",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Administración restringida /communications/providers",
+          "pass": true,
+          "status": 403
+        },
+        {
+          "label": "Documento community/com-seed-7",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-5",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento community/com-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-9",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-11",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-7",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-5",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-8",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento property/prop-seed-10",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/tenant-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/five-dual-tenant",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/tenant-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Documento tenant/five-peer-tenant",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-11",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-7",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-4",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-8",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Recibo five-receipt-prop-seed-10",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Cuotas personales",
+          "pass": true,
+          "status": 200,
+          "expected": "200 con listado vacío para administrador sin perfiles propietarios",
+          "actualReceiptIds": []
+        },
+        {
+          "label": "Cuotas personales solo de titular",
+          "pass": true,
+          "ids": []
+        },
+        {
+          "label": "Tablón solo comunidades permitidas",
+          "pass": true,
+          "ids": [
+            "5fd6aa1d-9d24-41a3-96bd-8512e61e9c1f",
+            "41012eec-4a61-4a46-bf3c-c5e8d1ea1180",
+            "91b07304-797e-4f2b-b1cb-47ee3659f4f1",
+            "59e40cb3-3f28-4cdd-9851-2f3149cd64b0",
+            "e0795244-7b10-4738-98d0-1fe03f9cd5dc",
+            "38522d0c-49f3-4412-89d0-5146a5b5ac51",
+            "4cc1919a-965c-44e4-9402-4e593e8c4295"
+          ]
+        },
+        {
+          "label": "Publicación com-seed-7",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-3",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-2",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-6",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-5",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-1",
+          "pass": true,
+          "status": 200
+        },
+        {
+          "label": "Publicación com-seed-4",
+          "pass": true,
+          "status": 200
+        }
+      ],
+      "passed": 85,
+      "failed": 0
+    }
+  ],
+  "summary": {
+    "checks": 524,
+    "passed": 524,
+    "failed": 0
+  },
+  "uiChecks": [
+    {
+      "username": "uruci1",
+      "label": "Sin acceso de menú a configuración global",
+      "pass": true,
+      "detail": [
+        "#home",
+        "#comunidades",
+        "#inmuebles",
+        "#inquilinos",
+        "#comunicacion"
+      ]
+    },
+    {
+      "username": "uruci1",
+      "label": "Cuotas visibles solo con titularidad o gestión",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Sin errores de consola",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "username": "uruci1",
+      "label": "Pantalla #comunidades renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Tabla de comunidades sin registros ajenos",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Tabla incluye todas las comunidades autorizadas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Pantalla #inmuebles renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Pantalla #inquilinos renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Pantalla #comunicacion renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Tablón sin avisos de comunidades ajenas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Tablón incluye todos los avisos autorizados",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "uruci1",
+      "label": "Navegación completa guardada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Sin acceso de menú a configuración global",
+      "pass": true,
+      "detail": [
+        "#home",
+        "#comunidades",
+        "#inmuebles",
+        "#propietarios",
+        "#inquilinos",
+        "#cuotas",
+        "#comunicacion"
+      ]
+    },
+    {
+      "username": "urucp1",
+      "label": "Cuotas visibles solo con titularidad o gestión",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Sin errores de consola",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "username": "urucp1",
+      "label": "Pantalla #comunidades renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Tabla de comunidades sin registros ajenos",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Tabla incluye todas las comunidades autorizadas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Pantalla #inmuebles renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Pantalla #propietarios renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Pantalla #inquilinos renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Pantalla #comunicacion renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Tablón sin avisos de comunidades ajenas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Tablón incluye todos los avisos autorizados",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucp1",
+      "label": "Navegación completa guardada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Sin acceso de menú a configuración global",
+      "pass": true,
+      "detail": [
+        "#home",
+        "#comunidades",
+        "#inmuebles",
+        "#propietarios",
+        "#inquilinos",
+        "#cuotas",
+        "#comunicacion"
+      ]
+    },
+    {
+      "username": "urucpci1",
+      "label": "Cuotas visibles solo con titularidad o gestión",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Sin errores de consola",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "username": "urucpci1",
+      "label": "Pantalla #comunidades renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Tabla de comunidades sin registros ajenos",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Tabla incluye todas las comunidades autorizadas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Pantalla #inmuebles renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Pantalla #propietarios renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Pantalla #inquilinos renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Pantalla #comunicacion renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Tablón sin avisos de comunidades ajenas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Tablón incluye todos los avisos autorizados",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Doble perfil: recibo propio visible",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Doble perfil: recibo del alquiler no visible",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Doble perfil: una ficha propia en tabla de propietarios",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Ruta directa de Administración devuelve Inicio",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "urucpci1",
+      "label": "Navegación completa guardada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Sin acceso de menú a configuración global",
+      "pass": true,
+      "detail": [
+        "#home",
+        "#comunidades",
+        "#inmuebles",
+        "#propietarios",
+        "#inquilinos",
+        "#cuotas",
+        "#comunicacion"
+      ]
+    },
+    {
+      "username": "ca1",
+      "label": "Cuotas visibles solo con titularidad o gestión",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Sin errores de consola",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "username": "ca1",
+      "label": "Pantalla #comunidades renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Tabla de comunidades sin registros ajenos",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Tabla incluye todas las comunidades autorizadas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Pantalla #inmuebles renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Pantalla #propietarios renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Pantalla #inquilinos renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Pantalla #comunicacion renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Tablón sin avisos de comunidades ajenas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Tablón incluye todos los avisos autorizados",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "ca1",
+      "label": "Navegación completa guardada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Sin acceso de menú a configuración global",
+      "pass": true,
+      "detail": [
+        "#home",
+        "#comunidades",
+        "#inmuebles",
+        "#propietarios",
+        "#inquilinos",
+        "#cuotas",
+        "#comunicacion"
+      ]
+    },
+    {
+      "username": "admin",
+      "label": "Cuotas visibles solo con titularidad o gestión",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Sin errores de consola",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "username": "admin",
+      "label": "Pantalla #comunidades renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Tabla de comunidades sin registros ajenos",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Tabla incluye todas las comunidades autorizadas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Pantalla #inmuebles renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Pantalla #propietarios renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Pantalla #inquilinos renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Pantalla #comunicacion renderizada",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Tablón sin avisos de comunidades ajenas",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Tablón incluye todos los avisos autorizados",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "username": "admin",
+      "label": "Navegación completa guardada",
+      "pass": true,
+      "detail": null
+    }
+  ],
+  "uiSummary": {
+    "checks": 68,
+    "passed": 68,
+    "failed": 0,
+    "menuViews": 33,
+    "directRouteViews": 1
+  }
+}

@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { db, tenantFromRow } from "../db.js";
 import { upsertTenant } from "../domain.js";
 import { contactError, dateError, identityDocumentError } from "../validation.js";
+import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
@@ -61,11 +62,9 @@ router.get("/:id", (req, res) => {
 
 router.post("/", (req, res) => {
   const data = req.body || {};
-  if (!data.name || !data.surname) {
-    return res
-      .status(400)
-      .json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
-  }
+  trimEntityFields("tenant", data);
+  const errorObligatorio = entityRequiredError("tenant", data, { exigirAusentes: false });
+  if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
   const id = data.id || crypto.randomUUID();
   try {
     db.exec("BEGIN");
@@ -84,11 +83,9 @@ router.put(
     const existing = findTenant(req.params.id);
     if (!existing) return res.status(404).json({ error: "Inquilino no encontrado." });
     const data = req.body || {};
-    if (!data.name || !data.surname) {
-      return res
-        .status(400)
-        .json({ error: "El nombre y los apellidos del inquilino son obligatorios." });
-    }
+    trimEntityFields("tenant", data);
+    const errorObligatorio = entityRequiredError("tenant", data, { exigirAusentes: false });
+    if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
     try {
       db.exec("SAVEPOINT entity_update");
       upsertTenant(data, existing.id);
