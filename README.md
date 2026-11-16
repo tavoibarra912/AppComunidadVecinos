@@ -270,6 +270,7 @@ src/
     documents.js          Documentos, estatutos y carpetas (multer, 15 MB)
     notifications.js      Buzón del administrador y del propietario
     verification.js       contacto (envío no configurado)
+    issues.js             reportes de usuarios enviados a GitHub
   document-library.js     Servicio genérico de carpetas, jerarquía y permisos
 public/
   index.html · styles.css
@@ -403,6 +404,7 @@ protección de sus copias de seguridad para producción.
 - `POST /api/documents/folders` · `PATCH /api/documents/folders/:id` (renombrar o mover) · `DELETE /api/documents/folders/:id?confirm=1` (cascada con confirmación).
 - `POST /api/owners/contact/{phone|email}/{send|confirm}` — responde con un aviso de servicio no configurado; no genera códigos de prueba.
 - `GET /api/notifications/*`, `POST /api/notifications/*` — buzones.
+- `GET/POST /api/issues` — configuración y creación de reportes de error con adjuntos en GitHub.
 - `GET /api/health`.
 
 ## Funcionalidad principal
@@ -464,6 +466,36 @@ mostrar u ocultar botones; los accesos directos «Proveedores de envío»
 - **Aceptado por el proveedor** no confirma entrega ni lectura: no hay un webhook de confirmación de entrega. El buzón de la app y sus lecturas son independientes. El SMTP también se utiliza para recuperación de contraseña cuando `APP_PUBLIC_URL` está configurado; la verificación OTP sigue desactivada.
 
 API del módulo: `GET /api/communications/{metadata|posts|preferences}`, `POST /preview`, `POST /posts`, `GET/PUT /posts/:id`, acciones `read`, `receipt`, `comments`, `ballot`, `rsvp`, `attendance`, `retry` y `files`. `GET/PUT /providers` y `POST /providers/test` están restringidos al superadministrador. Las tablas se crean de forma idempotente al arrancar, sin sustituir los datos existentes.
+
+### Reportar un error desde la app
+
+Cualquier cuenta con sesión iniciada ve un botón flotante con forma de insecto en
+la esquina inferior derecha. Abre un formulario con título, descripción, pasos
+para reproducir, comunidad o inmueble afectado y hasta cinco adjuntos (PNG, JPG,
+WebP o PDF, 5 MB por archivo). Al enviarlo se crea un issue real en GitHub con la
+etiqueta `User-Detected-Issue`.
+
+- Los adjuntos se suben como commits a la rama `issue-attachments` del
+  repositorio y se enlazan desde el cuerpo del issue. El issue nunca se publica
+  como creado si GitHub devuelve un error; en ese caso se retiran los adjuntos
+  que se hubieran subido.
+- El contexto automático incluye usuario, rol, fecha, pantalla, navegador,
+  idioma y resolución. No se envía el correo electrónico del usuario.
+- Cada cuenta puede crear como máximo cinco reportes cada diez minutos. La API
+  exige sesión y origen del mismo servidor (`GET/POST /api/issues`).
+- La integración se configura en el servidor con variables de entorno (o un
+  archivo `.env` local, ignorado por git):
+
+  ```bash
+  GITHUB_ISSUES_TOKEN=...            # token con Issues y Contents: Read and write
+  GITHUB_ISSUES_REPO=tavoibarra912/AppComunidadVecinos
+  GITHUB_ISSUES_LABEL=User-Detected-Issue
+  GITHUB_ISSUES_ATTACHMENTS_BRANCH=issue-attachments
+  ```
+
+  Puedes obtener un token con `gh auth token`. Sin `GITHUB_ISSUES_TOKEN` el
+  formulario sigue visible para probar la interfaz, pero muestra un aviso y no
+  permite enviar. Copia `.env.example` como `.env` y reinicia el servidor.
 
 ## Comprobaciones
 

@@ -15,6 +15,7 @@ import { renderTenants } from "./features/inquilinos.js";
 import { updateInboxBadge, updateOwnerInboxBadge } from "./features/notificaciones.js";
 import { renderAccountMenu } from "./features/account-menu.js";
 import { refreshCommunication } from "./features/communication.js";
+import { renderIssueReporter } from "./features/issue-reporter.js";
 import { applyBrand, applyPublicSettings } from "./brand.js";
 
 async function boot() {
@@ -37,6 +38,7 @@ async function boot() {
     updateOwnerInboxBadge();
     applyRoleUI();
     renderAccountMenu();
+    renderIssueReporter();
     refreshCommunication().catch((error) => console.error("[communication]", error.message));
     handleRouting();
   });

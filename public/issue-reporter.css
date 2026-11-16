@@ -1,0 +1,172 @@
+/* Botón flotante para reportar errores y su formulario modal. */
+.issue-reporter-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--brand, #198b84);
+  color: #fff;
+  cursor: pointer;
+  box-shadow:
+    0 10px 24px #0f274033,
+    0 3px 8px #0f27401f;
+  transition:
+    transform 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.issue-reporter-fab:hover {
+  background: var(--brand-dark, #116f6a);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow:
+    0 14px 28px #0f27403d,
+    0 4px 10px #0f274024;
+}
+
+.issue-reporter-fab:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.issue-reporter-fab:focus-visible {
+  outline: 3px solid #bce8e4;
+  outline-offset: 3px;
+}
+
+.issue-reporter-fab svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* Mientras se ve el login no hay sesión que pueda enviar reportes. */
+body:has(#login-screen:not([hidden])) .issue-reporter-fab {
+  display: none !important;
+}
+
+/* El aviso emergente sube para no tapar el botón flotante. */
+body:has(.issue-reporter-fab:not([hidden])) .toast {
+  bottom: 92px;
+}
+
+.issue-reporter-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+
+.issue-reporter-dialog .dialog-content {
+  max-width: 100%;
+}
+
+.issue-reporter-config {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #f0d39a;
+  border-radius: 6px;
+  background: #fff8e7;
+  color: #8a5a00;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.issue-reporter-files-field {
+  display: grid;
+  gap: 7px;
+}
+
+.issue-reporter-files-field .form-intro {
+  margin: 0;
+  font-weight: 400;
+}
+
+.issue-reporter-file-list {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue-reporter-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #e4e9ef);
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.issue-reporter-file-size {
+  color: var(--muted, #64748b);
+  font-weight: 400;
+}
+
+.issue-reporter-file-remove {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid #d7e0e8;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--danger, #c63838);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.issue-reporter-file-remove:hover {
+  border-color: #eec6c6;
+  background: #fff5f5;
+}
+
+.issue-reporter-success h2 {
+  margin: 0 0 14px;
+  font-size: 23px;
+}
+
+.issue-reporter-success p {
+  margin: 0 0 12px;
+  color: var(--muted, #64748b);
+  line-height: 1.5;
+}
+
+.issue-reporter-success a {
+  color: var(--brand-dark, #116f6a);
+  font-weight: 700;
+}
+
+.issue-reporter-success h2:focus-visible {
+  outline: 3px solid #bce8e4;
+  outline-offset: 4px;
+}
+
+@media (max-width: 560px) {
+  .issue-reporter-fab {
+    right: 16px;
+    bottom: 16px;
+    width: 52px;
+    height: 52px;
+  }
+
+  .issue-reporter-fab svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  body:has(.issue-reporter-fab:not([hidden])) .toast {
+    bottom: 80px;
+  }
+}

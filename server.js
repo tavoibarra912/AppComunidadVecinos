@@ -1,3 +1,5 @@
+// Debe ser el primer import: carga .env antes de leer la configuración.
+import "./src/load-env.js";
 import express from "express";
 import { createGzip, createBrotliCompress } from "node:zlib";
 import { promises as fsp } from "node:fs";

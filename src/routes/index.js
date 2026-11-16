@@ -10,6 +10,7 @@ import adminRouter from "./admin.js";
 import authRouter from "./auth.js";
 import communicationsRouter from "./communications.js";
 import feesRouter from "./fees.js";
+import issuesRouter from "./issues.js";
 import { auditRequests, listAudit } from "../audit.js";
 import {
   requireSession,
@@ -57,6 +58,9 @@ router.get("/health", (req, res) => {
   });
 });
 router.use(requireSession);
+// Cualquier cuenta con sesión puede reportar un fallo, incluso si la
+// plataforma está en mantenimiento: el formulario sirve para avisar de ello.
+router.use("/issues", issuesRouter);
 router.use((req, res, next) => {
   const settings = getSettings();
   if (!settings.mantenimiento) return next();

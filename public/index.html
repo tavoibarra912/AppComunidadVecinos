@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="notifications.css?v=1" />
     <link rel="stylesheet" href="fees.css?v=1" />
     <link rel="stylesheet" href="dashboard.css?v=2" />
+    <link rel="stylesheet" href="issue-reporter.css?v=1" />
   </head>
 
   <body>
@@ -6223,6 +6224,154 @@
           </button>
         </div>
       </form>
+    </dialog>
+
+    <!-- Reportar un error: icono flotante y formulario que crea un issue en GitHub. -->
+    <button
+      class="issue-reporter-fab"
+      id="issue-reporter-fab"
+      type="button"
+      aria-label="Reportar un error"
+      title="Reportar un error"
+      hidden
+    >
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="m8 2 1.88 1.88" />
+        <path d="M14.12 3.88 16 2" />
+        <path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" />
+        <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" />
+        <path d="M12 20v-9" />
+        <path d="M6.53 9C4.6 8.8 3 7.1 3 5" />
+        <path d="M6 13H2" />
+        <path d="M3 21c0-2.1 1.7-4 3.9-4.2" />
+        <path d="M17.47 9c1.93-.2 3.53-1.9 3.53-4" />
+        <path d="M18 13h4" />
+        <path d="M21 21c0-2.1-1.7-4-3.9-4.2" />
+      </svg>
+    </button>
+
+    <dialog
+      id="issue-reporter-dialog"
+      class="issue-reporter-dialog"
+      aria-labelledby="issue-reporter-title"
+    >
+      <form id="issue-reporter-form" class="dialog-content" novalidate>
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">SOPORTE</p>
+            <h2 id="issue-reporter-title">Reportar un error</h2>
+          </div>
+          <button
+            class="icon-action-btn btn-cancel btn-lg"
+            type="button"
+            aria-label="Cerrar reporte de error"
+            data-close-issue-reporter
+          >
+            ×
+          </button>
+        </div>
+        <p class="form-intro">
+          Cuéntanos qué ha fallado. El reporte se creará como issue en GitHub con la etiqueta
+          <strong>User-Detected-Issue</strong>.
+        </p>
+        <p class="issue-reporter-config" id="issue-reporter-config" role="status" hidden></p>
+        <div class="form-grid">
+          <label class="full"
+            >Título del error<input
+              name="title"
+              type="text"
+              minlength="5"
+              maxlength="140"
+              placeholder="Resumen breve de lo que no funciona"
+              required
+          /></label>
+          <label class="full"
+            >Descripción<textarea
+              name="description"
+              rows="5"
+              minlength="20"
+              maxlength="5000"
+              placeholder="¿Qué esperabas que ocurriera y qué ocurrió en su lugar?"
+              required
+            ></textarea>
+          </label>
+          <label class="full"
+            >Pasos para reproducirlo (opcional)<textarea
+              name="steps"
+              rows="3"
+              maxlength="3000"
+              placeholder="1. Entrar en…&#10;2. Pulsar…&#10;3. Ver que…"
+            ></textarea>
+          </label>
+          <label class="full"
+            >Comunidad o inmueble afectado (opcional)<input
+              name="affected"
+              type="text"
+              maxlength="200"
+              placeholder="Ej.: Comunidad Los Olmos, portal 2"
+          /></label>
+          <label class="full issue-reporter-files-field"
+            >Adjuntos (opcional)
+            <input
+              id="issue-reporter-files"
+              name="files"
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
+              multiple
+            />
+            <span class="form-intro"
+              >Hasta 5 archivos de 5 MB: PNG, JPG, WebP o PDF. Se suben al repositorio y se enlazan
+              en el issue.</span
+            >
+          </label>
+          <ul class="issue-reporter-file-list" id="issue-reporter-file-list" hidden></ul>
+        </div>
+        <p class="form-intro">
+          Se adjuntan automáticamente tu usuario, la pantalla actual, el navegador y la fecha. No se
+          envía tu correo electrónico.
+        </p>
+        <p class="form-error" id="issue-reporter-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="secondary-button" type="button" data-close-issue-reporter>Cancelar</button>
+          <button class="primary-button" type="submit" id="issue-reporter-submit">
+            Enviar reporte
+          </button>
+        </div>
+      </form>
+      <div
+        class="dialog-content issue-reporter-success"
+        id="issue-reporter-success"
+        role="status"
+        hidden
+      >
+        <p class="eyebrow">ENVIADO</p>
+        <h2 tabindex="-1">Gracias por avisar</h2>
+        <p>
+          El reporte se ha creado como issue
+          <strong id="issue-reporter-success-number"></strong> en GitHub.
+        </p>
+        <p>
+          <a id="issue-reporter-success-link" href="#" target="_blank" rel="noopener noreferrer"
+            >Ver el issue en GitHub</a
+          >
+        </p>
+        <div class="dialog-actions">
+          <button class="secondary-button" type="button" id="issue-reporter-again">
+            Crear otro reporte
+          </button>
+          <button class="primary-button" type="button" data-close-issue-reporter>Cerrar</button>
+        </div>
+      </div>
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
