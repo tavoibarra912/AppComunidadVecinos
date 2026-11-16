@@ -41,32 +41,16 @@
         "fee:read"
       ],
       "expected": {
-        "communities": [
-          "com-seed-1"
-        ],
-        "properties": [
-          "prop-seed-1"
-        ],
-        "owners": [
-          "own-seed-1"
-        ],
-        "tenants": [
-          "tenant-seed-1"
-        ]
+        "communities": ["com-seed-1"],
+        "properties": ["prop-seed-1"],
+        "owners": ["own-seed-1"],
+        "tenants": ["tenant-seed-1"]
       },
       "records": {
-        "communities": [
-          "Residencial Peñarrubia"
-        ],
-        "properties": [
-          "Parcela 14"
-        ],
-        "owners": [
-          "Carlos Ruiz Mendoza"
-        ],
-        "tenants": [
-          "Laura Martínez Reyes"
-        ]
+        "communities": ["Residencial Peñarrubia"],
+        "properties": ["Parcela 14"],
+        "owners": ["Carlos Ruiz Mendoza"],
+        "tenants": ["Laura Martínez Reyes"]
       },
       "checks": [
         {
@@ -82,12 +66,8 @@
         {
           "label": "Bootstrap communities",
           "pass": true,
-          "actual": [
-            "com-seed-1"
-          ],
-          "expected": [
-            "com-seed-1"
-          ]
+          "actual": ["com-seed-1"],
+          "expected": ["com-seed-1"]
         },
         {
           "label": "Listado communities",
@@ -162,12 +142,8 @@
         {
           "label": "Bootstrap owners",
           "pass": true,
-          "actual": [
-            "own-seed-1"
-          ],
-          "expected": [
-            "own-seed-1"
-          ]
+          "actual": ["own-seed-1"],
+          "expected": ["own-seed-1"]
         },
         {
           "label": "Listado owners",
@@ -252,12 +228,8 @@
         {
           "label": "Bootstrap properties",
           "pass": true,
-          "actual": [
-            "prop-seed-1"
-          ],
-          "expected": [
-            "prop-seed-1"
-          ]
+          "actual": ["prop-seed-1"],
+          "expected": ["prop-seed-1"]
         },
         {
           "label": "Listado properties",
@@ -372,12 +344,8 @@
         {
           "label": "Bootstrap tenants",
           "pass": true,
-          "actual": [
-            "tenant-seed-1"
-          ],
-          "expected": [
-            "tenant-seed-1"
-          ]
+          "actual": ["tenant-seed-1"],
+          "expected": ["tenant-seed-1"]
         },
         {
           "label": "Listado tenants",
@@ -422,12 +390,7 @@
         {
           "label": "Propietario de contrato solo como referencia own-seed-1",
           "pass": true,
-          "keys": [
-            "id",
-            "name",
-            "surname",
-            "propertyIds"
-          ]
+          "keys": ["id", "name", "surname", "propertyIds"]
         },
         {
           "label": "Administración restringida /admin/users",
@@ -612,9 +575,7 @@
         {
           "label": "Tablón solo comunidades permitidas",
           "pass": true,
-          "ids": [
-            "41012eec-4a61-4a46-bf3c-c5e8d1ea1180"
-          ]
+          "ids": ["41012eec-4a61-4a46-bf3c-c5e8d1ea1180"]
         },
         {
           "label": "Publicación com-seed-7",
@@ -677,32 +638,16 @@
         "fee:read"
       ],
       "expected": {
-        "communities": [
-          "com-seed-1"
-        ],
-        "properties": [
-          "prop-seed-1"
-        ],
-        "owners": [
-          "own-seed-1"
-        ],
-        "tenants": [
-          "tenant-seed-1"
-        ]
+        "communities": ["com-seed-1"],
+        "properties": ["prop-seed-1"],
+        "owners": ["own-seed-1"],
+        "tenants": ["tenant-seed-1"]
       },
       "records": {
-        "communities": [
-          "Residencial Peñarrubia"
-        ],
-        "properties": [
-          "Parcela 14"
-        ],
-        "owners": [
-          "Carlos Ruiz Mendoza"
-        ],
-        "tenants": [
-          "Laura Martínez Reyes"
-        ]
+        "communities": ["Residencial Peñarrubia"],
+        "properties": ["Parcela 14"],
+        "owners": ["Carlos Ruiz Mendoza"],
+        "tenants": ["Laura Martínez Reyes"]
       },
       "checks": [
         {
@@ -718,12 +663,8 @@
         {
           "label": "Bootstrap communities",
           "pass": true,
-          "actual": [
-            "com-seed-1"
-          ],
-          "expected": [
-            "com-seed-1"
-          ]
+          "actual": ["com-seed-1"],
+          "expected": ["com-seed-1"]
         },
         {
           "label": "Listado communities",
@@ -798,12 +739,8 @@
         {
           "label": "Bootstrap owners",
           "pass": true,
-          "actual": [
-            "own-seed-1"
-          ],
-          "expected": [
-            "own-seed-1"
-          ]
+          "actual": ["own-seed-1"],
+          "expected": ["own-seed-1"]
         },
         {
           "label": "Listado owners",
@@ -888,12 +825,8 @@
         {
           "label": "Bootstrap properties",
           "pass": true,
-          "actual": [
-            "prop-seed-1"
-          ],
-          "expected": [
-            "prop-seed-1"
-          ]
+          "actual": ["prop-seed-1"],
+          "expected": ["prop-seed-1"]
         },
         {
           "label": "Listado properties",
@@ -1008,12 +941,8 @@
         {
           "label": "Bootstrap tenants",
           "pass": true,
-          "actual": [
-            "tenant-seed-1"
-          ],
-          "expected": [
-            "tenant-seed-1"
-          ]
+          "actual": ["tenant-seed-1"],
+          "expected": ["tenant-seed-1"]
         },
         {
           "label": "Listado tenants",
@@ -1238,16 +1167,12 @@
         {
           "label": "Cuotas personales solo de titular",
           "pass": true,
-          "ids": [
-            "five-receipt-prop-seed-1"
-          ]
+          "ids": ["five-receipt-prop-seed-1"]
         },
         {
           "label": "Tablón solo comunidades permitidas",
           "pass": true,
-          "ids": [
-            "41012eec-4a61-4a46-bf3c-c5e8d1ea1180"
-          ]
+          "ids": ["41012eec-4a61-4a46-bf3c-c5e8d1ea1180"]
         },
         {
           "label": "Publicación com-seed-7",
@@ -1310,38 +1235,16 @@
         "fee:read"
       ],
       "expected": {
-        "communities": [
-          "com-seed-3",
-          "com-seed-2"
-        ],
-        "properties": [
-          "prop-seed-6",
-          "prop-seed-4"
-        ],
-        "owners": [
-          "own-seed-3",
-          "own-seed-4"
-        ],
-        "tenants": [
-          "five-dual-tenant"
-        ]
+        "communities": ["com-seed-3", "com-seed-2"],
+        "properties": ["prop-seed-6", "prop-seed-4"],
+        "owners": ["own-seed-3", "own-seed-4"],
+        "tenants": ["five-dual-tenant"]
       },
       "records": {
-        "communities": [
-          "Comunidad Vista Bella",
-          "Edificio Los Olivos"
-        ],
-        "properties": [
-          "Chalet 7",
-          "Piso 3º B"
-        ],
-        "owners": [
-          "Javier Gómez Alarcón",
-          "Carmen Navarro Beltrán"
-        ],
-        "tenants": [
-          "Doble perfil Contrato propio"
-        ]
+        "communities": ["Comunidad Vista Bella", "Edificio Los Olivos"],
+        "properties": ["Chalet 7", "Piso 3º B"],
+        "owners": ["Javier Gómez Alarcón", "Carmen Navarro Beltrán"],
+        "tenants": ["Doble perfil Contrato propio"]
       },
       "checks": [
         {
@@ -1357,14 +1260,8 @@
         {
           "label": "Bootstrap communities",
           "pass": true,
-          "actual": [
-            "com-seed-2",
-            "com-seed-3"
-          ],
-          "expected": [
-            "com-seed-3",
-            "com-seed-2"
-          ]
+          "actual": ["com-seed-2", "com-seed-3"],
+          "expected": ["com-seed-3", "com-seed-2"]
         },
         {
           "label": "Listado communities",
@@ -1434,14 +1331,8 @@
         {
           "label": "Bootstrap owners",
           "pass": true,
-          "actual": [
-            "own-seed-3",
-            "own-seed-4"
-          ],
-          "expected": [
-            "own-seed-3",
-            "own-seed-4"
-          ]
+          "actual": ["own-seed-3", "own-seed-4"],
+          "expected": ["own-seed-3", "own-seed-4"]
         },
         {
           "label": "Listado owners",
@@ -1521,14 +1412,8 @@
         {
           "label": "Bootstrap properties",
           "pass": true,
-          "actual": [
-            "prop-seed-4",
-            "prop-seed-6"
-          ],
-          "expected": [
-            "prop-seed-6",
-            "prop-seed-4"
-          ]
+          "actual": ["prop-seed-4", "prop-seed-6"],
+          "expected": ["prop-seed-6", "prop-seed-4"]
         },
         {
           "label": "Listado properties",
@@ -1638,12 +1523,8 @@
         {
           "label": "Bootstrap tenants",
           "pass": true,
-          "actual": [
-            "five-dual-tenant"
-          ],
-          "expected": [
-            "five-dual-tenant"
-          ]
+          "actual": ["five-dual-tenant"],
+          "expected": ["five-dual-tenant"]
         },
         {
           "label": "Listado tenants",
@@ -1688,12 +1569,7 @@
         {
           "label": "Propietario de contrato solo como referencia own-seed-4",
           "pass": true,
-          "keys": [
-            "id",
-            "name",
-            "surname",
-            "propertyIds"
-          ]
+          "keys": ["id", "name", "surname", "propertyIds"]
         },
         {
           "label": "Administración restringida /admin/users",
@@ -1878,17 +1754,12 @@
         {
           "label": "Cuotas personales solo de titular",
           "pass": true,
-          "ids": [
-            "five-receipt-prop-seed-4"
-          ]
+          "ids": ["five-receipt-prop-seed-4"]
         },
         {
           "label": "Tablón solo comunidades permitidas",
           "pass": true,
-          "ids": [
-            "e0795244-7b10-4738-98d0-1fe03f9cd5dc",
-            "38522d0c-49f3-4412-89d0-5146a5b5ac51"
-          ]
+          "ids": ["e0795244-7b10-4738-98d0-1fe03f9cd5dc", "38522d0c-49f3-4412-89d0-5146a5b5ac51"]
         },
         {
           "label": "Publicación com-seed-7",
@@ -1960,38 +1831,16 @@
         "fee:manage"
       ],
       "expected": {
-        "communities": [
-          "com-seed-1"
-        ],
-        "properties": [
-          "prop-seed-1",
-          "prop-seed-2",
-          "prop-seed-3"
-        ],
-        "owners": [
-          "own-seed-2",
-          "own-seed-1"
-        ],
-        "tenants": [
-          "tenant-seed-1"
-        ]
+        "communities": ["com-seed-1"],
+        "properties": ["prop-seed-1", "prop-seed-2", "prop-seed-3"],
+        "owners": ["own-seed-2", "own-seed-1"],
+        "tenants": ["tenant-seed-1"]
       },
       "records": {
-        "communities": [
-          "Residencial Peñarrubia"
-        ],
-        "properties": [
-          "Parcela 14",
-          "Parcela 22",
-          "Parcela 30"
-        ],
-        "owners": [
-          "María Luisa Fernández Soto",
-          "Carlos Ruiz Mendoza"
-        ],
-        "tenants": [
-          "Laura Martínez Reyes"
-        ]
+        "communities": ["Residencial Peñarrubia"],
+        "properties": ["Parcela 14", "Parcela 22", "Parcela 30"],
+        "owners": ["María Luisa Fernández Soto", "Carlos Ruiz Mendoza"],
+        "tenants": ["Laura Martínez Reyes"]
       },
       "checks": [
         {
@@ -2007,12 +1856,8 @@
         {
           "label": "Bootstrap communities",
           "pass": true,
-          "actual": [
-            "com-seed-1"
-          ],
-          "expected": [
-            "com-seed-1"
-          ]
+          "actual": ["com-seed-1"],
+          "expected": ["com-seed-1"]
         },
         {
           "label": "Listado communities",
@@ -2087,14 +1932,8 @@
         {
           "label": "Bootstrap owners",
           "pass": true,
-          "actual": [
-            "own-seed-1",
-            "own-seed-2"
-          ],
-          "expected": [
-            "own-seed-2",
-            "own-seed-1"
-          ]
+          "actual": ["own-seed-1", "own-seed-2"],
+          "expected": ["own-seed-2", "own-seed-1"]
         },
         {
           "label": "Listado owners",
@@ -2174,16 +2013,8 @@
         {
           "label": "Bootstrap properties",
           "pass": true,
-          "actual": [
-            "prop-seed-1",
-            "prop-seed-2",
-            "prop-seed-3"
-          ],
-          "expected": [
-            "prop-seed-1",
-            "prop-seed-2",
-            "prop-seed-3"
-          ]
+          "actual": ["prop-seed-1", "prop-seed-2", "prop-seed-3"],
+          "expected": ["prop-seed-1", "prop-seed-2", "prop-seed-3"]
         },
         {
           "label": "Listado properties",
@@ -2288,12 +2119,8 @@
         {
           "label": "Bootstrap tenants",
           "pass": true,
-          "actual": [
-            "tenant-seed-1"
-          ],
-          "expected": [
-            "tenant-seed-1"
-          ]
+          "actual": ["tenant-seed-1"],
+          "expected": ["tenant-seed-1"]
         },
         {
           "label": "Listado tenants",
@@ -2525,9 +2352,7 @@
         {
           "label": "Tablón solo comunidades permitidas",
           "pass": true,
-          "ids": [
-            "41012eec-4a61-4a46-bf3c-c5e8d1ea1180"
-          ]
+          "ids": ["41012eec-4a61-4a46-bf3c-c5e8d1ea1180"]
         },
         {
           "label": "Publicación com-seed-7",
@@ -2634,12 +2459,7 @@
           "own-seed-5",
           "own-seed-7"
         ],
-        "tenants": [
-          "tenant-seed-2",
-          "five-dual-tenant",
-          "tenant-seed-1",
-          "five-peer-tenant"
-        ]
+        "tenants": ["tenant-seed-2", "five-dual-tenant", "tenant-seed-1", "five-peer-tenant"]
       },
       "records": {
         "communities": [
@@ -2916,18 +2736,8 @@
         {
           "label": "Bootstrap tenants",
           "pass": true,
-          "actual": [
-            "five-dual-tenant",
-            "five-peer-tenant",
-            "tenant-seed-1",
-            "tenant-seed-2"
-          ],
-          "expected": [
-            "tenant-seed-2",
-            "five-dual-tenant",
-            "tenant-seed-1",
-            "five-peer-tenant"
-          ]
+          "actual": ["five-dual-tenant", "five-peer-tenant", "tenant-seed-1", "tenant-seed-2"],
+          "expected": ["tenant-seed-2", "five-dual-tenant", "tenant-seed-1", "five-peer-tenant"]
         },
         {
           "label": "Listado tenants",
@@ -3204,13 +3014,7 @@
       "username": "uruci1",
       "label": "Sin acceso de menú a configuración global",
       "pass": true,
-      "detail": [
-        "#home",
-        "#comunidades",
-        "#inmuebles",
-        "#inquilinos",
-        "#comunicacion"
-      ]
+      "detail": ["#home", "#comunidades", "#inmuebles", "#inquilinos", "#comunicacion"]
     },
     {
       "username": "uruci1",

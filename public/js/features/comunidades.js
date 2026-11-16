@@ -989,7 +989,7 @@ export function validateCommunityFields() {
   nifInput.setCustomValidity(
     isValidCommunityNif(nif)
       ? ""
-      : "El NIF debe ser un CIF válido de comunidad: H + 7 dígitos + dígito de control numérico (ejemplo: H12345674).",
+      : "Indicá un identificador español válido (NIF/DNI, NIE o CIF con letra y dígito de control oficiales).",
   );
   phoneInput.setCustomValidity(
     /^\d{9}$/.test(phone) ? "" : "El teléfono principal debe contener 9 dígitos numéricos.",

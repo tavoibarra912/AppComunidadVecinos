@@ -23,7 +23,7 @@ export function identityDocumentError(value, documentType = "DNI") {
 export function communityNifError(value) {
   if (!value) return "El NIF de la comunidad es obligatorio.";
   if (!isValidCommunityNif(value))
-    return "El NIF de la comunidad debe ser un CIF válido con formato H + 7 dígitos + dígito de control numérico (por ejemplo, H12345674).";
+    return "Indicá un identificador español válido (NIF/DNI, NIE o CIF con letra y dígito de control oficiales; por ejemplo H12345674, 47895231P o Y6943305X).";
   return null;
 }
 

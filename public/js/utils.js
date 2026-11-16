@@ -221,10 +221,11 @@ export function isValidNif(value) {
   return isValidDni(value) || isValidNie(value) || isValidCif(value);
 }
 
-/** Valida el NIF/CIF de una comunidad de propietarios: H + 7 dígitos + control. */
+/** Valida el NIF de una comunidad: cualquier identificador español válido
+ * (DNI, NIE o CIF con cualquiera de las letras legales). */
 export function isValidCommunityNif(value) {
   const str = normalizeIdentityDocument(value);
-  return str.startsWith("H") && isValidCif(str);
+  return isValidDni(str) || isValidNie(str) || isValidCif(str);
 }
 
 export function detectDocumentType(value) {
