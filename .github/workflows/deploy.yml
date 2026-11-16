@@ -1,0 +1,76 @@
+name: Deploy a producción
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # La marca se inyecta en el HTML al servirlo; el build valida el dist.
+      - run: npm run build:netlify
+
+  deploy-netlify:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:netlify
+      - name: Empaquetar dist
+        run: |
+          cd dist
+          zip -r ../frontend.zip .
+      - name: Publicar en Netlify
+        env:
+          ZIP: ${{ github.workspace }}/frontend.zip
+        run: |
+          curl -fsS -X POST \
+            "https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys?draft=false&title=deploy%20${GITHUB_SHA::7}" \
+            -H "Authorization: Bearer ${NETLIFY_AUTH_TOKEN}" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@${ZIP}" \
+            -o netlify-response.json
+          node -e "const d=require('./netlify-response.json'); console.log('Deploy Netlify:', d.state, d.id); if(d.state&&!['ready','uploaded'].includes(d.state)) process.exit(1)"
+
+  deploy-vm:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Actualizar backend en la VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script: |
+            set -e
+            cd /home/${{ secrets.VM_USER }}/comunidad
+            if [ -d .git ]; then git pull --ff-only origin main; fi
+            bash scripts/update-vm.sh
+            curl -fsS http://127.0.0.1:3000/api/health || { echo "Health check falló"; exit 1; }

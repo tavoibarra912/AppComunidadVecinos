@@ -558,6 +558,34 @@ La VM/IP existentes mantienen sus costes y el tráfico adicional puede consumir
 cuota. Netlify debe permanecer en Free y sin recarga automática: sus créditos
 son compartidos por los sitios del equipo y, al agotarlos, puede pausar las webs.
 Las publicaciones son manuales para evitar consumir créditos con cada push.
+
+### Despliegue automático con GitHub Actions (opcional)
+
+El workflow `.github/workflows/deploy.yml` activa producción completa en cada
+merge a `main` (o con *Run workflow*):
+
+1. **test**: `npm ci` + suite completa + valida `npm run build:netlify`.
+2. **deploy-netlify**: publica `dist/` en el sitio Netlify por API
+   (`draft=false`).
+3. **deploy-vm**: hace `git pull` en la VM, reconstruye la imagen con
+   `scripts/update-vm.sh` (docker compose si existe; si no, recrea el
+   contenedor `comunidad-app` conservando `data/` y `uploads/`) y verifica
+   `/api/health`.
+
+Para activarlo, configurá estos secretos en **GitHub → Settings → Secrets →
+Actions** del repositorio:
+
+| Secreto | Qué contiene |
+| --- | --- |
+| `NETLIFY_AUTH_TOKEN` | Token de la API de Netlify (dashboards → User settings → Applications → New access token) |
+| `NETLIFY_SITE_ID` | `60d02ac0-8740-489e-852d-b4f48342c744` |
+| `VM_HOST` | IP pública de la VM (`35.209.188.202`) |
+| `VM_USER` | Usuario SSH de la VM (ej. `quantum_system`) |
+| `VM_SSH_KEY` | Clave privada SSH (PEM) con acceso a la VM |
+
+La VM debe tener el repositorio clonado en `/home/<VM_USER>/comunidad`.
+Si el contenedor usa una red/proxy especial, guardá su nombre en
+`.deploy-networks` dentro de ese directorio.
 No activar Functions, AI, analítica de pago o compras de créditos.
 Correo, SMS y WhatsApp conservan sus proveedores y pueden tener cargos propios.
 
