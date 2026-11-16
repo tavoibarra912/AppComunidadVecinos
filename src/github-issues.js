@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 export const DEFAULT_ISSUE_LABEL = "User-Detected-Issue";
-export const DEFAULT_ATTACHMENTS_BRANCH = "issue-attachments";
+export const DEFAULT_ATTACHMENTS_BRANCH = "main";
 export const DEFAULT_REPOSITORY = "tavoibarra912/AppComunidadVecinos";
 
 export const ISSUE_ATTACHMENT_EXTENSIONS = Object.freeze([
@@ -40,9 +40,11 @@ export function githubIssuesConfig(env = process.env) {
   const requestedBranch = String(
     env.GITHUB_ISSUES_ATTACHMENTS_BRANCH || DEFAULT_ATTACHMENTS_BRANCH,
   ).trim();
-  const attachmentsBranch = SAFE_BRANCH.test(requestedBranch)
-    ? requestedBranch
-    : DEFAULT_ATTACHMENTS_BRANCH;
+  // Las instalaciones anteriores no deben recrear la rama de adjuntos retirada.
+  const attachmentsBranch =
+    requestedBranch !== "issue-attachments" && SAFE_BRANCH.test(requestedBranch)
+      ? requestedBranch
+      : DEFAULT_ATTACHMENTS_BRANCH;
   const apiUrl = String(env.GITHUB_ISSUES_API_URL || "https://api.github.com")
     .trim()
     .replace(/\/+$/, "");

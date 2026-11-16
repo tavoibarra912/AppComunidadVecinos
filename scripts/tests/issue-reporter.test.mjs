@@ -15,6 +15,7 @@ process.env.GITHUB_ISSUES_LABEL = "User-Detected-Issue";
 process.env.GITHUB_ISSUES_ATTACHMENTS_BRANCH = "issue-attachments";
 
 const { db } = await import("../../src/db.js");
+const { githubIssuesConfig } = await import("../../src/github-issues.js");
 const { seedIfEmpty } = await import("../../src/seed.js");
 seedIfEmpty();
 const { default: router } = await import("../../src/routes/index.js");
@@ -287,7 +288,15 @@ test("reportes: los adjuntos respetan la configuración general", async () => {
   }
 });
 
-test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces", async () => {
+test("reportes: usa main por defecto y migra la configuración de la rama retirada", () => {
+  assert.equal(githubIssuesConfig({}).attachmentsBranch, "main");
+  assert.equal(
+    githubIssuesConfig({ GITHUB_ISSUES_ATTACHMENTS_BRANCH: "issue-attachments" }).attachmentsBranch,
+    "main",
+  );
+});
+
+test("reportes: crea etiqueta e issue con los adjuntos en main sin crear ramas", async () => {
   const request = validForm({
     description:
       "<p>Al pulsar <strong>guardar</strong> no ocurre nada y no aparece ningún aviso.</p><script>alert(1)</script>",
@@ -305,14 +314,13 @@ test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces",
   const label = requests.find((item) => item.method === "POST" && item.url.endsWith("/labels"));
   assert.deepEqual(label.body.name, "User-Detected-Issue");
   const branch = requests.find((item) => item.method === "POST" && item.url.endsWith("/git/refs"));
-  assert.equal(branch.body.ref, "refs/heads/issue-attachments");
-  assert.equal(branch.body.sha, "sha-base");
+  assert.equal(branch, undefined);
 
   const uploads = requests.filter(
     (item) => item.method === "PUT" && item.url.includes("/contents/reportes/"),
   );
   assert.equal(uploads.length, 2);
-  assert.equal(uploads[0].body.branch, "issue-attachments");
+  assert.equal(uploads[0].body.branch, "main");
   assert.equal(
     Buffer.from(uploads[0].body.content, "base64").subarray(0, 8).toString("hex"),
     "89504e470d0a1a0a",
@@ -333,11 +341,11 @@ test("reportes: crea etiqueta, rama de adjuntos e issue con contexto y enlaces",
   assert.match(issue.body.body, /\*\*Versión de la aplicación:\*\* `1\.0\.0`/);
   assert.match(
     issue.body.body,
-    /!\[captura\.png\]\(https:\/\/raw\.example\.test\/owner\/repo\/issue-attachments\/reportes\//,
+    /!\[captura\.png\]\(https:\/\/raw\.example\.test\/owner\/repo\/main\/reportes\//,
   );
   assert.match(
     issue.body.body,
-    /- \[consola\.pdf\]\(https:\/\/raw\.example\.test\/owner\/repo\/issue-attachments\/reportes\//,
+    /- \[consola\.pdf\]\(https:\/\/raw\.example\.test\/owner\/repo\/main\/reportes\//,
   );
 });
 

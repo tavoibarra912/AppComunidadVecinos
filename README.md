@@ -480,7 +480,7 @@ ni identificadores de GitHub.
   configuración general que los documentos (tipos permitidos, tamaño máximo por
   archivo y número máximo de archivos), con un tope adicional de 50 MB por
   reporte.
-- Los adjuntos se suben como commits a la rama `issue-attachments` del
+- Los adjuntos se suben como commits a la rama `main` del
   repositorio y se enlazan desde el cuerpo del issue. El issue nunca se publica
   como creado si GitHub devuelve un error; en ese caso se retiran los adjuntos
   que se hubieran subido.
@@ -495,7 +495,7 @@ ni identificadores de GitHub.
   GITHUB_ISSUES_TOKEN=...            # token con Issues y Contents: Read and write
   GITHUB_ISSUES_REPO=tavoibarra912/AppComunidadVecinos
   GITHUB_ISSUES_LABEL=User-Detected-Issue
-  GITHUB_ISSUES_ATTACHMENTS_BRANCH=issue-attachments
+  GITHUB_ISSUES_ATTACHMENTS_BRANCH=main
   ```
 
   Puedes obtener un token con `gh auth token`. Sin `GITHUB_ISSUES_TOKEN` el
