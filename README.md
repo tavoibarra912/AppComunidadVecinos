@@ -557,35 +557,55 @@ No se crean máquinas, IPs, discos, bases gestionadas, dominios ni planes de pag
 La VM/IP existentes mantienen sus costes y el tráfico adicional puede consumir
 cuota. Netlify debe permanecer en Free y sin recarga automática: sus créditos
 son compartidos por los sitios del equipo y, al agotarlos, puede pausar las webs.
-Las publicaciones son manuales para evitar consumir créditos con cada push.
+El despliegue automático publica al actualizar `main`: cada publicación de Netlify
+consume los créditos del equipo. Una falta de créditos hace fallar la ejecución;
+no se añaden créditos ni se cambia el plan automáticamente.
 
-### Despliegue automático con GitHub Actions (opcional)
+### Despliegue automático con GitHub Actions
 
-El workflow `.github/workflows/deploy.yml` activa producción completa en cada
-merge a `main` (o con *Run workflow*):
+El workflow `.github/workflows/deploy.yml` valida las PR y despliega al recibir un
+push en `main` (incluidos los merges). También admite _Run workflow_ sobre
+`main`; otras ramas y las PR nunca despliegan ni reciben secretos.
 
-1. **test**: `npm ci` + suite completa + valida `npm run build:netlify`.
-2. **deploy-netlify**: publica `dist/` en el sitio Netlify por API
-   (`draft=false`).
-3. **deploy-vm**: hace `git pull` en la VM, reconstruye la imagen con
-   `scripts/update-vm.sh` (docker compose si existe; si no, recrea el
-   contenedor `comunidad-app` conservando `data/` y `uploads/`) y verifica
-   `/api/health`.
+1. **Validación**: Node.js 24, `npm ci`, suite completa, sintaxis Bash y build del
+   frontend. Se empaquetan el código y los estáticos del mismo commit.
+2. **GCP completo**: se transfiere esa versión por SSH a
+   `/home/quantum_system/comunidad/releases/<SHA>`, sin requerir un clon de Git.
+   Se construye la imagen antes de detener el servicio. Se hace una copia privada
+   y consistente de SQLite, documentos, clave de proveedores, `.env` y Compose;
+   se actualiza solo el servicio `api` con el Compose existente. Se conservan
+   los volúmenes, credenciales, UID/GID, red, alias del proxy y límites de recursos.
+3. **Comprobación GCP**: la salud dentro del contenedor y por HTTPS debe mostrar
+   el SHA esperado. También se verifican el HTML público y `release.json`.
+4. **Netlify obligatorio**: se publica el ZIP con `production=true`, se espera
+   a que llegue a `ready` y se comprueba que sea el despliegue de producción
+   publicado. Después se validan API, HTML y estáticos desde su dominio público.
 
-Para activarlo, configurá estos secretos en **GitHub → Settings → Secrets →
-Actions** del repositorio:
+**Ambos destinos son obligatorios.** Si Netlify rechaza el despliegue, la ejecución
+queda en rojo aunque GCP ya se haya actualizado. No es una transacción entre
+proveedores: consultar el paso fallido y el resumen de Actions antes de reintentar.
+Comprobado el 16/11/2026: Netlify responde HTTP 403, «Account credit usage exceeded -
+new deploys are blocked until credits are added»; el dominio actual devuelve 401
+por protección del borrador. Mientras siga ese bloqueo, el flujo no puede declarar
+éxito completo. GCP sigue sirviendo la aplicación completa por su propia URL.
 
-| Secreto | Qué contiene |
-| --- | --- |
-| `NETLIFY_AUTH_TOKEN` | Token de la API de Netlify (dashboards → User settings → Applications → New access token) |
-| `NETLIFY_SITE_ID` | `60d02ac0-8740-489e-852d-b4f48342c744` |
-| `VM_HOST` | IP pública de la VM (`35.209.188.202`) |
-| `VM_USER` | Usuario SSH de la VM (ej. `quantum_system`) |
-| `VM_SSH_KEY` | Clave privada SSH (PEM) con acceso a la VM |
+Los seis secretos de Actions están configurados en el repositorio:
 
-La VM debe tener el repositorio clonado en `/home/<VM_USER>/comunidad`.
-Si el contenedor usa una red/proxy especial, guardá su nombre en
-`.deploy-networks` dentro de ese directorio.
+- `VM_HOST`: IP pública de la VM existente.
+- `VM_USER`: `quantum_system`.
+- `VM_SSH_KEY`: clave dedicada a este despliegue, autorizada en la VM.
+- `VM_KNOWN_HOSTS`: clave pública de host comprobada contra la VM; SSH exige
+  que coincida, sin aceptar claves obtenidas de la red durante el despliegue.
+- `NETLIFY_AUTH_TOKEN`: token de la cuenta conectada de Netlify.
+- `NETLIFY_SITE_ID`: `60d02ac0-8740-489e-852d-b4f48342c744`.
+
+Solo se ejecuta un despliegue a la vez; un nuevo push no interrumpe el que ya
+está modificando producción. La VM también usa un bloqueo local. Los backups e
+imágenes anteriores se conservan. Si falla el backup se reinicia la versión
+anterior; si la nueva versión no pasa salud, se informa del backup sin restaurar
+la base automáticamente, porque las migraciones pueden necesitar revisión.
+El despliegue reinicia brevemente la API; no ofrece actualización sin interrupción.
+
 No activar Functions, AI, analítica de pago o compras de créditos.
 Correo, SMS y WhatsApp conservan sus proveedores y pueden tener cargos propios.
 
@@ -639,13 +659,16 @@ bash deploy/backup.sh
 amplía el disco automáticamente. Las copias locales en la VM no cubren pérdida
 del disco: conservar también una copia privada fuera de ella.
 
-Para actualizar: construir una imagen con otra etiqueta fija, hacer backup,
-cambiar `COMUNIDAD_IMAGE` y ejecutar `docker compose ... up -d --no-deps api`.
+Para actualizar, fusionar la PR en `main` y seguir el workflow de Actions. Para
+reintentar un fallo, usar _Run workflow_ sobre `main`: GCP se verifica de nuevo y
+Netlify debe confirmar la publicación. Para una intervención manual, construir
+una imagen con etiqueta fija, hacer backup, cambiar `COMUNIDAD_IMAGE` y ejecutar
+`docker compose ... up -d --no-deps api`.
 Conservar el `.env` privado del servidor y configurar en él `GITHUB_ISSUES_TOKEN`,
 `GITHUB_ISSUES_REPO`, `GITHUB_ISSUES_LABEL` y `GITHUB_ISSUES_ATTACHMENTS_BRANCH`
 para habilitar los reportes. Nunca incluir ese `.env` en la imagen ni en Git.
-Comprobar salud, login, permisos y descargas antes de publicar `dist/` mediante
-la API de Netlify. Un rollback de imagen puede necesitar restaurar también la
+Tras una actualización, comprobar también login, permisos y descargas. Un
+rollback de imagen puede necesitar restaurar también la
 base del backup si hubo migraciones; conservar primero los datos posteriores.
 
 Con `NODE_ENV=production` no se carga automáticamente el censo de comunidades de

@@ -18,6 +18,11 @@ await rm(output, { recursive: true, force: true });
 await cp(path.join(root, "public"), output, { recursive: true });
 // El HTML lleva la marca/configuración actual y se obtiene del backend en cada visita.
 await rm(path.join(output, "index.html"));
+if (process.env.APP_RELEASE)
+  await writeFile(
+    path.join(output, "release.json"),
+    JSON.stringify({ release: process.env.APP_RELEASE }),
+  );
 await mkdir(path.join(output, "vendor"), { recursive: true });
 await cp(
   path.join(root, "node_modules/dompurify/dist/purify.es.mjs"),

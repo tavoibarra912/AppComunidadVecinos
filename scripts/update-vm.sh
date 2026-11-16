@@ -1,50 +1,63 @@
 #!/usr/bin/env bash
-# Actualiza el contenedor del backend en la VM de producción.
-# Se ejecuta desde /home/<user>/comunidad después del git pull.
-# Prefiere docker compose si existe; si no, recrea el contenedor 'comunidad-app'
-# conservando los volúmenes de datos (data/ y uploads/ viven fuera de la imagen).
+# Ejecutado desde releases/<SHA>; los datos y el .env permanecen en la raíz.
 set -euo pipefail
+umask 077
 
-cd "$(dirname "$0")/.."
+release_sha=${1:?Falta el SHA del commit}
+[[ "$release_sha" =~ ^[a-f0-9]{40}$ ]] || { echo 'SHA inválido' >&2; exit 1; }
+app_root=$(realpath "${2:-/home/quantum_system/comunidad}")
+source_root=$(cd -- "$(dirname -- "$0")/.." && pwd -P)
+[[ "$source_root" == "$app_root/releases/$release_sha" ]] || { echo 'La versión debe estar en releases/<SHA>' >&2; exit 1; }
+cd "$app_root"
+exec 9>.deploy.lock
+flock -n 9 || { echo 'Ya hay otro despliegue en curso' >&2; exit 1; }
+test -f .env
+test -f data/penarrubia.db
+test -d uploads
+test -f deploy/compose.yml
+docker compose version >/dev/null
+docker network inspect opengym_default >/dev/null
+compose=(docker compose --project-directory "$app_root" --env-file "$app_root/.env" -f "$app_root/deploy/compose.yml")
+"${compose[@]}" config --quiet
+mkdir -p backups
+available_kb=$(df -Pk . | awk 'NR==2 {print $4}')
+required_kb=$(du -sk data uploads | awk '{sum+=$1} END {print sum+1048576}')
+(( available_kb >= required_kb )) || { echo 'Espacio insuficiente para imagen y backup; no se borra nada.' >&2; exit 1; }
 
-# 1) Reconstruir la imagen con el código actual (Node 24, sin dev deps)
-if command -v docker >/dev/null 2>&1; then
-  RUNTIME=docker
-elif command -v podman >/dev/null 2>&1; then
-  RUNTIME=podman
-else
-  echo "No se encontró docker ni podman en la VM" >&2
-  exit 1
-fi
-echo "Runtime: ${RUNTIME}"
+image="comunidad:$release_sha"
+# Construir primero: un fallo no detiene la versión actual.
+docker build --build-arg "APP_RELEASE=$release_sha" --label "org.opencontainers.image.revision=$release_sha" -t "$image" "$source_root"
+backup="$app_root/backups/comunidad-$(date -u +%Y%m%dT%H%M%S)-$release_sha.tar.gz"
+"${compose[@]}" stop api
+# Si falla la copia, volver a arrancar con la configuración anterior.
+trap '"${compose[@]}" start api' EXIT
+tar -czf "$backup" data uploads .env deploy/compose.yml
+"${compose[@]}" start api
+trap - EXIT
 
-if [ -f docker-compose.yml ] || [ -f compose.yaml ] || [ -f compose.yml ]; then
-  echo "Usando docker compose"
-  ${RUNTIME} compose up -d --build
-  exit 0
-fi
+env_tmp=$(mktemp "$app_root/.env.release.XXXXXX")
+trap 'rm -f "$env_tmp"' EXIT
+awk -v image="$image" '
+  /^COMUNIDAD_IMAGE=/ { if (!seen++) print "COMUNIDAD_IMAGE=" image; next }
+  { print }
+  END { if (!seen) print "COMUNIDAD_IMAGE=" image }
+' .env > "$env_tmp"
+mv "$env_tmp" .env
+cp "$source_root/deploy/compose.yml" deploy/compose.yml
+"${compose[@]}" up -d --no-deps --pull never api
 
-# 2) Fallback: build + recrear el contenedor por nombre
-${RUNTIME} build -t comunidad-app .
-
-CONTAINER="comunidad-app"
-if ${RUNTIME} ps -q --filter "name=${CONTAINER}" | grep -q .; then
-  ${RUNTIME} stop "${CONTAINER}" || true
-  ${RUNTIME} rm "${CONTAINER}" || true
-fi
-
-# Determinar la red del contenedor anterior si la hubiera (conserva el proxy).
-NETWORK=""
-if [ -d "/home/${SUDO_USER:-$(whoami)}/comunidad" ] && [ -f .deploy-networks ]; then
-  NETWORK=$(cat .deploy-networks)
-fi
-
-${RUNTIME} run -d --name "${CONTAINER}" --restart unless-stopped \
-  ${NETWORK:+--network "${NETWORK}"} \
-  -e NODE_ENV=production -e HOST=0.0.0.0 -e PORT=3000 \
-  -e APP_DATA_DIR=/app/data -e APP_UPLOADS_DIR=/app/uploads \
-  -v "$(pwd)/data:/app/data" \
-  -v "$(pwd)/uploads:/app/uploads" \
-  comunidad-app
-
-echo "Backend actualizado y en ejecución."
+for attempt in $(seq 1 60); do
+  if "${compose[@]}" exec -T api node -e '
+    fetch("http://127.0.0.1:3000/api/health", {signal: AbortSignal.timeout(3000)}).then(async r => {
+      const d = await r.json();
+      if (!r.ok || d.status !== "ok" || d.app !== "app-comunidad-vecinos" || d.release !== process.argv[1]) process.exit(1);
+    }).catch(() => process.exit(1));
+  ' "$release_sha" 2>/dev/null; then
+    printf '%s\n' "$release_sha" > .deployed-release
+    echo "Versión $release_sha saludable. Backup privado: $backup"
+    exit 0
+  fi
+  sleep 2
+done
+echo "ERROR: la versión no pasó salud. Se conserva el backup $backup y las imágenes anteriores. Revisar migraciones antes de restaurar." >&2
+exit 1

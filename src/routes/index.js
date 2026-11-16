@@ -53,6 +53,7 @@ router.get("/health", (req, res) => {
   res.json({
     status: "ok",
     app: "app-comunidad-vecinos",
+    release: process.env.APP_RELEASE || "development",
     pid: process.pid,
     uptime: process.uptime(),
   });
