@@ -60,11 +60,14 @@ test("NIF y NIF de comunidad", () => {
   assert.equal(isValidNif("X0000000T"), true);
   assert.equal(isValidNif("B12345674"), true);
   assert.equal(isValidNif("B12345678"), false);
+  // La comunidad admite cualquier identificador español válido (issue 191).
   assert.equal(isValidCommunityNif("H12345674"), true);
+  assert.equal(isValidCommunityNif("B12345674"), true);
+  assert.equal(isValidCommunityNif("G12345674"), true);
+  assert.equal(isValidCommunityNif("47895231P"), true);
+  assert.equal(isValidCommunityNif("Y6943305X"), true);
   assert.equal(isValidCommunityNif("H12345678"), false);
   assert.equal(isValidCommunityNif("H0311223A"), false);
-  assert.equal(isValidCommunityNif("H03112232"), true);
-  assert.equal(isValidCommunityNif("B12345674"), false);
 });
 
 test("documentos identificativos: se normalizan minúsculas, espacios y separadores", () => {

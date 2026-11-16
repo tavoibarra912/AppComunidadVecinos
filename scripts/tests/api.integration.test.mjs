@@ -569,6 +569,57 @@ test("R01/R02: el servidor rechaza campos vacíos o solo espacios", async () => 
   assert.match(putVacio.data.error, /teléfono|dirección/);
 });
 
+test("issue 191: el NIF de comunidad admite DNI, NIE y CIF con cualquier letra", async () => {
+  // CIF con letra distinta de H: B12345674 (empresas), G12345674 (asociación)…
+  const c = await admin("/communities", "POST", {
+    name: "Comunidad CIF B",
+    nif: "B12345674",
+    address: "Calle 1",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28001",
+  });
+  assert.equal(c.status, 201, JSON.stringify(c.data));
+  assert.equal(c.data.nif, "B12345674");
+  await admin("/communities/" + c.data.id, "DELETE");
+
+  // DNI en el campo NIF
+  const d = await admin("/communities", "POST", {
+    name: "Comunidad DNI",
+    nif: "47895231P",
+    address: "Calle 2",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28001",
+  });
+  assert.equal(d.status, 201, JSON.stringify(d.data));
+  await admin("/communities/" + d.data.id, "DELETE");
+
+  // NIE en el campo NIF
+  const n = await admin("/communities", "POST", {
+    name: "Comunidad NIE",
+    nif: "Y6943305X",
+    address: "Calle 3",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28001",
+  });
+  assert.equal(n.status, 201, JSON.stringify(n.data));
+  await admin("/communities/" + n.data.id, "DELETE");
+
+  // Un identificador inválido se sigue rechazando
+  const malo = await admin("/communities", "POST", {
+    name: "Comunidad inválida",
+    nif: "H99999999",
+    address: "Calle 4",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28001",
+  });
+  assert.equal(malo.status, 400);
+  assert.match(malo.data.error, /identificador español/i);
+});
+
 test("comunidades: el NIF se normaliza aunque venga con espacios, guiones o minúsculas", async () => {
   const created = await admin("/communities", "POST", {
     name: "Comunidad normalizada",
