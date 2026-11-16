@@ -21,8 +21,12 @@ export function publicOrigin(value, production = process.env.NODE_ENV === "produ
 export function isSameOrigin(req, configuredOrigin = "") {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return true;
   const origin = req.get("origin");
+  const allowedOrigins = [configuredOrigin].flat().filter(Boolean);
   return (
     req.get("sec-fetch-site") !== "cross-site" &&
-    (!origin || origin === (configuredOrigin || `${req.protocol}://${req.get("host")}`))
+    (!origin ||
+      (allowedOrigins.length
+        ? allowedOrigins.includes(origin)
+        : origin === `${req.protocol}://${req.get("host")}`))
   );
 }

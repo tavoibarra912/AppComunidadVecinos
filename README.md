@@ -571,6 +571,11 @@ por IP se comparten a través del proxy; los límites por identidad se mantienen
 `APP_DEMO_PROFILES=false` evita recrear cuentas con contraseñas previsibles sin
 borrar los perfiles existentes. El entorno local conserva su comportamiento.
 
+`APP_ALLOWED_ORIGINS` admite orígenes adicionales separados por comas, validados
+con las mismas reglas estrictas que `APP_PUBLIC_URL`. En este despliegue incluye
+`https://gestion-penarrubia.netlify.app` para permitir el acceso desde Netlify
+y desde el dominio directo de GCP. No admite comodines ni URLs con rutas.
+
 La primera transferencia usa `node scripts/snapshot-deploy.mjs --rotate-predictable`.
 Crea una copia consistente de SQLite mediante su API de backup, copia `uploads/`
 y conserva `provider-key`; ejecutar sin subidas/ediciones concurrentes para que

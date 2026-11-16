@@ -12,7 +12,12 @@ import {
 import { createPermissionChecker } from "../public/js/permissions.js";
 import { isSameOrigin, publicOrigin } from "./request-origin.js";
 
-const configuredOrigin = publicOrigin(process.env.APP_PUBLIC_URL);
+const configuredOrigins = [
+  process.env.APP_PUBLIC_URL || "",
+  ...String(process.env.APP_ALLOWED_ORIGINS || "").split(","),
+]
+  .map((value) => publicOrigin(value.trim()))
+  .filter(Boolean);
 
 const COOKIE = "penarrubia_session";
 const digest = (token) => crypto.createHash("sha256").update(token).digest("hex");
@@ -87,7 +92,7 @@ export function requireSession(req, res, next) {
   next();
 }
 export function sameOrigin(req, res, next) {
-  if (!isSameOrigin(req, configuredOrigin))
+  if (!isSameOrigin(req, configuredOrigins))
     return res.status(403).json({ error: "Origen de la petición no permitido." });
   next();
 }
