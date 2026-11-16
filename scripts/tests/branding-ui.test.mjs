@@ -99,16 +99,22 @@ test("brand.js: aplica nombre, colores, título, descripción y saludo al boot",
   );
   assert.match(fx.elements.get("brand-vars").textContent, /--nav:#0f3057/);
   assert.match(fx.elements.get("brand-vars").textContent, /--brand:#e8743b/);
-  assert.equal(fx.elements.get("topbar-brand-logo").hidden, true);
+  // El logo siempre está disponible: sin logo configurado se usa el por defecto.
+  assert.equal(fx.elements.get("topbar-brand-logo").hidden, false);
+  assert.match(
+    fx.elements.get("topbar-brand-logo").src,
+    /logo-default\.svg$/,
+  );
 });
-test("brand.js: logo se muestra con data URL y se oculta sin él", () => {
+test("brand.js: logo se muestra con data URL y usa el por defecto sin él", () => {
   const logo = `data:image/png;base64,${Buffer.from("x").toString("base64")}`;
   const fx = fixture({ nombre: "X", logoDataUrl: logo });
   fx.applyBrand();
   assert.equal(fx.elements.get("topbar-brand-logo").hidden, false);
   assert.equal(fx.elements.get("topbar-brand-logo").src, logo);
   fx.applyBrand({ ...fx.readInjectedBrand(), logoDataUrl: "" });
-  assert.equal(fx.elements.get("login-brand-logo").hidden, true);
+  assert.equal(fx.elements.get("login-brand-logo").hidden, false);
+  assert.match(fx.elements.get("login-brand-logo").src, /logo-default\.svg$/);
 });
 test("brand.js: JSON roto o incompleto cae a los valores por defecto sin romper", () => {
   const fx = fixture();

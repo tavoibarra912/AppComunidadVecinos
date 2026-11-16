@@ -83,13 +83,11 @@ function setBrandText(root, name) {
 function setLogo(id, url) {
   const img = document.getElementById(id);
   if (!img) return;
-  if (url) {
-    img.src = url;
-    img.hidden = false;
-  } else {
-    img.removeAttribute("src");
-    img.hidden = true;
-  }
+  // El logo siempre está disponible: si no hay uno configurado se usa el
+  // logo por defecto de la marca (casita de la app). Eso mantiene la
+  // identidad visual y el área clickeable en el topbar.
+  img.src = url || "logo-default.svg";
+  img.hidden = false;
 }
 
 export function applyBrand(brand = readInjectedBrand()) {
