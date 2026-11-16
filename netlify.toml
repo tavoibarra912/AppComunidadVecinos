@@ -1,0 +1,7 @@
+[build]
+  command = "npm run build:netlify"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+  APP_BACKEND_URL = "https://35.209.188.202/comunidad/"

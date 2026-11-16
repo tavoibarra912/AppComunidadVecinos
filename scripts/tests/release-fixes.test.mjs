@@ -114,6 +114,7 @@ test("arranque real en producción: no añade un censo de comunidades de ejemplo
   const running = await start({
     NODE_ENV: "production",
     APP_ADMIN_PASSWORD: "Clave-De-Prueba-Produccion-123",
+    APP_DEMO_PROFILES: "false",
     APP_DATA_DIR: productionData,
     APP_UPLOADS_DIR: path.join(directory, "production-uploads"),
   });
@@ -121,6 +122,7 @@ test("arranque real en producción: no añade un censo de comunidades de ejemplo
     const production = new DatabaseSync(path.join(productionData, "penarrubia.db"));
     try {
       assert.equal(production.prepare("SELECT COUNT(*) n FROM communities").get().n, 0);
+      assert.equal(production.prepare("SELECT COUNT(*) n FROM users").get().n, 1);
     } finally {
       production.close();
     }

@@ -1,0 +1,35 @@
+name: comunidad
+services:
+  api:
+    image: ${COMUNIDAD_IMAGE:?Falta la imagen local validada}
+    restart: unless-stopped
+    init: true
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      APP_DEMO_PROFILES: "false"
+      HOST: 0.0.0.0
+      PORT: "3000"
+      APP_DATA_DIR: /app/data
+      APP_UPLOADS_DIR: /app/uploads
+    mem_limit: 192m
+    cpus: 0.5
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    networks:
+      gateway:
+        aliases: [comunidad-api]
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+networks:
+  gateway:
+    external: true
+    name: opengym_default

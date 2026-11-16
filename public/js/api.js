@@ -63,6 +63,10 @@ export const api = {
     request(`/auth/${path}`, { method: "POST", body: JSON.stringify(body || {}) }),
   getBootstrap: () => request("/bootstrap"),
 
+  // --- Reportes de errores enviados a GitHub ---
+  getIssueReporterConfig: () => request("/issues"),
+  reportIssue: (formData) => request("/issues", { method: "POST", body: formData }),
+
   // --- Comunidades ---
   createCommunity: (payload) =>
     request("/communities", { method: "POST", body: JSON.stringify(payload) }),
