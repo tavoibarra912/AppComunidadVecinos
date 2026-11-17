@@ -25,6 +25,16 @@ router.use((req, res, next) => {
       communityNifError(data.nif);
     if (error) return res.status(400).json({ error });
     if (data.notes !== undefined) data.notes = sanitizeRichText(data.notes);
+    if (data.logoDataUrl !== undefined) {
+      const logo = data.logoDataUrl;
+      const LOGO = /^data:image\/(png|jpeg|svg\+xml|webp);base64,/;
+      if (logo !== "" && (typeof logo !== "string" || logo.length > 307_264 || !LOGO.test(logo)))
+        return res.status(400).json({
+          error:
+            "El logo de la comunidad debe ser una imagen PNG, JPG, SVG o WebP de menos de 225 KB.",
+        });
+      data.logoDataUrl = logo === "" ? "" : logo;
+    }
     for (const key of ["constitutionYear", "reserveFund"])
       if (data[key] !== undefined) data[key] = String(data[key] ?? "").trim();
     if (data.adminUserId) {
@@ -73,8 +83,8 @@ router.post("/", (req, res) => {
   }
   const id = data.id || crypto.randomUUID();
   db.prepare(
-    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId, logoDataUrl)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.name,
@@ -95,6 +105,7 @@ router.post("/", (req, res) => {
     JSON.stringify(Array.isArray(data.documents) ? data.documents : []),
     data.currency || "",
     data.adminUserId || "",
+    data.logoDataUrl || "",
   );
   res.status(201).json(findCommunity(id));
 });
@@ -117,7 +128,7 @@ router.put(
     db.prepare(
       `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
        province = ?, postalCode = ?, email = ?, iban = ?, president = ?, administrator = ?,
-       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ? WHERE id = ?`,
+       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ?, logoDataUrl = ? WHERE id = ?`,
     ).run(
       data.name,
       data.nif,
@@ -137,6 +148,7 @@ router.put(
       JSON.stringify(Array.isArray(data.documents) ? data.documents : existing.documents),
       data.currency || "",
       data.adminUserId !== undefined ? data.adminUserId : existing.adminUserId || "",
+      data.logoDataUrl !== undefined ? data.logoDataUrl : existing.logoDataUrl || "",
       existing.id,
     );
     res.json(findCommunity(existing.id));

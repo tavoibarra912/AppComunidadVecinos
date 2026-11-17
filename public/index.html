@@ -740,6 +740,14 @@
             <button
               type="button"
               class="community-editor-tab"
+              data-settings-tab="comunidades"
+              aria-selected="false"
+            >
+              Comunidades
+            </button>
+            <button
+              type="button"
+              class="community-editor-tab"
               data-settings-tab="sistema"
               aria-selected="false"
             >
@@ -997,9 +1005,10 @@
               <div class="form-grid">
                 <p class="form-section-title full">Autorizaciones de inquilinos</p>
                 <p class="form-intro full">
-                  Define qué autorizaciones puede conceder cada comunidad. Estas opciones aparecen
-                  en la pestaña «Comunidad» de la ficha del inquilino. Si una comunidad no tiene una
-                  lista propia, se usan las opciones predeterminadas.
+                  Define qué autorizaciones puede conceder cada comunidad. Cada una tiene un nombre
+                  y una descripción que se muestra al asignarla en la pestaña «Comunidad» de la
+                  ficha del inquilino. Si una comunidad no tiene una lista propia, se usan las
+                  opciones predeterminadas.
                 </p>
                 <label class="full"
                   >Comunidad
@@ -1116,6 +1125,51 @@
                     placeholder="La plataforma está en mantenimiento. Vuelve a intentar en unos minutos."
                   ></textarea>
                 </label>
+              </div>
+            </div>
+            <div id="settings-comunidades-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Marca por comunidad</p>
+                <p class="form-intro full">
+                  Personaliza el nombre y el logo de cada comunidad. Se aplican en la app solo para
+                  usuarios con sesión iniciada que tengan acceso a una única comunidad; el resto
+                  sigue viendo el estilo global de la pestaña Estilo.
+                </p>
+                <label class="full"
+                  >Comunidad
+                  <select id="settings-community-select"></select>
+                </label>
+                <label class="full"
+                  >Nombre visible de la comunidad *
+                  <input id="settings-community-name" maxlength="120" />
+                </label>
+                <label class="full"
+                  >Logo (PNG, JPG, SVG o WebP, máx. 225 KB) (opcional)
+                  <input
+                    id="settings-community-logo"
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  />
+                </label>
+                <img
+                  id="settings-community-logo-preview"
+                  class="marca-logo-preview"
+                  alt="Vista previa del logo de la comunidad"
+                  hidden
+                />
+                <div class="heading-actions full">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    id="settings-community-remove-logo"
+                  >
+                    Quitar logo
+                  </button>
+                  <button type="button" class="primary-button" id="settings-community-save">
+                    Guardar comunidad
+                  </button>
+                </div>
+                <p class="form-intro full" id="settings-community-hint"></p>
               </div>
             </div>
             <div id="settings-estilo-panel" hidden>
@@ -2045,6 +2099,12 @@
         </nav>
         <section class="community-editor-pane" data-cd-pane="general">
           <div class="detail-grid">
+            <div class="detail-item full" id="detail-item-logo" hidden>
+              <span class="detail-label">Logo</span>
+              <span class="detail-value"
+                ><img id="detail-logo" class="marca-logo-preview" alt="Logo de la comunidad"
+              /></span>
+            </div>
             <div class="detail-item full">
               <span class="detail-label">Identificador Comunidad</span>
               <span class="detail-value highlight" id="detail-name"></span>

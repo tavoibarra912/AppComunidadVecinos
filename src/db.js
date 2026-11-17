@@ -235,6 +235,7 @@ function ensureColumns(table, definitions) {
 ensureColumns("communities", {
   currency: "TEXT NOT NULL DEFAULT ''",
   adminUserId: "TEXT NOT NULL DEFAULT ''",
+  logoDataUrl: "TEXT NOT NULL DEFAULT ''",
 });
 
 ensureColumns("users", {
@@ -939,6 +940,7 @@ export function communityFromRow(row) {
     reserveFund: row.reserveFund || "",
     currency: row.currency || "",
     adminUserId: row.adminUserId || "",
+    logoDataUrl: row.logoDataUrl || "",
     notes: row.notes,
     documents: parseJson(row.documents, []),
   };

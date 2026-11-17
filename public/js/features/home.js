@@ -1,7 +1,7 @@
 import { state, refreshState, hasPermission } from "../state.js";
 import { escapeHtml as h } from "../html.js";
 import { dashboardData } from "../dashboard-data.js";
-import { readInjectedBrand } from "../brand.js";
+import { effectiveBrand, readInjectedBrand } from "../brand.js";
 import { navigateToSection } from "./navigation.js";
 import { openOwnerEditor, openOwnerDetail } from "./propietarios.js";
 import { openCommunityEditor, openCommunityDetail } from "./comunidades.js";
@@ -172,7 +172,7 @@ export function renderHomeDashboard() {
     d = dashboardData(state, snapshot);
   }
   const now = new Date(),
-    brand = readInjectedBrand();
+    brand = effectiveBrand(state.settings?.marca || readInjectedBrand(), state);
   const canManage = d.communities.some(
     (c) => hasPermission("community:manage", c.id) || hasPermission("comm:publicar", c.id),
   );

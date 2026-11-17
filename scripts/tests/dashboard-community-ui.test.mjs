@@ -303,6 +303,7 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     dashboardData,
     h: escapeHtml,
     readInjectedBrand: () => ({ nombre: "Marca real" }),
+    effectiveBrand: (brand) => brand,
     hasPermission: () => true,
     getCommunicationSnapshot: () => snapshot,
     navigateToSection: (hash) => calls.push(hash),

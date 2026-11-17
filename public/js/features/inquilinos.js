@@ -9,6 +9,7 @@ import {
   getTenantContractStatus,
   tenantAuthorizationCatalog,
   tenantAuthorizationLabel,
+  tenantAuthorizationDescription,
   PROPERTY_TYPE_LABELS,
   hasPermission,
   requirePermission,
@@ -392,12 +393,25 @@ function renderTenantAuthorizations(selectedValues = []) {
   }
   for (const item of catalog) {
     const label = document.createElement("label");
+    label.className = "tenant-auth-option";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.name = "authorizations";
     input.value = item.id;
     input.checked = selected.has(item.id);
-    label.append(input, document.createTextNode(` ${item.label}`));
+    const text = document.createElement("span");
+    text.className = "tenant-auth-text";
+    const title = document.createElement("span");
+    title.className = "tenant-auth-title";
+    title.textContent = item.label || "";
+    text.append(title);
+    if (item.description) {
+      const desc = document.createElement("span");
+      desc.className = "tenant-auth-desc";
+      desc.textContent = item.description;
+      text.append(desc);
+    }
+    label.append(input, text);
     box.append(label);
   }
   const hint = document.querySelector("#tenant-authorizations-hint");
@@ -1224,13 +1238,24 @@ export function openTenantDetail(ownerId, tenantId) {
   authorizations.replaceChildren();
   const tenantCommunity =
     state.properties.find((item) => item.id === tenant.propertyId)?.communityId || "";
-  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map((v) =>
-    tenantAuthorizationLabel(v, tenantCommunity),
-  );
-  if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
-  labels.forEach((label) => {
+  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map((v) => ({
+    label: tenantAuthorizationLabel(v, tenantCommunity),
+    description: tenantAuthorizationDescription(v, tenantCommunity),
+  }));
+  if (labels.length === 0)
+    labels.push({ label: "No hay autorizaciones predefinidas registradas.", description: "" });
+  labels.forEach(({ label, description }) => {
     const item = document.createElement("li");
-    item.textContent = label;
+    const title = document.createElement("strong");
+    title.className = "tenant-auth-title";
+    title.textContent = label;
+    item.append(title);
+    if (description) {
+      const desc = document.createElement("span");
+      desc.className = "tenant-auth-desc";
+      desc.textContent = description;
+      item.append(desc);
+    }
     authorizations.append(item);
   });
   const tenantNotesEl = document.querySelector("#tenant-detail-authorization-notes");

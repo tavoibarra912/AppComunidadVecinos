@@ -12,6 +12,7 @@ import {
   showValidationErrors,
   armarGuardia,
   limpiarGuardia,
+  hayCambiosSinGuardar,
   intentarCerrar,
   makeSelectSearchable,
 } from "../utils.js";
@@ -19,7 +20,7 @@ import { createDataTable, aplicarFilasPorPagina } from "../table.js";
 import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
-import { applyBrand, applyPublicSettings } from "../brand.js";
+import { applyBrand, applyPublicSettings, effectiveBrand, readInjectedBrand } from "../brand.js";
 const ADMIN_TABS = {
   usuarios: "admin:users",
   roles: "admin:roles",
@@ -157,15 +158,28 @@ let adminTabActual = "usuarios";
 let editingUserId = null;
 let editingRoleId = null;
 
-function puedeAdministrar() {
+function puedeEditarMarcaComunidad(community) {
+  return hasPermission("community:edit", community.id);
+}
+
+function puedeConfigurarComunidades() {
+  return state.communities.some(puedeEditarMarcaComunidad);
+}
+
+export function puedeAdministrar() {
   return (
-    Object.values(ADMIN_TABS).some((p) => hasPermission(p)) || hasPermission("admin:providers")
+    Object.values(ADMIN_TABS).some((p) => hasPermission(p)) ||
+    hasPermission("admin:providers") ||
+    puedeConfigurarComunidades()
   );
 }
 
-// El tab de Configuración también lo ven quienes solo administran proveedores.
+// Cada sección de Configuración conserva su permiso y alcance propios.
 function conPermisoTab(tab) {
-  return hasPermission(ADMIN_TABS[tab]) || (tab === "settings" && hasPermission("admin:providers"));
+  return (
+    hasPermission(ADMIN_TABS[tab]) ||
+    (tab === "settings" && (hasPermission("admin:providers") || puedeConfigurarComunidades()))
+  );
 }
 
 function switchAdminTab(tab) {
@@ -197,27 +211,39 @@ const SETTINGS_PANELS = {
   seguridad: "#settings-seguridad-panel",
   notificaciones: "#settings-notificaciones-panel",
   inquilinos: "#settings-inquilinos-panel",
+  comunidades: "#settings-comunidades-panel",
   sistema: "#settings-sistema-panel",
   estilo: "#settings-estilo-panel",
   textos: "#settings-textos-panel",
 };
 
+function conPermisoSettingsTab(tab) {
+  if (tab === "proveedores") return hasPermission("admin:providers");
+  if (tab === "comunidades") return puedeConfigurarComunidades();
+  return Object.hasOwn(SETTINGS_PANELS, tab) && hasPermission("admin:settings");
+}
+
 function prepararSettings() {
-  const conProveedores = hasPermission("admin:providers");
-  const conGeneral = hasPermission("admin:settings");
   document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
-    btn.hidden = btn.dataset.settingsTab === "proveedores" ? !conProveedores : !conGeneral;
+    btn.hidden = !conPermisoSettingsTab(btn.dataset.settingsTab);
   });
-  if (settingsTab === "proveedores" && !conProveedores) settingsTab = "asociacion";
-  if (settingsTab !== "proveedores" && !conGeneral && conProveedores) settingsTab = "proveedores";
+  if (!conPermisoSettingsTab(settingsTab))
+    settingsTab = [...Object.keys(SETTINGS_PANELS), "proveedores"].find(conPermisoSettingsTab);
   // Se vuelca el estado una sola vez al entrar: cambiar de pestaña no debe
   // descartar los cambios que la persona todavía no guardó.
-  if (settingsTab !== "proveedores") renderSettings();
+  if (hasPermission("admin:settings") && !hayCambiosSinGuardar(settingsForm)) renderSettings();
   switchSettingsTab(settingsTab);
 }
 
 async function switchSettingsTab(tab) {
+  if (!conPermisoSettingsTab(tab)) return;
   settingsTab = tab;
+  if (settingsForm) {
+    settingsForm.hidden = tab === "proveedores";
+    // Comunidades tiene su propio botón y guardado; no mostrar dos acciones distintas.
+    const actions = settingsForm.querySelector(":scope > .dialog-actions");
+    if (actions) actions.hidden = tab === "comunidades";
+  }
   document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
     const active = btn.dataset.settingsTab === tab;
     btn.classList.toggle("active", active);
@@ -237,6 +263,7 @@ async function switchSettingsTab(tab) {
       panelProveedores.innerHTML = `<p class="form-error">${error.message}</p>`;
     }
   }
+  if (tab === "comunidades") initCommunitySettings();
 }
 
 document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
@@ -842,6 +869,8 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
   list.forEach((item, index) => {
     const row = document.createElement("div");
     row.className = "tenant-authorization-row";
+    const fields = document.createElement("div");
+    fields.className = "tenant-authorization-fields";
     const input = document.createElement("input");
     input.name = "tenantAuthorizationLabel";
     input.value = item.label || "";
@@ -852,6 +881,17 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
       item.label = input.value;
       markTenantAuthTouched();
     });
+    const description = document.createElement("textarea");
+    description.rows = 2;
+    description.maxLength = 200;
+    description.value = item.description || "";
+    description.placeholder = "Descripción breve: qué permite esta autorización";
+    description.setAttribute("aria-label", `Descripción de la autorización ${index + 1}`);
+    description.addEventListener("input", () => {
+      item.description = description.value;
+      markTenantAuthTouched();
+    });
+    fields.append(input, description);
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "icon-action-btn btn-delete";
@@ -863,7 +903,7 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
       markTenantAuthTouched();
       renderTenantAuthorizationsEditor();
     });
-    row.append(input, remove);
+    row.append(fields, remove);
     box.append(row);
   });
   if (focusIndex >= 0) box.querySelectorAll("input")[focusIndex]?.focus();
@@ -895,6 +935,7 @@ function initTenantAuthorizations() {
       list.push({
         id: `custom_${crypto.randomUUID()}`,
         label: "",
+        description: "",
       });
       markTenantAuthTouched();
       renderTenantAuthorizationsEditor(list.length - 1);
@@ -931,6 +972,11 @@ function tenantAuthorizationErrors() {
       if (!label) errors.push(`${communityName}: la autorización ${index + 1} no tiene nombre.`);
       else if (label.length > 80)
         errors.push(`${communityName}: «${label.slice(0, 30)}…» supera los 80 caracteres.`);
+      const description = String(item?.description || "").trim();
+      if (description.length > 200)
+        errors.push(
+          `${communityName}: la descripción de «${label.slice(0, 30)}» supera los 200 caracteres.`,
+        );
     });
   }
   return errors;
@@ -940,11 +986,245 @@ function tenantAuthorizationErrors() {
 function tenantAuthorizationsPayload() {
   const saved = state.settings?.tenantAuthorizations;
   return Object.fromEntries(
-    Object.entries(tenantAuthDraft).filter(
-      ([communityId]) =>
-        tenantAuthTouched.has(communityId) || (saved && Object.hasOwn(saved, communityId)),
-    ),
+    Object.entries(tenantAuthDraft)
+      .filter(
+        ([communityId]) =>
+          tenantAuthTouched.has(communityId) || (saved && Object.hasOwn(saved, communityId)),
+      )
+      .map(([communityId, list]) => [
+        communityId,
+        (Array.isArray(list) ? list : []).map((item) => ({
+          id: String(item?.id || "").trim(),
+          label: String(item?.label || "").trim(),
+          description: String(item?.description || "").trim(),
+        })),
+      ]),
   );
+}
+
+// ---------- Configuración → Comunidades (marca por comunidad) ----------
+let communitySettingsId = "";
+let communitySettingsUserId;
+const communitySettingsDrafts = new Map();
+
+function currentCommunitySettings() {
+  return (
+    state.communities.find(
+      (community) => community.id === communitySettingsId && puedeEditarMarcaComunidad(community),
+    ) || null
+  );
+}
+
+function communitySettingsDraft(community) {
+  let draft = communitySettingsDrafts.get(community.id);
+  if (!draft || (!draft.dirty && !draft.loading && !draft.saving)) {
+    // Mantener también la versión de la ficha que originó la edición.
+    const { documents, statutes, documentFolders, ...payload } = community;
+    draft = {
+      payload,
+      name: community.name || "",
+      logoDataUrl: community.logoDataUrl || "",
+      dirty: false,
+      loading: false,
+      saving: false,
+      readToken: 0,
+    };
+    communitySettingsDrafts.set(community.id, draft);
+  }
+  return draft;
+}
+
+function setCommunityLogoPreview(url) {
+  const preview = document.querySelector("#settings-community-logo-preview");
+  if (!preview) return;
+  preview.hidden = !url;
+  if (url) preview.src = url;
+  else preview.removeAttribute("src");
+}
+
+function renderCommunitySettings() {
+  const select = document.querySelector("#settings-community-select");
+  if (!select) return;
+  if (communitySettingsUserId !== state.currentUserId) {
+    communitySettingsDrafts.clear();
+    communitySettingsId = "";
+    communitySettingsUserId = state.currentUserId;
+  }
+  const communities = state.communities.filter(puedeEditarMarcaComunidad);
+  for (const id of communitySettingsDrafts.keys()) {
+    if (!communities.some((community) => community.id === id)) communitySettingsDrafts.delete(id);
+  }
+  const previous = communitySettingsId;
+  select.replaceChildren();
+  communities.forEach((community) => {
+    select.add(new Option(community.name || community.id, community.id));
+  });
+  if (!communities.some((community) => community.id === previous))
+    communitySettingsId = communities[0]?.id || "";
+  select.value = communitySettingsId;
+  const community = currentCommunitySettings();
+  const draft = community ? communitySettingsDraft(community) : null;
+  const nameInput = document.querySelector("#settings-community-name");
+  if (nameInput) {
+    nameInput.value = draft?.name || "";
+    nameInput.disabled = !draft || draft.saving;
+  }
+  const logoInput = document.querySelector("#settings-community-logo");
+  if (logoInput) {
+    logoInput.value = "";
+    logoInput.disabled = !draft || draft.saving;
+  }
+  setCommunityLogoPreview(draft?.logoDataUrl || "");
+  const remove = document.querySelector("#settings-community-remove-logo");
+  if (remove) {
+    remove.hidden = !draft?.logoDataUrl && !draft?.loading;
+    remove.disabled = !draft || draft.saving;
+  }
+  const save = document.querySelector("#settings-community-save");
+  if (save) save.disabled = !draft || draft.loading || draft.saving;
+  const hint = document.querySelector("#settings-community-hint");
+  if (hint) {
+    hint.textContent = draft?.loading
+      ? "Leyendo el logo. Espera antes de guardar."
+      : draft?.saving
+        ? "Guardando comunidad…"
+        : community
+          ? `Estos datos se guardan en la ficha de ${community.name}. El estilo global sigue aplicándose a quien ve más de una comunidad.`
+          : "No hay comunidades disponibles para personalizar.";
+  }
+}
+
+function readCommunityLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!["image/png", "image/jpeg", "image/svg+xml", "image/webp"].includes(file.type)) {
+      reject(new Error("Selecciona una imagen PNG, JPG, SVG o WebP."));
+      return;
+    }
+    if (file.size > 230_400) {
+      reject(new Error("El logo no puede superar los 225 KB."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo del logo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveCommunitySettings() {
+  const community = currentCommunitySettings();
+  if (!community) {
+    showValidationErrors(["Selecciona una comunidad."], "No se pudo guardar la comunidad");
+    return;
+  }
+  const draft = communitySettingsDraft(community);
+  if (draft.saving) return;
+  if (draft.loading) {
+    showValidationErrors(["Espera a que termine de leerse el logo."], "Revisa la comunidad");
+    return;
+  }
+  const name = draft.name.trim();
+  if (!name) {
+    showValidationErrors(["El nombre de la comunidad es obligatorio."], "Revisa la comunidad");
+    return;
+  }
+  if (name.length > 120) {
+    showValidationErrors(["El nombre no puede superar los 120 caracteres."], "Revisa la comunidad");
+    return;
+  }
+  draft.saving = true;
+  renderCommunitySettings();
+  try {
+    const saved = await api.updateCommunity(community.id, {
+      ...draft.payload,
+      name,
+      logoDataUrl: draft.logoDataUrl,
+    });
+    // Limpiar solo este borrador; otros pueden contener cambios pendientes.
+    communitySettingsDrafts.delete(community.id);
+    Object.assign(community, saved);
+    await refreshState();
+    applyBrand(effectiveBrand(state.settings?.marca || readInjectedBrand(), state));
+    renderCommunitySettings();
+    toast("Comunidad actualizada.");
+  } catch (error) {
+    showValidationErrors([error.message], "No se pudo guardar la comunidad");
+  } finally {
+    draft.saving = false;
+    renderCommunitySettings();
+  }
+}
+
+function initCommunitySettings() {
+  const select = document.querySelector("#settings-community-select");
+  if (!select) return;
+  if (!select.dataset.wired) {
+    select.dataset.wired = "true";
+    select.addEventListener("change", () => {
+      communitySettingsId = select.value;
+      renderCommunitySettings();
+    });
+    document
+      .querySelector("#settings-community-logo")
+      ?.addEventListener("change", async (event) => {
+        const community = currentCommunitySettings();
+        if (!community) return;
+        const draft = communitySettingsDraft(community);
+        if (draft.saving) return;
+        const token = ++draft.readToken;
+        const file = event.target.files?.[0];
+        if (!file) {
+          draft.loading = false;
+          renderCommunitySettings();
+          return;
+        }
+        draft.loading = true;
+        renderCommunitySettings();
+        try {
+          const logo = await readCommunityLogo(file);
+          if (communitySettingsDrafts.get(community.id) !== draft || draft.readToken !== token)
+            return;
+          draft.logoDataUrl = logo;
+          draft.dirty = true;
+        } catch (error) {
+          if (communitySettingsDrafts.get(community.id) === draft && draft.readToken === token)
+            showValidationErrors([error.message], `Revisa el logo de ${community.name}`);
+        } finally {
+          if (communitySettingsDrafts.get(community.id) === draft && draft.readToken === token) {
+            draft.loading = false;
+            if (communitySettingsId === community.id) renderCommunitySettings();
+          }
+        }
+      });
+    document.querySelector("#settings-community-remove-logo")?.addEventListener("click", () => {
+      const community = currentCommunitySettings();
+      if (!community) return;
+      const draft = communitySettingsDraft(community);
+      if (draft.saving) return;
+      ++draft.readToken;
+      draft.loading = false;
+      draft.dirty = true;
+      draft.logoDataUrl = "";
+      renderCommunitySettings();
+    });
+    document.querySelector("#settings-community-name")?.addEventListener("input", (event) => {
+      const community = currentCommunitySettings();
+      if (!community) return;
+      const draft = communitySettingsDraft(community);
+      draft.name = event.target.value;
+      draft.dirty = true;
+    });
+    document
+      .querySelector("#settings-community-save")
+      ?.addEventListener("click", saveCommunitySettings);
+    document.querySelector("#settings-community-name")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveCommunitySettings();
+      }
+    });
+  }
+  renderCommunitySettings();
 }
 
 function renderSettings() {
@@ -1059,6 +1339,10 @@ function readMarca() {
 
 settingsForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (settingsTab === "comunidades") {
+    await saveCommunitySettings();
+    return;
+  }
   if (!requirePermission("admin:settings")) return;
   const authErrors = tenantAuthorizationErrors();
   if (authErrors.length) {
@@ -1117,7 +1401,7 @@ settingsForm?.addEventListener("submit", async (event) => {
   };
   try {
     state.settings = await api.updateSettings(data);
-    applyBrand(state.settings.marca);
+    applyBrand(effectiveBrand(state.settings.marca || readInjectedBrand(), state));
     applyPublicSettings(state.settings);
     aplicarFilasPorPagina(state.settings.filasPorPagina);
     limpiarGuardia(

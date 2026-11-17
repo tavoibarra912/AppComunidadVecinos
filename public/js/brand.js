@@ -152,3 +152,26 @@ export function applyPublicSettings(settings = readInjectedPublicSettings()) {
   }
   return data;
 }
+
+export function getSingleCommunityBrandOverride(state) {
+  if (!state?.currentUserId) return null;
+  const communities = state.communities || [];
+  if (communities.length !== 1) return null;
+  const community = communities[0];
+  if (!community) return null;
+  const logoDataUrl = community.logoDataUrl || "";
+  const nombre = (community.name || "").trim();
+  if (!logoDataUrl && !nombre) return null;
+  return { logoDataUrl, nombre };
+}
+
+export function effectiveBrand(brand, state) {
+  const base = brand || readInjectedBrand();
+  const override = getSingleCommunityBrandOverride(state);
+  if (!override) return base;
+  return {
+    ...base,
+    ...(override.nombre ? { nombre: override.nombre } : {}),
+    ...(override.logoDataUrl ? { logoDataUrl: override.logoDataUrl } : {}),
+  };
+}

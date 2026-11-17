@@ -620,6 +620,43 @@ test("issue 191: el NIF de comunidad admite DNI, NIE y CIF con cualquier letra",
   assert.match(malo.data.error, /identificador español/i);
 });
 
+test("comunidades: el logo se valida, persiste y llega al bootstrap", async () => {
+  const logo = `data:image/png;base64,${Buffer.from("logo-comunidad").toString("base64")}`;
+  const original = (await admin("/communities/com-seed-1")).data;
+  for (const [payload, pattern] of [
+    [{ logoDataUrl: "https://example.test/logo.png" }, /logo de la comunidad/i],
+    [{ logoDataUrl: "data:text/plain;base64,SG9sYQ==" }, /logo de la comunidad/i],
+    [{ logoDataUrl: 42 }, /logo de la comunidad/i],
+  ]) {
+    const response = await admin("/communities/com-seed-1", "PUT", { ...original, ...payload });
+    assert.equal(response.status, 400, JSON.stringify(payload));
+    assert.match(response.data.error, pattern);
+  }
+  const saved = await admin("/communities/com-seed-1", "PUT", { ...original, logoDataUrl: logo });
+  assert.equal(saved.status, 200, JSON.stringify(saved.data));
+  assert.equal(saved.data.logoDataUrl, logo);
+  const bootstrap = await admin("/bootstrap");
+  assert.equal(
+    bootstrap.data.communities.find((community) => community.id === "com-seed-1").logoDataUrl,
+    logo,
+  );
+  const cleared = await admin("/communities/com-seed-1", "PUT", {
+    ...saved.data,
+    logoDataUrl: "",
+  });
+  assert.equal(cleared.status, 200, JSON.stringify(cleared.data));
+  assert.equal(cleared.data.logoDataUrl, "");
+
+  const created = await admin("/communities", "POST", {
+    name: "Comunidad con logo",
+    nif: "H10000008",
+    logoDataUrl: logo,
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.equal(created.data.logoDataUrl, logo);
+  await admin(`/communities/${created.data.id}`, "DELETE");
+});
+
 test("comunidades: el NIF se normaliza aunque venga con espacios, guiones o minúsculas", async () => {
   const created = await admin("/communities", "POST", {
     name: "Comunidad normalizada",
@@ -933,6 +970,29 @@ test("administrador de comunidad: no puede leer ni mover datos a otra comunidad"
     ["com-seed-1"],
   );
   assert.equal((await request("/communities/com-seed-2")).status, 403);
+  const community = visible.data.communities[0];
+  const { documents, statutes, documentFolders, ...communityPayload } = community;
+  const logoDataUrl = `data:image/png;base64,${Buffer.from("logo comunidad propia").toString("base64")}`;
+  const branded = await request(`/communities/${community.id}`, "PUT", {
+    ...communityPayload,
+    logoDataUrl,
+  });
+  assert.equal(branded.status, 200, JSON.stringify(branded.data));
+  assert.equal(branded.data.logoDataUrl, logoDataUrl);
+  assert.equal(
+    (await request("/admin/settings", "PUT", { marca: { nombre: "Marca ajena" } })).status,
+    403,
+  );
+  const otherCommunity = (await admin("/communities/com-seed-2")).data;
+  assert.equal(
+    (await request("/communities/com-seed-2", "PUT", { ...otherCommunity, logoDataUrl })).status,
+    403,
+  );
+  const restored = await request(`/communities/${community.id}`, "PUT", {
+    ...branded.data,
+    logoDataUrl: community.logoDataUrl,
+  });
+  assert.equal(restored.status, 200, JSON.stringify(restored.data));
   const property = (await request("/properties/prop-seed-1")).data;
   assert.equal(
     (
@@ -1123,6 +1183,14 @@ test("configuración: autorizaciones de inquilinos y avisos por tipo de recibo",
       /identificador/,
     ],
     [{ tenantAuthorizations: { "com-seed-1": [{ id: "zona", label: " " }] } }, /nombre/],
+    [
+      {
+        tenantAuthorizations: {
+          "com-seed-1": [{ id: "zona", label: "Zona", description: "x".repeat(201) }],
+        },
+      },
+      /descripción de hasta 200 caracteres/,
+    ],
     [{ assessmentBeforeDays: -1 }, /assessmentBeforeDays/],
     [{ serviceRepeatDays: 1.5 }, /serviceRepeatDays/],
     [{ serviceEmail: "yes" }, /booleanos/],
@@ -1134,8 +1202,12 @@ test("configuración: autorizaciones de inquilinos y avisos por tipo de recibo",
   const saved = await admin("/admin/settings", "PUT", {
     tenantAuthorizations: {
       "com-seed-1": [
-        { id: "common_areas", label: "Acceso a zonas comunes" },
-        { id: "custom_piscina", label: "Uso de la piscina" },
+        {
+          id: "common_areas",
+          label: "Acceso a zonas comunes",
+          description: "Permite usar jardines y zonas compartidas.",
+        },
+        { id: "custom_piscina", label: "Uso de la piscina", description: "   " },
       ],
     },
     assessmentBeforeDays: 5,
@@ -1147,7 +1219,11 @@ test("configuración: autorizaciones de inquilinos y avisos por tipo de recibo",
   assert.equal(saved.status, 200, JSON.stringify(saved.data));
   assert.deepEqual(saved.data.tenantAuthorizations, {
     "com-seed-1": [
-      { id: "common_areas", label: "Acceso a zonas comunes" },
+      {
+        id: "common_areas",
+        label: "Acceso a zonas comunes",
+        description: "Permite usar jardines y zonas compartidas.",
+      },
       { id: "custom_piscina", label: "Uso de la piscina" },
     ],
   });

@@ -16,7 +16,8 @@ import { updateInboxBadge, updateOwnerInboxBadge } from "./features/notificacion
 import { renderAccountMenu } from "./features/account-menu.js";
 import { refreshCommunication } from "./features/communication.js";
 import { renderIssueReporter } from "./features/issue-reporter.js";
-import { applyBrand, applyPublicSettings } from "./brand.js";
+import { applyBrand, applyPublicSettings, effectiveBrand, readInjectedBrand } from "./brand.js";
+import { state } from "./state.js";
 
 async function boot() {
   // Marca y ajustes públicos embebidos por el server — también en el login.
@@ -29,6 +30,7 @@ async function boot() {
 
   // Re-render global: cada recarga de estado desde el backend refresca todas las vistas
   onDataChanged(() => {
+    applyBrand(effectiveBrand(state.settings?.marca || readInjectedBrand(), state));
     renderCommunities();
     renderOwners();
     renderProperties();
