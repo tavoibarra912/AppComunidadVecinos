@@ -1131,9 +1131,10 @@
               <div class="form-grid">
                 <p class="form-section-title full">Marca por comunidad</p>
                 <p class="form-intro full">
-                  Personaliza el nombre y el logo de cada comunidad. Se aplican en la app solo para
-                  usuarios con sesión iniciada que tengan acceso a una única comunidad; el resto
-                  sigue viendo el estilo global de la pestaña Estilo.
+                  Personaliza el nombre, el logo y el estilo (colores, tipografía y formato) de cada
+                  comunidad. Se aplican en la app solo para usuarios con sesión iniciada que tengan
+                  acceso a una única comunidad; el resto sigue viendo el estilo global de la pestaña
+                  Estilo.
                 </p>
                 <label class="full"
                   >Comunidad
@@ -1157,6 +1158,80 @@
                   alt="Vista previa del logo de la comunidad"
                   hidden
                 />
+                <p class="form-section-title full">Colores de la interfaz</p>
+                <p class="form-intro full">
+                  Personaliza los colores de esta comunidad. Cada campo es opcional: si lo dejas sin
+                  cambiar, se usa el color global de la plataforma.
+                </p>
+                <label
+                  >Color principal (opcional)
+                  <input id="settings-community-colorPrimario" type="color" />
+                </label>
+                <label
+                  >Color de acento (opcional)
+                  <input id="settings-community-colorAcento" type="color" />
+                </label>
+                <label
+                  >Fondo general (opcional)
+                  <input id="settings-community-colorFondo" type="color" />
+                </label>
+                <label
+                  >Superficies y tarjetas (opcional)
+                  <input id="settings-community-colorSuperficie" type="color" />
+                </label>
+                <label
+                  >Color del texto (opcional)
+                  <input id="settings-community-colorTexto" type="color" />
+                </label>
+                <label
+                  >Texto secundario (opcional)
+                  <input id="settings-community-colorTextoSuave" type="color" />
+                </label>
+                <label
+                  >Bordes y separadores (opcional)
+                  <input id="settings-community-colorBorde" type="color" />
+                </label>
+
+                <p class="form-section-title full">Tipografía y formato</p>
+                <label
+                  >Tipografía
+                  <select id="settings-community-tipografia">
+                    <option value="inter">Inter (predeterminada)</option>
+                    <option value="system">Sistema</option>
+                    <option value="arial">Arial</option>
+                    <option value="verdana">Verdana</option>
+                    <option value="georgia">Georgia</option>
+                  </select>
+                </label>
+                <label
+                  >Tamaño base del texto (px)
+                  <input
+                    id="settings-community-tamanoBase"
+                    type="number"
+                    min="12"
+                    max="18"
+                    inputmode="numeric"
+                  />
+                </label>
+                <label
+                  >Radio de bordes (px)
+                  <input
+                    id="settings-community-radioBordes"
+                    type="number"
+                    min="0"
+                    max="16"
+                    inputmode="numeric"
+                  />
+                </label>
+                <label
+                  >Densidad de las tablas
+                  <select id="settings-community-densidad">
+                    <option value="compacta">Compacta</option>
+                    <option value="normal">Normal</option>
+                    <option value="amplia">Amplia</option>
+                  </select>
+                </label>
+
                 <div class="heading-actions full">
                   <button
                     type="button"

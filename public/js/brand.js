@@ -153,25 +153,48 @@ export function applyPublicSettings(settings = readInjectedPublicSettings()) {
   return data;
 }
 
+const COMMUNITY_STYLE_KEYS = [
+  "colorPrimario",
+  "colorAcento",
+  "colorFondo",
+  "colorSuperficie",
+  "colorTexto",
+  "colorTextoSuave",
+  "colorBorde",
+  "tipografia",
+  "tamanoBase",
+  "radioBordes",
+  "densidad",
+];
+
 export function getSingleCommunityBrandOverride(state) {
   if (!state?.currentUserId) return null;
   const communities = state.communities || [];
   if (communities.length !== 1) return null;
   const community = communities[0];
   if (!community) return null;
+  const override = {};
+  const marca = community.marca && typeof community.marca === "object" ? community.marca : {};
+  for (const key of COMMUNITY_STYLE_KEYS) {
+    const value = marca[key];
+    if (value !== undefined && value !== null && value !== "") override[key] = value;
+  }
   const logoDataUrl = community.logoDataUrl || "";
   const nombre = (community.name || "").trim();
-  if (!logoDataUrl && !nombre) return null;
-  return { logoDataUrl, nombre };
+  if (nombre) override.nombre = nombre;
+  if (logoDataUrl) override.logoDataUrl = logoDataUrl;
+  if (!Object.keys(override).length) return null;
+  return override;
 }
 
 export function effectiveBrand(brand, state) {
   const base = brand || readInjectedBrand();
   const override = getSingleCommunityBrandOverride(state);
   if (!override) return base;
-  return {
-    ...base,
-    ...(override.nombre ? { nombre: override.nombre } : {}),
-    ...(override.logoDataUrl ? { logoDataUrl: override.logoDataUrl } : {}),
-  };
+  const patch = { ...override };
+  // El nombre vacío no debe reemplazar a la marca global.
+  if (!patch.nombre) delete patch.nombre;
+  // Un logo vacío tampoco: mantiene el logo por defecto de la plataforma.
+  if (patch.logoDataUrl === "") delete patch.logoDataUrl;
+  return { ...base, ...patch };
 }

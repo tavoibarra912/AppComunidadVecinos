@@ -12,6 +12,7 @@ import {
 import { removeEntityFiles } from "./documents.js";
 import { sanitizeRichText } from "../rich-text.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
+import { validateBrand } from "../branding.js";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -34,6 +35,14 @@ router.use((req, res, next) => {
             "El logo de la comunidad debe ser una imagen PNG, JPG, SVG o WebP de menos de 225 KB.",
         });
       data.logoDataUrl = logo === "" ? "" : logo;
+    }
+    if (data.marca !== undefined) {
+      const marcaError = validateBrand(data.marca);
+      if (marcaError) return res.status(400).json({ error: marcaError });
+      data.marca =
+        data.marca && typeof data.marca === "object" && !Array.isArray(data.marca)
+          ? data.marca
+          : {};
     }
     for (const key of ["constitutionYear", "reserveFund"])
       if (data[key] !== undefined) data[key] = String(data[key] ?? "").trim();
@@ -83,8 +92,8 @@ router.post("/", (req, res) => {
   }
   const id = data.id || crypto.randomUUID();
   db.prepare(
-    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId, logoDataUrl)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId, logoDataUrl, marca)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.name,
@@ -106,6 +115,7 @@ router.post("/", (req, res) => {
     data.currency || "",
     data.adminUserId || "",
     data.logoDataUrl || "",
+    data.marca ? JSON.stringify(data.marca) : "{}",
   );
   res.status(201).json(findCommunity(id));
 });
@@ -128,7 +138,7 @@ router.put(
     db.prepare(
       `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
        province = ?, postalCode = ?, email = ?, iban = ?, president = ?, administrator = ?,
-       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ?, logoDataUrl = ? WHERE id = ?`,
+       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ?, logoDataUrl = ?, marca = ? WHERE id = ?`,
     ).run(
       data.name,
       data.nif,
@@ -149,6 +159,7 @@ router.put(
       data.currency || "",
       data.adminUserId !== undefined ? data.adminUserId : existing.adminUserId || "",
       data.logoDataUrl !== undefined ? data.logoDataUrl : existing.logoDataUrl || "",
+      data.marca !== undefined ? JSON.stringify(data.marca) : JSON.stringify(existing.marca || {}),
       existing.id,
     );
     res.json(findCommunity(existing.id));

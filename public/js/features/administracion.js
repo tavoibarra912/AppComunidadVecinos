@@ -1125,6 +1125,23 @@ function currentCommunitySettings() {
   );
 }
 
+function communityMarcaDefaults() {
+  const marca = state.settings?.marca || {};
+  return {
+    colorPrimario: colorValue(marca.colorPrimario, "#11273e"),
+    colorAcento: colorValue(marca.colorAcento, "#198b84"),
+    colorFondo: colorValue(marca.colorFondo, "#f7f9fb"),
+    colorSuperficie: colorValue(marca.colorSuperficie, "#ffffff"),
+    colorTexto: colorValue(marca.colorTexto, "#17212b"),
+    colorTextoSuave: colorValue(marca.colorTextoSuave, "#64748b"),
+    colorBorde: colorValue(marca.colorBorde, "#e4e9ef"),
+    tipografia: TIPOGRAFIAS.includes(marca.tipografia) ? marca.tipografia : "inter",
+    tamanoBase: Number.isFinite(Number(marca.tamanoBase)) ? Number(marca.tamanoBase) : 14,
+    radioBordes: Number.isFinite(Number(marca.radioBordes)) ? Number(marca.radioBordes) : 5,
+    densidad: DENSIDADES.includes(marca.densidad) ? marca.densidad : "normal",
+  };
+}
+
 function communitySettingsDraft(community) {
   let draft = communitySettingsDrafts.get(community.id);
   if (!draft || (!draft.dirty && !draft.loading && !draft.saving)) {
@@ -1134,6 +1151,7 @@ function communitySettingsDraft(community) {
       payload,
       name: community.name || "",
       logoDataUrl: community.logoDataUrl || "",
+      marca: { ...communityMarcaDefaults(), ...(community.marca || {}) },
       dirty: false,
       loading: false,
       saving: false,
@@ -1190,6 +1208,30 @@ function renderCommunitySettings() {
     remove.hidden = !draft?.logoDataUrl && !draft?.loading;
     remove.disabled = !draft || draft.saving;
   }
+  const marca = draft?.marca || {};
+  const setControl = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (!element) return;
+    element.value = value;
+    element.disabled = !draft || draft.saving;
+  };
+  setControl("#settings-community-colorPrimario", colorValue(marca.colorPrimario, "#11273e"));
+  setControl("#settings-community-colorAcento", colorValue(marca.colorAcento, "#198b84"));
+  setControl("#settings-community-colorFondo", colorValue(marca.colorFondo, "#f7f9fb"));
+  setControl("#settings-community-colorSuperficie", colorValue(marca.colorSuperficie, "#ffffff"));
+  setControl("#settings-community-colorTexto", colorValue(marca.colorTexto, "#17212b"));
+  setControl("#settings-community-colorTextoSuave", colorValue(marca.colorTextoSuave, "#64748b"));
+  setControl("#settings-community-colorBorde", colorValue(marca.colorBorde, "#e4e9ef"));
+  setControl(
+    "#settings-community-tipografia",
+    TIPOGRAFIAS.includes(marca.tipografia) ? marca.tipografia : "inter",
+  );
+  setControl("#settings-community-tamanoBase", marca.tamanoBase ?? 14);
+  setControl("#settings-community-radioBordes", marca.radioBordes ?? 5);
+  setControl(
+    "#settings-community-densidad",
+    DENSIDADES.includes(marca.densidad) ? marca.densidad : "normal",
+  );
   const save = document.querySelector("#settings-community-save");
   if (save) save.disabled = !draft || draft.loading || draft.saving;
   const hint = document.querySelector("#settings-community-hint");
@@ -1249,6 +1291,7 @@ async function saveCommunitySettings() {
       ...draft.payload,
       name,
       logoDataUrl: draft.logoDataUrl,
+      marca: draft.marca,
     });
     // Limpiar solo este borrador; otros pueden contener cambios pendientes.
     communitySettingsDrafts.delete(community.id);
@@ -1323,6 +1366,44 @@ function initCommunitySettings() {
       const draft = communitySettingsDraft(community);
       draft.name = event.target.value;
       draft.dirty = true;
+    });
+    const bindMarcaField = (selector, apply) => {
+      const element = document.querySelector(selector);
+      if (!element || element.dataset.wiredMarca) return;
+      element.dataset.wiredMarca = "true";
+      const eventName = element.tagName === "SELECT" ? "change" : "input";
+      element.addEventListener(eventName, (event) => {
+        const community = currentCommunitySettings();
+        if (!community) return;
+        const draft = communitySettingsDraft(community);
+        if (draft.saving) return;
+        apply(draft.marca, event.target);
+        draft.dirty = true;
+      });
+    };
+    for (const key of [
+      "colorPrimario",
+      "colorAcento",
+      "colorFondo",
+      "colorSuperficie",
+      "colorTexto",
+      "colorTextoSuave",
+      "colorBorde",
+    ])
+      bindMarcaField(`#settings-community-${key}`, (marca, el) => {
+        marca[key] = el.value;
+      });
+    bindMarcaField("#settings-community-tipografia", (marca, el) => {
+      marca.tipografia = el.value;
+    });
+    bindMarcaField("#settings-community-tamanoBase", (marca, el) => {
+      marca.tamanoBase = numericValue(el, 14, 12, 18);
+    });
+    bindMarcaField("#settings-community-radioBordes", (marca, el) => {
+      marca.radioBordes = numericValue(el, 5, 0, 16);
+    });
+    bindMarcaField("#settings-community-densidad", (marca, el) => {
+      marca.densidad = el.value;
     });
     document
       .querySelector("#settings-community-save")

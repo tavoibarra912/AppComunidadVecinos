@@ -343,3 +343,43 @@ test("marca de comunidad: guardar no borra ajustes globales ni permisos de inqui
   assert.equal(f.requests.at(-1).kind, "settings");
   assert.equal(f.requests.at(-1).data.marca.nombre, "Marca global pendiente");
 });
+
+test("marca de comunidad: los colores, tipografía y formato se guardan por comunidad", async (t) => {
+  const f = fixture(t);
+  await f.open();
+  const set = (selector, value, eventName = "input") => {
+    const el = f.q(selector);
+    el.value = value;
+    el.dispatchEvent(new f.w.Event(eventName, { bubbles: true }));
+  };
+  set("#settings-community-colorPrimario", "#0b6b3a");
+  set("#settings-community-colorAcento", "#f2a900");
+  set("#settings-community-colorFondo", "#f0f7f2");
+  set("#settings-community-tipografia", "georgia", "change");
+  set("#settings-community-tamanoBase", "16");
+  set("#settings-community-radioBordes", "10");
+  set("#settings-community-densidad", "amplia", "change");
+  await f.submit();
+  assert.equal(f.requests.length, 1);
+  const marca = f.requests[0].data.marca;
+  assert.equal(marca.colorPrimario, "#0b6b3a");
+  assert.equal(marca.colorAcento, "#f2a900");
+  assert.equal(marca.colorFondo, "#f0f7f2");
+  assert.equal(marca.tipografia, "georgia");
+  assert.equal(marca.tamanoBase, 16);
+  assert.equal(marca.radioBordes, 10);
+  assert.equal(marca.densidad, "amplia");
+  assert.equal(f.messages.at(-1), "Comunidad actualizada.");
+});
+
+test("marca de comunidad: los colores persisten al cambiar de comunidad y volver", async (t) => {
+  const f = fixture(t);
+  await f.open();
+  const color = f.q("#settings-community-colorPrimario");
+  color.value = "#123456";
+  color.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+  f.selectCommunity("c2");
+  assert.equal(f.q("#settings-community-colorPrimario").value, "#11273e");
+  f.selectCommunity("c1");
+  assert.equal(f.q("#settings-community-colorPrimario").value, "#123456");
+});

@@ -236,6 +236,7 @@ ensureColumns("communities", {
   currency: "TEXT NOT NULL DEFAULT ''",
   adminUserId: "TEXT NOT NULL DEFAULT ''",
   logoDataUrl: "TEXT NOT NULL DEFAULT ''",
+  marca: "TEXT NOT NULL DEFAULT '{}'",
 });
 
 ensureColumns("users", {
@@ -941,6 +942,7 @@ export function communityFromRow(row) {
     currency: row.currency || "",
     adminUserId: row.adminUserId || "",
     logoDataUrl: row.logoDataUrl || "",
+    marca: parseJson(row.marca, {}),
     notes: row.notes,
     documents: parseJson(row.documents, []),
   };
