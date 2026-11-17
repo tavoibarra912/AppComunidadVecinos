@@ -557,26 +557,26 @@ No se crean máquinas, IPs, discos, bases gestionadas, dominios ni planes de pag
 La VM/IP existentes mantienen sus costes y el tráfico adicional puede consumir
 cuota. Netlify debe permanecer en Free y sin recarga automática: sus créditos
 son compartidos por los sitios del equipo y, al agotarlos, puede pausar las webs.
-El despliegue automático publica al actualizar `main`, `master` o la rama
+El despliegue automático publica al actualizar la rama
 predeterminada del repositorio: cada publicación de Netlify
 consume los créditos del equipo. Una falta de créditos hace fallar la ejecución;
 no se añaden créditos ni se cambia el plan automáticamente.
 
 ### Despliegue automático con GitHub Actions
 
-Cada actualización de `main`, `master` o la rama predeterminada del repositorio
+Cada actualización de la rama predeterminada del repositorio
 inicia **dos workflows independientes**, tanto si llega de un merge de PR como
 de un push directo. Ambos escuchan `push`: fusionar una PR no duplica el despliegue.
 La rama predeterminada se consulta en el evento de GitHub; cambiar su nombre no
 requiere editar una lista fija. Las demás ramas y los tags no despliegan. Las PR
-hacia esas ramas ejecutan validación, sin acceso a secretos ni publicación.
+hacia la rama predeterminada ejecutan validación, sin acceso a secretos ni publicación.
 
-- **Desplegar Netlify** (`.github/workflows/deploy-netlify.yml`): instala con
+- **Deploy to Netlify** (`.github/workflows/deploy-netlify.yml`): instala con
   Node.js 24, ejecuta las pruebas, construye y empaqueta `dist/`, publica solo
   los estáticos en el sitio Netlify configurado y espera la confirmación de
   producción. Verifica `release.json` y el JavaScript público del sitio sin
   consultar la API ni el HTML que se sirven desde GCP.
-- **Desplegar GCP** (`.github/workflows/deploy-gcp.yml`): instala con Node.js 24,
+- **Deploy to GCP** (`.github/workflows/deploy-gcp.yml`): instala con Node.js 24,
   ejecuta las pruebas y valida Bash; transfiere el commit exacto por SSH a
   `/home/quantum_system/comunidad/releases/<SHA>`, sin requerir un clon de Git.
   Construye la imagen en el runner de GitHub y la carga por SSH en la VM sin
@@ -593,11 +593,11 @@ de GCP, por lo que su disponibilidad funcional depende del backend aunque sus
 publicaciones sean independientes. Al ejecutarse en paralelo puede haber un
 intervalo con versiones distintas entre proveedores.
 
-Ambos admiten _Run workflow_ sobre `main`, `master` o la rama predeterminada,
+Ambos admiten _Run workflow_ sobre la rama predeterminada,
 para reintentar cada proveedor por separado. Comprobado el 16/11/2026: Netlify
 responde HTTP 403, «Account credit usage exceeded - new deploys are blocked until
 credits are added»; su dominio actual devuelve 401 por protección del borrador.
-Ese bloqueo deja en rojo solo **Desplegar Netlify**. GCP sirve la aplicación
+Ese bloqueo deja en rojo solo **Deploy to Netlify**. GCP sirve la aplicación
 completa por su propia URL.
 
 Los seis secretos de Actions están configurados en el repositorio:
@@ -672,9 +672,9 @@ bash deploy/backup.sh
 amplía el disco automáticamente. Las copias locales en la VM no cubren pérdida
 del disco: conservar también una copia privada fuera de ella.
 
-Para actualizar, fusionar una PR o hacer push a `main`, `master` o la rama
+Para actualizar, fusionar una PR o hacer push a la rama
 predeterminada, y seguir los dos workflows de Actions. Para reintentar un fallo,
-usar _Run workflow_ en el workflow del proveedor afectado sobre una de esas ramas. Para una intervención manual, construir
+usar _Run workflow_ en el workflow del proveedor afectado sobre la rama predeterminada. Para una intervención manual, construir
 una imagen con etiqueta fija, hacer backup, cambiar `COMUNIDAD_IMAGE` y ejecutar
 `docker compose ... up -d --no-deps api`.
 Conservar el `.env` privado del servidor y configurar en él `GITHUB_ISSUES_TOKEN`,
