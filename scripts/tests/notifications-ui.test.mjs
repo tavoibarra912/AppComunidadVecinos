@@ -122,3 +122,84 @@ test("avisos: el propietario ve y marca todo lo de todos sus perfiles", async ()
     dom.window.close();
   }
 });
+
+test("avisos: el propietario puede eliminar sus avisos y se actualiza el badge", async () => {
+  const dom = new JSDOM(html, {
+      url: "http://localhost/",
+      runScripts: "outside-only",
+    }),
+    w = dom.window,
+    ownIds = ["o1"],
+    deleted = [],
+    notifications = [
+      {
+        id: "n1",
+        ownerId: "o1",
+        title: "Aviso borrable",
+        message: "Pendiente",
+        type: "info",
+        read: false,
+        timestamp: 3,
+        date: "03/11/2026",
+      },
+      {
+        id: "n2",
+        ownerId: "o1",
+        title: "Otro aviso",
+        message: "Leído",
+        type: "info",
+        read: true,
+        timestamp: 2,
+        date: "02/11/2026",
+      },
+    ];
+  Object.assign(w, {
+    state: {
+      owners: [{ id: "o1", userId: "u1" }],
+      ownerNotifications: notifications,
+      adminEmails: [],
+      settings: {},
+    },
+    getCurrentOwnerProfileId: () => "o1",
+    hasPermission: (permission, resourceId = "") =>
+      (permission === "owner_notification:read" || permission === "owner_notification:delete") &&
+      (!resourceId || ownIds.includes(resourceId)),
+    requirePermission: () => true,
+    escapeHtml: (value) => String(value ?? ""),
+    api: {
+      deleteOwnerNotification: async (id) => {
+        deleted.push(id);
+      },
+      markAllOwnerNotificationsRead: async () => {},
+    },
+    toast: () => {},
+    openOwnerDetail: () => {},
+    confirm: () => true,
+  });
+  vm.runInContext(
+    source + "\nwindow.notifTest={updateInboxBadge,renderOwnerInbox};",
+    dom.getInternalVMContext(),
+  );
+  try {
+    w.notifTest.updateInboxBadge();
+    w.notifTest.renderOwnerInbox();
+    const card = w.document.querySelector('#owner-inbox-list [data-notification-id="n1"]');
+    const deleteButton = card?.querySelector(".notification-delete-button");
+    assert.ok(deleteButton, "debe existir el botón eliminar");
+    assert.ok(
+      card.querySelector(".notification-read-button"),
+      "convive con el botón de marcar como leído",
+    );
+    deleteButton.click();
+    await flush();
+    assert.deepEqual(deleted, ["n1"]);
+    assert.ok(
+      !notifications.some((n) => n.id === "n1"),
+      "el aviso eliminado desaparece del estado",
+    );
+    assert.equal(w.document.querySelector("#owner-inbox-feedback").textContent, "Aviso eliminado.");
+    assert.equal(w.document.querySelector("#inbox-badge-count").hidden, true);
+  } finally {
+    dom.window.close();
+  }
+});

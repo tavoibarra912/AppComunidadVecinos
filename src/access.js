@@ -163,7 +163,14 @@ export function resourceAccess(req, res, next) {
           ? "community:edit"
           : `${entity}:manage`;
   const ownEdit = collection === "owners" && req.method === "PUT" && permits("owner:edit", id);
-  if (!permits(permission, id || req.body?.ownerId || "") && !ownEdit)
+  // Personalización de marca sin editar datos: con community:brand (y sin
+  // community:edit) se limita el PUT a nombre/logo/estilo.
+  const brandOnly =
+    collection === "communities" &&
+    req.method === "PUT" &&
+    !permits("community:edit", id) &&
+    permits("community:brand", id);
+  if (!permits(permission, id || req.body?.ownerId || "") && !ownEdit && !brandOnly)
     return deny(
       res,
       `No tienes permiso para esta operación (requiere: ${etiquetaPermiso(permission)}).`,
@@ -171,6 +178,16 @@ export function resourceAccess(req, res, next) {
   if (req.method === "DELETE") return next();
   if (!req.body || Array.isArray(req.body) || typeof req.body !== "object")
     return res.status(400).json({ error: "Los datos deben ser un objeto." });
+  if (brandOnly) {
+    // Conserva el resto de la ficha y solo actualiza los campos de marca.
+    req.body = {
+      ...existing,
+      version: req.body.version,
+      ...Object.fromEntries(
+        Object.entries(req.body).filter(([key]) => ["name", "logoDataUrl", "marca"].includes(key)),
+      ),
+    };
+  }
   for (const field of [
     "name",
     "surname",
@@ -406,6 +423,14 @@ export function notificationAccess(req, res, next) {
       if (row && !canSee(row)) return deny(res);
     } else if (!req.body?.ownerId || !permit("owner_notification:read", req.body.ownerId))
       return deny(res);
+  } else if (req.method === "DELETE") {
+    const id = req.path.split("/")[2];
+    const row = db
+      .prepare(`SELECT * FROM ${adminInbox ? "admin_emails" : "owner_notifications"} WHERE id = ?`)
+      .get(id);
+    if (row && !canSee(row)) return deny(res);
+    const deletePermission = adminInbox ? "admin_notification:delete" : "owner_notification:delete";
+    if (!permit(deletePermission, adminInbox ? "" : row?.ownerId || "")) return deny(res);
   } else if (adminInbox && !permit("admin_notification:read")) return deny(res);
   const send = res.json.bind(res);
   res.json = (body) =>

@@ -307,6 +307,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "community:create",
       "community:edit",
       "community:manage",
+      "community:brand",
       "community:delete",
       "owner:read",
       "owner:create",
@@ -332,12 +333,16 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "admin:roles",
       "admin:settings",
       "admin:providers",
+      "admin:branding",
       "comm:participacion",
       "comm:publicar",
       "comm:moderar",
+      "comm:eliminar",
       "admin_notification:read",
+      "admin_notification:delete",
       "owner_notification:read",
       "owner_notification:send",
+      "owner_notification:delete",
     ]),
     1,
   );
@@ -350,6 +355,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "community:create",
       "community:edit",
       "community:manage",
+      "community:brand",
       "owner:read",
       "owner:create",
       "owner:manage",
@@ -370,7 +376,9 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "comm:participacion",
       "comm:publicar",
       "comm:moderar",
+      "comm:eliminar",
       "admin_notification:read",
+      "admin_notification:delete",
       "owner_notification:send",
     ]),
     1,
@@ -383,6 +391,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "community:read",
       "community:edit",
       "community:manage",
+      "community:brand",
       "owner:read",
       "owner:create",
       "owner:manage",
@@ -401,6 +410,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "comm:participacion",
       "comm:publicar",
       "comm:moderar",
+      "comm:eliminar",
       "owner_notification:send",
     ]),
     1,
@@ -420,6 +430,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "document:upload",
       "comm:participacion",
       "owner_notification:read",
+      "owner_notification:delete",
     ]),
     1,
   );
@@ -636,7 +647,15 @@ if (
 const superRole = db.prepare("SELECT id, permisos FROM roles WHERE nombre = 'super_admin'").get();
 if (superRole) {
   const lista = JSON.parse(superRole.permisos || "[]");
-  const faltantes = ["audit:read", "admin:providers"].filter((p) => !lista.includes(p));
+  const faltantes = [
+    "audit:read",
+    "admin:providers",
+    "admin:branding",
+    "community:brand",
+    "comm:eliminar",
+    "admin_notification:delete",
+    "owner_notification:delete",
+  ].filter((p) => !lista.includes(p));
   if (faltantes.length) {
     db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(
       JSON.stringify([...lista, ...faltantes]),
@@ -647,9 +666,16 @@ if (superRole) {
 
 // Backfill de permisos nuevos para roles del sistema (idempotente).
 const backfillPermisos = {
-  administrator: ["owner:delete", "comm:participacion", "tenant:delete"],
-  community_admin: ["comm:participacion", "tenant:delete"],
-  user: ["comm:participacion"],
+  administrator: [
+    "owner:delete",
+    "comm:participacion",
+    "tenant:delete",
+    "community:brand",
+    "comm:eliminar",
+    "admin_notification:delete",
+  ],
+  community_admin: ["comm:participacion", "tenant:delete", "community:brand", "comm:eliminar"],
+  user: ["comm:participacion", "owner_notification:delete"],
 };
 for (const [nombre, faltantes] of Object.entries(backfillPermisos)) {
   const rol = db.prepare("SELECT id, permisos FROM roles WHERE nombre = ?").get(nombre);

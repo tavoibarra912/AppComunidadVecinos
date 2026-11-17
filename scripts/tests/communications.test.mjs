@@ -812,3 +812,20 @@ test("Twilio usa plantilla WhatsApp y no confunde rechazo con aceptación", asyn
   assert.equal(transport.options.disableFileAccess, true);
   transport.close();
 });
+
+test("publicaciones: eliminar (autor y moderación) con borrado y control por permiso", async () => {
+  // Un miembro sin permiso de borrado no puede eliminar (403).
+  const post = await create({ title: "Publicación borrable" });
+  assert.equal((await owner(`/communications/posts/${post.id}`, "DELETE")).status, 403);
+
+  // El autor (super_admin) la elimina y deja de existir (borrado en cascada).
+  const del = await admin(`/communications/posts/${post.id}`, "DELETE");
+  assert.equal(del.status, 200, JSON.stringify(del.data));
+  assert.equal((await admin(`/communications/posts/${post.id}`)).status, 404);
+  assert.ok(!(await admin("/communications/posts")).data.some((p) => p.id === post.id));
+
+  // Un moderador de la comunidad (community_admin asignado) también puede.
+  const post2 = await create({ title: "Publicación moderada" });
+  assert.equal((await scoped(`/communications/posts/${post2.id}`, "DELETE")).status, 200);
+  assert.equal((await admin(`/communications/posts/${post2.id}`)).status, 404);
+});

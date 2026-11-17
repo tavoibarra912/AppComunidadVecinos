@@ -68,6 +68,7 @@ router.use((req, res, next) => {
   const policy = policyData();
   const isAdmin = [
     "admin:settings",
+    "admin:branding",
     "admin:users",
     "admin:roles",
     "admin:providers",
@@ -159,6 +160,20 @@ router.use(
     const section = req.path.split("/")[1];
     if (section === "roles" && req.method === "GET" && allowed(req.user, "admin:users"))
       return next();
+    // Un rol con admin:branding (pero sin admin:settings) solo puede guardar el
+    // estilo de la plataforma: se restringe el cuerpo a `marca`.
+    if (
+      section === "settings" &&
+      req.method === "PUT" &&
+      !allowed(req.user, "admin:settings") &&
+      allowed(req.user, "admin:branding")
+    ) {
+      req.body =
+        req.body && typeof req.body === "object" && !Array.isArray(req.body)
+          ? { marca: req.body.marca }
+          : {};
+      return next();
+    }
     return requirePermission(`admin:${section}`)(req, res, next);
   },
   adminRouter,

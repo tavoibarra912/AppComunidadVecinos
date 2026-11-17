@@ -71,6 +71,7 @@ function fixture(t, role = "super_admin") {
       },
       { nombre: "settings_only", permisos: ["admin:settings"] },
       { nombre: "provider", permisos: ["admin:providers"] },
+      { nombre: "brand", permisos: ["admin:branding"] },
       { nombre: "user", permisos: ["community:read"] },
     ],
   };
@@ -382,4 +383,20 @@ test("marca de comunidad: los colores persisten al cambiar de comunidad y volver
   assert.equal(f.q("#settings-community-colorPrimario").value, "#11273e");
   f.selectCommunity("c1");
   assert.equal(f.q("#settings-community-colorPrimario").value, "#123456");
+});
+
+test("marca de plataforma: un rol de solo estilo guarda únicamente la marca", async (t) => {
+  const f = fixture(t, "brand");
+  await f.w.review.renderAdministracion();
+  await f.w.review.switchAdminTab("settings");
+  await f.w.review.switchSettingsTab("estilo");
+  // La pestaña Estilo es visible; el resto de subpestañas de configuración no.
+  assert.equal(f.q("#settings-estilo-panel").hidden, false);
+  assert.equal(f.q('#settings-subtabs [data-settings-tab="asociacion"]').hidden, true);
+  f.q('[name="marcaNombre"]').value = "Asociación con estilo";
+  await f.submit();
+  assert.equal(f.requests.at(-1).kind, "settings");
+  assert.deepEqual(Object.keys(f.requests.at(-1).data), ["marca"]);
+  assert.equal(f.requests.at(-1).data.marca.nombre, "Asociación con estilo");
+  assert.equal(f.messages.at(-1), "Estilo guardado.");
 });

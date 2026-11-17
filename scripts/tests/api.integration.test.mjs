@@ -337,6 +337,182 @@ test("permisos granulares: community:edit permite editar pero no crear", async (
     403,
   );
 });
+test("permisos granulares: community:brand permite personalizar el estilo sin editar datos", async () => {
+  const role = await admin("/admin/roles", "POST", {
+    nombre: "Personalizador de marca",
+    permisos: ["community:read", "community:brand"],
+  });
+  assert.equal(role.status, 201, JSON.stringify(role.data));
+  const user = await admin("/admin/users", "POST", {
+    usuario: "brand-designer",
+    rol: role.data.id,
+    password: "temporary-password",
+  });
+  assert.equal(user.status, 201, JSON.stringify(user.data));
+  const request = client();
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "brand-designer",
+        password: "temporary-password",
+      })
+    ).status,
+    200,
+  );
+  const community = (await request("/communities")).data[0];
+  assert.ok(community);
+  const originalAddress = community.address;
+  const edited = await request(`/communities/${community.id}`, "PUT", {
+    ...community,
+    name: "Comunidad con estilo",
+    address: "CALLE FALSA 123",
+    marca: {
+      colorPrimario: "#0b6b3a",
+      colorAcento: "#f2a900",
+      tipografia: "georgia",
+      tamanoBase: 16,
+      radioBordes: 10,
+      densidad: "amplia",
+    },
+  });
+  assert.equal(edited.status, 200, JSON.stringify(edited.data));
+  assert.equal(edited.data.name, "Comunidad con estilo");
+  assert.equal(edited.data.address, originalAddress, "no puede cambiar campos que no son de marca");
+  assert.equal(edited.data.marca.colorPrimario, "#0b6b3a");
+  assert.equal(edited.data.marca.tipografia, "georgia");
+  // No puede crear ni eliminar comunidades.
+  assert.equal(
+    (await request("/communities", "POST", { name: "Nueva", nif: "H12345699" })).status,
+    403,
+  );
+  assert.equal((await request(`/communities/${community.id}`, "DELETE")).status, 403);
+});
+
+test("permisos granulares: admin:branding guarda solo el estilo sin tocar el resto de la configuración", async () => {
+  const original = (await admin("/admin/settings")).data;
+  const role = await admin("/admin/roles", "POST", {
+    nombre: "Diseñador de plataforma",
+    permisos: ["admin:branding"],
+  });
+  assert.equal(role.status, 201, JSON.stringify(role.data));
+  const user = await admin("/admin/users", "POST", {
+    usuario: "platform-designer",
+    rol: role.data.id,
+    password: "temporary-password",
+  });
+  assert.equal(user.status, 201, JSON.stringify(user.data));
+  const request = client();
+  assert.equal(
+    (
+      await request("/auth/signin", "POST", {
+        usuario: "platform-designer",
+        password: "temporary-password",
+      })
+    ).status,
+    200,
+  );
+  try {
+    const saved = await request("/admin/settings", "PUT", {
+      nombreAsociacion: "NOMBRE INyectado",
+      marca: { nombre: "Asociación con estilo", colorPrimario: "#0b6b3a" },
+    });
+    assert.equal(saved.status, 200, JSON.stringify(saved.data));
+    assert.equal(saved.data.marca.nombre, "Asociación con estilo");
+    assert.equal(saved.data.marca.colorPrimario, "#0b6b3a");
+    // El resto de la configuración no cambia: solo se guardó la marca.
+    assert.equal(saved.data.nombreAsociacion, original.nombreAsociacion);
+    // No accede a secciones ajenas al estilo.
+    assert.equal((await request("/admin/users")).status, 403);
+    assert.equal((await request("/admin/roles")).status, 403);
+    assert.equal((await request("/admin/providers")).status, 403);
+  } finally {
+    // Restaurar la marca global para no afectar a otros tests.
+    await admin("/admin/settings", "PUT", { marca: original.marca });
+  }
+});
+
+test("notificaciones: eliminar avisos y notificaciones con permiso", async () => {
+  // Aviso de propietario: lo elimina su destinatario (rol user, con permiso).
+  const created = await admin("/notifications/owner-notifications", "POST", {
+    ownerId: "own-seed-1",
+    title: "Aviso borrable",
+    message: "Para eliminar",
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  const ownerClient = client();
+  assert.equal(
+    (await ownerClient("/auth/signin", "POST", { usuario: "urucp1", password: "urucp1" })).status,
+    200,
+  );
+  assert.ok(
+    (await ownerClient("/notifications/owner-notifications")).data.some(
+      (n) => n.id === created.data.id,
+    ),
+  );
+  assert.equal(
+    (await ownerClient(`/notifications/owner-notifications/${created.data.id}`, "DELETE")).status,
+    200,
+  );
+  assert.ok(
+    !(await ownerClient("/notifications/owner-notifications")).data.some(
+      (n) => n.id === created.data.id,
+    ),
+  );
+
+  // Notificación del buzón del administrador: la elimina super_admin.
+  const email = await admin("/notifications/admin-emails", "POST", {
+    ownerId: "own-seed-1",
+    ownerName: "Urucp1",
+    subject: "Notificación borrable",
+  });
+  assert.equal(email.status, 201, JSON.stringify(email.data));
+  assert.equal((await admin(`/notifications/admin-emails/${email.data.id}`, "DELETE")).status, 200);
+
+  // Sin permiso de borrado: 403; tras concederlo, 200.
+  const role = await admin("/admin/roles", "POST", {
+    nombre: "Aviso solo lectura",
+    permisos: ["owner_notification:read"],
+  });
+  assert.equal(role.status, 201, JSON.stringify(role.data));
+  const user = await admin("/admin/users", "POST", {
+    usuario: "aviso-readonly",
+    rol: role.data.id,
+    password: "temporary-password",
+  });
+  assert.equal(user.status, 201, JSON.stringify(user.data));
+  const readonly = client();
+  assert.equal(
+    (
+      await readonly("/auth/signin", "POST", {
+        usuario: "aviso-readonly",
+        password: "temporary-password",
+      })
+    ).status,
+    200,
+  );
+  const created2 = await admin("/notifications/owner-notifications", "POST", {
+    ownerId: "own-seed-1",
+    title: "Aviso con permiso",
+    message: "x",
+  });
+  assert.equal(
+    (await readonly(`/notifications/owner-notifications/${created2.data.id}`, "DELETE")).status,
+    403,
+  );
+  assert.equal(
+    (
+      await admin(`/admin/roles/${role.data.id}`, "PUT", {
+        permisos: ["owner_notification:read", "owner_notification:delete"],
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await readonly(`/notifications/owner-notifications/${created2.data.id}`, "DELETE")).status,
+    200,
+  );
+});
+
 test("roles personalizados: permisos efectivos, sin borrar roles asignados por ID", async () => {
   const role = await admin("/admin/roles", "POST", {
     nombre: "Lectura personalizada",

@@ -4,6 +4,7 @@ export const PERMISSIONS = [
   "community:create",
   "community:edit",
   "community:manage",
+  "community:brand",
   "community:delete",
   "fee:read",
   "fee:manage",
@@ -33,11 +34,15 @@ export const PERMISSIONS = [
   "comm:participacion",
   "comm:publicar",
   "comm:moderar",
+  "comm:eliminar",
   "admin:settings",
   "admin:providers",
+  "admin:branding",
   "admin_notification:read",
+  "admin_notification:delete",
   "owner_notification:read",
   "owner_notification:send",
+  "owner_notification:delete",
 ];
 
 /** Fecha local en formato ISO (YYYY-MM-DD), sin conversiones UTC. */
@@ -136,6 +141,7 @@ export function createPermissionChecker(user, data) {
         case "owner:edit":
         case "owner:documents:submit":
         case "owner_notification:read":
+        case "owner_notification:delete":
           return resourceId ? ownOwners.has(resourceId) : ownOwners.size > 0;
         case "property:read":
           return resourceId ? readablePropertyIds.has(resourceId) : readablePropertyIds.size > 0;
@@ -186,6 +192,7 @@ const ETIQUETAS_PERMISO = {
   "community:create": "crear comunidades",
   "community:edit": "editar comunidades",
   "community:manage": "administrar comunidades",
+  "community:brand": "personalizar el estilo de las comunidades",
   "community:delete": "eliminar comunidades",
   "owner:read": "ver propietarios",
   "owner:create": "crear propietarios",
@@ -212,12 +219,16 @@ const ETIQUETAS_PERMISO = {
   "admin:roles": "administrar roles",
   "admin:settings": "administrar la configuración",
   "admin:providers": "configurar proveedores de comunicación",
+  "admin:branding": "personalizar el estilo de la plataforma",
   "comm:participacion": "participar en Comunicación (comentar, votar y confirmar)",
   "comm:publicar": "publicar en Comunicación",
   "comm:moderar": "moderar Comunicación",
+  "comm:eliminar": "eliminar publicaciones de Comunicación",
   "admin_notification:read": "ver el buzón del administrador",
+  "admin_notification:delete": "eliminar notificaciones del buzón del administrador",
   "owner_notification:read": "ver el buzón de avisos",
   "owner_notification:send": "enviar avisos a propietarios",
+  "owner_notification:delete": "eliminar avisos del buzón",
 };
 
 export function etiquetaPermiso(permission) {

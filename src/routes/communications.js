@@ -279,6 +279,28 @@ router.put(
     res.json(detail(postById(old.id), req.user));
   }),
 );
+router.delete(
+  "/posts/:id",
+  route((req, res) => {
+    const p = find(req);
+    const data = policyData();
+    const canErase =
+      p.createdBy === req.user.id ||
+      canModerate(req.user, p.communityId, data) ||
+      allowed(req.user, "comm:eliminar", p.communityId, data);
+    if (!canErase) throw problem("No puedes eliminar esta publicación.", 403);
+    transaction(() => {
+      db.prepare("DELETE FROM communication_recipients WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_comments WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_ballots WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_files WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_outbox WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_audit WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_posts WHERE id=?").run(p.id);
+    });
+    res.json({ ok: true });
+  }),
+);
 router.post(
   "/posts/:id/read",
   route((req, res) => {

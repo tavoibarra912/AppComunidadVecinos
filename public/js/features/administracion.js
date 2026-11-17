@@ -70,6 +70,12 @@ const PERMISOS_CATALOGO = [
     hint: "Gestionar la comunidad, sus vínculos y su documentación.",
   },
   {
+    key: "community:brand",
+    label: "Personalizar el estilo de la comunidad",
+    grupo: "Comunidades",
+    hint: "Cambiar el nombre visible, el logo, los colores y la tipografía de una comunidad sin editar sus datos.",
+  },
+  {
     key: "community:delete",
     label: "Eliminar comunidades",
     grupo: "Comunidades",
@@ -208,10 +214,22 @@ const PERMISOS_CATALOGO = [
     hint: "Eliminar comentarios ajenos y ver documentos internos.",
   },
   {
+    key: "comm:eliminar",
+    label: "Eliminar publicaciones de Comunicación",
+    grupo: "Comunicación",
+    hint: "Eliminar publicaciones del tablón (propias o ajenas) y sus adjuntos.",
+  },
+  {
     key: "admin_notification:read",
     label: "Ver buzón del administrador",
     grupo: "Notificaciones",
     hint: "Consultar los avisos y notificaciones del buzón de administración.",
+  },
+  {
+    key: "admin_notification:delete",
+    label: "Eliminar notificaciones del buzón del administrador",
+    grupo: "Notificaciones",
+    hint: "Eliminar avisos del buzón de administración.",
   },
   {
     key: "owner_notification:read",
@@ -224,6 +242,12 @@ const PERMISOS_CATALOGO = [
     label: "Enviar avisos a propietarios",
     grupo: "Notificaciones",
     hint: "Responder y enviar avisos desde el buzón de propietarios.",
+  },
+  {
+    key: "owner_notification:delete",
+    label: "Eliminar avisos del buzón",
+    grupo: "Notificaciones",
+    hint: "Eliminar avisos del buzón (propios o de las comunidades gestionadas).",
   },
   {
     key: "reports:read",
@@ -261,6 +285,12 @@ const PERMISOS_CATALOGO = [
     grupo: "Sistema",
     hint: "Configurar los proveedores de comunicación como correo o SMS.",
   },
+  {
+    key: "admin:branding",
+    label: "Personalizar el estilo de la plataforma",
+    grupo: "Sistema",
+    hint: "Cambiar el nombre, el logo, los colores y la tipografía de toda la plataforma, sin acceder al resto de la configuración.",
+  },
 ];
 
 let userTable = null;
@@ -269,7 +299,9 @@ let editingUserId = null;
 let editingRoleId = null;
 
 function puedeEditarMarcaComunidad(community) {
-  return hasPermission("community:edit", community.id);
+  return (
+    hasPermission("community:brand", community.id) || hasPermission("community:edit", community.id)
+  );
 }
 
 function puedeConfigurarComunidades() {
@@ -280,6 +312,7 @@ export function puedeAdministrar() {
   return (
     Object.values(ADMIN_TABS).some((p) => hasPermission(p)) ||
     hasPermission("admin:providers") ||
+    hasPermission("admin:branding") ||
     puedeConfigurarComunidades()
   );
 }
@@ -288,7 +321,10 @@ export function puedeAdministrar() {
 function conPermisoTab(tab) {
   return (
     hasPermission(ADMIN_TABS[tab]) ||
-    (tab === "settings" && (hasPermission("admin:providers") || puedeConfigurarComunidades()))
+    (tab === "settings" &&
+      (hasPermission("admin:providers") ||
+        hasPermission("admin:branding") ||
+        puedeConfigurarComunidades()))
   );
 }
 
@@ -330,6 +366,7 @@ const SETTINGS_PANELS = {
 function conPermisoSettingsTab(tab) {
   if (tab === "proveedores") return hasPermission("admin:providers");
   if (tab === "comunidades") return puedeConfigurarComunidades();
+  if (tab === "estilo") return hasPermission("admin:settings") || hasPermission("admin:branding");
   return Object.hasOwn(SETTINGS_PANELS, tab) && hasPermission("admin:settings");
 }
 
@@ -340,8 +377,13 @@ function prepararSettings() {
   if (!conPermisoSettingsTab(settingsTab))
     settingsTab = [...Object.keys(SETTINGS_PANELS), "proveedores"].find(conPermisoSettingsTab);
   // Se vuelca el estado una sola vez al entrar: cambiar de pestaña no debe
-  // descartar los cambios que la persona todavía no guardó.
-  if (hasPermission("admin:settings") && !hayCambiosSinGuardar(settingsForm)) renderSettings();
+  // descartar los cambios que la persona todavía no guardó. Un rol con solo
+  // admin:branding también necesita ver la marca actual en la pestaña Estilo.
+  if (
+    (hasPermission("admin:settings") || hasPermission("admin:branding")) &&
+    !hayCambiosSinGuardar(settingsForm)
+  )
+    renderSettings();
   switchSettingsTab(settingsTab);
 }
 
@@ -1534,62 +1576,68 @@ settingsForm?.addEventListener("submit", async (event) => {
     await saveCommunitySettings();
     return;
   }
-  if (!requirePermission("admin:settings")) return;
-  const authErrors = tenantAuthorizationErrors();
-  if (authErrors.length) {
-    showValidationErrors(authErrors, "Revisa las autorizaciones de inquilinos");
-    return;
+  const brandingOnly =
+    settingsTab === "estilo" && !hasPermission("admin:settings") && hasPermission("admin:branding");
+  if (!brandingOnly && !requirePermission("admin:settings")) return;
+  if (!brandingOnly) {
+    const authErrors = tenantAuthorizationErrors();
+    if (authErrors.length) {
+      showValidationErrors(authErrors, "Revisa las autorizaciones de inquilinos");
+      return;
+    }
   }
-  const data = {
-    nombreAsociacion: settingsForm.elements.nombreAsociacion.value.trim(),
-    emailContacto: settingsForm.elements.emailContacto.value.trim(),
-    telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
-    permitirRegistro: settingsForm.elements.permitirRegistro.checked,
-    permitirRecuperacion: settingsForm.elements.permitirRecuperacion.checked,
-    duracionSesionHoras: numericValue(settingsForm.elements.duracionSesionHoras, 8, 1, 720),
-    otpExpiraMinutos: numericValue(settingsForm.elements.otpExpiraMinutos, 10, 1, 60),
-    otpReenvioSegundos: numericValue(settingsForm.elements.otpReenvioSegundos, 60, 10, 600),
-    textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => {
-      acc[el.dataset.texto] = el.value;
-      return acc;
-    }, {}),
-    notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
-    avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
-    feeBeforeDays: Number(settingsForm.elements.feeBeforeDays.value),
-    feeAfterDays: Number(settingsForm.elements.feeAfterDays.value),
-    feeRepeatDays: Number(settingsForm.elements.feeRepeatDays.value),
-    feeInternal: settingsForm.elements.feeInternal.checked,
-    feeEmail: settingsForm.elements.feeEmail.checked,
-    feeEmailSubject: settingsForm.elements.feeEmailSubject.value.trim(),
-    feeEmailBody: settingsForm.elements.feeEmailBody.value.trim(),
-    assessmentBeforeDays: Number(settingsForm.elements.assessmentBeforeDays.value),
-    assessmentAfterDays: Number(settingsForm.elements.assessmentAfterDays.value),
-    assessmentRepeatDays: Number(settingsForm.elements.assessmentRepeatDays.value),
-    assessmentInternal: settingsForm.elements.assessmentInternal.checked,
-    assessmentEmail: settingsForm.elements.assessmentEmail.checked,
-    serviceBeforeDays: Number(settingsForm.elements.serviceBeforeDays.value),
-    serviceAfterDays: Number(settingsForm.elements.serviceAfterDays.value),
-    serviceRepeatDays: Number(settingsForm.elements.serviceRepeatDays.value),
-    serviceInternal: settingsForm.elements.serviceInternal.checked,
-    serviceEmail: settingsForm.elements.serviceEmail.checked,
-    tenantAuthorizations: tenantAuthorizationsPayload(),
-    documentosMaxSizeMb: numericValue(settingsForm.elements.documentosMaxSizeMb, 15, 1, 50),
-    documentosMaxArchivos: numericValue(settingsForm.elements.documentosMaxArchivos, 20, 1, 50),
-    documentosTiposPermitidos: [
-      ...settingsForm.querySelectorAll('input[name="documentosTiposPermitidos"]:checked'),
-    ].map((checkbox) => checkbox.value),
-    monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
-    diasAvisoVencimientoContrato: numericValue(
-      settingsForm.elements.diasAvisoVencimientoContrato,
-      30,
-      0,
-      365,
-    ),
-    filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
-    mantenimiento: settingsForm.elements.mantenimiento.checked,
-    mensajeMantenimiento: settingsForm.elements.mensajeMantenimiento.value.trim(),
-    marca: await readMarca(),
-  };
+  const data = brandingOnly
+    ? { marca: await readMarca() }
+    : {
+        nombreAsociacion: settingsForm.elements.nombreAsociacion.value.trim(),
+        emailContacto: settingsForm.elements.emailContacto.value.trim(),
+        telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
+        permitirRegistro: settingsForm.elements.permitirRegistro.checked,
+        permitirRecuperacion: settingsForm.elements.permitirRecuperacion.checked,
+        duracionSesionHoras: numericValue(settingsForm.elements.duracionSesionHoras, 8, 1, 720),
+        otpExpiraMinutos: numericValue(settingsForm.elements.otpExpiraMinutos, 10, 1, 60),
+        otpReenvioSegundos: numericValue(settingsForm.elements.otpReenvioSegundos, 60, 10, 600),
+        textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => {
+          acc[el.dataset.texto] = el.value;
+          return acc;
+        }, {}),
+        notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
+        avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
+        feeBeforeDays: Number(settingsForm.elements.feeBeforeDays.value),
+        feeAfterDays: Number(settingsForm.elements.feeAfterDays.value),
+        feeRepeatDays: Number(settingsForm.elements.feeRepeatDays.value),
+        feeInternal: settingsForm.elements.feeInternal.checked,
+        feeEmail: settingsForm.elements.feeEmail.checked,
+        feeEmailSubject: settingsForm.elements.feeEmailSubject.value.trim(),
+        feeEmailBody: settingsForm.elements.feeEmailBody.value.trim(),
+        assessmentBeforeDays: Number(settingsForm.elements.assessmentBeforeDays.value),
+        assessmentAfterDays: Number(settingsForm.elements.assessmentAfterDays.value),
+        assessmentRepeatDays: Number(settingsForm.elements.assessmentRepeatDays.value),
+        assessmentInternal: settingsForm.elements.assessmentInternal.checked,
+        assessmentEmail: settingsForm.elements.assessmentEmail.checked,
+        serviceBeforeDays: Number(settingsForm.elements.serviceBeforeDays.value),
+        serviceAfterDays: Number(settingsForm.elements.serviceAfterDays.value),
+        serviceRepeatDays: Number(settingsForm.elements.serviceRepeatDays.value),
+        serviceInternal: settingsForm.elements.serviceInternal.checked,
+        serviceEmail: settingsForm.elements.serviceEmail.checked,
+        tenantAuthorizations: tenantAuthorizationsPayload(),
+        documentosMaxSizeMb: numericValue(settingsForm.elements.documentosMaxSizeMb, 15, 1, 50),
+        documentosMaxArchivos: numericValue(settingsForm.elements.documentosMaxArchivos, 20, 1, 50),
+        documentosTiposPermitidos: [
+          ...settingsForm.querySelectorAll('input[name="documentosTiposPermitidos"]:checked'),
+        ].map((checkbox) => checkbox.value),
+        monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
+        diasAvisoVencimientoContrato: numericValue(
+          settingsForm.elements.diasAvisoVencimientoContrato,
+          30,
+          0,
+          365,
+        ),
+        filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
+        mantenimiento: settingsForm.elements.mantenimiento.checked,
+        mensajeMantenimiento: settingsForm.elements.mensajeMantenimiento.value.trim(),
+        marca: await readMarca(),
+      };
   try {
     state.settings = await api.updateSettings(data);
     applyBrand(effectiveBrand(state.settings.marca || readInjectedBrand(), state));
@@ -1599,9 +1647,12 @@ settingsForm?.addEventListener("submit", async (event) => {
       settingsForm,
       settingsForm.closest(".admin-pane") || document.querySelector("#administracion"),
     );
-    toast("Configuración guardada.");
+    toast(brandingOnly ? "Estilo guardado." : "Configuración guardada.");
   } catch (error) {
-    showValidationErrors([error.message], "No se pudo guardar la configuración");
+    showValidationErrors(
+      [error.message],
+      brandingOnly ? "No se pudo guardar el estilo" : "No se pudo guardar la configuración",
+    );
   }
 });
 

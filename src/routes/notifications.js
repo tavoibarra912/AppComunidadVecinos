@@ -44,6 +44,13 @@ router.patch("/admin-emails/:id", (req, res) => {
   res.json(adminEmailFromRow(db.prepare("SELECT * FROM admin_emails WHERE id = ?").get(row.id)));
 });
 
+router.delete("/admin-emails/:id", (req, res) => {
+  const row = db.prepare("SELECT * FROM admin_emails WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "Notificación no encontrada." });
+  db.prepare("DELETE FROM admin_emails WHERE id = ?").run(row.id);
+  res.json({ ok: true });
+});
+
 // ---- Buzón de avisos del propietario ----
 
 router.get("/owner-notifications", (req, res) => {
@@ -99,6 +106,13 @@ router.patch("/owner-notifications", (req, res) => {
     read === false ? 0 : 1,
     ownerId,
   );
+  res.json({ ok: true });
+});
+
+router.delete("/owner-notifications/:id", (req, res) => {
+  const row = db.prepare("SELECT * FROM owner_notifications WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "Notificación no encontrada." });
+  db.prepare("DELETE FROM owner_notifications WHERE id = ?").run(row.id);
   res.json({ ok: true });
 });
 

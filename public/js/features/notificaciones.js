@@ -26,6 +26,7 @@ const inboxViews = {
 };
 let ownerBulkBusy = false;
 const ownerReadPending = new Set();
+const ownerDeletePending = new Set();
 const mailIcon =
   '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></svg>';
 const checkIcon =
@@ -309,16 +310,23 @@ export function renderOwnerInbox() {
     error: "Requiere atención",
   };
   for (const n of visible) {
+    const canDelete = hasPermission("owner_notification:delete", n.ownerId);
     const card = document.createElement("article");
     card.className = `notification-message ${n.read ? "" : "unread"}`;
     card.setAttribute("role", "listitem");
     card.dataset.notificationId = n.id;
-    card.innerHTML = `<div class="notification-message-header"><span class="notification-category">${escapeHtml(labels[n.type] || "Aviso")}</span><span class="notification-read-state ${n.read ? "" : "is-unread"}">${n.read ? "Leído" : "Sin leer"}</span></div><h3>${escapeHtml(n.title || "Aviso de administración")}</h3><p class="notification-message-body">${escapeHtml(n.message)}</p><div class="notification-message-footer"><span class="notification-date">${escapeHtml(notificationDate(n))}</span>${n.read ? "" : '<button type="button" class="secondary-button notification-read-button">Marcar como leído</button>'}</div>`;
-    const button = card.querySelector("button");
-    if (button) {
-      button.disabled = ownerBulkBusy || ownerReadPending.has(n.id);
-      if (ownerReadPending.has(n.id)) button.textContent = "Marcando…";
-      button.addEventListener("click", () => markOwnerRead(n.id));
+    card.innerHTML = `<div class="notification-message-header"><span class="notification-category">${escapeHtml(labels[n.type] || "Aviso")}</span><span class="notification-read-state ${n.read ? "" : "is-unread"}">${n.read ? "Leído" : "Sin leer"}</span></div><h3>${escapeHtml(n.title || "Aviso de administración")}</h3><p class="notification-message-body">${escapeHtml(n.message)}</p><div class="notification-message-footer"><span class="notification-date">${escapeHtml(notificationDate(n))}</span>${n.read ? "" : '<button type="button" class="secondary-button notification-read-button">Marcar como leído</button>'}${canDelete ? '<button type="button" class="secondary-button notification-delete-button">Eliminar</button>' : ""}</div>`;
+    const readButton = card.querySelector(".notification-read-button");
+    if (readButton) {
+      readButton.disabled = ownerBulkBusy || ownerReadPending.has(n.id);
+      if (ownerReadPending.has(n.id)) readButton.textContent = "Marcando…";
+      readButton.addEventListener("click", () => markOwnerRead(n.id));
+    }
+    const deleteButton = card.querySelector(".notification-delete-button");
+    if (deleteButton) {
+      deleteButton.disabled = ownerBulkBusy || ownerDeletePending.has(n.id);
+      if (ownerDeletePending.has(n.id)) deleteButton.textContent = "Eliminando…";
+      deleteButton.addEventListener("click", () => deleteOwnerNotification(n.id));
     }
     ownerInboxList.append(card);
     if (n.feeReceiptId) {
@@ -331,6 +339,26 @@ export function renderOwnerInbox() {
       );
       card.querySelector(".notification-message-footer").append(receiptButton);
     }
+  }
+}
+async function deleteOwnerNotification(id) {
+  if (ownerBulkBusy || ownerDeletePending.has(id)) return;
+  const notification = state.ownerNotifications.find((n) => n.id === id);
+  if (!notification || !hasPermission("owner_notification:delete", notification.ownerId)) return;
+  if (!window.confirm("¿Eliminar este aviso del buzón?")) return;
+  ownerDeletePending.add(id);
+  setOwnerFeedback("");
+  renderOwnerInbox();
+  try {
+    await api.deleteOwnerNotification(id);
+    const index = state.ownerNotifications.findIndex((n) => n.id === id);
+    if (index >= 0) state.ownerNotifications.splice(index, 1);
+    setOwnerFeedback("Aviso eliminado.");
+  } catch (error) {
+    setOwnerFeedback(error.message, true);
+  } finally {
+    ownerDeletePending.delete(id);
+    updateOwnerInboxBadge();
   }
 }
 async function markOwnerRead(id) {
@@ -459,7 +487,28 @@ export async function openAdminEmail(id) {
   emailGotoApprovalBtn.textContent = email.feeReceiptId
     ? "Ver recibo de cuota"
     : "Ir al expediente";
+  const deleteButton = document.querySelector("#delete-admin-email-btn");
+  if (deleteButton) {
+    deleteButton.hidden = !hasPermission("admin_notification:delete");
+    deleteButton.disabled = false;
+    deleteButton.onclick = () => deleteAdminEmail(email.id);
+  }
   if (!adminEmailDialog.open) adminEmailDialog.showModal();
+}
+async function deleteAdminEmail(id) {
+  const email = state.adminEmails.find((e) => e.id === id);
+  if (!email || !hasPermission("admin_notification:delete")) return;
+  if (!window.confirm("¿Eliminar esta notificación del buzón del administrador?")) return;
+  try {
+    await api.deleteAdminEmail(id);
+    const index = state.adminEmails.findIndex((e) => e.id === id);
+    if (index >= 0) state.adminEmails.splice(index, 1);
+    if (adminEmailDialog.open) adminEmailDialog.close();
+    updateInboxBadge();
+    toast("Notificación eliminada.");
+  } catch (error) {
+    toast(error.message);
+  }
 }
 if (topbarInboxBtn)
   topbarInboxBtn.addEventListener("click", () => {
