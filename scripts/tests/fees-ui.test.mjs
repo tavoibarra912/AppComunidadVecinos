@@ -212,7 +212,9 @@ test("cuotas UI: una comunidad que no usa euros no ofrece configurar ni emitir",
     f.w.feeTest.renderFeesPage();
     await flush();
     const root = f.w.document.querySelector("#fees-page .fee-panel");
-    const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+    const labels = [...root.querySelectorAll("button")].map(
+      (b) => b.getAttribute("aria-label") || b.textContent,
+    );
     assert.equal(labels.includes("1 · Configurar acuerdo"), false);
     assert.equal(labels.includes("2 · Emitir recibos"), false);
     assert.equal(labels.includes("Nueva derrama"), false);
@@ -699,7 +701,9 @@ test("derramas UI: Mis cuotas y CSV identifican nombre y plazo sin ofrecer gesti
     const root = f.w.document.querySelector("#fees-page");
     assert.match(root.textContent, /Derrama.*plazo 1\/2/);
     assert.equal(
-      [...root.querySelectorAll("button")].some((b) => b.textContent === "Nueva derrama"),
+      [...root.querySelectorAll("button")].some(
+        (b) => (b.getAttribute("aria-label") || b.textContent) === "Nueva derrama",
+      ),
       false,
     );
     click(f.w, "Ver recibo");
@@ -1258,7 +1262,7 @@ test("servicios UI: el propietario ve repartos informativos sin deuda y sin gest
     assert.match(page.textContent, /Tienes 1 reparto informativo/);
     assert.equal(
       [...page.querySelectorAll("button")].some(
-        (button) => button.textContent === "Nuevo servicio",
+        (button) => (button.getAttribute("aria-label") || button.textContent) === "Nuevo servicio",
       ),
       false,
     );

@@ -6621,3 +6621,17 @@ input.table-engine-search {
   height: 40px;
   box-sizing: border-box;
 }
+
+.fee-toolbar > .icon-action-btn,
+.table-list-actions > .icon-action-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  box-sizing: border-box;
+}
+.fee-toolbar > .icon-action-btn svg,
+.table-list-actions > .icon-action-btn svg {
+  width: 20px;
+  height: 20px;
+}

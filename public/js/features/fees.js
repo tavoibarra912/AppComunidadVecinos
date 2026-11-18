@@ -63,6 +63,7 @@ const methods = {
 };
 const contexts = new Map();
 const icons = {
+  refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
   close: '<path d="m18 6-12 12M6 6l12 12"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
   remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
@@ -760,7 +761,7 @@ function renderPanel(root, ctx) {
       );
     }
   }
-  tools.append(button("Actualizar", () => load(root, ctx)));
+  tools.append(iconButton("Actualizar", () => load(root, ctx), "info", "refresh"));
   root.append(tools);
   if (!assessmentTab && !serviceTab && !manage) informativeServiceNotice(root, ctx, data);
   if (ctx.kind === "community" && data.canManage && !canConfigure)
@@ -1101,7 +1102,7 @@ function assessmentSection(root, ctx) {
   );
   copy.querySelector("h3").id = "fee-assessments-title";
   heading.append(copy);
-  const create = button("Nueva derrama", () => assessmentForm(ctx), true);
+  const create = iconButton("Nueva derrama", () => assessmentForm(ctx));
   create.disabled = !(data.properties || []).length;
   heading.append(create);
   section.append(heading);
@@ -1413,7 +1414,7 @@ function serviceSection(root, ctx) {
   );
   copy.querySelector("h3").id = "fee-services-title";
   heading.append(copy);
-  const create = button("Nuevo servicio", () => serviceForm(ctx), true);
+  const create = iconButton("Nuevo servicio", () => serviceForm(ctx));
   create.disabled = !(data.properties || []).length;
   heading.append(create);
   section.append(heading);

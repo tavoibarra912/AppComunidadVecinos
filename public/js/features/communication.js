@@ -235,8 +235,8 @@ function card(p) {
 function draw() {
   if (!metadata) return;
   const list = filtered();
-  const exportHost = $("#comm-status");
-  exportHost?.parentElement?.querySelector(".table-export-wrap")?.remove();
+  const exportHost = $("#comm-toolbar-actions");
+  exportHost?.querySelector(".table-export-wrap")?.remove();
   const exportControl = createExportDropdown({
     tableId: "communications",
     getView: () => ({
@@ -253,7 +253,7 @@ function draw() {
       },
     }),
   });
-  if (exportControl) exportHost?.parentElement?.insertBefore(exportControl, exportHost);
+  if (exportControl) exportHost?.insertBefore(exportControl, $("#comm-new"));
   $("#comm-status").textContent =
     `${list.length} ${list.length === 1 ? "publicación" : "publicaciones"} · Los horarios se muestran en tu zona local.`;
   $("#comm-content").innerHTML =
@@ -283,7 +283,7 @@ function calendar(list) {
         new Date(p.startsAt).getFullYear() === month.getFullYear(),
     )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  return `<div class="comm-month-nav"><button class="secondary-button" type="button" data-month="-1" aria-label="Mes anterior">Anterior</button><h2>${h(month.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</h2><button class="secondary-button" type="button" data-month="1" aria-label="Mes siguiente">Siguiente</button></div><div class="comm-calendar">${["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => `<strong>${d}</strong>`).join("")}${cells.join("")}</div><h3>Agenda del mes</h3>${agenda.length ? agenda.map((p) => `<p><button class="comm-title-button" type="button" data-open-post="${h(p.id)}">${h(date(p.startsAt))} · ${h(p.title)}</button></p>`).join("") : '<p class="comm-muted">No hay eventos o reuniones en este mes con los filtros elegidos.</p>'}`;
+  return `<div class="comm-month-nav"><button class="icon-action-btn btn-info" type="button" data-month="-1" aria-label="Mes anterior" title="Mes anterior"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg></button><h2>${h(month.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</h2><button class="icon-action-btn btn-info" type="button" data-month="1" aria-label="Mes siguiente" title="Mes siguiente"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></button></div><div class="comm-calendar">${["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => `<strong>${d}</strong>`).join("")}${cells.join("")}</div><h3>Agenda del mes</h3>${agenda.length ? agenda.map((p) => `<p><button class="comm-title-button" type="button" data-open-post="${h(p.id)}">${h(date(p.startsAt))} · ${h(p.title)}</button></p>`).join("") : '<p class="comm-muted">No hay eventos o reuniones en este mes con los filtros elegidos.</p>'}`;
 }
 for (const id of ["comm-community", "comm-type", "comm-filter", "comm-search"])
   $(`#${id}`).addEventListener("input", draw);

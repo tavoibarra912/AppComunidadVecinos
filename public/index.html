@@ -1885,9 +1885,8 @@
             <p class="comm-muted">Avisos, eventos, reuniones y decisiones de tu comunidad.</p>
           </div>
           <div class="comm-actions">
-            <button type="button" class="secondary-button" id="comm-preferences">Mis canales</button
-            ><button type="button" class="primary-button" id="comm-new" hidden>
-              Nueva publicación
+            <button type="button" class="secondary-button" id="comm-preferences">
+              Mis canales
             </button>
           </div>
         </div>
@@ -1921,8 +1920,54 @@
               <option value="scheduled">Programados</option>
             </select></label
           ><label
-            >Buscar<input id="comm-search" type="search" placeholder="Título o contenido" /></label
-          ><button type="button" class="secondary-button" id="comm-refresh">Actualizar</button>
+            >Buscar<input id="comm-search" type="search" placeholder="Título o contenido"
+          /></label>
+          <div class="comm-toolbar-actions" id="comm-toolbar-actions">
+            <button
+              type="button"
+              class="icon-action-btn btn-info"
+              id="comm-refresh"
+              aria-label="Actualizar comunicaciones"
+              title="Actualizar comunicaciones"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="icon-action-btn btn-add"
+              id="comm-new"
+              aria-label="Nueva publicación"
+              title="Nueva publicación"
+              hidden
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
         </div>
         <p id="comm-status" class="comm-muted" role="status" aria-live="polite"></p>
         <div id="comm-content"></div>
