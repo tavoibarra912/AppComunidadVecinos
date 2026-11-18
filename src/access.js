@@ -393,6 +393,17 @@ export function resourceAccess(req, res, next) {
   next();
 }
 
+/**
+ * Middleware que exige el permiso cascade-delete.
+ * Solo super_admin (o roles con este permiso asignado) pueden iniciar
+ * un borrado en cascada de entidades con dependencias.
+ */
+export function requireCascadeDelete(req, res, next) {
+  const data = policyData();
+  if (!allowed(req.user, "cascade-delete", "", data)) return deny(res);
+  next();
+}
+
 export function notificationAccess(req, res, next) {
   const adminInbox = req.path.startsWith("/admin-emails");
   const data = policyData();
