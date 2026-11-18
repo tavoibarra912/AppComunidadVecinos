@@ -48,6 +48,8 @@ let metadata = null,
   loading = null,
   session = null;
 let postsLoadedAt = null;
+let sessionGeneration = 0;
+const readLocally = new Map();
 export function getCommunicationSnapshot() {
   return session === state.currentUserId && postsLoadedAt
     ? { posts: [...posts], loadedAt: postsLoadedAt }
@@ -126,21 +128,56 @@ function updateBadge() {
     (p) => p.recipient && !p.recipient.readAt && !["draft", "scheduled"].includes(p.phase),
   ).length;
   for (const el of document.querySelectorAll("[data-comm-unread],#communication-unread")) {
-    el.textContent = count;
+    el.textContent = count > 99 ? "99+" : String(count);
     el.hidden = count === 0;
   }
+  const link = $("#comm-inbox-link");
+  link.setAttribute(
+    "aria-label",
+    count
+      ? `Comunicaciones de la comunidad: ${count} sin leer`
+      : "Comunicaciones de la comunidad: todo leído",
+  );
   window.dispatchEvent(new Event("communications:updated"));
 }
+function syncCommunicationSession() {
+  if (session === state.currentUserId) return;
+  sessionGeneration++;
+  session = state.currentUserId;
+  metadata = null;
+  posts = [];
+  postsLoadedAt = null;
+  loading = null;
+  readLocally.clear();
+  if (dialog.open) {
+    dialogStack = [];
+    editorSnapshot = "";
+    editorPost = null;
+    dialog.close();
+  }
+  updateBadge();
+}
 export async function refreshCommunication() {
+  syncCommunicationSession();
   if (!state.currentUserId) return;
   if (loading) return loading;
-  const id = state.currentUserId;
-  loading = Promise.all([request("/metadata"), request("/posts")])
+  const id = state.currentUserId,
+    generation = sessionGeneration;
+  const pending = Promise.all([request("/metadata"), request("/posts")])
     .then(([meta, result]) => {
-      if (state.currentUserId !== id) return;
+      if (state.currentUserId !== id || generation !== sessionGeneration) return;
       metadata = meta;
-      posts = result;
-      session = id;
+      posts = result.map((post) =>
+        post.recipient && readLocally.has(post.id)
+          ? {
+              ...post,
+              recipient: {
+                ...post.recipient,
+                readAt: post.recipient.readAt || readLocally.get(post.id),
+              },
+            }
+          : post,
+      );
       postsLoadedAt = new Date().toISOString();
       updateBadge();
       $("#comm-new").hidden = !meta.communities.some((c) => c.canManage);
@@ -151,17 +188,13 @@ export async function refreshCommunication() {
       draw();
     })
     .finally(() => {
-      loading = null;
+      if (loading === pending) loading = null;
     });
-  return loading;
+  loading = pending;
+  return pending;
 }
 export function renderCommunication() {
-  if (session !== state.currentUserId) {
-    metadata = null;
-    posts = [];
-    postsLoadedAt = null;
-    session = state.currentUserId;
-  }
+  syncCommunicationSession();
   if (!metadata) $("#comm-status").textContent = "Cargando publicaciones…";
   refreshCommunication().catch((error) => {
     $("#comm-status").textContent = error.message;
@@ -263,8 +296,8 @@ function showInbox() {
         b.updatedAt.localeCompare(a.updatedAt),
     );
   showDialog(
-    "Mis comunicaciones",
-    `<p class="comm-muted">Avisos, eventos y reuniones dirigidos a tu cuenta. Las publicaciones sin leer aparecen primero.</p>${notifications.length ? `<div class="comm-inbox-list">${notifications.map((p) => `<button type="button" data-inbox-post="${h(p.id)}"><strong>${h(p.title)}</strong><span>${h(p.communityName)} · ${h(date(p.updatedAt))}${!p.recipient.readAt ? " · Sin leer" : ""}</span></button>`).join("")}</div>` : "<p>No tienes comunicaciones recibidas todavía.</p>"}<div class="comm-inbox-actions"><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-board" aria-label="Abrir tablón de la comunidad" title="Abrir tablón de la comunidad">${COMM_ICON}</button></div>`,
+    "Comunicaciones de la comunidad",
+    `<p class="comm-muted">Avisos generales, eventos y reuniones dirigidos a tu cuenta. Los avisos sobre documentación y cuotas están en Mis notificaciones. Las publicaciones sin leer aparecen primero.</p>${notifications.length ? `<div class="comm-inbox-list">${notifications.map((p) => `<button type="button" data-inbox-post="${h(p.id)}"><strong>${h(p.title)}</strong><span>${h(p.communityName)} · ${h(date(p.updatedAt))}${!p.recipient.readAt ? " · Sin leer" : ""}</span></button>`).join("")}</div>` : "<p>No tienes comunicaciones recibidas todavía.</p>"}<div class="comm-inbox-actions"><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-refresh" aria-label="Actualizar comunicaciones" title="Actualizar comunicaciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button><button type="button" class="icon-action-btn btn-save btn-lg" id="comm-inbox-read-all" aria-label="Marcar todas las comunicaciones como leídas" title="Marcar todas las comunicaciones como leídas" ${notifications.some((p) => !p.recipient.readAt) ? "" : "disabled"}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12 4 4L20 4"/><path d="m4 19 4 3L20 10"/></svg></button><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-board" aria-label="Abrir tablón de la comunidad" title="Abrir tablón de la comunidad">${COMM_ICON}</button></div>`,
   );
   dialog.querySelectorAll("[data-inbox-post]").forEach((button) =>
     button.addEventListener("click", () =>
@@ -273,6 +306,29 @@ function showInbox() {
         await openPost(button.dataset.inboxPost);
       }, button),
     ),
+  );
+  $("#comm-inbox-refresh").addEventListener("click", (e) =>
+    action(async () => {
+      await refreshCommunication();
+      showInbox();
+    }, e.currentTarget),
+  );
+  $("#comm-inbox-read-all").addEventListener("click", (e) =>
+    action(async () => {
+      const id = state.currentUserId,
+        generation = sessionGeneration;
+      const affected = notifications.filter((p) => !p.recipient.readAt).map((p) => p.id);
+      const result = await request("/inbox/read-all", "POST", {});
+      if (state.currentUserId !== id || generation !== sessionGeneration) return;
+      for (const postId of new Set([...affected, ...(result.postIds || [])])) {
+        readLocally.set(postId, result.readAt);
+        const post = posts.find((p) => p.id === postId);
+        if (post?.recipient) post.recipient.readAt = result.readAt;
+      }
+      updateBadge();
+      draw();
+      showInbox();
+    }, e.currentTarget),
   );
   $("#comm-inbox-board").addEventListener("click", () => {
     dialogStack = [];
@@ -284,7 +340,9 @@ function showInbox() {
 $("#comm-inbox-link").addEventListener("click", (e) => {
   e.preventDefault();
   action(async () => {
+    const userId = state.currentUserId;
     await refreshCommunication();
+    if (!userId || state.currentUserId !== userId) return;
     editorSnapshot = "";
     dialogStack = [];
     showInbox();
@@ -574,13 +632,19 @@ function renderPreview(preview) {
 }
 
 async function openPost(id, tab = "publication") {
+  syncCommunicationSession();
+  const userId = state.currentUserId,
+    generation = sessionGeneration;
   const p = await request(`/posts/${id}`);
+  if (state.currentUserId !== userId || generation !== sessionGeneration) return;
   editorSnapshot = "";
   editorPost = null;
   detailTab = tab;
   if (p.recipient && !p.recipient.readAt) {
     await request(`/posts/${id}/read`, "POST", {});
+    if (state.currentUserId !== userId || generation !== sessionGeneration) return;
     p.recipient.readAt = new Date().toISOString();
+    readLocally.set(id, p.recipient.readAt);
     const item = posts.find((x) => x.id === id);
     if (item?.recipient) item.recipient.readAt = p.recipient.readAt;
     updateBadge();

@@ -11,8 +11,10 @@ import {
 import { contactError, bankAccountError, identityDocumentError } from "../validation.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { avisarCambioOwner } from "../avisos-cambios.js";
+import { registerCascadeRoutes } from "../cascade-delete.js";
 
 const router = Router();
+registerCascadeRoutes(router, "owners");
 router.use((req, res, next) => {
   if (["POST", "PUT"].includes(req.method)) {
     const data = req.body || {};
@@ -215,7 +217,9 @@ router.put(
   }),
 );
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", deleteOwnerNormal);
+
+function deleteOwnerNormal(req, res) {
   if (
     db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() &&
     (db
@@ -278,6 +282,6 @@ router.delete("/:id", (req, res) => {
     throw error;
   }
   res.json({ ok: true });
-});
+}
 
 export default router;

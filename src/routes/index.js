@@ -1,3 +1,4 @@
+import { registerCascadeArchives } from "../cascade-delete.js";
 import { Router } from "express";
 import communitiesRouter from "./communities.js";
 import ownersRouter from "./owners.js";
@@ -91,6 +92,7 @@ router.get("/audit", requirePermission("audit:read"), (req, res, next) => {
   }
 });
 router.use(resourceAccess);
+registerCascadeArchives(router);
 
 router.get("/bootstrap", (req, res) => {
   // Una sola instantánea de la política por petición: reconstruirla por cada

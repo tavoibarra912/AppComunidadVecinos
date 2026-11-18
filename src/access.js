@@ -114,6 +114,13 @@ export function resourceAccess(req, res, next) {
   }
   const [collection, id] = parts;
   const entity = entities[collection];
+  // The cascade service checks the root and every affected resource itself.
+  if (
+    entity &&
+    ((req.method === "DELETE" && req.query.cascade === "true") ||
+      (parts.length === 3 && parts[2] === "cascade-preview"))
+  )
+    return next();
   if (!entity || parts.length > 2) return next();
   const data = policyData();
   const permits = (p, resource = "") => allowed(req.user, p, resource, data);

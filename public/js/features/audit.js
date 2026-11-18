@@ -1,3 +1,4 @@
+import { renderCascadeArchiveHistory } from "./cascade-wizard.js";
 import { api } from "../api.js";
 import { hasPermission } from "../state.js";
 
@@ -30,6 +31,11 @@ function cell(row, value) {
 export async function renderAudit() {
   const id = ++requestId;
   results.replaceChildren();
+  const history = document.querySelector("#audit-cascade-history");
+  if (history) {
+    history.replaceChildren();
+    if (hasPermission("audit:read")) renderCascadeArchiveHistory(history);
+  }
   previous.disabled = next.disabled = true;
   if (!hasPermission("audit:read")) {
     status.textContent = "No tienes permiso para consultar la auditoría.";

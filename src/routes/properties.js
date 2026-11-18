@@ -5,8 +5,10 @@ import { db, propertyFromRow, listProperties, listDocuments } from "../db.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { rebuildOwnersPropertyIds, rebuildPropertyTenantReferences } from "../domain.js";
 import { removeEntityFiles } from "./documents.js";
+import { registerCascadeRoutes } from "../cascade-delete.js";
 
 const router = Router();
+registerCascadeRoutes(router, "properties");
 
 function findProperty(id) {
   const row = db.prepare("SELECT * FROM properties WHERE id = ?").get(id);
@@ -343,7 +345,9 @@ router.put(
   }),
 );
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", deletePropertyNormal);
+
+function deletePropertyNormal(req, res) {
   if (hasAssessment(req.params.id))
     return res.status(409).json({
       error:
@@ -377,7 +381,7 @@ router.delete("/:id", (req, res) => {
     throw error;
   }
   res.json({ ok: true });
-});
+}
 
 export { normalizeOwnerPercentages };
 export default router;

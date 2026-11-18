@@ -330,6 +330,7 @@ router.post("/folders", (req, res, next) => {
       parentId,
       name: req.body?.name,
       icon: req.body?.icon,
+      color: req.body?.color,
       category: target.category,
       user: req.user,
     });
@@ -350,11 +351,12 @@ router.patch("/folders/:id", (req, res, next) => {
     if (
       req.body?.name === undefined &&
       req.body?.parentId === undefined &&
-      req.body?.icon === undefined
+      req.body?.icon === undefined &&
+      req.body?.color === undefined
     )
       return res
         .status(400)
-        .json({ error: "Indica el nuevo nombre, el icono o la carpeta de destino." });
+        .json({ error: "Indica el nuevo nombre, icono, color o carpeta de destino." });
     const folder = updateFolder({
       entityType: row.entityType,
       entityId: row.entityId,
@@ -362,6 +364,7 @@ router.patch("/folders/:id", (req, res, next) => {
       name: req.body?.name,
       parentId: req.body?.parentId === undefined ? undefined : String(req.body.parentId || ""),
       icon: req.body?.icon,
+      color: req.body?.color,
       category: row.category || "document",
       user: req.user,
     });

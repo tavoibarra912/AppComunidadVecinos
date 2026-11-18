@@ -28,7 +28,7 @@ const ICONS = {
   grid: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>',
   close:
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 6-12 12"></path><path d="m6 6 12 12"></path></svg>',
-  save: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>',
+  save: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>',
 };
 
 // Iconos seleccionables para las carpetas: mismos nombres que el menú lateral.
@@ -47,16 +47,27 @@ const FOLDER_ICON_PATHS = {
   tenants:
     '<circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path>',
   fees: '<path d="M4 10h12"></path><path d="M4 14h9"></path><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"></path>',
-  posts:
-    '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
+  posts: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
   settings:
     '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3"></path><path d="M14 2v4M8 10v4M16 18v4"></path>',
   documents:
     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',
   archive:
     '<rect width="20" height="5" x="2" y="3" rx="1"></rect><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path><path d="M10 12h4"></path>',
-  shield:
-    '<path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>',
+  wrench:
+    '<path d="m14.7 6.3 3 3M21 3a6 6 0 0 1-7.6 7.6L5 19a2.1 2.1 0 0 1-3-3l8.4-8.4A6 6 0 0 1 18 0l-4 4 3 3z"/>',
+  calendar:
+    '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"/>',
+  contract: '<path d="M14 2H6a2 2 0 0 0-2 2v16h12l4-4V8zM14 2v6h6M8 12h8M8 16h5M16 20l4-4"/>',
+  receipt:
+    '<path d="m4 3 2 2 2-2 2 2 2-2 2 2 2-2 2 2 2-2v18l-2-2-2 2-2-2-2 2-2-2-2 2-2-2-2 2zM8 9h8M8 13h8M8 17h4"/>',
+  legal: '<path d="M12 3v18M7 21h10M4 7h16M5 7l-3 7h6zM19 7l-3 7h6z"/>',
+  image:
+    '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="2"/><path d="m21 15-5-5L5 21"/>',
+  star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
+  briefcase:
+    '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V4h8v3M3 12a20 20 0 0 0 18 0M12 11v4"/>',
 };
 const FOLDER_ICON_OPTIONS = [
   ["folder", "Carpeta"],
@@ -71,7 +82,29 @@ const FOLDER_ICON_OPTIONS = [
   ["documents", "Documentos"],
   ["archive", "Archivo"],
   ["shield", "Seguros y actas"],
+  ["wrench", "Mantenimiento"],
+  ["calendar", "Calendario"],
+  ["contract", "Contratos"],
+  ["receipt", "Facturas"],
+  ["legal", "Documentación legal"],
+  ["image", "Imágenes"],
+  ["star", "Destacados"],
+  ["briefcase", "Gestión"],
 ];
+const FOLDER_COLOR_OPTIONS = [
+  ["teal", "Turquesa"],
+  ["blue", "Azul"],
+  ["indigo", "Índigo"],
+  ["violet", "Violeta"],
+  ["pink", "Rosa"],
+  ["red", "Rojo"],
+  ["orange", "Naranja"],
+  ["amber", "Ámbar"],
+  ["green", "Verde"],
+  ["slate", "Gris"],
+];
+const folderColor = (value) =>
+  FOLDER_COLOR_OPTIONS.some(([key]) => key === value) ? value : "teal";
 const folderIcon = (key) => folderIconSvg(FOLDER_ICON_PATHS[key] || FOLDER_ICON_PATHS.folder);
 
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -110,7 +143,7 @@ function pathFor(folders, folderId) {
 
 function pathLabel(folders, folderId) {
   const path = pathFor(folders, folderId);
-  return path.length ? path.map((folder) => folder.name).join(" / ") : "Raíz";
+  return path.length ? path.map((folder) => folder.name).join(" / ") : "Carpeta principal";
 }
 
 function descendants(folders, folderId) {
@@ -208,6 +241,7 @@ function openTextDialog({
 
 function openFolderDialog({ folder = null, onSubmit }) {
   const current = folder?.icon || "folder";
+  const currentColor = folderColor(folder?.color);
   const dialog = makeDialog(
     folder ? "Renombrar carpeta" : "Nueva carpeta",
     "BIBLIOTECA DOCUMENTAL",
@@ -216,23 +250,66 @@ function openFolderDialog({ folder = null, onSubmit }) {
        ([key, label]) =>
          `<button type="button" class="doc-library-icon-option${key === current ? " is-selected" : ""}" data-folder-icon="${key}" role="radio" aria-checked="${key === current}" aria-label="${label}" title="${label}">${folderIcon(key)}</button>`,
      ).join("")}</div></div>
+     <div class="doc-library-color-field"><span class="doc-library-icon-field-label">Color</span><div class="doc-library-color-picker" role="radiogroup" aria-label="Color de la carpeta">${FOLDER_COLOR_OPTIONS.map(([key, label]) => `<button type="button" class="doc-library-color-option${key === currentColor ? " is-selected" : ""}" data-folder-color="${key}" role="radio" aria-checked="${key === currentColor}" aria-label="${label}" title="${label}"><span class="doc-library-color-swatch" aria-hidden="true"></span></button>`).join("")}</div></div>
+     <div class="doc-library-folder-preview" aria-label="Vista previa de la carpeta"><span data-folder-preview-icon>${folderIcon(current)}</span><span data-folder-preview-name>${h(folder?.name || "Nueva carpeta")}</span></div>
      <p class="form-error" role="alert"></p>`,
     `<button class="icon-action-btn btn-cancel btn-lg" type="button" data-library-dialog-close aria-label="Cancelar" title="Cancelar">${ICONS.close}</button>
      <button class="icon-action-btn btn-save btn-lg" type="button" data-library-dialog-submit aria-label="${folder ? "Guardar cambios" : "Crear carpeta"}" title="${folder ? "Guardar cambios" : "Crear carpeta"}">${ICONS.save}</button>`,
   );
+  dialog.dataset.folderColor = currentColor;
   const input = dialog.querySelector("[name=library-name]");
   const error = dialog.querySelector(".form-error");
   let icon = current;
+  let color = currentColor;
   dialog.querySelectorAll("[data-folder-icon]").forEach((button) =>
     button.addEventListener("click", () => {
       icon = button.dataset.folderIcon;
+      dialog.querySelector("[data-folder-preview-icon]").innerHTML = folderIcon(icon);
       dialog.querySelectorAll("[data-folder-icon]").forEach((option) => {
         const selected = option === button;
         option.classList.toggle("is-selected", selected);
         option.setAttribute("aria-checked", String(selected));
+        option.tabIndex = selected ? 0 : -1;
       });
     }),
   );
+  dialog.querySelectorAll("[data-folder-color]").forEach((button) =>
+    button.addEventListener("click", () => {
+      color = button.dataset.folderColor;
+      dialog.dataset.folderColor = color;
+      dialog.querySelectorAll("[data-folder-color]").forEach((option) => {
+        const selected = option === button;
+        option.classList.toggle("is-selected", selected);
+        option.setAttribute("aria-checked", String(selected));
+        option.tabIndex = selected ? 0 : -1;
+      });
+    }),
+  );
+  for (const selector of ["[data-folder-icon]", "[data-folder-color]"]) {
+    const buttons = [...dialog.querySelectorAll(selector)];
+    for (const button of buttons) {
+      button.tabIndex = button.getAttribute("aria-checked") === "true" ? 0 : -1;
+      button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key))
+          return;
+        event.preventDefault();
+        const index = buttons.indexOf(button);
+        const next =
+          event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? buttons.length - 1
+              : (index + (["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 1) + buttons.length) %
+                buttons.length;
+        buttons[next].click();
+        buttons[next].focus();
+      });
+    }
+  }
+  input.addEventListener("input", () => {
+    dialog.querySelector("[data-folder-preview-name]").textContent =
+      input.value.trim() || "Nueva carpeta";
+  });
   const submit = async () => {
     const name = input.value.trim();
     if (!name) {
@@ -244,7 +321,7 @@ function openFolderDialog({ folder = null, onSubmit }) {
     button.disabled = true;
     error.textContent = "";
     try {
-      await onSubmit({ name, icon });
+      await onSubmit({ name, icon, color });
       dialog.close();
     } catch (exception) {
       error.textContent = exception.message;
@@ -295,7 +372,7 @@ function openMoveDialog({ itemLabel, folders, currentFolderId, excludeIds, onSub
   const available = folders
     .filter((folder) => !excludeIds.has(folder.id))
     .sort((a, b) => pathLabel(folders, a.id).localeCompare(pathLabel(folders, b.id), "es"));
-  const options = [`<option value="">Raíz</option>`]
+  const options = [`<option value="">Carpeta principal</option>`]
     .concat(
       available.map(
         (folder) => `<option value="${h(folder.id)}">${h(pathLabel(folders, folder.id))}</option>`,
@@ -410,7 +487,7 @@ export function createDocumentLibrary(options) {
       </div>
     </div>
     <div class="doc-library-pathbar">
-      <nav class="doc-library-breadcrumbs" aria-label="Ruta de carpetas"></nav>
+      <div class="doc-library-location-label"><span>Ubicación actual</span><nav class="doc-library-breadcrumbs" aria-label="Ruta de carpetas"></nav></div>
       <span class="doc-library-path-meta"></span>
     </div>
     <div class="doc-library-dropzone">${ICONS.upload}<span><strong>Arrastrá archivos acá</strong> o usá «Subir archivos»</span></div>
@@ -529,9 +606,13 @@ export function createDocumentLibrary(options) {
     const rootButton = document.createElement("button");
     rootButton.type = "button";
     rootButton.className = "doc-library-crumb";
-    rootButton.innerHTML = `${ICONS.home}<span>Inicio</span>`;
+    rootButton.innerHTML = `${ICONS.folder}<span>Carpeta principal</span>`;
+    rootButton.title = "Abrir la carpeta principal de documentos";
     rootButton.dataset.libraryDropFolder = "";
-    if (!view.currentFolderId) rootButton.classList.add("is-current");
+    if (!view.currentFolderId) {
+      rootButton.classList.add("is-current");
+      rootButton.setAttribute("aria-current", "page");
+    }
     rootButton.addEventListener("click", () => navigateFolder(""));
     breadcrumbs.append(rootButton);
     for (const folder of pathFor(view.folders, view.currentFolderId)) {
@@ -544,7 +625,10 @@ export function createDocumentLibrary(options) {
       button.className = "doc-library-crumb";
       button.textContent = folder.name;
       button.dataset.libraryDropFolder = folder.id;
-      if (folder.id === view.currentFolderId) button.classList.add("is-current");
+      if (folder.id === view.currentFolderId) {
+        button.classList.add("is-current");
+        button.setAttribute("aria-current", "page");
+      }
       button.addEventListener("click", () => navigateFolder(folder.id));
       breadcrumbs.append(button);
     }
@@ -590,6 +674,7 @@ export function createDocumentLibrary(options) {
     const count = descendants(view.folders, folder.id).size;
     const docs = view.documents.filter((doc) => doc.folderId === folder.id).length;
     const summary = `${docs} ${docs === 1 ? "documento" : "documentos"}${count ? ` · ${count} ${count === 1 ? "subcarpeta" : "subcarpetas"}` : ""}`;
+    element.dataset.folderColor = folderColor(folder.color);
     element.innerHTML = `<button type="button" class="doc-library-item-main" data-library-open-folder>
         <span class="doc-library-item-icon">${folderIcon(folder.icon)}</span>
         <span class="doc-library-item-text"><strong>${h(folder.name)}</strong><span class="doc-library-item-meta">${summary}</span></span>
@@ -718,11 +803,11 @@ export function createDocumentLibrary(options) {
   const askFolderName = (folder = null) => {
     openFolderDialog({
       folder,
-      onSubmit: async ({ name, icon }) => {
+      onSubmit: async ({ name, icon, color }) => {
         const entity = entityId();
         if (!entity) throw new Error("Guarda el registro antes de crear carpetas.");
         if (folder) {
-          const updated = await api.updateDocumentFolder(folder.id, { name, icon });
+          const updated = await api.updateDocumentFolder(folder.id, { name, icon, color });
           const index = view.folders.findIndex((item) => item.id === folder.id);
           if (index >= 0 && updated) view.folders[index] = updated;
         } else {
@@ -733,6 +818,7 @@ export function createDocumentLibrary(options) {
             parentId: view.currentFolderId,
             name,
             icon,
+            color,
           });
           if (created) view.folders.push(created);
         }

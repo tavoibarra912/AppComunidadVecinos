@@ -9,6 +9,12 @@ export const DDL_APP = `CREATE TABLE IF NOT EXISTS access_audit (
   );
   CREATE INDEX IF NOT EXISTS access_audit_action ON access_audit(action, id);
 
+CREATE TABLE IF NOT EXISTS cascade_archives (
+  id TEXT PRIMARY KEY, createdAt TEXT NOT NULL, actorId TEXT NOT NULL,
+  communityIds TEXT NOT NULL, data TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS cascade_archives_created ON cascade_archives(createdAt,id);
+
 CREATE TABLE IF NOT EXISTS communication_posts (
  id TEXT PRIMARY KEY, communityId TEXT NOT NULL, data TEXT NOT NULL,
  createdBy TEXT NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1

@@ -43,7 +43,8 @@ Los permisos `fee:read` y `fee:manage` se configuran en Administración → Role
 Los roles de administrador reciben ambos; el rol de usuario recibe consulta
 exclusiva de sus perfiles propietarios. Los inquilinos no reciben cuotas por su
 condición de inquilinos. Los titulares se conservan en cada recibo y no se puede
-eliminar una comunidad, inmueble o propietario con historial financiero.
+eliminar una comunidad, inmueble o propietario con historial financiero mediante el borrado normal.
+El borrado avanzado permite excepciones explícitas mediante un asistente y permisos adicionales.
 El estado de pagos del inmueble se calcula desde el libro de recibos cuando existe.
 
 En Administración → Configuración se definen los valores iniciales de recordatorios
@@ -57,6 +58,81 @@ de cuotas está desactivado inicialmente. Los fallos e interrupciones de envío 
 reintentan automáticamente; quedan en auditoría. La aceptación por el proveedor no
 confirma entrega. Los justificantes se guardan dentro de `uploads/fee-proofs/` y
 solo pueden descargarlos su autor y los gestores autorizados de la comunidad.
+
+## Borrado avanzado con asistente (#195 y #196)
+
+En **Administración → Roles**, el permiso **Borrado avanzado con asistente**
+(`cascade-delete`) habilita la acción **Avanzado** en propietarios, inquilinos,
+inmuebles y comunidades. `super_admin` lo tiene automáticamente; los demás roles
+requieren asignación expresa. También se comprueban el permiso de borrado de la
+entidad principal, los permisos para modificar cada dependencia y los ámbitos de
+todas las comunidades afectadas. Cambiar datos financieros exige `fee:manage`.
+
+El asistente recorre selección, dependencias, opciones, resumen y resultado.
+Evalúa inmuebles, copropietarios, inquilinos y contratos, comunidades relacionadas,
+recibos, pagos, repartos, documentos, notificaciones, publicaciones y cuentas.
+Antes de confirmar, el servidor valida el plan y calcula su alcance financiero exacto.
+
+- Los inmuebles pueden conservarse, perder el vínculo con el propietario eliminado,
+  reasignarse a otro titular, trasladarse a otra comunidad, trasladarse a una nueva
+  comunidad temporal (con nombre y NIF válido) o eliminarse. Al borrar una comunidad,
+  también pueden quedar expresamente sin comunidad.
+- Los inquilinos pueden conservarse, trasladarse, desvincularse, finalizar su contrato
+  y desvincularse, o eliminarse. Un inmueble que se elimina exige resolver cada inquilino.
+  Los propietarios conservados mantienen los inmuebles que tengan en otras comunidades.
+- El borrado global de propietarios informa todas sus comunidades y exige una casilla
+  adicional cuando afecta a varias, incluso si se inicia desde una comunidad.
+- Las finanzas se conservan como histórico por defecto. La liquidación final anula
+  los recibos afectados, perdona el pendiente y libera los cobros aplicados como saldo
+  a favor; no registra pagos ni movimientos bancarios. El acta detalla importes por moneda.
+- **Eliminar definitivamente** permite borrar también recibos activos, pagos,
+  aplicaciones y justificantes mediante una casilla expresa, sin exigir liquidación
+  previa. Los recibos compartidos requieren otra confirmación porque la acción afecta
+  al recibo completo y a sus cotitulares. Si un pago también se aplicaba a recibos
+  conservados, el resumen avisa de que su pendiente aumentará al retirar esas aplicaciones.
+- Al eliminar una comunidad se puede trasladar también su histórico financiero y sus
+  publicaciones si todos los inmuebles se trasladan al mismo destino y moneda.
+  El traslado de un inmueble por separado conserva los cargos en la comunidad original.
+  Los repartos de derramas y servicios conservan su fotografía histórica: no se recalculan
+  automáticamente al retirar inmuebles ni se redistribuyen importes a otros titulares.
+  Si ya no permiten emitir por la retirada, traslado o pérdida de titulares de un inmueble,
+  el resumen informa de su cierre para nuevas emisiones; los repartos compartidos exigen
+  confirmación adicional. Los recibos ya emitidos mantienen su saldo salvo la acción
+  financiera elegida. Una comunidad sin inmuebles admite un destino explícito para su histórico.
+- Documentos y notificaciones pueden conservarse en **Administración → Auditoría → Histórico de borrados** o
+  eliminarse. Las publicaciones de una comunidad pueden conservarse, trasladarse o
+  eliminarse con sus dependencias. El histórico permite consultar actas, descargar los
+  datos y recuperar los adjuntos conservados, incluso tras borrar la ficha original.
+- Las cuentas de acceso se conservan por defecto. Su eliminación requiere `admin:users`,
+  no admite cuentas administrativas ni la cuenta que ejecuta la operación y comprueba
+  que no queden perfiles o comunidades asociados; también revoca sus sesiones.
+
+La ejecución usa una transacción `BEGIN IMMEDIATE`, comprueba que las dependencias
+sigan coincidiendo con la vista previa y registra auditoría dentro de la transacción.
+La revisión final devuelve un `executionToken` firmado, obligatorio al ejecutar, que
+incluye el plan, los destinos de reasignación y las cuentas afectadas. Un cambio en
+el origen o el destino exige volver a evaluar. La sincronización de vínculos se limita
+a los registros afectados; no ejecuta reparaciones globales.
+Un conflicto invalida el plan sin aplicar cambios. Los archivos eliminados se retiran
+del disco después del commit. No se generan recordatorios automáticos para perfiles o inmuebles
+borrados. Los endpoints de borrado normal conservan sus restricciones anteriores.
+
+API: `GET /api/:collection/:id/cascade-preview` evalúa dependencias;
+`POST` en la misma ruta revisa el plan sin ejecutarlo;
+`DELETE /api/:collection/:id?cascade=true` ejecuta con las confirmaciones.
+`:collection` admite `owners`, `tenants`, `properties` y `communities`.
+`GET /api/cascade-archives` y `/api/cascade-archives/:id` consultan históricos
+con permiso `cascade-delete` o `audit:read`, además de `document:read` y control de ámbito.
+
+## Comunicaciones y notificaciones personales
+
+La cabecera distingue **Comunicaciones** (avisos generales, eventos y reuniones de
+las comunidades dirigidos a la cuenta) de **Mis notificaciones** (documentación,
+solicitudes de administración y avisos de cuotas de sus perfiles).
+El contador de Comunicaciones refleja publicaciones sin leer, se actualiza al
+abrirlas y permite actualizar el buzón o marcar todas como leídas mediante iconos.
+Abrir el listado no marca automáticamente cada publicación como leída. Las lecturas
+se conservan frente a respuestas atrasadas y el contador se reinicia al cambiar de cuenta.
 
 ## Derramas (cuotas extraordinarias)
 
@@ -174,7 +250,7 @@ fecha de subida y la cuenta que subió cada archivo.
 La documentación general de comunidades, inmuebles e inquilinos usa una
 **biblioteca documental reutilizable** con carpetas:
 
-- Crear, renombrar y eliminar carpetas, con hasta **cinco niveles** de
+- Crear, renombrar y eliminar carpetas, con **20 iconos y 10 colores** personalizables y hasta **cinco niveles** de
   anidamiento (la raíz no cuenta como nivel). Las carpetas y los archivos se
   mueven con arrastrar y soltar o con **Mover a…**.
 - Navegación por migas de pan, búsqueda por nombre, orden por nombre, fecha o
@@ -195,6 +271,13 @@ La documentación general de comunidades, inmuebles e inquilinos usa una
   `document:delete` para escribir. Los administradores de comunidad sólo operan
   sobre sus comunidades asignadas; los vecinos acceden en modo lectura a sus
   comunidades, inmuebles e inquilinos.
+
+La ruta indica «Ubicación actual → Carpeta principal» y permite volver a cualquier
+carpeta del recorrido. El selector de orden es compacto y el botón ascendente/descendente
+está separado y alineado. El editor de carpetas ofrece vista previa, elección mediante
+teclado y guardado con disquete; icono y color se conservan al volver a cargar.
+La columna `document_folders.color` se añade automáticamente con color turquesa
+para las carpetas existentes, sin alterar sus nombres ni documentos.
 
 La migración `document-library-v1` añade las columnas y la tabla de carpetas sin
 mover ni borrar archivos: todos los documentos existentes quedan en la raíz de

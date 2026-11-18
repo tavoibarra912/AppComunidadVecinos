@@ -829,3 +829,42 @@ test("publicaciones: eliminar (autor y moderación) con borrado y control por pe
   assert.equal((await scoped(`/communications/posts/${post2.id}`, "DELETE")).status, 200);
   assert.equal((await admin(`/communications/posts/${post2.id}`)).status, 404);
 });
+
+test("buzón: marcar todo leído afecta solo a la cuenta y a comunicaciones visibles", async () => {
+  const p = await create({ title: "Lectura colectiva de la cuenta" });
+  const ownerId = user("urucp1").id,
+    tenantId = user("uruci1").id;
+  assert.equal(
+    db
+      .prepare("SELECT readAt FROM communication_recipients WHERE postId=? AND userId=?")
+      .get(p.id, ownerId).readAt,
+    "",
+  );
+  const draft = await create({ status: "draft", title: "Borrador privado" });
+  db.prepare("INSERT INTO communication_recipients(postId,userId) VALUES(?,?)").run(
+    draft.id,
+    ownerId,
+  );
+  const r = await owner("/communications/inbox/read-all", "POST", {});
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.ok(r.data.postIds.includes(p.id));
+  assert.ok(
+    db
+      .prepare("SELECT readAt FROM communication_recipients WHERE postId=? AND userId=?")
+      .get(p.id, ownerId).readAt,
+  );
+  assert.equal(
+    db
+      .prepare("SELECT readAt FROM communication_recipients WHERE postId=? AND userId=?")
+      .get(p.id, tenantId).readAt,
+    "",
+  );
+  assert.equal(
+    db
+      .prepare("SELECT readAt FROM communication_recipients WHERE postId=? AND userId=?")
+      .get(draft.id, ownerId).readAt,
+    "",
+  );
+  const again = await owner("/communications/inbox/read-all", "POST", {});
+  assert.equal(again.data.updated, 0);
+});

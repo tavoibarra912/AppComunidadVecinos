@@ -212,6 +212,29 @@ router.post(
     });
   }),
 );
+router.post(
+  "/inbox/read-all",
+  route((req, res) => {
+    const policy = policyData(),
+      now = new Date().toISOString();
+    const visible = allPosts().filter(
+      (p) => canRead(req.user, p, policy) && !["draft", "scheduled"].includes(phase(p)),
+    );
+    let updated = 0;
+    const postIds = [];
+    transaction(() => {
+      const mark = db.prepare(
+        "UPDATE communication_recipients SET readAt=? WHERE postId=? AND userId=? AND readAt=''",
+      );
+      for (const post of visible) {
+        const changes = mark.run(now, post.id, req.user.id).changes;
+        updated += changes;
+        if (changes) postIds.push(post.id);
+      }
+    });
+    res.json({ ok: true, updated, postIds, readAt: now });
+  }),
+);
 router.get(
   "/posts",
   route((req, res) => {
@@ -506,7 +529,11 @@ router.post(
       f = req.file,
       kind = req.body.kind || "attachment",
       limits = documentLimits();
-    if (!f || !["attachment", "minutes"].includes(kind) || (kind === "minutes" && p.type !== "meeting"))
+    if (
+      !f ||
+      !["attachment", "minutes"].includes(kind) ||
+      (kind === "minutes" && p.type !== "meeting")
+    )
       throw problem("Archivo o tipo de documento no válido.");
     if (f.size > limits.maxBytes)
       throw problem(`El archivo supera el límite de ${limits.maxBytes / 1024 / 1024} MB.`);

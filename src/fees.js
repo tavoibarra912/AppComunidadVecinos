@@ -1455,6 +1455,8 @@ export function cancelReceipt(id, input, actor) {
 export function notify(row, kind, eventKey, title, message, targetOwnerId = "") {
   const options = reminderSettingsForReceipt(row);
   for (const owner of JSON.parse(row.snapshot).owners) {
+    // Retained snapshots can name profiles removed through the cascade wizard.
+    if (!db.prepare("SELECT 1 FROM owners WHERE id=?").get(owner.id)) continue;
     if (targetOwnerId && owner.id !== targetOwnerId) continue;
     const id = crypto.randomUUID(),
       createdAt = now();
@@ -1503,7 +1505,11 @@ export function adminNotice(row, ownerId, subject) {
 export function materializeFeeReminders(date = today()) {
   return transaction(() => {
     for (const row of db
-      .prepare("SELECT * FROM fee_receipts WHERE cancelledAt='' AND dueDate<=date(?, '+60 days')")
+      .prepare(
+        `SELECT * FROM fee_receipts WHERE cancelledAt='' AND dueDate<=date(?, '+60 days')
+        AND EXISTS (SELECT 1 FROM communities c WHERE c.id=fee_receipts.communityId)
+        AND EXISTS (SELECT 1 FROM properties p WHERE p.id=fee_receipts.propertyId)`,
+      )
       .all(date)) {
       const view = receiptView(row, date);
       if (view.outstanding <= 0) continue;

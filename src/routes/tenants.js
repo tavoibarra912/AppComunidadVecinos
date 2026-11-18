@@ -6,8 +6,10 @@ import { upsertTenant } from "../domain.js";
 import { contactError, dateError, identityDocumentError } from "../validation.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { removeEntityFiles } from "./documents.js";
+import { registerCascadeRoutes } from "../cascade-delete.js";
 
 const router = Router();
+registerCascadeRoutes(router, "tenants");
 router.use((req, res, next) => {
   if (["POST", "PUT"].includes(req.method)) {
     const data = req.body || {};

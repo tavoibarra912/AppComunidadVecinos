@@ -1,3 +1,4 @@
+import { openCascadeWizard } from "./cascade-wizard.js";
 import { sanitizeHtml, richTextHtml, htmlToText } from "../html.js";
 import { api } from "../api.js";
 import { mountFeeShortcut } from "./fees.js";
@@ -40,6 +41,7 @@ let communityReadonly = false;
 const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+const ICON_CASCADE_DELETE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h12M13 6v3M5 6v14a1 1 0 0 0 1 1h4M7 6V4h4v2"/><path d="M8 10v7"/><path d="M15 12h7M17 10v4M12 18h10M19 16v4"/></svg>`;
 const ICON_DOCS = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`;
 
 function formatCommunityAmount(value, currency = "EUR") {
@@ -340,6 +342,22 @@ export function renderCommunities() {
                 );
                 btnDelete.addEventListener("click", () => openCommunityDelete(community.id));
                 wrap.append(btnDelete);
+              }
+              if (
+                hasPermission("cascade-delete", community.id) &&
+                hasPermission("community:delete", community.id)
+              ) {
+                const advanced = iconBtn(
+                  "btn-delete",
+                  "Eliminar (avanzado)",
+                  `Eliminar con asistente`,
+                  ICON_CASCADE_DELETE,
+                );
+
+                advanced.addEventListener("click", () =>
+                  openCascadeWizard("communities", community.id),
+                );
+                wrap.append(advanced);
               }
             }
             return wrap;

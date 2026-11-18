@@ -34,6 +34,12 @@ const ADMIN_TABS = {
 
 const PERMISOS_CATALOGO = [
   {
+    key: "cascade-delete",
+    label: "Borrado avanzado con asistente",
+    grupo: "Administración",
+    hint: "Evaluar dependencias, reasignar y borrar en cascada, incluso históricos financieros con confirmación. Requiere también los permisos de las entidades afectadas.",
+  },
+  {
     key: "fee:read",
     label: "Consultar cuotas",
     grupo: "Cuotas",
