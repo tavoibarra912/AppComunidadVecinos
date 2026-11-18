@@ -1734,7 +1734,7 @@ test("biblioteca documental: cinco niveles como máximo", async () => {
   );
 });
 
-test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", async () => {
+test("estatutos: sólo comunidades, carpetas propias y consulta para residentes", async () => {
   const before = readdirSync(UPLOADS_DIR).sort();
   const target = { entityType: "community", entityId: "com-seed-1" };
   const folder = await admin("/documents/folders", "POST", {
@@ -1742,17 +1742,18 @@ test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", as
     name: "Temporal estatutos",
   });
   assert.equal(folder.status, 201);
-  // Los estatutos no admiten carpetas.
-  assert.equal(
-    (
-      await admin("/documents/folders", "POST", {
-        ...target,
-        category: "statutes",
-        name: "Estatutos en carpeta",
-      })
-    ).status,
-    400,
-  );
+  assert.equal(folder.data.category, "document");
+  // Los estatutos tienen su propio árbol de carpetas, independiente del documental.
+  const statuteFolder = await admin("/documents/folders", "POST", {
+    ...target,
+    category: "statutes",
+    name: "Temporal estatutos",
+    icon: "shield",
+  });
+  assert.equal(statuteFolder.status, 201, JSON.stringify(statuteFolder.data));
+  assert.equal(statuteFolder.data.category, "statutes");
+  assert.equal(statuteFolder.data.icon, "shield");
+  // Una carpeta de documentos no clasifica estatutos.
   assert.equal(
     (
       await admin(
@@ -1784,12 +1785,13 @@ test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", as
     "POST",
     pdfForm("community", "com-seed-1", "Estatutos vigentes.pdf", {
       category: "statutes",
+      folderId: statuteFolder.data.id,
     }),
   );
   assert.equal(uploaded.status, 201, JSON.stringify(uploaded.data));
   const statute = uploaded.data[0];
   assert.equal(statute.category, "statutes");
-  assert.equal(statute.folderId, "");
+  assert.equal(statute.folderId, statuteFolder.data.id);
   assert.match(statute.url, /\/download$/);
   assert.match(statute.previewUrl, /\/preview$/);
   // Los residentes de la comunidad pueden consultarlos y descargarlos.
@@ -1798,7 +1800,10 @@ test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", as
   );
   assert.equal(ownerListing.status, 200);
   assert.ok(ownerListing.data.documents.some((doc) => doc.id === statute.id));
-  assert.deepEqual(ownerListing.data.folders, []);
+  assert.deepEqual(
+    ownerListing.data.folders.map((item) => item.id),
+    [statuteFolder.data.id],
+  );
   const ownerPreview = await owner(`/documents/${statute.id}/preview`);
   assert.equal(ownerPreview.status, 200);
   assert.match(String(ownerPreview.data), /%PDF/);
@@ -1821,8 +1826,17 @@ test("estatutos: sólo comunidades, sin carpetas y consulta para residentes", as
   const community = boot.data.communities.find((c) => c.id === "com-seed-1");
   assert.ok(community.statutes.some((doc) => doc.id === statute.id));
   assert.ok(!community.documents.some((doc) => doc.id === statute.id));
+  assert.ok(
+    community.documentFolders.some(
+      (item) => item.id === statuteFolder.data.id && item.category === "statutes",
+    ),
+  );
   // Limpieza.
   assert.equal((await admin(`/documents/${statute.id}`, "DELETE")).status, 200);
+  assert.equal(
+    (await admin(`/documents/folders/${statuteFolder.data.id}?confirm=1`, "DELETE")).status,
+    200,
+  );
   assert.equal(
     (await admin(`/documents/folders/${folder.data.id}?confirm=1`, "DELETE")).status,
     200,

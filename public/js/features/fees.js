@@ -67,6 +67,15 @@ const icons = {
   remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   save: '<path d="m5 12 4 4L19 6"/>',
+  // Iconos de cada pantalla (los mismos del menú lateral) para el acceso a Cuotas.
+  communities:
+    '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+  properties:
+    '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M12 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/>',
+  owners:
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  tenants:
+    '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
 };
 function iconButton(label, action, kind = "add", icon = kind) {
   const node = button("", action);
@@ -131,11 +140,26 @@ export function mountFeeShortcut(root, kind, id) {
   root.className = "fee-shortcut";
   if (!id || !feeNavigation().visible) return;
   info(root, "Los recibos, cobros y pendientes se consultan en la pantalla de Cuotas.");
-  const link = el(
-    "a",
-    kind === "community" ? "Abrir cuotas de esta comunidad" : "Abrir cuotas del propietario",
-    "secondary-button",
-  );
+  const label =
+    kind === "community"
+      ? "Abrir cuotas de esta comunidad"
+      : kind === "owner"
+        ? "Abrir cuotas del propietario"
+        : kind === "property"
+          ? "Abrir cuotas del inmueble"
+          : "Abrir cuotas del inquilino";
+  const shortcutIcon =
+    kind === "community"
+      ? "communities"
+      : kind === "owner"
+        ? "owners"
+        : kind === "property"
+          ? "properties"
+          : "tenants";
+  const link = el("a", "", "icon-action-btn btn-info btn-lg");
+  link.title = label;
+  link.setAttribute("aria-label", label);
+  link.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[shortcutIcon]}</svg>`;
   const params = new URLSearchParams({
     [kind === "community" ? "comunidad" : "propietario"]: id,
   });

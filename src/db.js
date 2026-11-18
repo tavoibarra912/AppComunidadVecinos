@@ -155,6 +155,7 @@ db.exec(`
     name TEXT NOT NULL,
     nameKey TEXT NOT NULL,
     icon TEXT NOT NULL DEFAULT 'folder',
+    category TEXT NOT NULL DEFAULT 'document',
     createdAt TEXT NOT NULL DEFAULT '',
     createdBy TEXT NOT NULL DEFAULT '',
     createdByName TEXT NOT NULL DEFAULT ''
@@ -214,7 +215,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tenants_owner ON tenants(ownerId);
   CREATE INDEX IF NOT EXISTS idx_documents_entity ON documents(entityType, entityId);
   CREATE INDEX IF NOT EXISTS idx_document_folders_entity ON document_folders(entityType, entityId);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_document_folders_unique ON document_folders(entityType, entityId, parentId, nameKey);
   CREATE INDEX IF NOT EXISTS idx_admin_emails_owner ON admin_emails(ownerId);
   CREATE INDEX IF NOT EXISTS idx_owner_notifications_owner ON owner_notifications(ownerId);
 `);
@@ -270,7 +270,15 @@ ensureColumns("documents", {
 // Las carpetas existentes conservan el icono genérico de carpeta.
 ensureColumns("document_folders", {
   icon: "TEXT NOT NULL DEFAULT 'folder'",
+  category: "TEXT NOT NULL DEFAULT 'document'",
 });
+// Documentos y estatutos tienen árboles de carpetas independientes: la
+// unicidad del nombre incluye la categoría. El índice anterior no la tenía.
+db.exec(`
+  DROP INDEX IF EXISTS idx_document_folders_unique;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_document_folders_category_unique
+    ON document_folders(entityType, entityId, category, parentId, nameKey);
+`);
 // El índice usa `folderId`: se crea después de asegurar la columna para que
 // las bases creadas con el esquema anterior puedan migrar sin errores.
 db.exec(
@@ -1170,6 +1178,7 @@ export function documentFolderFromRow(row) {
     parentId: row.parentId || "",
     name: row.name,
     icon: row.icon || "folder",
+    category: row.category || "document",
     createdAt: row.createdAt,
     createdBy: row.createdBy || "",
     createdByName: row.createdByName || "",

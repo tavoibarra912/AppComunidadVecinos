@@ -1221,11 +1221,49 @@
                 <input type="hidden" name="tenantAuthorizationsState" />
                 <div id="tenant-authorizations-editor" class="full"></div>
                 <div class="heading-actions full">
-                  <button type="button" class="secondary-button" id="add-tenant-authorization">
-                    Agregar autorización
+                  <button
+                    type="button"
+                    class="icon-action-btn btn-add btn-lg"
+                    id="add-tenant-authorization"
+                    title="Agregar autorización"
+                    aria-label="Agregar autorización"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
                   </button>
-                  <button type="button" class="secondary-button" id="reset-tenant-authorizations">
-                    Restaurar predeterminadas
+                  <button
+                    type="button"
+                    class="icon-action-btn btn-info btn-lg"
+                    id="reset-tenant-authorizations"
+                    title="Restaurar predeterminadas"
+                    aria-label="Restaurar predeterminadas"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="3 3 3 8 8 8"></polyline>
+                      <path d="M3.2 8a9 9 0 1 1-.2 4"></path>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -1444,8 +1482,28 @@
                   >
                     Quitar logo
                   </button>
-                  <button type="button" class="primary-button" id="settings-community-save">
-                    Guardar comunidad
+                  <button
+                    type="button"
+                    class="icon-action-btn btn-save btn-lg"
+                    id="settings-community-save"
+                    title="Guardar comunidad"
+                    aria-label="Guardar comunidad"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                      <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
                   </button>
                 </div>
                 <p class="form-intro full" id="settings-community-hint"></p>
@@ -2220,13 +2278,35 @@
           data-community-pane="docs"
           hidden
         >
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación de la comunidad (<span id="community-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Actas, contratos, certificados y otros archivos, organizados en carpetas. Los
-                cambios se guardan al instante.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="13" y2="17"></line>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación de la comunidad
+                  <span class="doc-pane-count" id="community-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Actas, contratos, certificados y otros archivos, organizados en carpetas. Los
+                  cambios se guardan al instante.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-document-list"></div>
@@ -2237,13 +2317,33 @@
           data-community-pane="statutes"
           hidden
         >
-          <div class="detail-section-heading">
-            <div>
-              <h3>Estatutos de la comunidad (<span id="community-statutes-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Documentos vigentes para consulta de todos los vecinos. Solo los administradores
-                pueden subirlos, reemplazarlos, renombrarlos o eliminarlos.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>
+                  <path d="m9 12 2 2 4-4"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Estatutos de la comunidad
+                  <span class="doc-pane-count" id="community-statutes-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Documentos vigentes para consulta de todos los vecinos. Solo los administradores
+                  pueden subirlos, reemplazarlos, renombrarlos o eliminarlos.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-statutes-list"></div>
@@ -2485,23 +2585,65 @@
           <div id="community-properties-list" class="community-properties-list"></div>
         </section>
         <section class="community-editor-pane" data-cd-pane="docs" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación (<span id="community-detail-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Archivos adjuntos de la comunidad (solo lectura).
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="13" y2="17"></line>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación
+                  <span class="doc-pane-count" id="community-detail-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Archivos adjuntos de la comunidad (solo lectura).
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-detail-documents"></div>
         </section>
         <section class="community-editor-pane" data-cd-pane="statutes" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Estatutos (<span id="community-detail-statutes-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Documentos de consulta disponibles para todos los vecinos.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>
+                  <path d="m9 12 2 2 4-4"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Estatutos
+                  <span class="doc-pane-count" id="community-detail-statutes-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Documentos de consulta disponibles para todos los vecinos.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-detail-statutes"></div>
@@ -5164,13 +5306,34 @@
           <div class="community-properties-list" id="property-tenants-list"></div>
         </section>
         <section class="property-editor-pane" data-property-pane="docs" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación del inmueble (<span id="property-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Escrituras, certificados energéticos y otros archivos organizados en carpetas. Los
-                cambios se guardan al instante.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 21h18"></path>
+                  <path d="M5 21V7l7-4 7 4v14"></path>
+                  <path d="M9 21v-6h6v6"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación del inmueble
+                  <span class="doc-pane-count" id="property-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Escrituras, certificados energéticos y otros archivos organizados en carpetas. Los
+                  cambios se guardan al instante.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="property-document-list"></div>
@@ -5392,12 +5555,33 @@
           </div>
         </section>
         <section class="community-editor-pane" data-pd-pane="docs" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación del inmueble (<span id="property-detail-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Archivos y carpetas del inmueble (sólo lectura).
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 21h18"></path>
+                  <path d="M5 21V7l7-4 7 4v14"></path>
+                  <path d="M9 21v-6h6v6"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación del inmueble
+                  <span class="doc-pane-count" id="property-detail-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Archivos y carpetas del inmueble (sólo lectura).
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="property-detail-documents"></div>
@@ -6865,6 +7049,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
     <script src="js/municipios-ine.js?v=4"></script>
-    <script type="module" src="js/main.js?v=9"></script>
+    <script type="module" src="js/main.js?v=11"></script>
   </body>
 </html>

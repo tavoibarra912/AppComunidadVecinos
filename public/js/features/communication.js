@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { state, hasPermission } from "../state.js";
 import { escapeHtml as h } from "../html.js";
-import { toast, fieldLabel, mensajeDeValidez } from "../utils.js";
+import { toast, fieldLabel, mensajeDeValidez, validateDocumentFiles } from "../utils.js";
 
 const request = api.communication;
 const $ = (selector) => document.querySelector(selector);
@@ -34,6 +34,12 @@ const local = (value) => {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 const iso = (value) => (value ? new Date(value).toISOString() : "");
+const EYE_ICON =
+  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EDIT_ICON =
+  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const UPLOAD_ICON =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
 const TRASH_ICON =
   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 let metadata = null,
@@ -190,7 +196,7 @@ function filtered() {
     );
 }
 function card(p) {
-  return `<article class="comm-card ${p.priority === "urgent" ? "comm-urgent" : ""}"><div class="comm-card-meta"><span>${h(types[p.type])}${p.poll ? ` · ${p.poll.type === "vote" ? "Votación" : "Encuesta"}` : ""}</span><span class="comm-tag">${h(phases[p.phase])}</span>${p.pinned ? '<span class="comm-tag">Fijado</span>' : ""}${p.recipient && !p.recipient.readAt ? '<span class="comm-tag comm-new-tag">Sin leer</span>' : ""}</div><h2><button type="button" class="comm-title-button" data-open-post="${h(p.id)}">${h(p.title)}</button></h2><p class="comm-muted">${h(p.communityName)} · ${h(date(p.startsAt || p.publishAt))}</p><p class="comm-excerpt">${h(p.body.slice(0, 220))}${p.body.length > 220 ? "…" : ""}</p><div class="comm-card-footer"><span>${p.priority === "urgent" ? "Urgente" : p.priority === "important" ? "Importante" : h(audienceLabels[p.audience.mode])}</span><button type="button" class="secondary-button" data-open-post="${h(p.id)}">Ver publicación</button></div></article>`;
+  return `<article class="comm-card ${p.priority === "urgent" ? "comm-urgent" : ""}"><div class="comm-card-meta"><span>${h(types[p.type])}${p.poll ? ` · ${p.poll.type === "vote" ? "Votación" : "Encuesta"}` : ""}</span><span class="comm-tag">${h(phases[p.phase])}</span>${p.pinned ? '<span class="comm-tag">Fijado</span>' : ""}${p.recipient && !p.recipient.readAt ? '<span class="comm-tag comm-new-tag">Sin leer</span>' : ""}</div><h2><button type="button" class="comm-title-button" data-open-post="${h(p.id)}">${h(p.title)}</button></h2><p class="comm-muted">${h(p.communityName)} · ${h(date(p.startsAt || p.publishAt))}</p><p class="comm-excerpt">${h(p.body.slice(0, 220))}${p.body.length > 220 ? "…" : ""}</p><div class="comm-card-footer"><span>${p.priority === "urgent" ? "Urgente" : p.priority === "important" ? "Importante" : h(audienceLabels[p.audience.mode])}</span><button type="button" class="icon-action-btn btn-info" data-open-post="${h(p.id)}" aria-label="Ver publicación" title="Ver publicación">${EYE_ICON}</button></div></article>`;
 }
 function draw() {
   if (!metadata) return;
@@ -588,7 +594,7 @@ async function openPost(id, tab = "publication") {
   ];
   showDialog(
     p.title,
-    `<div class="comm-detail-meta"><span class="comm-tag comm-tag-type">${h(types[p.type])}</span><span class="comm-tag comm-tag-phase comm-tag-phase-${p.phase}">${h(phases[p.phase])}</span><span class="comm-tag comm-tag-comunidad">${h(p.communityName)}</span>${p.canManage ? '<button type="button" class="secondary-button" data-edit-post>Editar publicación</button>' : ""}${p.canDelete ? `<button type="button" class="icon-action-btn btn-delete" data-delete-post aria-label="Eliminar publicación" title="Eliminar publicación">${TRASH_ICON}</button>` : ""}</div><div class="comm-tabs" id="comm-detail-tabs" role="tablist" aria-label="Detalle de publicación">${tabs.map(([id, label]) => `<button type="button" role="tab" data-detail-tab="${id}" aria-selected="${detailTab === id}">${label}</button>`).join("")}</div>
+    `<div class="comm-detail-meta"><span class="comm-tag comm-tag-type">${h(types[p.type])}</span><span class="comm-tag comm-tag-phase comm-tag-phase-${p.phase}">${h(phases[p.phase])}</span><span class="comm-tag comm-tag-comunidad">${h(p.communityName)}</span>${p.canManage ? `<button type="button" class="icon-action-btn btn-edit" data-edit-post aria-label="Editar publicación" title="Editar publicación">${EDIT_ICON}</button>` : ""}${p.canDelete ? `<button type="button" class="icon-action-btn btn-delete" data-delete-post aria-label="Eliminar publicación" title="Eliminar publicación">${TRASH_ICON}</button>` : ""}</div><div class="comm-tabs" id="comm-detail-tabs" role="tablist" aria-label="Detalle de publicación">${tabs.map(([id, label]) => `<button type="button" role="tab" data-detail-tab="${id}" aria-selected="${detailTab === id}">${label}</button>`).join("")}</div>
     <div data-detail-panel="publication" ${detailTab !== "publication" ? "hidden" : ""}><p class="comm-body-text">${h(p.body)}</p><dl class="comm-detail-dates"><div><dt>Publicación</dt><dd>${h(date(p.publishAt))}</dd></div>${p.startsAt ? `<div><dt>Inicio</dt><dd>${h(date(p.startsAt))}</dd></div><div><dt>Fin</dt><dd>${h(date(p.endsAt))}</dd></div>` : ""}<div><dt>Destinatarios</dt><dd>${h(audienceLabels[p.audience.mode])}</dd></div>${p.archiveAt ? `<div><dt>Archivo</dt><dd>${h(date(p.archiveAt))}</dd></div>` : ""}</dl>${p.receiptRequired && p.recipient ? `<div class="comm-callout">${p.recipient.receiptAt ? `Confirmaste la recepción el ${h(date(p.recipient.receiptAt))}.` : '<p>Se solicita que confirmes la recepción de esta publicación.</p><button type="button" class="primary-button" data-receipt>Confirmar recepción</button>'}</div>` : ""}<h3>Documentos adjuntos</h3>${filesView(p, "attachment")}${p.canManage ? uploadForm("attachment") : ""}</div>
     ${p.type === "meeting" ? `<div data-detail-panel="meeting" ${detailTab !== "meeting" ? "hidden" : ""}>${meetingView(p)}</div>` : ""}
     <div data-detail-panel="participation" ${detailTab !== "participation" ? "hidden" : ""}>${participationView(p)}</div>
@@ -692,21 +698,32 @@ async function openPost(id, tab = "publication") {
       }, el),
     ),
   );
-  dialog.querySelectorAll("[data-upload-form]").forEach((form) =>
+  dialog.querySelectorAll("[data-upload-pick]").forEach((button) =>
+    button.addEventListener("click", () => {
+      const form = button.closest("[data-upload-form]");
+      form?.elements.file.click();
+    }),
+  );
+  dialog.querySelectorAll("[data-upload-form]").forEach((form) => {
+    // El botón-icono abre el selector y el archivo elegido se sube al instante.
+    form.elements.file.addEventListener("change", () => {
+      if (form.elements.file.files.length) form.requestSubmit();
+    });
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       action(async () => {
         const file = form.elements.file.files[0];
         if (!file) throw new Error("Selecciona un archivo.");
-        if (file.size > 10 * 1024 * 1024) throw new Error("El archivo supera los 10 MB.");
+        const invalid = validateDocumentFiles([file], state.settings || {});
+        if (invalid.length) throw new Error(invalid[0]);
         const payload = new FormData();
         payload.append("kind", form.dataset.uploadForm);
         payload.append("file", file);
         await request(`/posts/${p.id}/files`, "POST", payload);
         await openPost(p.id, detailTab);
       }, e.submitter);
-    }),
-  );
+    });
+  });
   dialog.querySelectorAll("[data-publish-minutes]").forEach((b) =>
     b.addEventListener("click", () =>
       action(async () => {
@@ -745,8 +762,25 @@ async function openPost(id, tab = "publication") {
     }, e.currentTarget),
   );
 }
+/** Formatos y tamaño admitidos: los mismos que la biblioteca documental,
+ * definidos en Configuración general → Documentos. */
+function documentRules() {
+  const settings = state.settings || {};
+  const configured = Array.isArray(settings.documentosTiposPermitidos)
+    ? settings.documentosTiposPermitidos
+    : ["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"];
+  const types = configured
+    .map((type) => String(type).trim().toLowerCase().replace(/^\./, ""))
+    .filter(Boolean);
+  return {
+    types: types.length ? types : ["pdf"],
+    maxMb: Math.min(50, Math.max(1, Number(settings.documentosMaxSizeMb) || 15)),
+  };
+}
 function uploadForm(kind) {
-  return `<form data-upload-form="${kind}" class="comm-upload"><label>${kind === "minutes" ? "Subir una nueva versión del acta (borrador)" : "Adjuntar documento"}<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png" required></label><button class="secondary-button" type="submit">Subir archivo</button><small class="comm-muted">PDF, JPG o PNG · Hasta 10 MB por archivo.</small></form>`;
+  const rules = documentRules();
+  const label = kind === "minutes" ? "Subir una nueva versión del acta" : "Adjuntar documento";
+  return `<form data-upload-form="${kind}" class="comm-upload"><input name="file" type="file" accept="${rules.types.map((type) => `.${type}`).join(",")}" hidden required><small class="comm-muted">${h(label)} · ${h(rules.types.map((type) => type.toUpperCase()).join(", "))} · Hasta ${rules.maxMb} MB por archivo.</small><button type="button" class="icon-action-btn btn-add btn-lg" data-upload-pick aria-label="${h(label)}" title="${h(label)}">${UPLOAD_ICON}</button></form>`;
 }
 function filesView(p, kind) {
   const files = p.files.filter((f) => f.kind === kind);
@@ -834,7 +868,8 @@ $("#comm-preferences").addEventListener("click", (e) =>
 export async function renderProvidersPanel(container) {
   const config = await request("/providers");
   container.classList.add("proveedores-panel");
-  container.innerHTML = `<p class="form-intro">Configuración global de envío. Las credenciales guardadas no se muestran; deja el campo vacío para conservarlas. Si tu proveedor rechaza las llamadas por restricción de IP, autoriza la IP pública del servidor donde se ejecuta la aplicación en el panel del proveedor (Brevo → Seguridad → Direcciones IP autorizadas) (en desarrollo, la IP pública de tu conexión; «localhost» no es una IP válida ahí).</p><form id="comm-provider-form" autocomplete="off"><section class="proveedor-card"><h3 class="proveedor-titulo">📧 Correo electrónico</h3><p class="proveedor-desc">Configura el envío de correos con tu proveedor: por API (solo la API key) o mediante un servidor SMTP propio.</p>${check("smtpEnabled", "Habilitar correo electrónico", config.smtp.enabled)}<label class="proveedor-campo">Modo de envío<select name="smtpProvider"><option value="brevo" ${config.smtp.provider === "brevo" ? "selected" : ""}>API del proveedor (solo API key)</option><option value="smtp" ${config.smtp.provider !== "brevo" ? "selected" : ""}>SMTP propio</option></select></label><div class="form-grid"><div data-smtp-relay>${input("smtpHost", "Servidor SMTP", config.smtp.host)}</div><div data-smtp-relay>${input("smtpPort", "Puerto", config.smtp.port, "number", 'min="1" max="65535" required')}</div><div data-smtp-relay>${input("smtpUser", "Usuario", config.smtp.user)}</div>${input("smtpPassword", config.smtp.hasSecret ? "Credencial (ya guardada)" : "API key o contraseña del proveedor", "", "password", 'autocomplete="new-password" maxlength="1000"')}${input("smtpFrom", "Correo electrónico del remitente", config.smtp.from, "email")}${input("smtpFromName", "Nombre del remitente", config.smtp.fromName)}</div>${check("smtpSecure", "TLS desde el inicio (solo SMTP genérico)", config.smtp.secure)}${check("smtpClear", "Eliminar la contraseña/API key guardada")}</section>${["sms", "whatsapp"].map((channel) => `<section class="proveedor-card"><h3 class="proveedor-titulo">${channel === "sms" ? "💬 SMS" : "🟢 WhatsApp"}</h3><p class="proveedor-desc">${channel === "sms" ? "Envío de mensajes de texto con tu proveedor de mensajería." : "Envío de mensajes de WhatsApp con tu proveedor. Según el proveedor puede requerirse una plantilla aprobada para el primer mensaje."}</p>${check(`${channel}Enabled`, `Habilitar ${channel === "sms" ? "SMS" : "WhatsApp"}`, config[channel].enabled)}<label class="proveedor-campo">Proveedor<select name="${channel}Provider">${channel === "sms" ? '<option value="twilio">Twilio</option><option value="brevo">Brevo</option>' : '<option value="twilio">Twilio</option><option value="brevo">Brevo</option>'}</select></label><div class="form-grid"><div data-twilio-sid>${input(`${channel}Sid`, "Account SID", config[channel].accountSid)}</div>${input(`${channel}Token`, config[channel].hasSecret ? "API key / Auth Token (ya guardado)" : "API key o Auth Token", "", "password", 'autocomplete="new-password" maxlength="1000"')}${input(`${channel}From`, channel === "sms" ? "Número o remitente emisor" : "Número de WhatsApp emisor (con código de país)", config[channel].from, "tel", 'placeholder="+34600111222"')}${channel === "whatsapp" ? input("whatsappContentSid", "Content SID o ID de plantilla", config.whatsapp.contentSid) : ""}</div>${check(`${channel}Clear`, "Eliminar la API key guardada")}</section>`).join("")}<div class="proveedor-acciones"><button type="submit" class="primary-button">Guardar proveedores</button></div></form><section class="proveedor-card"><h3 class="proveedor-titulo">🧪 Enviar un mensaje de prueba</h3><p class="proveedor-desc">Guarda la configuración antes de probar. Este botón envía un mensaje real al destino indicado.</p><form id="comm-provider-test"><div class="form-grid"><label>Canal<select name="channel"><option value="email">Correo electrónico</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option></select></label>${input("to", "Destino de la prueba", "", "text", 'required maxlength="254"')}</div><button type="submit" class="secondary-button">Enviar prueba</button><p id="comm-test-result" role="status"></p></form></section>`;
+  container.innerHTML = `<p class="form-intro">Configuración global de envío. Las credenciales guardadas no se muestran; deja el campo vacío para conservarlas. Si tu proveedor rechaza las llamadas por restricción de IP, autoriza la IP pública del servidor donde se ejecuta la aplicación en el panel del proveedor (Brevo → Seguridad → Direcciones IP autorizadas) (en desarrollo, la IP pública de tu conexión; «localhost» no es una IP válida ahí).</p><form id="comm-provider-form" autocomplete="off"><section class="proveedor-card"><h3 class="proveedor-titulo">📧 Correo electrónico</h3><p class="proveedor-desc">Configura el envío de correos con tu proveedor: por API (solo la API key) o mediante un servidor SMTP propio.</p>${check("smtpEnabled", "Habilitar correo electrónico", config.smtp.enabled)}<label class="proveedor-campo">Modo de envío<select name="smtpProvider"><option value="brevo" ${config.smtp.provider === "brevo" ? "selected" : ""}>API del proveedor (solo API key)</option><option value="smtp" ${config.smtp.provider !== "brevo" ? "selected" : ""}>SMTP propio</option></select></label><div class="form-grid"><div data-smtp-relay>${input("smtpHost", "Servidor SMTP", config.smtp.host)}</div><div data-smtp-relay>${input("smtpPort", "Puerto", config.smtp.port, "number", 'min="1" max="65535" required')}</div><div data-smtp-relay>${input("smtpUser", "Usuario", config.smtp.user)}</div>${input("smtpPassword", config.smtp.hasSecret ? "Credencial (ya guardada)" : "API key o contraseña del proveedor", "", "password", 'autocomplete="new-password" maxlength="1000"')}${input("smtpFrom", "Correo electrónico del remitente", config.smtp.from, "email")}${input("smtpFromName", "Nombre del remitente", config.smtp.fromName)}</div>${check("smtpSecure", "TLS desde el inicio (solo SMTP genérico)", config.smtp.secure)}${check("smtpClear", "Eliminar la contraseña/API key guardada")}</section>${["sms", "whatsapp"].map((channel) => `<section class="proveedor-card"><h3 class="proveedor-titulo">${channel === "sms" ? "💬 SMS" : "🟢 WhatsApp"}</h3><p class="proveedor-desc">${channel === "sms" ? "Envío de mensajes de texto con tu proveedor de mensajería." : "Envío de mensajes de WhatsApp con tu proveedor. Según el proveedor puede requerirse una plantilla aprobada para el primer mensaje."}</p>${check(`${channel}Enabled`, `Habilitar ${channel === "sms" ? "SMS" : "WhatsApp"}`, config[channel].enabled)}<label class="proveedor-campo">Proveedor<select name="${channel}Provider">${channel === "sms" ? '<option value="twilio">Twilio</option><option value="brevo">Brevo</option>' : '<option value="twilio">Twilio</option><option value="brevo">Brevo</option>'}</select></label><div class="form-grid"><div data-twilio-sid>${input(`${channel}Sid`, "Account SID", config[channel].accountSid)}</div>${input(`${channel}Token`, config[channel].hasSecret ? "API key / Auth Token (ya guardado)" : "API key o Auth Token", "", "password", 'autocomplete="new-password" maxlength="1000"')}${input(`${channel}From`, channel === "sms" ? "Número o remitente emisor" : "Número de WhatsApp emisor (con código de país)", config[channel].from, "tel", 'placeholder="+34600111222"')}${channel === "whatsapp" ? input("whatsappContentSid", "Content SID o ID de plantilla", config.whatsapp.contentSid) : ""}</div>${check(`${channel}Clear`, "Eliminar la API key guardada")}</section>`).join("")}<div class="proveedor-acciones"><button type="submit" class="icon-action-btn btn-save btn-lg" title="Guardar proveedores" aria-label="Guardar proveedores"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button></div></form>
+<section class="proveedor-card"><h3 class="proveedor-titulo">🧪 Enviar un mensaje de prueba</h3><p class="proveedor-desc">Guarda la configuración antes de probar. Este botón envía un mensaje real al destino indicado.</p><form id="comm-provider-test"><div class="form-grid"><label>Canal<select name="channel"><option value="email">Correo electrónico</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option></select></label>${input("to", "Destino de la prueba", "", "text", 'required maxlength="254"')}</div><button type="submit" class="secondary-button">Enviar prueba</button><p id="comm-test-result" role="status"></p></form></section>`;
   // Modo de envío por canal: muestra/oculta campos y Habilitar habilita/deshabilita
   const smtpProviderSelect = container.querySelector('[name="smtpProvider"]');
   const smsProviderSelect = container.querySelector('[name="smsProvider"]');

@@ -3,7 +3,7 @@
 // Explican qué hace cada botón al mantener el mouse encima o al enfocarlo.
 // ==========================================
 const SELECTOR =
-  'button, [role="button"], a.primary-button, a.secondary-button, a.text-link-button, a.nav-item';
+  'button, [role="button"], a.primary-button, a.secondary-button, a.icon-action-btn, a.text-link-button, a.nav-item';
 const SHOW_DELAY = 700;
 const GAP = 9;
 const EDGE = 8;

@@ -6,6 +6,9 @@ const ICONS = {
   folder:
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
   file: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
+  home: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path><path d="M9 22V12h6v10"></path></svg>',
+  search:
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
   eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
   download:
     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
@@ -346,7 +349,7 @@ function openPreviewDialog(doc) {
 }
 
 function documentMeta(doc) {
-  const parts = [typeLabel(doc), formatSize(doc.fileSize)];
+  const parts = [formatSize(doc.fileSize)];
   if (doc.uploadedAt) parts.push(formatDate(doc.uploadedAt));
   if (doc.uploadedByName) parts.push(`Subido por ${doc.uploadedByName}`);
   return parts.filter(Boolean).join(" · ");
@@ -356,7 +359,8 @@ export function createDocumentLibrary(options) {
   const root = options.container;
   if (!root) throw new Error("La biblioteca documental necesita un contenedor.");
   const category = options.category || "document";
-  const foldersEnabled = category !== "statutes";
+  // Documentos y estatutos comparten la misma biblioteca con carpetas propias.
+  const foldersEnabled = true;
   const view = {
     entityId: "",
     documents: [],
@@ -382,25 +386,33 @@ export function createDocumentLibrary(options) {
   root.dataset.category = category;
   root.innerHTML = `<div class="doc-library-toolbar">
       <div class="doc-library-toolbar-main">
-        ${foldersEnabled ? `<button type="button" class="icon-action-btn btn-add btn-lg doc-library-new-folder" aria-label="Nueva carpeta" title="Nueva carpeta">${ICONS.folderAdd}</button>` : ""}
+        ${foldersEnabled ? `<button type="button" class="icon-action-btn btn-folder btn-lg doc-library-new-folder" aria-label="Nueva carpeta" title="Nueva carpeta">${ICONS.folderAdd}</button>` : ""}
         <button type="button" class="icon-action-btn btn-add btn-lg doc-library-upload" aria-label="Subir archivos" title="Subir archivos">${ICONS.uploadLg}</button>
         <input type="file" class="doc-library-upload-input" multiple hidden />
       </div>
       <div class="doc-library-toolbar-tools">
-        <input type="search" class="doc-library-search" placeholder="Buscar por nombre…" aria-label="Buscar por nombre" />
-        <select class="doc-library-sort" aria-label="Ordenar por">
-          <option value="name">Nombre</option>
-          <option value="date">Fecha</option>
-          <option value="size">Tamaño</option>
-        </select>
-        <button type="button" class="doc-library-sort-dir" title="Invertir el orden" aria-label="Invertir el orden">↑</button>
+        <label class="doc-library-search-field">
+          <span class="doc-library-search-icon" aria-hidden="true">${ICONS.search}</span>
+          <input type="search" class="doc-library-search" placeholder="Buscar archivos y carpetas…" aria-label="Buscar por nombre" />
+        </label>
+        <div class="doc-library-sort-group">
+          <select class="doc-library-sort" aria-label="Ordenar por">
+            <option value="name">Nombre</option>
+            <option value="date">Fecha</option>
+            <option value="size">Tamaño</option>
+          </select>
+          <button type="button" class="doc-library-sort-dir" title="Invertir el orden" aria-label="Invertir el orden">↑</button>
+        </div>
         <div class="doc-library-view" role="group" aria-label="Vista">
           <button type="button" data-library-view="list" class="active" aria-label="Vista de lista" title="Vista de lista">${ICONS.list}</button>
           <button type="button" data-library-view="grid" aria-label="Vista de cuadrícula" title="Vista de cuadrícula">${ICONS.grid}</button>
         </div>
       </div>
     </div>
-    <nav class="doc-library-breadcrumbs" aria-label="Ruta de carpetas"></nav>
+    <div class="doc-library-pathbar">
+      <nav class="doc-library-breadcrumbs" aria-label="Ruta de carpetas"></nav>
+      <span class="doc-library-path-meta"></span>
+    </div>
     <div class="doc-library-dropzone">${ICONS.upload}<span><strong>Arrastrá archivos acá</strong> o usá «Subir archivos»</span></div>
     <div class="doc-library-content"></div>
     <p class="doc-library-status" aria-live="polite"></p>`;
@@ -413,6 +425,7 @@ export function createDocumentLibrary(options) {
   const sortSelect = root.querySelector(".doc-library-sort");
   const sortButton = root.querySelector(".doc-library-sort-dir");
   const breadcrumbs = root.querySelector(".doc-library-breadcrumbs");
+  const pathMeta = root.querySelector(".doc-library-path-meta");
   const dropzone = root.querySelector(".doc-library-dropzone");
   const content = root.querySelector(".doc-library-content");
   const status = root.querySelector(".doc-library-status");
@@ -441,8 +454,14 @@ export function createDocumentLibrary(options) {
     toolbar.hidden = false;
     if (uploadButton) uploadButton.hidden = !writable;
     if (newFolderButton) newFolderButton.hidden = !writable || !foldersEnabled || !!view.search;
-    if (dropzone) dropzone.hidden = !writable;
-    if (sortButton) sortButton.textContent = view.direction > 0 ? "↑" : "↓";
+    if (dropzone) dropzone.hidden = !writable || !!view.search;
+    if (sortButton) {
+      sortButton.textContent = view.direction > 0 ? "↑" : "↓";
+      const label =
+        view.direction > 0 ? "Orden ascendente · invertir" : "Orden descendente · invertir";
+      sortButton.title = label;
+      sortButton.setAttribute("aria-label", label);
+    }
     root.querySelectorAll("[data-library-view]").forEach((button) => {
       button.classList.toggle("active", button.dataset.libraryView === view.mode);
     });
@@ -510,7 +529,7 @@ export function createDocumentLibrary(options) {
     const rootButton = document.createElement("button");
     rootButton.type = "button";
     rootButton.className = "doc-library-crumb";
-    rootButton.textContent = "Inicio";
+    rootButton.innerHTML = `${ICONS.home}<span>Inicio</span>`;
     rootButton.dataset.libraryDropFolder = "";
     if (!view.currentFolderId) rootButton.classList.add("is-current");
     rootButton.addEventListener("click", () => navigateFolder(""));
@@ -531,25 +550,34 @@ export function createDocumentLibrary(options) {
     }
   };
 
+  const itemButton = (action, title, icon, variant = "") =>
+    `<button type="button" class="icon-action-btn btn-sm ${variant}" data-library-action="${action}" title="${title}" aria-label="${title}">${icon}</button>`;
+
   const itemActions = (item, kind) => {
     const writable = canWrite();
-    if (!writable) {
+    const parts = [];
+    if (kind === "document" && item.previewUrl)
+      parts.push(itemButton("preview", "Vista previa", ICONS.eye, "btn-info"));
+    if (kind === "document")
+      parts.push(
+        `<a class="icon-action-btn btn-sm btn-download" href="${h(item.url)}" target="_blank" rel="noopener" title="Descargar" aria-label="Descargar">${ICONS.download}</a>`,
+      );
+    if (writable) {
+      parts.push(
+        itemButton(
+          "rename",
+          kind === "folder" ? "Renombrar carpeta" : "Renombrar",
+          ICONS.edit,
+          "btn-edit",
+        ),
+      );
+      if (kind === "folder" || foldersEnabled)
+        parts.push(itemButton("move", "Mover a…", ICONS.move, "btn-move"));
       if (kind === "document")
-        return `<div class="doc-library-item-actions">${item.previewUrl ? `<button type="button" data-library-action="preview" title="Vista previa">${ICONS.eye}</button>` : ""}<a href="${h(item.url)}" title="Descargar" target="_blank" rel="noopener">${ICONS.download}</a></div>`;
-      return "";
+        parts.push(itemButton("replace", "Reemplazar archivo", ICONS.replace, "btn-replace"));
+      parts.push(itemButton("delete", "Eliminar", ICONS.trash, "btn-delete"));
     }
-    const move =
-      kind === "document" && !foldersEnabled
-        ? ""
-        : `<button type="button" data-library-action="move" title="Mover a…">${ICONS.move}</button>`;
-    return `<div class="doc-library-item-actions">
-      ${kind === "document" && item.previewUrl ? `<button type="button" data-library-action="preview" title="Vista previa">${ICONS.eye}</button>` : ""}
-      ${kind === "document" ? `<a href="${h(item.url)}" title="Descargar" target="_blank" rel="noopener">${ICONS.download}</a>` : ""}
-      <button type="button" data-library-action="rename" title="Renombrar">${ICONS.edit}</button>
-      ${move}
-      ${kind === "document" ? `<button type="button" data-library-action="replace" title="Reemplazar archivo">${ICONS.replace}</button>` : ""}
-      <button type="button" data-library-action="delete" class="danger" title="Eliminar">${ICONS.trash}</button>
-    </div>`;
+    return parts.length ? `<div class="doc-library-item-actions">${parts.join("")}</div>` : "";
   };
 
   const folderRow = (folder) => {
@@ -561,9 +589,10 @@ export function createDocumentLibrary(options) {
     element.tabIndex = 0;
     const count = descendants(view.folders, folder.id).size;
     const docs = view.documents.filter((doc) => doc.folderId === folder.id).length;
+    const summary = `${docs} ${docs === 1 ? "documento" : "documentos"}${count ? ` · ${count} ${count === 1 ? "subcarpeta" : "subcarpetas"}` : ""}`;
     element.innerHTML = `<button type="button" class="doc-library-item-main" data-library-open-folder>
         <span class="doc-library-item-icon">${folderIcon(folder.icon)}</span>
-        <span class="doc-library-item-text"><strong>${h(folder.name)}</strong><span>${docs} ${docs === 1 ? "documento" : "documentos"}${count ? ` · ${count} ${count === 1 ? "subcarpeta" : "subcarpetas"}` : ""}</span></span>
+        <span class="doc-library-item-text"><strong>${h(folder.name)}</strong><span class="doc-library-item-meta">${summary}</span></span>
       </button>${itemActions(folder, "folder")}`;
     return element;
   };
@@ -578,7 +607,7 @@ export function createDocumentLibrary(options) {
       : "";
     element.innerHTML = `<button type="button" class="doc-library-item-main" data-library-open-document>
         <span class="doc-library-item-icon">${ICONS.file}</span>
-        <span class="doc-library-item-text"><strong>${h(doc.fileName)}</strong><span>${h(documentMeta(doc))}${location}</span></span>
+        <span class="doc-library-item-text"><strong>${h(doc.fileName)}</strong><span class="doc-library-item-meta"><span class="doc-library-kind">${h(typeLabel(doc))}</span>${h(documentMeta(doc))}${location ? ` ${location}` : ""}</span></span>
       </button>${itemActions(doc, "document")}`;
     return element;
   };
@@ -593,13 +622,16 @@ export function createDocumentLibrary(options) {
     if (!folders.length && !documents.length) {
       const empty = document.createElement("div");
       empty.className = "doc-library-empty";
-      empty.innerHTML = `<strong>${view.search ? "Sin resultados" : "Todavía no hay archivos"}</strong><p>${view.search ? "Prueba con otro nombre o limpia la búsqueda." : h(options.emptyText || "Sube documentos o crea una carpeta para empezar a organizarlos.")}</p>`;
+      empty.innerHTML = `<span class="doc-library-empty-icon">${view.search ? ICONS.search : ICONS.file}</span>
+        <strong>${view.search ? "Sin resultados" : "Todavía no hay archivos"}</strong>
+        <p>${view.search ? "Prueba con otro nombre o limpia la búsqueda." : h(options.emptyText || "Sube documentos o crea una carpeta para empezar a organizarlos.")}</p>
+        ${!view.search && canWrite() ? `<button type="button" class="secondary-button doc-library-empty-upload" data-library-empty-upload>${ICONS.upload}<span>Subir archivos</span></button>` : ""}`;
       content.append(empty);
     } else {
       if (folders.length) {
         const section = document.createElement("div");
         section.className = "doc-library-section";
-        section.innerHTML = `<h4>${view.search ? "Carpetas encontradas" : "Carpetas"}</h4>`;
+        section.innerHTML = `<h4>${view.search ? "Carpetas encontradas" : "Carpetas"}<span>${folders.length}</span></h4>`;
         const list = document.createElement("div");
         list.className = "doc-library-items";
         folders.forEach((folder) => list.append(folderRow(folder)));
@@ -609,7 +641,7 @@ export function createDocumentLibrary(options) {
       if (documents.length) {
         const section = document.createElement("div");
         section.className = "doc-library-section";
-        section.innerHTML = `<h4>${view.search ? "Documentos encontrados" : "Documentos"}</h4>`;
+        section.innerHTML = `<h4>${view.search ? "Documentos encontrados" : "Documentos"}<span>${documents.length}</span></h4>`;
         const list = document.createElement("div");
         list.className = "doc-library-items";
         documents.forEach((doc) => list.append(documentRow(doc)));
@@ -620,6 +652,10 @@ export function createDocumentLibrary(options) {
     const total = view.search
       ? folders.length + documents.length
       : filteredFolders().length + filteredDocuments().length;
+    if (pathMeta)
+      pathMeta.textContent = view.search
+        ? `${total} ${total === 1 ? "resultado" : "resultados"}`
+        : `${total} ${total === 1 ? "elemento" : "elementos"} en esta carpeta`;
     status.textContent = view.search
       ? `${total} ${total === 1 ? "resultado" : "resultados"}`
       : `${view.documents.length} ${view.documents.length === 1 ? "documento" : "documentos"} · ${view.folders.length} ${view.folders.length === 1 ? "carpeta" : "carpetas"}`;
@@ -693,6 +729,7 @@ export function createDocumentLibrary(options) {
           const created = await api.createDocumentFolder({
             entityType: options.entityType,
             entityId: entity,
+            category,
             parentId: view.currentFolderId,
             name,
             icon,
@@ -812,6 +849,14 @@ export function createDocumentLibrary(options) {
   };
 
   content.addEventListener("click", (event) => {
+    if (event.target.closest("[data-library-empty-upload]")) {
+      if (!canWrite()) return;
+      uploadInput.dataset.replaceId = "";
+      uploadInput.multiple = true;
+      uploadInput.value = "";
+      uploadInput.click();
+      return;
+    }
     const actionButton = event.target.closest("[data-library-action]");
     const folderElement = event.target.closest("[data-folder-id]");
     const documentElement = event.target.closest("[data-document-id]");

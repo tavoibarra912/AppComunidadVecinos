@@ -711,13 +711,19 @@ const communityStatutesList = document.querySelector("#community-statutes-list")
 const communityDetailDocumentsList = document.querySelector("#community-detail-documents");
 const communityDetailStatutesList = document.querySelector("#community-detail-statutes");
 
+function communityFolders(community, category) {
+  return (community?.documentFolders || []).filter(
+    (folder) => (folder.category || "document") === category,
+  );
+}
+
 function communityLibraryData(category = "document") {
   const community = state.communities.find((item) => item.id === editingCommunityId);
   return category === "statutes"
-    ? { documents: community?.statutes || [], folders: [] }
+    ? { documents: community?.statutes || [], folders: communityFolders(community, "statutes") }
     : {
         documents: community?.documents || [],
-        folders: community?.documentFolders || [],
+        folders: communityFolders(community, "document"),
       };
 }
 
@@ -778,7 +784,7 @@ const communityDetailDocumentsLibrary = communityDetailDocumentsList
         const community = state.communities.find((item) => item.id === state.ui.viewingCommunityId);
         return {
           documents: community?.documents || [],
-          folders: community?.documentFolders || [],
+          folders: communityFolders(community, "document"),
         };
       },
       settings: () => state.settings,
@@ -796,7 +802,10 @@ const communityDetailStatutesLibrary = communityDetailStatutesList
       getEntityId: () => state.ui.viewingCommunityId,
       getData: () => {
         const community = state.communities.find((item) => item.id === state.ui.viewingCommunityId);
-        return { documents: community?.statutes || [], folders: [] };
+        return {
+          documents: community?.statutes || [],
+          folders: communityFolders(community, "statutes"),
+        };
       },
       settings: () => state.settings,
       countEl: "#community-detail-statutes-count",

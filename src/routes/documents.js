@@ -157,10 +157,11 @@ function validateTarget(res, { entityType, entityId, category, folderId }) {
       .json({ error: "Los estatutos solo están disponibles para comunidades." });
   if (!entityExists(entityType, entityId))
     return res.status(400).json({ error: "La entidad indicada no existe." });
-  if (category === "statutes" && folderId)
-    return res.status(400).json({ error: "Los estatutos no se organizan en carpetas." });
-  if (folderId && !getFolderRow(entityType, entityId, folderId))
-    return res.status(400).json({ error: "La carpeta de destino no existe." });
+  if (folderId) {
+    const folder = getFolderRow(entityType, entityId, folderId);
+    if (!folder || (folder.category || "document") !== category)
+      return res.status(400).json({ error: "La carpeta de destino no existe." });
+  }
   return null;
 }
 function validateFiles(res, files) {
@@ -220,7 +221,7 @@ router.get("/", (req, res) => {
     return deny(res, "No tienes acceso a la documentación de este registro.");
   res.json({
     documents: listDocuments(target.entityType, target.entityId, target.category),
-    folders: target.category === "document" ? listFolders(target.entityType, target.entityId) : [],
+    folders: listFolders(target.entityType, target.entityId, target.category),
   });
 });
 
@@ -313,21 +314,23 @@ router.post("/folders", (req, res, next) => {
     const target = targetFromBody(req.body);
     const validation = validateTarget(res, { ...target, folderId: "" });
     if (validation) return validation;
-    if (target.category !== "document")
-      return res.status(400).json({ error: "Los estatutos no se organizan en carpetas." });
     if (!canWrite(req.user, target.entityType, target.entityId))
       return deny(res, "No tienes permiso para crear carpetas en este registro.");
     if (!allowed(req.user, permissionFor("upload"), target.entityId))
       return deny(res, "No tienes permiso para gestionar documentos.");
     const parentId = String(req.body?.parentId || "");
-    if (parentId && !getFolderRow(target.entityType, target.entityId, parentId))
-      return res.status(400).json({ error: "La carpeta de destino no existe." });
+    if (parentId) {
+      const parent = getFolderRow(target.entityType, target.entityId, parentId);
+      if (!parent || (parent.category || "document") !== target.category)
+        return res.status(400).json({ error: "La carpeta de destino no existe." });
+    }
     const folder = createFolder({
       entityType: target.entityType,
       entityId: target.entityId,
       parentId,
       name: req.body?.name,
       icon: req.body?.icon,
+      category: target.category,
       user: req.user,
     });
     res.status(201).json(folder);
@@ -359,6 +362,7 @@ router.patch("/folders/:id", (req, res, next) => {
       name: req.body?.name,
       parentId: req.body?.parentId === undefined ? undefined : String(req.body.parentId || ""),
       icon: req.body?.icon,
+      category: row.category || "document",
       user: req.user,
     });
     res.json(folder);
