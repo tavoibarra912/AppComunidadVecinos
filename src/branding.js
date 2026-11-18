@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
 
 export const FONT_STACKS = Object.freeze({
   inter:
@@ -177,6 +179,51 @@ export function injectBranding(html, settings) {
     .replace("__BRAND_TITLE__", () => escapeHtml(brand.nombre));
 }
 
+const assetCache = new Map();
+
+function assetHash(filePath) {
+  try {
+    const stat = fs.statSync(filePath);
+    const cacheKey = `${filePath}:${stat.mtimeMs}:${stat.size}`;
+    const cached = assetCache.get(cacheKey);
+    if (cached) return cached;
+    const data = fs.readFileSync(filePath);
+    const hash = createHash("md5").update(data).digest("hex").slice(0, 8);
+    assetCache.set(cacheKey, hash);
+    return hash;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Reemplaza las referencias a assets .js/.css del HTML servido por su URL con
+ * hash de contenido (?v=<hash>). Así cada deploy cambia la URL del archivo y
+ * el navegador descarga la versión nueva sin que el usuario necesite Ctrl+F5.
+ * Se ignora cualquier ?v= previo puesto a mano.
+ */
+export function injectAssetVersions(html, baseDir) {
+  return html.replace(
+    /(?:src|href)=["']([^"']*)["']/gi,
+    (match, attrPath) => {
+      const base = attrPath.split("?")[0];
+      if (!/\.(?:js|css)$/i.test(base)) return match;
+      if (
+        base.startsWith("http://") ||
+        base.startsWith("https://") ||
+        base.startsWith("//")
+      )
+        return match;
+      const filePath = path.join(baseDir, base.replace(/^\//, ""));
+      const hash = assetHash(filePath);
+      if (!hash) return match;
+      return match.replace(attrPath, `${base}?v=${hash}`);
+    }
+  );
+}
+
 export function renderIndex(indexPath, settings) {
-  return injectBranding(fs.readFileSync(indexPath, "utf8"), settings);
+  let html = fs.readFileSync(indexPath, "utf8");
+  html = injectAssetVersions(html, path.dirname(indexPath));
+  return injectBranding(html, settings);
 }

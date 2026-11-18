@@ -145,7 +145,7 @@ test("estáticos reales: caché coherente, Vary y negociación de gzip/brotli y 
     assert.equal(response.status, 200, header);
     assert.equal(response.headers.get("content-encoding"), encoding, header);
     assert.match(response.headers.get("vary"), /Accept-Encoding/i);
-    assert.equal(response.headers.get("cache-control"), "public, max-age=0, must-revalidate");
+    assert.equal(response.headers.get("cache-control"), "no-cache");
     const text = await response.text();
     if (original === undefined) original = text;
     else assert.equal(text, original, header);
@@ -159,7 +159,7 @@ test("estáticos reales: caché coherente, Vary y negociación de gzip/brotli y 
   assert.equal(head.headers.get("content-encoding"), "gzip");
   assert.equal(await head.text(), "");
   const small = await fetch(base + "/js/main.js");
-  assert.equal(small.headers.get("cache-control"), "public, max-age=0, must-revalidate");
+  assert.equal(small.headers.get("cache-control"), "no-cache");
 });
 
 test("IBAN: altas y ediciones rechazan datos inválidos, normalizan y permiten vacío", async () => {
