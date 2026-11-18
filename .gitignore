@@ -136,6 +136,7 @@ uploads/
 
 # Scratch local de desarrollo
 .kimchi/
+.tmp-*/
 
 # Transferencias, copias y credenciales privadas del despliegue
 .deploy-private/

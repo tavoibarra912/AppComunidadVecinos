@@ -25,6 +25,10 @@ const tabDocsBadge = document.querySelector("#tab-docs-badge");
 const docsSummaryBar = document.querySelector("#docs-summary-bar");
 const docsSummaryStatus = document.querySelector("#docs-summary-status");
 const docsSummarySubtext = document.querySelector("#docs-summary-subtext");
+const ownerDocsCount = document.querySelector("#owner-docs-count");
+const docsSummaryPercent = document.querySelector("#docs-summary-percent");
+const docsSummaryFill = document.querySelector("#docs-summary-fill");
+const docsSummaryProgress = document.querySelector("#docs-summary-progress");
 const ownerForm = document.querySelector("#owner-form");
 
 export function analyzeImageQuality(dataUrl) {
@@ -473,9 +477,11 @@ export function renderOwnerDialogDocs() {
 
   docTypes.forEach(({ key, dropzone, result, badge, card }) => {
     const doc = editingDocs.current[key];
+    const sampleBar = card.querySelector(".doc-sample-bar");
     if (doc) {
       uploadedCount++;
       card.classList.add("is-valid");
+      if (sampleBar) sampleBar.hidden = true;
       const isApproved = doc.adminApproval?.status === "approved";
       const isRejected = doc.adminApproval?.status === "rejected";
 
@@ -486,7 +492,7 @@ export function renderOwnerDialogDocs() {
         badge.className = "status-badge doc-rejected";
         badge.textContent = "Rechazado";
       } else {
-        badge.className = "status-badge doc-approved";
+        badge.className = "status-badge doc-pending-admin";
         badge.textContent = "Pendiente de revisión";
       }
 
@@ -497,22 +503,47 @@ export function renderOwnerDialogDocs() {
       validationHeader.className = "doc-validation-header";
       validationHeader.innerHTML = sanitizeHtml(`
         <div class="doc-file-meta">
-          <span class="doc-file-icon">📄</span>
+          <span class="doc-validation-icon" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </span>
           <div>
             <p class="doc-file-name">${escapeHtml(doc.fileName)}</p>
             <p class="doc-file-size">${Math.round(doc.fileSize / 1024)} KB · Subido el ${escapeHtml(doc.uploadedAt)}</p>
           </div>
         </div>
         <div class="doc-file-actions">
-          <button class="btn-doc-action" type="button" data-action="view" data-doc="${key}">👁️ Ver</button>
-          <button class="btn-doc-action danger" type="button" data-action="remove" data-doc="${key}">🗑️ Quitar</button>
+          <button class="btn-doc-action" type="button" data-action="view" data-doc="${key}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Ver
+          </button>
+          <button class="btn-doc-action danger" type="button" data-action="remove" data-doc="${key}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
+            </svg>
+            Quitar
+          </button>
         </div>
       `);
 
       const reviewNote = document.createElement("p");
       reviewNote.className = "form-intro";
-      reviewNote.textContent =
-        "La identidad, titularidad y legibilidad requieren revisión administrativa.";
+      if (isApproved) {
+        reviewNote.textContent = "Documento revisado y aprobado por el administrador.";
+      } else if (isRejected) {
+        const reason = doc.adminApproval?.notes ? `: “${doc.adminApproval.notes}”` : "";
+        reviewNote.textContent = `El administrador ha rechazado este documento${reason}. Vuelve a subirlo para corregirlo.`;
+      } else {
+        reviewNote.textContent =
+          "La identidad, titularidad y legibilidad requieren revisión administrativa.";
+      }
       result.append(validationHeader, reviewNote);
 
       validationHeader.querySelector('[data-action="view"]').addEventListener("click", () => {
@@ -526,6 +557,7 @@ export function renderOwnerDialogDocs() {
       dropzone.style.display = "none";
     } else {
       card.classList.remove("is-valid");
+      if (sampleBar) sampleBar.hidden = false;
       badge.className = "status-badge doc-none";
       badge.textContent = "Pendiente";
       result.hidden = true;
@@ -534,18 +566,23 @@ export function renderOwnerDialogDocs() {
     }
   });
 
-  tabDocsBadge.textContent = `${uploadedCount}/3`;
-  docsSummaryStatus.textContent = `${uploadedCount} de 3 documentos recibidos`;
-  if (uploadedCount === 3) {
+  const totalDocs = 3;
+  const percent = Math.round((uploadedCount / totalDocs) * 100);
+  tabDocsBadge.textContent = `${uploadedCount}/${totalDocs}`;
+  if (ownerDocsCount) ownerDocsCount.textContent = `${uploadedCount}/${totalDocs}`;
+  docsSummaryStatus.textContent = `${uploadedCount} de ${totalDocs} documentos recibidos`;
+  if (docsSummaryPercent) docsSummaryPercent.textContent = `${percent}%`;
+  if (docsSummaryFill) docsSummaryFill.style.width = `${percent}%`;
+  if (docsSummaryProgress) {
+    docsSummaryProgress.setAttribute("aria-valuenow", String(uploadedCount));
+  }
+  docsSummaryBar.classList.toggle("is-complete", uploadedCount === totalDocs);
+  if (uploadedCount === totalDocs) {
     docsSummarySubtext.textContent =
       "Archivos recibidos. Al guardar se remitirá un aviso al administrador para su revisión.";
-    docsSummaryBar.style.background = "#f0fdf4";
-    docsSummaryBar.style.borderColor = "#86efac";
   } else {
     docsSummarySubtext.textContent =
       "Sube la copia del DNI (ambas caras), el recibo bancario y la escritura para completar el expediente.";
-    docsSummaryBar.style.background = "#f1f5f9";
-    docsSummaryBar.style.borderColor = "#e2e8f0";
   }
 }
 
