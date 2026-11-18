@@ -12,6 +12,7 @@ import {
   showValidationErrors,
   armarGuardia,
   limpiarGuardia,
+  hayCambiosSinGuardar,
   intentarCerrar,
   makeSelectSearchable,
 } from "../utils.js";
@@ -19,7 +20,7 @@ import { createDataTable, aplicarFilasPorPagina } from "../table.js";
 import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
-import { applyBrand, applyPublicSettings } from "../brand.js";
+import { applyBrand, applyPublicSettings, effectiveBrand, readInjectedBrand } from "../brand.js";
 const ADMIN_TABS = {
   usuarios: "admin:users",
   roles: "admin:roles",
@@ -44,8 +45,18 @@ const PERMISOS_CATALOGO = [
     grupo: "Cuotas",
     hint: "Configurar acuerdos, emitir recibos, registrar cobros, revisar justificantes y devoluciones.",
   },
-  { key: "community:read", label: "Ver comunidades", grupo: "Comunidades" },
-  { key: "community:create", label: "Crear comunidades", grupo: "Comunidades" },
+  {
+    key: "community:read",
+    label: "Ver comunidades",
+    grupo: "Comunidades",
+    hint: "Consultar los datos de las comunidades dentro del ámbito permitido.",
+  },
+  {
+    key: "community:create",
+    label: "Crear comunidades",
+    grupo: "Comunidades",
+    hint: "Dar de alta nuevas comunidades.",
+  },
   {
     key: "community:edit",
     label: "Editar comunidades",
@@ -58,8 +69,24 @@ const PERMISOS_CATALOGO = [
     grupo: "Comunidades",
     hint: "Gestionar la comunidad, sus vínculos y su documentación.",
   },
-  { key: "community:delete", label: "Eliminar comunidades", grupo: "Comunidades" },
-  { key: "owner:read", label: "Ver propietarios", grupo: "Propietarios" },
+  {
+    key: "community:brand",
+    label: "Personalizar el estilo de la comunidad",
+    grupo: "Comunidades",
+    hint: "Cambiar el nombre visible, el logo, los colores y la tipografía de una comunidad sin editar sus datos.",
+  },
+  {
+    key: "community:delete",
+    label: "Eliminar comunidades",
+    grupo: "Comunidades",
+    hint: "Eliminar comunidades existentes.",
+  },
+  {
+    key: "owner:read",
+    label: "Ver propietarios",
+    grupo: "Propietarios",
+    hint: "Consultar los datos de los propietarios dentro del ámbito permitido.",
+  },
   {
     key: "owner:create",
     label: "Crear propietarios",
@@ -72,10 +99,30 @@ const PERMISOS_CATALOGO = [
     grupo: "Propietarios",
     hint: "Editar propietarios y operar con sus datos.",
   },
-  { key: "owner:edit", label: "Editar su propio perfil", grupo: "Propietarios" },
-  { key: "owner:delete", label: "Eliminar propietarios", grupo: "Propietarios" },
-  { key: "owner:documents:submit", label: "Subir documentación propia", grupo: "Propietarios" },
-  { key: "property:read", label: "Ver inmuebles", grupo: "Inmuebles" },
+  {
+    key: "owner:edit",
+    label: "Editar su propio perfil",
+    grupo: "Propietarios",
+    hint: "Permite al propietario modificar sus propios datos personales.",
+  },
+  {
+    key: "owner:delete",
+    label: "Eliminar propietarios",
+    grupo: "Propietarios",
+    hint: "Eliminar propietarios existentes.",
+  },
+  {
+    key: "owner:documents:submit",
+    label: "Subir documentación propia",
+    grupo: "Propietarios",
+    hint: "Permite al propietario adjuntar sus propios documentos.",
+  },
+  {
+    key: "property:read",
+    label: "Ver inmuebles",
+    grupo: "Inmuebles",
+    hint: "Consultar los datos de los inmuebles dentro del ámbito permitido.",
+  },
   {
     key: "property:create",
     label: "Crear inmuebles",
@@ -88,8 +135,18 @@ const PERMISOS_CATALOGO = [
     grupo: "Inmuebles",
     hint: "Editar inmuebles y sus titulares.",
   },
-  { key: "property:delete", label: "Eliminar inmuebles", grupo: "Inmuebles" },
-  { key: "tenant:read", label: "Ver inquilinos", grupo: "Inquilinos" },
+  {
+    key: "property:delete",
+    label: "Eliminar inmuebles",
+    grupo: "Inmuebles",
+    hint: "Eliminar inmuebles existentes.",
+  },
+  {
+    key: "tenant:read",
+    label: "Ver inquilinos",
+    grupo: "Inquilinos",
+    hint: "Consultar los datos de los inquilinos dentro del ámbito permitido.",
+  },
   {
     key: "tenant:create",
     label: "Crear inquilinos",
@@ -102,22 +159,42 @@ const PERMISOS_CATALOGO = [
     grupo: "Inquilinos",
     hint: "Editar inquilinos y sus contratos.",
   },
-  { key: "tenant:delete", label: "Eliminar inquilinos", grupo: "Inquilinos" },
+  {
+    key: "tenant:delete",
+    label: "Eliminar inquilinos",
+    grupo: "Inquilinos",
+    hint: "Eliminar inquilinos existentes.",
+  },
   {
     key: "tenant:history:read",
     label: "Conservar historial propio de antiguo inquilino",
     grupo: "Inquilinos",
     hint: "Tras finalizar el contrato, permite consultar su ficha y descargar sus documentos. No da acceso a la comunidad ni a los inmuebles.",
   },
-  { key: "document:read", label: "Ver documentos", grupo: "Documentación" },
+  {
+    key: "document:read",
+    label: "Ver documentos",
+    grupo: "Documentación",
+    hint: "Consultar y descargar los documentos dentro del ámbito permitido.",
+  },
   {
     key: "document:upload",
     label: "Subir documentos",
     grupo: "Documentación",
     hint: "Adjuntar archivos a comunidades, propietarios, inmuebles e inquilinos.",
   },
-  { key: "document:approve", label: "Aprobar documentación", grupo: "Documentación" },
-  { key: "document:delete", label: "Eliminar documentos", grupo: "Documentación" },
+  {
+    key: "document:approve",
+    label: "Aprobar documentación",
+    grupo: "Documentación",
+    hint: "Revisar y aprobar los documentos aportados.",
+  },
+  {
+    key: "document:delete",
+    label: "Eliminar documentos",
+    grupo: "Documentación",
+    hint: "Eliminar documentos existentes.",
+  },
   {
     key: "comm:participacion",
     label: "Participar en Comunicación",
@@ -136,20 +213,84 @@ const PERMISOS_CATALOGO = [
     grupo: "Comunicación",
     hint: "Eliminar comentarios ajenos y ver documentos internos.",
   },
-  { key: "admin_notification:read", label: "Ver buzón del administrador", grupo: "Notificaciones" },
-  { key: "owner_notification:read", label: "Ver su buzón de avisos", grupo: "Notificaciones" },
+  {
+    key: "comm:eliminar",
+    label: "Eliminar publicaciones de Comunicación",
+    grupo: "Comunicación",
+    hint: "Eliminar publicaciones del tablón (propias o ajenas) y sus adjuntos.",
+  },
+  {
+    key: "admin_notification:read",
+    label: "Ver buzón del administrador",
+    grupo: "Notificaciones",
+    hint: "Consultar los avisos y notificaciones del buzón de administración.",
+  },
+  {
+    key: "admin_notification:delete",
+    label: "Eliminar notificaciones del buzón del administrador",
+    grupo: "Notificaciones",
+    hint: "Eliminar avisos del buzón de administración.",
+  },
+  {
+    key: "owner_notification:read",
+    label: "Ver su buzón de avisos",
+    grupo: "Notificaciones",
+    hint: "Permite al propietario consultar los avisos dirigidos a su buzón.",
+  },
   {
     key: "owner_notification:send",
     label: "Enviar avisos a propietarios",
     grupo: "Notificaciones",
     hint: "Responder y enviar avisos desde el buzón de propietarios.",
   },
-  { key: "reports:read", label: "Ver reportes", grupo: "Reportes y auditoría" },
-  { key: "audit:read", label: "Ver auditoría", grupo: "Reportes y auditoría" },
-  { key: "admin:users", label: "Administrar usuarios", grupo: "Sistema" },
-  { key: "admin:roles", label: "Administrar roles", grupo: "Sistema" },
-  { key: "admin:settings", label: "Administrar configuración", grupo: "Sistema" },
-  { key: "admin:providers", label: "Configurar proveedores de comunicación", grupo: "Sistema" },
+  {
+    key: "owner_notification:delete",
+    label: "Eliminar avisos del buzón",
+    grupo: "Notificaciones",
+    hint: "Eliminar avisos del buzón (propios o de las comunidades gestionadas).",
+  },
+  {
+    key: "reports:read",
+    label: "Ver reportes",
+    grupo: "Reportes y auditoría",
+    hint: "Consultar los reportes y estadísticas de la aplicación.",
+  },
+  {
+    key: "audit:read",
+    label: "Ver auditoría",
+    grupo: "Reportes y auditoría",
+    hint: "Consultar el registro de auditoría de las acciones realizadas.",
+  },
+  {
+    key: "admin:users",
+    label: "Administrar usuarios",
+    grupo: "Sistema",
+    hint: "Crear, editar y gestionar las cuentas de usuario.",
+  },
+  {
+    key: "admin:roles",
+    label: "Administrar roles",
+    grupo: "Sistema",
+    hint: "Crear y editar roles, y asignar los permisos de cada uno.",
+  },
+  {
+    key: "admin:settings",
+    label: "Administrar configuración",
+    grupo: "Sistema",
+    hint: "Modificar la configuración general de la aplicación.",
+  },
+  {
+    key: "admin:providers",
+    label: "Configurar proveedores de comunicación",
+    grupo: "Sistema",
+    hint: "Configurar los proveedores de comunicación como correo o SMS.",
+  },
+  {
+    key: "admin:branding",
+    label: "Personalizar el estilo de la plataforma",
+    grupo: "Sistema",
+    hint: "Cambiar el nombre, el logo, los colores y la tipografía de toda la plataforma, sin acceder al resto de la configuración.",
+  },
 ];
 
 let userTable = null;
@@ -157,15 +298,34 @@ let adminTabActual = "usuarios";
 let editingUserId = null;
 let editingRoleId = null;
 
-function puedeAdministrar() {
+function puedeEditarMarcaComunidad(community) {
   return (
-    Object.values(ADMIN_TABS).some((p) => hasPermission(p)) || hasPermission("admin:providers")
+    hasPermission("community:brand", community.id) || hasPermission("community:edit", community.id)
   );
 }
 
-// El tab de Configuración también lo ven quienes solo administran proveedores.
+function puedeConfigurarComunidades() {
+  return state.communities.some(puedeEditarMarcaComunidad);
+}
+
+export function puedeAdministrar() {
+  return (
+    Object.values(ADMIN_TABS).some((p) => hasPermission(p)) ||
+    hasPermission("admin:providers") ||
+    hasPermission("admin:branding") ||
+    puedeConfigurarComunidades()
+  );
+}
+
+// Cada sección de Configuración conserva su permiso y alcance propios.
 function conPermisoTab(tab) {
-  return hasPermission(ADMIN_TABS[tab]) || (tab === "settings" && hasPermission("admin:providers"));
+  return (
+    hasPermission(ADMIN_TABS[tab]) ||
+    (tab === "settings" &&
+      (hasPermission("admin:providers") ||
+        hasPermission("admin:branding") ||
+        puedeConfigurarComunidades()))
+  );
 }
 
 function switchAdminTab(tab) {
@@ -197,27 +357,45 @@ const SETTINGS_PANELS = {
   seguridad: "#settings-seguridad-panel",
   notificaciones: "#settings-notificaciones-panel",
   inquilinos: "#settings-inquilinos-panel",
+  comunidades: "#settings-comunidades-panel",
   sistema: "#settings-sistema-panel",
   estilo: "#settings-estilo-panel",
   textos: "#settings-textos-panel",
 };
 
+function conPermisoSettingsTab(tab) {
+  if (tab === "proveedores") return hasPermission("admin:providers");
+  if (tab === "comunidades") return puedeConfigurarComunidades();
+  if (tab === "estilo") return hasPermission("admin:settings") || hasPermission("admin:branding");
+  return Object.hasOwn(SETTINGS_PANELS, tab) && hasPermission("admin:settings");
+}
+
 function prepararSettings() {
-  const conProveedores = hasPermission("admin:providers");
-  const conGeneral = hasPermission("admin:settings");
   document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
-    btn.hidden = btn.dataset.settingsTab === "proveedores" ? !conProveedores : !conGeneral;
+    btn.hidden = !conPermisoSettingsTab(btn.dataset.settingsTab);
   });
-  if (settingsTab === "proveedores" && !conProveedores) settingsTab = "asociacion";
-  if (settingsTab !== "proveedores" && !conGeneral && conProveedores) settingsTab = "proveedores";
+  if (!conPermisoSettingsTab(settingsTab))
+    settingsTab = [...Object.keys(SETTINGS_PANELS), "proveedores"].find(conPermisoSettingsTab);
   // Se vuelca el estado una sola vez al entrar: cambiar de pestaña no debe
-  // descartar los cambios que la persona todavía no guardó.
-  if (settingsTab !== "proveedores") renderSettings();
+  // descartar los cambios que la persona todavía no guardó. Un rol con solo
+  // admin:branding también necesita ver la marca actual en la pestaña Estilo.
+  if (
+    (hasPermission("admin:settings") || hasPermission("admin:branding")) &&
+    !hayCambiosSinGuardar(settingsForm)
+  )
+    renderSettings();
   switchSettingsTab(settingsTab);
 }
 
 async function switchSettingsTab(tab) {
+  if (!conPermisoSettingsTab(tab)) return;
   settingsTab = tab;
+  if (settingsForm) {
+    settingsForm.hidden = tab === "proveedores";
+    // Comunidades tiene su propio botón y guardado; no mostrar dos acciones distintas.
+    const actions = settingsForm.querySelector(":scope > .dialog-actions");
+    if (actions) actions.hidden = tab === "comunidades";
+  }
   document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
     const active = btn.dataset.settingsTab === tab;
     btn.classList.toggle("active", active);
@@ -237,6 +415,7 @@ async function switchSettingsTab(tab) {
       panelProveedores.innerHTML = `<p class="form-error">${error.message}</p>`;
     }
   }
+  if (tab === "comunidades") initCommunitySettings();
 }
 
 document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
@@ -842,6 +1021,8 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
   list.forEach((item, index) => {
     const row = document.createElement("div");
     row.className = "tenant-authorization-row";
+    const fields = document.createElement("div");
+    fields.className = "tenant-authorization-fields";
     const input = document.createElement("input");
     input.name = "tenantAuthorizationLabel";
     input.value = item.label || "";
@@ -852,6 +1033,17 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
       item.label = input.value;
       markTenantAuthTouched();
     });
+    const description = document.createElement("textarea");
+    description.rows = 2;
+    description.maxLength = 200;
+    description.value = item.description || "";
+    description.placeholder = "Descripción breve: qué permite esta autorización";
+    description.setAttribute("aria-label", `Descripción de la autorización ${index + 1}`);
+    description.addEventListener("input", () => {
+      item.description = description.value;
+      markTenantAuthTouched();
+    });
+    fields.append(input, description);
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "icon-action-btn btn-delete";
@@ -863,7 +1055,7 @@ function renderTenantAuthorizationsEditor(focusIndex = -1) {
       markTenantAuthTouched();
       renderTenantAuthorizationsEditor();
     });
-    row.append(input, remove);
+    row.append(fields, remove);
     box.append(row);
   });
   if (focusIndex >= 0) box.querySelectorAll("input")[focusIndex]?.focus();
@@ -895,6 +1087,7 @@ function initTenantAuthorizations() {
       list.push({
         id: `custom_${crypto.randomUUID()}`,
         label: "",
+        description: "",
       });
       markTenantAuthTouched();
       renderTenantAuthorizationsEditor(list.length - 1);
@@ -931,6 +1124,11 @@ function tenantAuthorizationErrors() {
       if (!label) errors.push(`${communityName}: la autorización ${index + 1} no tiene nombre.`);
       else if (label.length > 80)
         errors.push(`${communityName}: «${label.slice(0, 30)}…» supera los 80 caracteres.`);
+      const description = String(item?.description || "").trim();
+      if (description.length > 200)
+        errors.push(
+          `${communityName}: la descripción de «${label.slice(0, 30)}» supera los 200 caracteres.`,
+        );
     });
   }
   return errors;
@@ -940,11 +1138,326 @@ function tenantAuthorizationErrors() {
 function tenantAuthorizationsPayload() {
   const saved = state.settings?.tenantAuthorizations;
   return Object.fromEntries(
-    Object.entries(tenantAuthDraft).filter(
-      ([communityId]) =>
-        tenantAuthTouched.has(communityId) || (saved && Object.hasOwn(saved, communityId)),
-    ),
+    Object.entries(tenantAuthDraft)
+      .filter(
+        ([communityId]) =>
+          tenantAuthTouched.has(communityId) || (saved && Object.hasOwn(saved, communityId)),
+      )
+      .map(([communityId, list]) => [
+        communityId,
+        (Array.isArray(list) ? list : []).map((item) => ({
+          id: String(item?.id || "").trim(),
+          label: String(item?.label || "").trim(),
+          description: String(item?.description || "").trim(),
+        })),
+      ]),
   );
+}
+
+// ---------- Configuración → Comunidades (marca por comunidad) ----------
+let communitySettingsId = "";
+let communitySettingsUserId;
+const communitySettingsDrafts = new Map();
+
+function currentCommunitySettings() {
+  return (
+    state.communities.find(
+      (community) => community.id === communitySettingsId && puedeEditarMarcaComunidad(community),
+    ) || null
+  );
+}
+
+function communityMarcaDefaults() {
+  const marca = state.settings?.marca || {};
+  return {
+    colorPrimario: colorValue(marca.colorPrimario, "#11273e"),
+    colorAcento: colorValue(marca.colorAcento, "#198b84"),
+    colorFondo: colorValue(marca.colorFondo, "#f7f9fb"),
+    colorSuperficie: colorValue(marca.colorSuperficie, "#ffffff"),
+    colorTexto: colorValue(marca.colorTexto, "#17212b"),
+    colorTextoSuave: colorValue(marca.colorTextoSuave, "#64748b"),
+    colorBorde: colorValue(marca.colorBorde, "#e4e9ef"),
+    tipografia: TIPOGRAFIAS.includes(marca.tipografia) ? marca.tipografia : "inter",
+    tamanoBase: Number.isFinite(Number(marca.tamanoBase)) ? Number(marca.tamanoBase) : 14,
+    radioBordes: Number.isFinite(Number(marca.radioBordes)) ? Number(marca.radioBordes) : 5,
+    densidad: DENSIDADES.includes(marca.densidad) ? marca.densidad : "normal",
+  };
+}
+
+function communitySettingsDraft(community) {
+  let draft = communitySettingsDrafts.get(community.id);
+  if (!draft || (!draft.dirty && !draft.loading && !draft.saving)) {
+    // Mantener también la versión de la ficha que originó la edición.
+    const { documents, statutes, documentFolders, ...payload } = community;
+    draft = {
+      payload,
+      name: community.name || "",
+      logoDataUrl: community.logoDataUrl || "",
+      marca: { ...communityMarcaDefaults(), ...(community.marca || {}) },
+      dirty: false,
+      loading: false,
+      saving: false,
+      readToken: 0,
+    };
+    communitySettingsDrafts.set(community.id, draft);
+  }
+  return draft;
+}
+
+function setCommunityLogoPreview(url) {
+  const preview = document.querySelector("#settings-community-logo-preview");
+  if (!preview) return;
+  preview.hidden = !url;
+  if (url) preview.src = url;
+  else preview.removeAttribute("src");
+}
+
+function renderCommunitySettings() {
+  const select = document.querySelector("#settings-community-select");
+  if (!select) return;
+  if (communitySettingsUserId !== state.currentUserId) {
+    communitySettingsDrafts.clear();
+    communitySettingsId = "";
+    communitySettingsUserId = state.currentUserId;
+  }
+  const communities = state.communities.filter(puedeEditarMarcaComunidad);
+  for (const id of communitySettingsDrafts.keys()) {
+    if (!communities.some((community) => community.id === id)) communitySettingsDrafts.delete(id);
+  }
+  const previous = communitySettingsId;
+  select.replaceChildren();
+  communities.forEach((community) => {
+    select.add(new Option(community.name || community.id, community.id));
+  });
+  if (!communities.some((community) => community.id === previous))
+    communitySettingsId = communities[0]?.id || "";
+  select.value = communitySettingsId;
+  const community = currentCommunitySettings();
+  const draft = community ? communitySettingsDraft(community) : null;
+  const nameInput = document.querySelector("#settings-community-name");
+  if (nameInput) {
+    nameInput.value = draft?.name || "";
+    nameInput.disabled = !draft || draft.saving;
+  }
+  const logoInput = document.querySelector("#settings-community-logo");
+  if (logoInput) {
+    logoInput.value = "";
+    logoInput.disabled = !draft || draft.saving;
+  }
+  setCommunityLogoPreview(draft?.logoDataUrl || "");
+  const remove = document.querySelector("#settings-community-remove-logo");
+  if (remove) {
+    remove.hidden = !draft?.logoDataUrl && !draft?.loading;
+    remove.disabled = !draft || draft.saving;
+  }
+  const marca = draft?.marca || {};
+  const setControl = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (!element) return;
+    element.value = value;
+    element.disabled = !draft || draft.saving;
+  };
+  setControl("#settings-community-colorPrimario", colorValue(marca.colorPrimario, "#11273e"));
+  setControl("#settings-community-colorAcento", colorValue(marca.colorAcento, "#198b84"));
+  setControl("#settings-community-colorFondo", colorValue(marca.colorFondo, "#f7f9fb"));
+  setControl("#settings-community-colorSuperficie", colorValue(marca.colorSuperficie, "#ffffff"));
+  setControl("#settings-community-colorTexto", colorValue(marca.colorTexto, "#17212b"));
+  setControl("#settings-community-colorTextoSuave", colorValue(marca.colorTextoSuave, "#64748b"));
+  setControl("#settings-community-colorBorde", colorValue(marca.colorBorde, "#e4e9ef"));
+  setControl(
+    "#settings-community-tipografia",
+    TIPOGRAFIAS.includes(marca.tipografia) ? marca.tipografia : "inter",
+  );
+  setControl("#settings-community-tamanoBase", marca.tamanoBase ?? 14);
+  setControl("#settings-community-radioBordes", marca.radioBordes ?? 5);
+  setControl(
+    "#settings-community-densidad",
+    DENSIDADES.includes(marca.densidad) ? marca.densidad : "normal",
+  );
+  const save = document.querySelector("#settings-community-save");
+  if (save) save.disabled = !draft || draft.loading || draft.saving;
+  const hint = document.querySelector("#settings-community-hint");
+  if (hint) {
+    hint.textContent = draft?.loading
+      ? "Leyendo el logo. Espera antes de guardar."
+      : draft?.saving
+        ? "Guardando comunidad…"
+        : community
+          ? `Estos datos se guardan en la ficha de ${community.name}. El estilo global sigue aplicándose a quien ve más de una comunidad.`
+          : "No hay comunidades disponibles para personalizar.";
+  }
+}
+
+function readCommunityLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!["image/png", "image/jpeg", "image/svg+xml", "image/webp"].includes(file.type)) {
+      reject(new Error("Selecciona una imagen PNG, JPG, SVG o WebP."));
+      return;
+    }
+    if (file.size > 230_400) {
+      reject(new Error("El logo no puede superar los 225 KB."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo del logo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveCommunitySettings() {
+  const community = currentCommunitySettings();
+  if (!community) {
+    showValidationErrors(["Selecciona una comunidad."], "No se pudo guardar la comunidad");
+    return;
+  }
+  const draft = communitySettingsDraft(community);
+  if (draft.saving) return;
+  if (draft.loading) {
+    showValidationErrors(["Espera a que termine de leerse el logo."], "Revisa la comunidad");
+    return;
+  }
+  const name = draft.name.trim();
+  if (!name) {
+    showValidationErrors(["El nombre de la comunidad es obligatorio."], "Revisa la comunidad");
+    return;
+  }
+  if (name.length > 120) {
+    showValidationErrors(["El nombre no puede superar los 120 caracteres."], "Revisa la comunidad");
+    return;
+  }
+  draft.saving = true;
+  renderCommunitySettings();
+  try {
+    const saved = await api.updateCommunity(community.id, {
+      ...draft.payload,
+      name,
+      logoDataUrl: draft.logoDataUrl,
+      marca: draft.marca,
+    });
+    // Limpiar solo este borrador; otros pueden contener cambios pendientes.
+    communitySettingsDrafts.delete(community.id);
+    Object.assign(community, saved);
+    await refreshState();
+    applyBrand(effectiveBrand(state.settings?.marca || readInjectedBrand(), state));
+    renderCommunitySettings();
+    toast("Comunidad actualizada.");
+  } catch (error) {
+    showValidationErrors([error.message], "No se pudo guardar la comunidad");
+  } finally {
+    draft.saving = false;
+    renderCommunitySettings();
+  }
+}
+
+function initCommunitySettings() {
+  const select = document.querySelector("#settings-community-select");
+  if (!select) return;
+  if (!select.dataset.wired) {
+    select.dataset.wired = "true";
+    select.addEventListener("change", () => {
+      communitySettingsId = select.value;
+      renderCommunitySettings();
+    });
+    document
+      .querySelector("#settings-community-logo")
+      ?.addEventListener("change", async (event) => {
+        const community = currentCommunitySettings();
+        if (!community) return;
+        const draft = communitySettingsDraft(community);
+        if (draft.saving) return;
+        const token = ++draft.readToken;
+        const file = event.target.files?.[0];
+        if (!file) {
+          draft.loading = false;
+          renderCommunitySettings();
+          return;
+        }
+        draft.loading = true;
+        renderCommunitySettings();
+        try {
+          const logo = await readCommunityLogo(file);
+          if (communitySettingsDrafts.get(community.id) !== draft || draft.readToken !== token)
+            return;
+          draft.logoDataUrl = logo;
+          draft.dirty = true;
+        } catch (error) {
+          if (communitySettingsDrafts.get(community.id) === draft && draft.readToken === token)
+            showValidationErrors([error.message], `Revisa el logo de ${community.name}`);
+        } finally {
+          if (communitySettingsDrafts.get(community.id) === draft && draft.readToken === token) {
+            draft.loading = false;
+            if (communitySettingsId === community.id) renderCommunitySettings();
+          }
+        }
+      });
+    document.querySelector("#settings-community-remove-logo")?.addEventListener("click", () => {
+      const community = currentCommunitySettings();
+      if (!community) return;
+      const draft = communitySettingsDraft(community);
+      if (draft.saving) return;
+      ++draft.readToken;
+      draft.loading = false;
+      draft.dirty = true;
+      draft.logoDataUrl = "";
+      renderCommunitySettings();
+    });
+    document.querySelector("#settings-community-name")?.addEventListener("input", (event) => {
+      const community = currentCommunitySettings();
+      if (!community) return;
+      const draft = communitySettingsDraft(community);
+      draft.name = event.target.value;
+      draft.dirty = true;
+    });
+    const bindMarcaField = (selector, apply) => {
+      const element = document.querySelector(selector);
+      if (!element || element.dataset.wiredMarca) return;
+      element.dataset.wiredMarca = "true";
+      const eventName = element.tagName === "SELECT" ? "change" : "input";
+      element.addEventListener(eventName, (event) => {
+        const community = currentCommunitySettings();
+        if (!community) return;
+        const draft = communitySettingsDraft(community);
+        if (draft.saving) return;
+        apply(draft.marca, event.target);
+        draft.dirty = true;
+      });
+    };
+    for (const key of [
+      "colorPrimario",
+      "colorAcento",
+      "colorFondo",
+      "colorSuperficie",
+      "colorTexto",
+      "colorTextoSuave",
+      "colorBorde",
+    ])
+      bindMarcaField(`#settings-community-${key}`, (marca, el) => {
+        marca[key] = el.value;
+      });
+    bindMarcaField("#settings-community-tipografia", (marca, el) => {
+      marca.tipografia = el.value;
+    });
+    bindMarcaField("#settings-community-tamanoBase", (marca, el) => {
+      marca.tamanoBase = numericValue(el, 14, 12, 18);
+    });
+    bindMarcaField("#settings-community-radioBordes", (marca, el) => {
+      marca.radioBordes = numericValue(el, 5, 0, 16);
+    });
+    bindMarcaField("#settings-community-densidad", (marca, el) => {
+      marca.densidad = el.value;
+    });
+    document
+      .querySelector("#settings-community-save")
+      ?.addEventListener("click", saveCommunitySettings);
+    document.querySelector("#settings-community-name")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveCommunitySettings();
+      }
+    });
+  }
+  renderCommunitySettings();
 }
 
 function renderSettings() {
@@ -1059,74 +1572,87 @@ function readMarca() {
 
 settingsForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!requirePermission("admin:settings")) return;
-  const authErrors = tenantAuthorizationErrors();
-  if (authErrors.length) {
-    showValidationErrors(authErrors, "Revisa las autorizaciones de inquilinos");
+  if (settingsTab === "comunidades") {
+    await saveCommunitySettings();
     return;
   }
-  const data = {
-    nombreAsociacion: settingsForm.elements.nombreAsociacion.value.trim(),
-    emailContacto: settingsForm.elements.emailContacto.value.trim(),
-    telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
-    permitirRegistro: settingsForm.elements.permitirRegistro.checked,
-    permitirRecuperacion: settingsForm.elements.permitirRecuperacion.checked,
-    duracionSesionHoras: numericValue(settingsForm.elements.duracionSesionHoras, 8, 1, 720),
-    otpExpiraMinutos: numericValue(settingsForm.elements.otpExpiraMinutos, 10, 1, 60),
-    otpReenvioSegundos: numericValue(settingsForm.elements.otpReenvioSegundos, 60, 10, 600),
-    textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => {
-      acc[el.dataset.texto] = el.value;
-      return acc;
-    }, {}),
-    notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
-    avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
-    feeBeforeDays: Number(settingsForm.elements.feeBeforeDays.value),
-    feeAfterDays: Number(settingsForm.elements.feeAfterDays.value),
-    feeRepeatDays: Number(settingsForm.elements.feeRepeatDays.value),
-    feeInternal: settingsForm.elements.feeInternal.checked,
-    feeEmail: settingsForm.elements.feeEmail.checked,
-    feeEmailSubject: settingsForm.elements.feeEmailSubject.value.trim(),
-    feeEmailBody: settingsForm.elements.feeEmailBody.value.trim(),
-    assessmentBeforeDays: Number(settingsForm.elements.assessmentBeforeDays.value),
-    assessmentAfterDays: Number(settingsForm.elements.assessmentAfterDays.value),
-    assessmentRepeatDays: Number(settingsForm.elements.assessmentRepeatDays.value),
-    assessmentInternal: settingsForm.elements.assessmentInternal.checked,
-    assessmentEmail: settingsForm.elements.assessmentEmail.checked,
-    serviceBeforeDays: Number(settingsForm.elements.serviceBeforeDays.value),
-    serviceAfterDays: Number(settingsForm.elements.serviceAfterDays.value),
-    serviceRepeatDays: Number(settingsForm.elements.serviceRepeatDays.value),
-    serviceInternal: settingsForm.elements.serviceInternal.checked,
-    serviceEmail: settingsForm.elements.serviceEmail.checked,
-    tenantAuthorizations: tenantAuthorizationsPayload(),
-    documentosMaxSizeMb: numericValue(settingsForm.elements.documentosMaxSizeMb, 15, 1, 50),
-    documentosMaxArchivos: numericValue(settingsForm.elements.documentosMaxArchivos, 20, 1, 50),
-    documentosTiposPermitidos: [
-      ...settingsForm.querySelectorAll('input[name="documentosTiposPermitidos"]:checked'),
-    ].map((checkbox) => checkbox.value),
-    monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
-    diasAvisoVencimientoContrato: numericValue(
-      settingsForm.elements.diasAvisoVencimientoContrato,
-      30,
-      0,
-      365,
-    ),
-    filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
-    mantenimiento: settingsForm.elements.mantenimiento.checked,
-    mensajeMantenimiento: settingsForm.elements.mensajeMantenimiento.value.trim(),
-    marca: await readMarca(),
-  };
+  const brandingOnly =
+    settingsTab === "estilo" && !hasPermission("admin:settings") && hasPermission("admin:branding");
+  if (!brandingOnly && !requirePermission("admin:settings")) return;
+  if (!brandingOnly) {
+    const authErrors = tenantAuthorizationErrors();
+    if (authErrors.length) {
+      showValidationErrors(authErrors, "Revisa las autorizaciones de inquilinos");
+      return;
+    }
+  }
+  const data = brandingOnly
+    ? { marca: await readMarca() }
+    : {
+        nombreAsociacion: settingsForm.elements.nombreAsociacion.value.trim(),
+        emailContacto: settingsForm.elements.emailContacto.value.trim(),
+        telefonoContacto: settingsForm.elements.telefonoContacto.value.trim(),
+        permitirRegistro: settingsForm.elements.permitirRegistro.checked,
+        permitirRecuperacion: settingsForm.elements.permitirRecuperacion.checked,
+        duracionSesionHoras: numericValue(settingsForm.elements.duracionSesionHoras, 8, 1, 720),
+        otpExpiraMinutos: numericValue(settingsForm.elements.otpExpiraMinutos, 10, 1, 60),
+        otpReenvioSegundos: numericValue(settingsForm.elements.otpReenvioSegundos, 60, 10, 600),
+        textos: [...settingsForm.querySelectorAll("[data-texto]")].reduce((acc, el) => {
+          acc[el.dataset.texto] = el.value;
+          return acc;
+        }, {}),
+        notificacionesEmail: settingsForm.elements.notificacionesEmail.checked,
+        avisosCambiosEmail: settingsForm.elements.avisosCambiosEmail.value.trim(),
+        feeBeforeDays: Number(settingsForm.elements.feeBeforeDays.value),
+        feeAfterDays: Number(settingsForm.elements.feeAfterDays.value),
+        feeRepeatDays: Number(settingsForm.elements.feeRepeatDays.value),
+        feeInternal: settingsForm.elements.feeInternal.checked,
+        feeEmail: settingsForm.elements.feeEmail.checked,
+        feeEmailSubject: settingsForm.elements.feeEmailSubject.value.trim(),
+        feeEmailBody: settingsForm.elements.feeEmailBody.value.trim(),
+        assessmentBeforeDays: Number(settingsForm.elements.assessmentBeforeDays.value),
+        assessmentAfterDays: Number(settingsForm.elements.assessmentAfterDays.value),
+        assessmentRepeatDays: Number(settingsForm.elements.assessmentRepeatDays.value),
+        assessmentInternal: settingsForm.elements.assessmentInternal.checked,
+        assessmentEmail: settingsForm.elements.assessmentEmail.checked,
+        serviceBeforeDays: Number(settingsForm.elements.serviceBeforeDays.value),
+        serviceAfterDays: Number(settingsForm.elements.serviceAfterDays.value),
+        serviceRepeatDays: Number(settingsForm.elements.serviceRepeatDays.value),
+        serviceInternal: settingsForm.elements.serviceInternal.checked,
+        serviceEmail: settingsForm.elements.serviceEmail.checked,
+        tenantAuthorizations: tenantAuthorizationsPayload(),
+        documentosMaxSizeMb: numericValue(settingsForm.elements.documentosMaxSizeMb, 15, 1, 50),
+        documentosMaxArchivos: numericValue(settingsForm.elements.documentosMaxArchivos, 20, 1, 50),
+        documentosTiposPermitidos: [
+          ...settingsForm.querySelectorAll('input[name="documentosTiposPermitidos"]:checked'),
+        ].map((checkbox) => checkbox.value),
+        monedaPorDefecto: settingsForm.elements.monedaPorDefecto.value || "EUR",
+        diasAvisoVencimientoContrato: numericValue(
+          settingsForm.elements.diasAvisoVencimientoContrato,
+          30,
+          0,
+          365,
+        ),
+        filasPorPagina: Number(settingsForm.elements.filasPorPagina.value) || 10,
+        mantenimiento: settingsForm.elements.mantenimiento.checked,
+        mensajeMantenimiento: settingsForm.elements.mensajeMantenimiento.value.trim(),
+        marca: await readMarca(),
+      };
   try {
     state.settings = await api.updateSettings(data);
-    applyBrand(state.settings.marca);
+    applyBrand(effectiveBrand(state.settings.marca || readInjectedBrand(), state));
     applyPublicSettings(state.settings);
     aplicarFilasPorPagina(state.settings.filasPorPagina);
     limpiarGuardia(
       settingsForm,
       settingsForm.closest(".admin-pane") || document.querySelector("#administracion"),
     );
-    toast("Configuración guardada.");
+    toast(brandingOnly ? "Estilo guardado." : "Configuración guardada.");
   } catch (error) {
-    showValidationErrors([error.message], "No se pudo guardar la configuración");
+    showValidationErrors(
+      [error.message],
+      brandingOnly ? "No se pudo guardar el estilo" : "No se pudo guardar la configuración",
+    );
   }
 });
 

@@ -1,7 +1,10 @@
 import { Router } from "express";
 import crypto from "node:crypto";
+import path from "node:path";
 import multer from "multer";
 import { db } from "../db.js";
+import { recordAudit } from "../audit.js";
+import { documentLimits, allowedDocumentLabels, detectContentType } from "../document-policy.js";
 import { policyData, allowed } from "../security.js";
 import { textosActuales, aplicarPlantilla, nombrePlataforma } from "../textos-envio.js";
 import {
@@ -279,6 +282,39 @@ router.put(
     res.json(detail(postById(old.id), req.user));
   }),
 );
+router.delete(
+  "/posts/:id",
+  route((req, res) => {
+    const p = find(req);
+    const data = policyData();
+    const canErase =
+      p.createdBy === req.user.id ||
+      canModerate(req.user, p.communityId, data) ||
+      allowed(req.user, "comm:eliminar", p.communityId, data);
+    if (!canErase) throw problem("No puedes eliminar esta publicación.", 403);
+    // Se conserva un rastro de auditoría global aunque las filas post-específicas
+    // de communication_audit se borren con la publicación.
+    recordAudit({
+      actor: req.user,
+      action: "communications.post-deleted",
+      resourceType: "post",
+      resourceId: p.id,
+      outcome: "success",
+      req,
+      details: { createdBy: p.createdBy, communityId: p.communityId },
+    });
+    transaction(() => {
+      db.prepare("DELETE FROM communication_recipients WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_comments WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_ballots WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_files WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_outbox WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_audit WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_posts WHERE id=?").run(p.id);
+    });
+    res.json({ ok: true });
+  }),
+);
 router.post(
   "/posts/:id/read",
   route((req, res) => {
@@ -434,18 +470,20 @@ router.post(
   }),
 );
 
+// Los adjuntos de comunicación usan los mismos límites que la biblioteca
+// documental: formatos y tamaño salen de Configuración general → Documentos.
+// El tope absoluto del cargador evita retener archivos mayores al máximo
+// configurable; el límite efectivo se comprueba después con documentLimits().
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { files: 1, fileSize: 10 * 1024 * 1024, fields: 2, fieldSize: 100 },
+  limits: { files: 1, fileSize: 50 * 1024 * 1024, fields: 2, fieldSize: 100 },
 }).single("file");
-function fileType(file) {
-  const b = file.buffer,
-    n = file.originalname.toLowerCase();
-  if (n.endsWith(".pdf") && b.subarray(0, 5).toString() === "%PDF-") return "application/pdf";
-  if (/\.jpe?g$/.test(n) && b[0] === 255 && b[1] === 216 && b[2] === 255) return "image/jpeg";
-  if (n.endsWith(".png") && b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
-    return "image/png";
-  return "";
+const uploadMessage = (limits) =>
+  `Adjunta un único archivo (${allowedDocumentLabels(limits)}) de hasta ${limits.maxBytes / 1024 / 1024} MB.`;
+function fileType(file, limits) {
+  const extension = path.extname(file.originalname).toLowerCase();
+  if (!limits.allowed.has(extension)) return "";
+  return detectContentType(file.buffer, extension);
 }
 router.post(
   "/posts/:id/files",
@@ -461,21 +499,19 @@ router.post(
   },
   (req, res, next) =>
     upload(req, res, (error) =>
-      error
-        ? res.status(400).json({ error: "Adjunta un único PDF, JPG o PNG de hasta 10 MB." })
-        : next(),
+      error ? res.status(400).json({ error: uploadMessage(documentLimits()) }) : next(),
     ),
   route((req, res) => {
     const p = find(req, true),
       f = req.file,
-      kind = req.body.kind || "attachment";
-    if (
-      !f ||
-      !["attachment", "minutes"].includes(kind) ||
-      !fileType(f) ||
-      (kind === "minutes" && p.type !== "meeting")
-    )
+      kind = req.body.kind || "attachment",
+      limits = documentLimits();
+    if (!f || !["attachment", "minutes"].includes(kind) || (kind === "minutes" && p.type !== "meeting"))
       throw problem("Archivo o tipo de documento no válido.");
+    if (f.size > limits.maxBytes)
+      throw problem(`El archivo supera el límite de ${limits.maxBytes / 1024 / 1024} MB.`);
+    const mime = fileType(f, limits);
+    if (!mime) throw problem(`Formato no permitido. Usa ${allowedDocumentLabels(limits)}.`);
     if (db.prepare("SELECT COUNT(*) n FROM communication_files WHERE postId=?").get(p.id).n >= 30)
       throw problem("Se admiten hasta 30 documentos por publicación.");
     const id = crypto.randomUUID(),
@@ -485,7 +521,7 @@ router.post(
         id,
         p.id,
         name,
-        fileType(f),
+        mime,
         f.buffer,
         kind,
         0,

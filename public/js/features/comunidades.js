@@ -119,6 +119,7 @@ const communityForm = document.querySelector("#community-form");
 const communityDialog = document.querySelector("#community-dialog");
 const communityDeleteDialog = document.querySelector("#delete-dialog");
 const communityError = document.querySelector("#form-error");
+
 const communityNotes = createRichText({
   editor: document.querySelector("#community-notes-editor"),
   input: communityForm.elements.notes,
@@ -416,7 +417,8 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
         communityForm.elements[key] &&
         key !== "city" &&
         key !== "province" &&
-        key !== "postalCode"
+        key !== "postalCode" &&
+        key !== "logoDataUrl"
       ) {
         communityForm.elements[key].value = value ?? "";
       }
@@ -709,13 +711,19 @@ const communityStatutesList = document.querySelector("#community-statutes-list")
 const communityDetailDocumentsList = document.querySelector("#community-detail-documents");
 const communityDetailStatutesList = document.querySelector("#community-detail-statutes");
 
+function communityFolders(community, category) {
+  return (community?.documentFolders || []).filter(
+    (folder) => (folder.category || "document") === category,
+  );
+}
+
 function communityLibraryData(category = "document") {
   const community = state.communities.find((item) => item.id === editingCommunityId);
   return category === "statutes"
-    ? { documents: community?.statutes || [], folders: [] }
+    ? { documents: community?.statutes || [], folders: communityFolders(community, "statutes") }
     : {
         documents: community?.documents || [],
-        folders: community?.documentFolders || [],
+        folders: communityFolders(community, "document"),
       };
 }
 
@@ -776,7 +784,7 @@ const communityDetailDocumentsLibrary = communityDetailDocumentsList
         const community = state.communities.find((item) => item.id === state.ui.viewingCommunityId);
         return {
           documents: community?.documents || [],
-          folders: community?.documentFolders || [],
+          folders: communityFolders(community, "document"),
         };
       },
       settings: () => state.settings,
@@ -794,7 +802,10 @@ const communityDetailStatutesLibrary = communityDetailStatutesList
       getEntityId: () => state.ui.viewingCommunityId,
       getData: () => {
         const community = state.communities.find((item) => item.id === state.ui.viewingCommunityId);
-        return { documents: community?.statutes || [], folders: [] };
+        return {
+          documents: community?.statutes || [],
+          folders: communityFolders(community, "statutes"),
+        };
       },
       settings: () => state.settings,
       countEl: "#community-detail-statutes-count",
@@ -834,6 +845,17 @@ export function openCommunityDetail(id, defaultTab = "general") {
   );
   const isOwner = state.activeRole === "owner";
 
+  const detailLogoItem = document.querySelector("#detail-item-logo");
+  const detailLogo = document.querySelector("#detail-logo");
+  if (detailLogoItem && detailLogo) {
+    if (c.logoDataUrl) {
+      detailLogo.src = c.logoDataUrl;
+      detailLogoItem.hidden = false;
+    } else {
+      detailLogo.removeAttribute("src");
+      detailLogoItem.hidden = true;
+    }
+  }
   document.querySelector("#detail-name").textContent = c.name || "—";
   document.querySelector("#detail-nif").textContent = c.nif || "—";
   document.querySelector("#detail-phone").textContent = c.phone || "—";

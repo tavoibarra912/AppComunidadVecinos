@@ -342,6 +342,8 @@ router.put("/settings", (req, res) => {
       for (const item of list) {
         const id = typeof item?.id === "string" ? item.id.trim() : "";
         const label = typeof item?.label === "string" ? item.label.trim() : "";
+        const description =
+          typeof item?.description === "string" ? item.description.trim() : "";
         if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id))
           return res.status(400).json({
             error: "El identificador de una autorización no es válido.",
@@ -354,8 +356,16 @@ router.put("/settings", (req, res) => {
           return res.status(400).json({
             error: "Cada autorización debe tener un nombre de hasta 80 caracteres.",
           });
+        if (description.length > 200)
+          return res.status(400).json({
+            error: "Cada autorización puede tener una descripción de hasta 200 caracteres.",
+          });
         ids.add(id);
-        normalized[communityId].push({ id, label });
+        normalized[communityId].push({
+          id,
+          label,
+          ...(description ? { description } : {}),
+        });
       }
     }
     data.tenantAuthorizations = normalized;

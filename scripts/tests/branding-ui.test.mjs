@@ -72,7 +72,7 @@ function fixture(brandJson = {}) {
     "",
   );
   vm.runInNewContext(
-    `${source}\nglobalThis.exposed = { readInjectedBrand, applyBrand, brandStyle };`,
+    `${source}\nglobalThis.exposed = { readInjectedBrand, applyBrand, brandStyle, getSingleCommunityBrandOverride, effectiveBrand };`,
     context,
   );
   return { ...context.exposed, document, elements, brandAnchor, loginBrand, meta };
@@ -101,10 +101,7 @@ test("brand.js: aplica nombre, colores, título, descripción y saludo al boot",
   assert.match(fx.elements.get("brand-vars").textContent, /--brand:#e8743b/);
   // El logo siempre está disponible: sin logo configurado se usa el por defecto.
   assert.equal(fx.elements.get("topbar-brand-logo").hidden, false);
-  assert.match(
-    fx.elements.get("topbar-brand-logo").src,
-    /logo-default\.svg$/,
-  );
+  assert.match(fx.elements.get("topbar-brand-logo").src, /logo-default\.svg$/);
 });
 test("brand.js: logo se muestra con data URL y usa el por defecto sin él", () => {
   const logo = `data:image/png;base64,${Buffer.from("x").toString("base64")}`;
@@ -123,4 +120,128 @@ test("brand.js: JSON roto o incompleto cae a los valores por defecto sin romper"
   assert.equal(brand.nombre, "Peñarrubia");
   const applied = fx.applyBrand({ nombre: "   " });
   assert.equal(applied.nombre, "Peñarrubia");
+});
+
+const communityLogo = `data:image/png;base64,${Buffer.from("comunidad").toString("base64")}`;
+
+test("brand.js: sin sesión o con varias comunidades no hay marca por comunidad", () => {
+  const fx = fixture({ nombre: "Marca global", colorPrimario: "#0f3057" });
+  const globalBrand = fx.readInjectedBrand();
+  assert.equal(fx.getSingleCommunityBrandOverride({ communities: [] }), null);
+  const single = fx.getSingleCommunityBrandOverride({
+    currentUserId: "user-1",
+    communities: [{ name: "Una", logoDataUrl: communityLogo }],
+  });
+  assert.equal(single.nombre, "Una");
+  assert.equal(single.logoDataUrl, communityLogo);
+  assert.equal(
+    fx.getSingleCommunityBrandOverride({
+      currentUserId: "user-1",
+      communities: [
+        { name: "Una", logoDataUrl: communityLogo },
+        { name: "Otra", logoDataUrl: "" },
+      ],
+    }),
+    null,
+  );
+  assert.equal(
+    fx.effectiveBrand(globalBrand, {
+      currentUserId: "user-1",
+      communities: [
+        { name: "Una", logoDataUrl: communityLogo },
+        { name: "Otra", logoDataUrl: "" },
+      ],
+    }),
+    globalBrand,
+  );
+});
+
+test("brand.js: una única comunidad sustituye nombre y logo sin tocar los colores globales", () => {
+  const fx = fixture({ nombre: "Marca global", colorPrimario: "#0f3057", colorAcento: "#e8743b" });
+  const globalBrand = fx.readInjectedBrand();
+  const state = {
+    currentUserId: "user-1",
+    communities: [{ name: "Residencial Peñarrubia", logoDataUrl: communityLogo }],
+  };
+  assert.equal(fx.getSingleCommunityBrandOverride(state).nombre, "Residencial Peñarrubia");
+  assert.equal(fx.getSingleCommunityBrandOverride(state).logoDataUrl, communityLogo);
+  const brand = fx.effectiveBrand(globalBrand, state);
+  assert.equal(brand.nombre, "Residencial Peñarrubia");
+  assert.equal(brand.logoDataUrl, communityLogo);
+  assert.equal(brand.colorPrimario, "#0f3057");
+  assert.equal(brand.colorAcento, "#e8743b");
+  fx.applyBrand(brand);
+  assert.equal(fx.brandAnchor.childNodes[1].textContent, "Residencial Peñarrubia");
+  assert.equal(fx.elements.get("topbar-brand-logo").src, communityLogo);
+});
+
+test("brand.js: la comunidad puede aportar solo logo o solo nombre", () => {
+  const fx = fixture({ nombre: "Marca global", logoDataUrl: "" });
+  const globalBrand = fx.readInjectedBrand();
+  const onlyLogo = fx.effectiveBrand(globalBrand, {
+    currentUserId: "user-1",
+    communities: [{ name: "", logoDataUrl: communityLogo }],
+  });
+  assert.equal(onlyLogo.nombre, "Marca global");
+  assert.equal(onlyLogo.logoDataUrl, communityLogo);
+  const onlyName = fx.effectiveBrand(globalBrand, {
+    currentUserId: "user-1",
+    communities: [{ name: "Comunidad Norte", logoDataUrl: "" }],
+  });
+  assert.equal(onlyName.nombre, "Comunidad Norte");
+  assert.equal(onlyName.logoDataUrl, "");
+});
+
+test("brand.js: una única comunidad aplica su estilo (colores, tipografía y formato)", () => {
+  const fx = fixture({ nombre: "Marca global", colorPrimario: "#0f3057", colorAcento: "#e8743b" });
+  const globalBrand = fx.readInjectedBrand();
+  const state = {
+    currentUserId: "user-1",
+    communities: [
+      {
+        name: "Residencial Verde",
+        logoDataUrl: "",
+        marca: {
+          colorPrimario: "#0b6b3a",
+          colorAcento: "#f2a900",
+          colorFondo: "#f0f7f2",
+          tipografia: "georgia",
+          tamanoBase: 16,
+          radioBordes: 10,
+          densidad: "amplia",
+        },
+      },
+    ],
+  };
+  const override = fx.getSingleCommunityBrandOverride(state);
+  assert.equal(override.colorPrimario, "#0b6b3a");
+  assert.equal(override.tipografia, "georgia");
+  const brand = fx.effectiveBrand(globalBrand, state);
+  assert.equal(brand.nombre, "Residencial Verde");
+  assert.equal(brand.colorPrimario, "#0b6b3a");
+  assert.equal(brand.colorAcento, "#f2a900");
+  assert.equal(brand.tipografia, "georgia");
+  assert.equal(brand.tamanoBase, 16);
+  // Un campo que la comunidad no define hereda el valor global.
+  assert.equal(brand.colorTexto, globalBrand.colorTexto);
+  fx.applyBrand(brand);
+  const css = fx.elements.get("brand-vars").textContent;
+  assert.match(css, /--nav:#0b6b3a/);
+  assert.match(css, /--brand:#f2a900/);
+  assert.match(css, /--canvas:#f0f7f2/);
+  assert.match(css, /--font-ui:Georgia/);
+  assert.match(css, /--font-size-base:16px/);
+  assert.match(css, /--radius:10px/);
+});
+
+test("brand.js: sin marca de estilo la comunidad conserva intactos los colores globales", () => {
+  const fx = fixture({ nombre: "Marca global", colorPrimario: "#0f3057", colorAcento: "#e8743b" });
+  const globalBrand = fx.readInjectedBrand();
+  const state = {
+    currentUserId: "user-1",
+    communities: [{ name: "Comunidad Simple", logoDataUrl: "", marca: {} }],
+  };
+  const brand = fx.effectiveBrand(globalBrand, state);
+  assert.equal(brand.colorPrimario, "#0f3057");
+  assert.equal(brand.colorAcento, "#e8743b");
 });

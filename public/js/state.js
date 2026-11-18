@@ -24,34 +24,112 @@ export const PROPERTY_USE_LABELS = {
   otros: "Otros",
 };
 
-export const TENANT_AUTHORIZATION_LABELS = {
-  common_areas: "Acceso a zonas comunes",
-  community_communications: "Recibir comunicaciones de la comunidad",
-  incident_management: "Gestionar incidencias de la unidad",
-  meeting_attendance: "Asistir a reuniones de la comunidad",
-  pool_access: "Uso de piscina",
-  gym_access: "Uso de gimnasio",
-  parking_access: "Acceso a garaje o aparcamiento",
-  storage_access: "Acceso a trasteros",
-  package_reception: "Recibir paquetería",
-  key_duplicate: "Solicitar duplicado de llaves",
-  work_authorization: "Autorizar obras o reformas en la unidad",
-  pet_registration: "Registrar mascotas",
-  community_app: "Uso de la app de la comunidad",
-};
+export const TENANT_AUTHORIZATION_DEFS = [
+  {
+    id: "common_areas",
+    label: "Acceso a zonas comunes",
+    description:
+      "Permite al inquilino usar portales, pasillos, jardines y otras zonas compartidas según las normas de la comunidad.",
+  },
+  {
+    id: "community_communications",
+    label: "Recibir comunicaciones de la comunidad",
+    description:
+      "Autoriza el envío de avisos, convocatorias y comunicaciones relevantes de la comunidad al inquilino.",
+  },
+  {
+    id: "incident_management",
+    label: "Gestionar incidencias de la unidad",
+    description:
+      "Faculta al inquilino para reportar y hacer seguimiento de averías o incidencias relacionadas con su vivienda o unidad.",
+  },
+  {
+    id: "meeting_attendance",
+    label: "Asistir a reuniones de la comunidad",
+    description:
+      "Permite la asistencia del inquilino a juntas o reuniones cuando la comunidad o el propietario lo autoricen.",
+  },
+  {
+    id: "pool_access",
+    label: "Uso de piscina",
+    description:
+      "Concede acceso a la piscina comunitaria durante el horario y condiciones establecidos.",
+  },
+  {
+    id: "gym_access",
+    label: "Uso de gimnasio",
+    description: "Concede acceso al gimnasio o sala deportiva comunitaria, si existe.",
+  },
+  {
+    id: "parking_access",
+    label: "Acceso a garaje o aparcamiento",
+    description:
+      "Permite el uso de plazas de garaje, accesos o zonas de aparcamiento asignadas o autorizadas.",
+  },
+  {
+    id: "storage_access",
+    label: "Acceso a trasteros",
+    description:
+      "Autoriza el acceso a trasteros o espacios de almacenamiento vinculados a la unidad.",
+  },
+  {
+    id: "package_reception",
+    label: "Recibir paquetería",
+    description:
+      "Permite que el inquilino reciba paquetería o entregas en nombre de la unidad cuando aplique.",
+  },
+  {
+    id: "key_duplicate",
+    label: "Solicitar duplicado de llaves",
+    description:
+      "Faculta al inquilino para solicitar copias de llaves o dispositivos de acceso según el procedimiento de la comunidad.",
+  },
+  {
+    id: "work_authorization",
+    label: "Autorizar obras o reformas en la unidad",
+    description:
+      "Permite tramitar o autorizar obras menores o reformas en la unidad conforme a la normativa aplicable.",
+  },
+  {
+    id: "pet_registration",
+    label: "Registrar mascotas",
+    description:
+      "Autoriza el registro de mascotas del inquilino ante la comunidad cuando sea necesario.",
+  },
+  {
+    id: "community_app",
+    label: "Uso de la app de la comunidad",
+    description:
+      "Permite al inquilino utilizar las funciones de la aplicación habilitadas para residentes.",
+  },
+];
+
+export const TENANT_AUTHORIZATION_LABELS = Object.fromEntries(
+  TENANT_AUTHORIZATION_DEFS.map((item) => [item.id, item.label]),
+);
 
 /**
  * Catálogo inicial de autorizaciones. Cada comunidad puede personalizarlo
  * desde Configuración → Inquilinos; si no lo hace, se usa esta lista.
  */
-export const DEFAULT_TENANT_AUTHORIZATIONS = Object.entries(TENANT_AUTHORIZATION_LABELS).map(
-  ([id, label]) => ({ id, label }),
-);
+export const DEFAULT_TENANT_AUTHORIZATIONS = TENANT_AUTHORIZATION_DEFS.map((item) => ({ ...item }));
+
+function normalizeTenantAuthItem(item) {
+  const id = String(item?.id || "").trim();
+  const def = TENANT_AUTHORIZATION_DEFS.find((d) => d.id === id);
+  return {
+    id,
+    label: String(item?.label || def?.label || "").trim(),
+    description: String(item?.description ?? def?.description ?? "").trim(),
+  };
+}
 
 /** Autorizaciones vigentes para una comunidad (o las predeterminadas). */
 export function tenantAuthorizationCatalog(communityId = "") {
   const saved = communityId ? state.settings?.tenantAuthorizations?.[communityId] : null;
-  return Array.isArray(saved) && saved.length ? saved : DEFAULT_TENANT_AUTHORIZATIONS;
+  if (!Array.isArray(saved) || !saved.length)
+    return DEFAULT_TENANT_AUTHORIZATIONS.map((i) => ({ ...i }));
+  return saved.map(normalizeTenantAuthItem).filter((i) => i.id);
 }
 
 /** Etiqueta visible de una autorización guardada en un inquilino. */
@@ -61,6 +139,10 @@ export function tenantAuthorizationLabel(id, communityId = "") {
     TENANT_AUTHORIZATION_LABELS[id] ||
     id
   );
+}
+
+export function tenantAuthorizationDescription(id, communityId = "") {
+  return tenantAuthorizationCatalog(communityId).find((item) => item.id === id)?.description || "";
 }
 
 export const CURRENCY_CATALOG = [

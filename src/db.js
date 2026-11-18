@@ -154,6 +154,8 @@ db.exec(`
     parentId TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL,
     nameKey TEXT NOT NULL,
+    icon TEXT NOT NULL DEFAULT 'folder',
+    category TEXT NOT NULL DEFAULT 'document',
     createdAt TEXT NOT NULL DEFAULT '',
     createdBy TEXT NOT NULL DEFAULT '',
     createdByName TEXT NOT NULL DEFAULT ''
@@ -213,7 +215,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tenants_owner ON tenants(ownerId);
   CREATE INDEX IF NOT EXISTS idx_documents_entity ON documents(entityType, entityId);
   CREATE INDEX IF NOT EXISTS idx_document_folders_entity ON document_folders(entityType, entityId);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_document_folders_unique ON document_folders(entityType, entityId, parentId, nameKey);
   CREATE INDEX IF NOT EXISTS idx_admin_emails_owner ON admin_emails(ownerId);
   CREATE INDEX IF NOT EXISTS idx_owner_notifications_owner ON owner_notifications(ownerId);
 `);
@@ -235,6 +236,8 @@ function ensureColumns(table, definitions) {
 ensureColumns("communities", {
   currency: "TEXT NOT NULL DEFAULT ''",
   adminUserId: "TEXT NOT NULL DEFAULT ''",
+  logoDataUrl: "TEXT NOT NULL DEFAULT ''",
+  marca: "TEXT NOT NULL DEFAULT '{}'",
 });
 
 ensureColumns("users", {
@@ -264,6 +267,18 @@ ensureColumns("documents", {
   uploadedBy: "TEXT NOT NULL DEFAULT ''",
   uploadedByName: "TEXT NOT NULL DEFAULT ''",
 });
+// Las carpetas existentes conservan el icono genérico de carpeta.
+ensureColumns("document_folders", {
+  icon: "TEXT NOT NULL DEFAULT 'folder'",
+  category: "TEXT NOT NULL DEFAULT 'document'",
+});
+// Documentos y estatutos tienen árboles de carpetas independientes: la
+// unicidad del nombre incluye la categoría. El índice anterior no la tenía.
+db.exec(`
+  DROP INDEX IF EXISTS idx_document_folders_unique;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_document_folders_category_unique
+    ON document_folders(entityType, entityId, category, parentId, nameKey);
+`);
 // El índice usa `folderId`: se crea después de asegurar la columna para que
 // las bases creadas con el esquema anterior puedan migrar sin errores.
 db.exec(
@@ -305,6 +320,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "community:create",
       "community:edit",
       "community:manage",
+      "community:brand",
       "community:delete",
       "owner:read",
       "owner:create",
@@ -330,12 +346,16 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "admin:roles",
       "admin:settings",
       "admin:providers",
+      "admin:branding",
       "comm:participacion",
       "comm:publicar",
       "comm:moderar",
+      "comm:eliminar",
       "admin_notification:read",
+      "admin_notification:delete",
       "owner_notification:read",
       "owner_notification:send",
+      "owner_notification:delete",
     ]),
     1,
   );
@@ -348,6 +368,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "community:create",
       "community:edit",
       "community:manage",
+      "community:brand",
       "owner:read",
       "owner:create",
       "owner:manage",
@@ -368,7 +389,9 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "comm:participacion",
       "comm:publicar",
       "comm:moderar",
+      "comm:eliminar",
       "admin_notification:read",
+      "admin_notification:delete",
       "owner_notification:send",
     ]),
     1,
@@ -381,6 +404,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "community:read",
       "community:edit",
       "community:manage",
+      "community:brand",
       "owner:read",
       "owner:create",
       "owner:manage",
@@ -399,6 +423,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "comm:participacion",
       "comm:publicar",
       "comm:moderar",
+      "comm:eliminar",
       "owner_notification:send",
     ]),
     1,
@@ -418,6 +443,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "document:upload",
       "comm:participacion",
       "owner_notification:read",
+      "owner_notification:delete",
     ]),
     1,
   );
@@ -634,7 +660,15 @@ if (
 const superRole = db.prepare("SELECT id, permisos FROM roles WHERE nombre = 'super_admin'").get();
 if (superRole) {
   const lista = JSON.parse(superRole.permisos || "[]");
-  const faltantes = ["audit:read", "admin:providers"].filter((p) => !lista.includes(p));
+  const faltantes = [
+    "audit:read",
+    "admin:providers",
+    "admin:branding",
+    "community:brand",
+    "comm:eliminar",
+    "admin_notification:delete",
+    "owner_notification:delete",
+  ].filter((p) => !lista.includes(p));
   if (faltantes.length) {
     db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(
       JSON.stringify([...lista, ...faltantes]),
@@ -645,9 +679,16 @@ if (superRole) {
 
 // Backfill de permisos nuevos para roles del sistema (idempotente).
 const backfillPermisos = {
-  administrator: ["owner:delete", "comm:participacion", "tenant:delete"],
-  community_admin: ["comm:participacion", "tenant:delete"],
-  user: ["comm:participacion"],
+  administrator: [
+    "owner:delete",
+    "comm:participacion",
+    "tenant:delete",
+    "community:brand",
+    "comm:eliminar",
+    "admin_notification:delete",
+  ],
+  community_admin: ["comm:participacion", "tenant:delete", "community:brand", "comm:eliminar"],
+  user: ["comm:participacion", "owner_notification:delete"],
 };
 for (const [nombre, faltantes] of Object.entries(backfillPermisos)) {
   const rol = db.prepare("SELECT id, permisos FROM roles WHERE nombre = ?").get(nombre);
@@ -939,6 +980,8 @@ export function communityFromRow(row) {
     reserveFund: row.reserveFund || "",
     currency: row.currency || "",
     adminUserId: row.adminUserId || "",
+    logoDataUrl: row.logoDataUrl || "",
+    marca: parseJson(row.marca, {}),
     notes: row.notes,
     documents: parseJson(row.documents, []),
   };
@@ -1134,6 +1177,8 @@ export function documentFolderFromRow(row) {
     entityId: row.entityId,
     parentId: row.parentId || "",
     name: row.name,
+    icon: row.icon || "folder",
+    category: row.category || "document",
     createdAt: row.createdAt,
     createdBy: row.createdBy || "",
     createdByName: row.createdByName || "",

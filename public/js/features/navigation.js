@@ -6,16 +6,23 @@ import { renderOwners } from "./propietarios.js";
 import { renderTenants } from "./inquilinos.js";
 import { renderProperties } from "./inmuebles.js";
 import { renderHomeDashboard } from "./home.js";
-import { renderAdministracion } from "./administracion.js";
+import { puedeAdministrar, renderAdministracion } from "./administracion.js";
 import { renderCommunication } from "./communication.js";
 import { feeNavigation, renderFeesPage } from "./fees.js";
 import "./auth.js";
 import { updateOwnerInboxBadge } from "./notificaciones.js";
-import { readInjectedBrand } from "../brand.js";
+import { effectiveBrand, readInjectedBrand } from "../brand.js";
 
 /** Título de la pestaña: siempre el Nombre visible configurado en la plataforma. */
 function brandTitle() {
-  return readInjectedBrand().nombre || "Peñarrubia";
+  return effectiveBrand(state.settings?.marca || readInjectedBrand(), state).nombre || "Peñarrubia";
+}
+
+// El texto del menú vive en su propio span para no borrar el icono de la sección.
+function setNavLabel(link, text) {
+  const label = link?.querySelector(".nav-item-label");
+  if (label) label.textContent = text;
+  else if (link) link.textContent = text;
 }
 
 const userAvatar = document.querySelector("#user-avatar");
@@ -61,11 +68,13 @@ export function applyRoleUI() {
   const isOwner = state.activeRole === "owner";
   const user = getCurrentUser();
   const feeAccess = feeNavigation();
-  for (const link of [navCuotas, mobileNavCuotas]) {
-    if (link) {
-      link.hidden = !feeAccess.visible;
-      link.textContent = feeAccess.title;
-    }
+  if (navCuotas) {
+    navCuotas.hidden = !feeAccess.visible;
+    setNavLabel(navCuotas, feeAccess.title);
+  }
+  if (mobileNavCuotas) {
+    mobileNavCuotas.hidden = !feeAccess.visible;
+    mobileNavCuotas.textContent = feeAccess.title;
   }
   const account = accountView(state, ROLE_LABELS);
   const roleLabel = ROLE_LABELS[user?.rol] || user?.rol || "";
@@ -88,21 +97,15 @@ export function applyRoleUI() {
   if (sidebarLabel) {
     sidebarLabel.textContent = isOwner ? "MI ÁREA PERSONAL" : "GESTIÓN ADMINISTRADOR";
   }
-  if (navComunidades) navComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
+  if (navComunidades) setNavLabel(navComunidades, isOwner ? "Mi Comunidad" : "Comunidades");
   if (mobileNavComunidades)
     mobileNavComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
-  if (navPropietarios) navPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
+  if (navPropietarios) setNavLabel(navPropietarios, isOwner ? "Mi Perfil" : "Propietarios");
   if (mobileNavPropietarios)
     mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (navInmuebles) navInmuebles.hidden = !hasPermission("property:read");
   if (mobileNavInmuebles) mobileNavInmuebles.hidden = !hasPermission("property:read");
-  const canAccessAdministration = [
-    "admin:users",
-    "admin:roles",
-    "admin:settings",
-    "audit:read",
-    "admin:providers",
-  ].some((p) => hasPermission(p));
+  const canAccessAdministration = puedeAdministrar();
   for (const link of [navAdministracion, mobileNavAdministracion])
     if (link) link.hidden = !canAccessAdministration;
   document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach((link) => {
@@ -256,11 +259,7 @@ export function handleRouting() {
     document.title = brandTitle();
     renderCommunication();
   } else if (hash === "#administracion") {
-    if (
-      !["admin:users", "admin:roles", "admin:settings", "audit:read", "admin:providers"].some((p) =>
-        hasPermission(p),
-      )
-    ) {
+    if (!puedeAdministrar()) {
       window.location.hash = "#home";
       return;
     }

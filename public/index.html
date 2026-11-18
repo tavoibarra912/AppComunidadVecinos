@@ -19,12 +19,12 @@
     />
     <title>__BRAND_TITLE__</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=8" />
-    <link rel="stylesheet" href="communication.css?v=2" />
-    <link rel="stylesheet" href="notifications.css?v=1" />
-    <link rel="stylesheet" href="fees.css?v=1" />
-    <link rel="stylesheet" href="dashboard.css?v=2" />
-    <link rel="stylesheet" href="issue-reporter.css?v=1" />
+    <link rel="stylesheet" href="styles.css?v=11" />
+    <link rel="stylesheet" href="communication.css?v=4" />
+    <link rel="stylesheet" href="notifications.css?v=3" />
+    <link rel="stylesheet" href="fees.css?v=2" />
+    <link rel="stylesheet" href="dashboard.css?v=3" />
+    <link rel="stylesheet" href="issue-reporter.css?v=2" />
   </head>
 
   <body>
@@ -336,17 +336,196 @@
 
     <main class="layout">
       <aside class="sidebar" aria-label="Navegación">
-        <p class="sidebar-label" id="sidebar-label">GESTIÓN ADMINISTRADOR</p>
-        <a class="nav-item active" href="#home" id="nav-home">Inicio</a>
-        <a class="nav-item" href="#comunidades" id="nav-comunidades">Comunidades</a>
-        <a class="nav-item" href="#inmuebles" id="nav-inmuebles">Inmuebles</a>
-        <a class="nav-item" href="#propietarios" id="nav-propietarios">Propietarios</a>
-        <a class="nav-item" href="#inquilinos" id="nav-inquilinos">Inquilinos</a>
-        <a class="nav-item" href="#cuotas" id="nav-cuotas" hidden>Cuotas</a>
-        <a class="nav-item" href="#administracion" id="nav-administracion">Administración</a>
-        <a class="nav-item" href="#comunicacion" id="nav-comunicacion"
-          >Comunicación <span id="communication-unread" class="comm-count" hidden>0</span></a
-        >
+        <div class="sidebar-head">
+          <p class="sidebar-label" id="sidebar-label">GESTIÓN ADMINISTRADOR</p>
+          <button
+            class="sidebar-toggle"
+            id="sidebar-toggle"
+            type="button"
+            aria-controls="sidebar-nav"
+            aria-expanded="true"
+            aria-label="Contraer menú"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m11 17-5-5 5-5" />
+              <path d="m18 17-5-5 5-5" />
+            </svg>
+          </button>
+        </div>
+        <nav class="sidebar-nav" id="sidebar-nav">
+          <a class="nav-item active" href="#home" id="nav-home">
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+              <path d="M9 22V12h6v10" />
+            </svg>
+            <span class="nav-item-label">Inicio</span>
+          </a>
+          <a class="nav-item" href="#comunidades" id="nav-comunidades">
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+              <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+              <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
+              <path d="M10 6h4" />
+              <path d="M10 10h4" />
+              <path d="M10 14h4" />
+              <path d="M10 18h4" />
+            </svg>
+            <span class="nav-item-label">Comunidades</span>
+          </a>
+          <a class="nav-item" href="#inmuebles" id="nav-inmuebles">
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect width="16" height="20" x="4" y="2" rx="2" />
+              <path d="M9 22v-4h6v4" />
+              <path d="M8 6h.01" />
+              <path d="M12 6h.01" />
+              <path d="M16 6h.01" />
+              <path d="M8 10h.01" />
+              <path d="M12 10h.01" />
+              <path d="M16 10h.01" />
+              <path d="M8 14h.01" />
+              <path d="M12 14h.01" />
+              <path d="M16 14h.01" />
+            </svg>
+            <span class="nav-item-label">Inmuebles</span>
+          </a>
+          <a class="nav-item" href="#propietarios" id="nav-propietarios">
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span class="nav-item-label">Propietarios</span>
+          </a>
+          <a class="nav-item" href="#inquilinos" id="nav-inquilinos">
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="7.5" cy="15.5" r="5.5" />
+              <path d="m21 2-9.6 9.6" />
+              <path d="m15.5 7.5 3 3L22 7l-3-3" />
+            </svg>
+            <span class="nav-item-label">Inquilinos</span>
+          </a>
+          <a class="nav-item" href="#cuotas" id="nav-cuotas" hidden>
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 10h12" />
+              <path d="M4 14h9" />
+              <path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2" />
+            </svg>
+            <span class="nav-item-label">Cuotas</span>
+          </a>
+          <a class="nav-item" href="#administracion" id="nav-administracion">
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3" />
+              <path d="M14 2v4M8 10v4M16 18v4" />
+            </svg>
+            <span class="nav-item-label">Administración</span>
+          </a>
+          <a class="nav-item" href="#comunicacion" id="nav-comunicacion">
+            <svg
+              class="nav-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span class="nav-item-label">Comunicación</span>
+            <span id="communication-unread" class="comm-count" hidden>0</span>
+          </a>
+        </nav>
       </aside>
 
       <!-- SECCIÓN: HOME / DASHBOARD -->
@@ -373,7 +552,12 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow" id="comunidades-heading-eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
-            <h1 id="comunidades-heading-title">Comunidades de vecinos</h1>
+            <div class="page-title-row">
+              <span class="page-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /><path d="M10 6h4" /><path d="M10 10h4" /><path d="M10 14h4" /><path d="M10 18h4" /></svg>
+              </span>
+              <h1 id="comunidades-heading-title">Comunidades de vecinos</h1>
+            </div>
             <p class="subtitle" id="comunidades-heading-subtitle">
               Consulta y gestiona las comunidades vinculadas a Peñarrubia.
             </p>
@@ -416,7 +600,12 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow">ENTIDADES</p>
-            <h1>Inmuebles</h1>
+            <div class="page-title-row">
+              <span class="page-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M12 6h.01" /><path d="M16 6h.01" /><path d="M8 10h.01" /><path d="M12 10h.01" /><path d="M16 10h.01" /><path d="M8 14h.01" /><path d="M12 14h.01" /><path d="M16 14h.01" /></svg>
+              </span>
+              <h1>Inmuebles</h1>
+            </div>
             <p class="subtitle">
               Gestiona inmuebles vinculados a una comunidad, sus propietarios e inquilinos.
             </p>
@@ -466,7 +655,12 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow" id="owners-heading-eyebrow">ASOCIACIÓN DE PROPIETARIOS</p>
-            <h1 id="owners-heading-title">Propietarios</h1>
+            <div class="page-title-row">
+              <span class="page-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+              </span>
+              <h1 id="owners-heading-title">Propietarios</h1>
+            </div>
             <p class="subtitle" id="owners-heading-subtitle">
               Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.
             </p>
@@ -509,7 +703,12 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow">PROPIETARIOS · RESIDENTES</p>
-            <h1>Inquilinos</h1>
+            <div class="page-title-row">
+              <span class="page-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5" /><path d="m21 2-9.6 9.6" /><path d="m15.5 7.5 3 3L22 7l-3-3" /></svg>
+              </span>
+              <h1>Inquilinos</h1>
+            </div>
             <p class="subtitle">
               Consulta y gestiona los inquilinos, sus unidades, contratos, contactos y
               autorizaciones.
@@ -553,7 +752,12 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow">GESTIÓN DEL SISTEMA</p>
-            <h1>Administración</h1>
+            <div class="page-title-row">
+              <span class="page-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3" /><path d="M14 2v4M8 10v4M16 18v4" /></svg>
+              </span>
+              <h1>Administración</h1>
+            </div>
             <p class="subtitle">Usuarios, roles y configuración general de la plataforma.</p>
           </div>
         </div>
@@ -736,6 +940,14 @@
               aria-selected="false"
             >
               Inquilinos
+            </button>
+            <button
+              type="button"
+              class="community-editor-tab"
+              data-settings-tab="comunidades"
+              aria-selected="false"
+            >
+              Comunidades
             </button>
             <button
               type="button"
@@ -997,9 +1209,10 @@
               <div class="form-grid">
                 <p class="form-section-title full">Autorizaciones de inquilinos</p>
                 <p class="form-intro full">
-                  Define qué autorizaciones puede conceder cada comunidad. Estas opciones aparecen
-                  en la pestaña «Comunidad» de la ficha del inquilino. Si una comunidad no tiene una
-                  lista propia, se usan las opciones predeterminadas.
+                  Define qué autorizaciones puede conceder cada comunidad. Cada una tiene un nombre
+                  y una descripción que se muestra al asignarla en la pestaña «Comunidad» de la
+                  ficha del inquilino. Si una comunidad no tiene una lista propia, se usan las
+                  opciones predeterminadas.
                 </p>
                 <label class="full"
                   >Comunidad
@@ -1008,11 +1221,49 @@
                 <input type="hidden" name="tenantAuthorizationsState" />
                 <div id="tenant-authorizations-editor" class="full"></div>
                 <div class="heading-actions full">
-                  <button type="button" class="secondary-button" id="add-tenant-authorization">
-                    Agregar autorización
+                  <button
+                    type="button"
+                    class="icon-action-btn btn-add btn-lg"
+                    id="add-tenant-authorization"
+                    title="Agregar autorización"
+                    aria-label="Agregar autorización"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
                   </button>
-                  <button type="button" class="secondary-button" id="reset-tenant-authorizations">
-                    Restaurar predeterminadas
+                  <button
+                    type="button"
+                    class="icon-action-btn btn-info btn-lg"
+                    id="reset-tenant-authorizations"
+                    title="Restaurar predeterminadas"
+                    aria-label="Restaurar predeterminadas"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="3 3 3 8 8 8"></polyline>
+                      <path d="M3.2 8a9 9 0 1 1-.2 4"></path>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -1116,6 +1367,146 @@
                     placeholder="La plataforma está en mantenimiento. Vuelve a intentar en unos minutos."
                   ></textarea>
                 </label>
+              </div>
+            </div>
+            <div id="settings-comunidades-panel" hidden>
+              <div class="form-grid">
+                <p class="form-section-title full">Marca por comunidad</p>
+                <p class="form-intro full">
+                  Personaliza el nombre, el logo y el estilo (colores, tipografía y formato) de cada
+                  comunidad. Se aplican en la app solo para usuarios con sesión iniciada que tengan
+                  acceso a una única comunidad; el resto sigue viendo el estilo global de la pestaña
+                  Estilo.
+                </p>
+                <label class="full"
+                  >Comunidad
+                  <select id="settings-community-select"></select>
+                </label>
+                <label class="full"
+                  >Nombre visible de la comunidad *
+                  <input id="settings-community-name" maxlength="120" />
+                </label>
+                <label class="full"
+                  >Logo (PNG, JPG, SVG o WebP, máx. 225 KB) (opcional)
+                  <input
+                    id="settings-community-logo"
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  />
+                </label>
+                <img
+                  id="settings-community-logo-preview"
+                  class="marca-logo-preview"
+                  alt="Vista previa del logo de la comunidad"
+                  hidden
+                />
+                <p class="form-section-title full">Colores de la interfaz</p>
+                <p class="form-intro full">
+                  Personaliza los colores de esta comunidad. Cada campo es opcional: si lo dejas sin
+                  cambiar, se usa el color global de la plataforma.
+                </p>
+                <label
+                  >Color principal (opcional)
+                  <input id="settings-community-colorPrimario" type="color" />
+                </label>
+                <label
+                  >Color de acento (opcional)
+                  <input id="settings-community-colorAcento" type="color" />
+                </label>
+                <label
+                  >Fondo general (opcional)
+                  <input id="settings-community-colorFondo" type="color" />
+                </label>
+                <label
+                  >Superficies y tarjetas (opcional)
+                  <input id="settings-community-colorSuperficie" type="color" />
+                </label>
+                <label
+                  >Color del texto (opcional)
+                  <input id="settings-community-colorTexto" type="color" />
+                </label>
+                <label
+                  >Texto secundario (opcional)
+                  <input id="settings-community-colorTextoSuave" type="color" />
+                </label>
+                <label
+                  >Bordes y separadores (opcional)
+                  <input id="settings-community-colorBorde" type="color" />
+                </label>
+
+                <p class="form-section-title full">Tipografía y formato</p>
+                <label
+                  >Tipografía
+                  <select id="settings-community-tipografia">
+                    <option value="inter">Inter (predeterminada)</option>
+                    <option value="system">Sistema</option>
+                    <option value="arial">Arial</option>
+                    <option value="verdana">Verdana</option>
+                    <option value="georgia">Georgia</option>
+                  </select>
+                </label>
+                <label
+                  >Tamaño base del texto (px)
+                  <input
+                    id="settings-community-tamanoBase"
+                    type="number"
+                    min="12"
+                    max="18"
+                    inputmode="numeric"
+                  />
+                </label>
+                <label
+                  >Radio de bordes (px)
+                  <input
+                    id="settings-community-radioBordes"
+                    type="number"
+                    min="0"
+                    max="16"
+                    inputmode="numeric"
+                  />
+                </label>
+                <label
+                  >Densidad de las tablas
+                  <select id="settings-community-densidad">
+                    <option value="compacta">Compacta</option>
+                    <option value="normal">Normal</option>
+                    <option value="amplia">Amplia</option>
+                  </select>
+                </label>
+
+                <div class="heading-actions full">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    id="settings-community-remove-logo"
+                  >
+                    Quitar logo
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-action-btn btn-save btn-lg"
+                    id="settings-community-save"
+                    title="Guardar comunidad"
+                    aria-label="Guardar comunidad"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                      <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                  </button>
+                </div>
+                <p class="form-intro full" id="settings-community-hint"></p>
               </div>
             </div>
             <div id="settings-estilo-panel" hidden>
@@ -1354,7 +1745,12 @@
         <div class="comm-heading">
           <div>
             <p class="eyebrow">VIDA EN COMUNIDAD</p>
-            <h1 id="communication-title">Comunicación</h1>
+            <div class="page-title-row">
+              <span class="page-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              </span>
+              <h1 id="communication-title">Comunicación</h1>
+            </div>
             <p class="comm-muted">Avisos, eventos, reuniones y decisiones de tu comunidad.</p>
           </div>
           <div class="comm-actions">
@@ -1665,7 +2061,7 @@
                 placeholder="600000000"
               />
             </label>
-            <label
+            <label class="full"
               >Email *
               <div class="verify-row">
                 <input
@@ -1882,13 +2278,35 @@
           data-community-pane="docs"
           hidden
         >
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación de la comunidad (<span id="community-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Actas, contratos, certificados y otros archivos, organizados en carpetas. Los
-                cambios se guardan al instante.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="13" y2="17"></line>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación de la comunidad
+                  <span class="doc-pane-count" id="community-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Actas, contratos, certificados y otros archivos, organizados en carpetas. Los
+                  cambios se guardan al instante.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-document-list"></div>
@@ -1899,13 +2317,33 @@
           data-community-pane="statutes"
           hidden
         >
-          <div class="detail-section-heading">
-            <div>
-              <h3>Estatutos de la comunidad (<span id="community-statutes-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Documentos vigentes para consulta de todos los vecinos. Solo los administradores
-                pueden subirlos, reemplazarlos, renombrarlos o eliminarlos.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>
+                  <path d="m9 12 2 2 4-4"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Estatutos de la comunidad
+                  <span class="doc-pane-count" id="community-statutes-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Documentos vigentes para consulta de todos los vecinos. Solo los administradores
+                  pueden subirlos, reemplazarlos, renombrarlos o eliminarlos.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-statutes-list"></div>
@@ -2045,6 +2483,12 @@
         </nav>
         <section class="community-editor-pane" data-cd-pane="general">
           <div class="detail-grid">
+            <div class="detail-item full" id="detail-item-logo" hidden>
+              <span class="detail-label">Logo</span>
+              <span class="detail-value"
+                ><img id="detail-logo" class="marca-logo-preview" alt="Logo de la comunidad"
+              /></span>
+            </div>
             <div class="detail-item full">
               <span class="detail-label">Identificador Comunidad</span>
               <span class="detail-value highlight" id="detail-name"></span>
@@ -2141,23 +2585,65 @@
           <div id="community-properties-list" class="community-properties-list"></div>
         </section>
         <section class="community-editor-pane" data-cd-pane="docs" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación (<span id="community-detail-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Archivos adjuntos de la comunidad (solo lectura).
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="13" y2="17"></line>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación
+                  <span class="doc-pane-count" id="community-detail-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Archivos adjuntos de la comunidad (solo lectura).
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-detail-documents"></div>
         </section>
         <section class="community-editor-pane" data-cd-pane="statutes" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Estatutos (<span id="community-detail-statutes-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Documentos de consulta disponibles para todos los vecinos.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>
+                  <path d="m9 12 2 2 4-4"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Estatutos
+                  <span class="doc-pane-count" id="community-detail-statutes-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Documentos de consulta disponibles para todos los vecinos.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="community-detail-statutes"></div>
@@ -2779,26 +3265,109 @@
         </section>
 
         <!-- PESTAÑA: DOCUMENTACIÓN REQUERIDA Y VALIDACIÓN AUTOMÁTICA -->
-        <section class="community-editor-pane" id="owner-tab-docs" data-owner-pane="docs" hidden>
-          <div class="docs-callout">
-            <div class="docs-callout-icon">ℹ️</div>
-            <div>
-              <strong>Documentación exigida para el expediente del propietario:</strong>
-              <p>
-                El sistema admite archivos PDF e imágenes. La identidad, el contenido y la
-                legibilidad deben ser revisados por un administrador antes de aprobarlos.
-              </p>
+        <section
+          class="community-editor-pane docs-pane"
+          id="owner-tab-docs"
+          data-owner-pane="docs"
+          hidden
+        >
+          <div class="detail-section-heading doc-pane-heading docs-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="13" y2="17"></line>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación del propietario
+                  <span class="doc-pane-count" id="owner-docs-count">0/3</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Tres documentos obligatorios para completar el expediente. La validación
+                  automática comprueba cada archivo y el administrador revisa la documentación
+                  final.
+                </p>
+              </div>
             </div>
+          </div>
+
+          <div class="docs-meta-strip" aria-label="Requisitos de la documentación">
+            <span class="docs-meta-chip">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              PDF, JPG, PNG o WEBP · máx. 15 MB
+            </span>
+            <span class="docs-meta-chip">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              Validación automática
+            </span>
+            <span class="docs-meta-chip">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>
+                <path d="m9 12 2 2 4-4"></path>
+              </svg>
+              Aprobación del administrador
+            </span>
           </div>
 
           <div class="docs-upload-container">
             <!-- 1. DNI (Ambas caras) -->
-            <div class="doc-upload-card" id="card-doc-dni">
+            <div class="doc-upload-card doc-upload-card--required" id="card-doc-dni">
               <div class="doc-card-header">
                 <div class="doc-card-title-wrap">
                   <span class="doc-card-num">1</span>
                   <div>
-                    <h3 class="doc-card-title">Copia de DNI (ambas caras) *</h3>
+                    <div class="doc-card-title-row">
+                      <h3 class="doc-card-title">Copia de DNI (ambas caras)</h3>
+                      <span class="doc-required-tag">Obligatorio</span>
+                    </div>
                     <p class="doc-card-desc">
                       Documento Nacional de Identidad español vigente (PDF o JPG/PNG). Debe incluir
                       anverso y reverso.
@@ -2843,8 +3412,28 @@
 
               <!-- Botón de prueba rápida para testing asistido -->
               <div class="doc-sample-bar">
-                <button class="sample-doc-btn" type="button" id="btn-sample-dni">
-                  ✨ Cargar ejemplo de DNI (sin validez)
+                <button
+                  class="sample-doc-btn"
+                  type="button"
+                  id="btn-sample-dni"
+                  title="Carga un DNI de ejemplo, sin validez legal"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"
+                    ></path>
+                  </svg>
+                  Probar con ejemplo
                 </button>
               </div>
 
@@ -2855,12 +3444,15 @@
             </div>
 
             <!-- 2. Recibo bancario o certificado de titularidad -->
-            <div class="doc-upload-card" id="card-doc-bank">
+            <div class="doc-upload-card doc-upload-card--required" id="card-doc-bank">
               <div class="doc-card-header">
                 <div class="doc-card-title-wrap">
                   <span class="doc-card-num">2</span>
                   <div>
-                    <h3 class="doc-card-title">Recibo bancario o certificado de titularidad *</h3>
+                    <div class="doc-card-title-row">
+                      <h3 class="doc-card-title">Recibo bancario o certificado de titularidad</h3>
+                      <span class="doc-required-tag">Obligatorio</span>
+                    </div>
                     <p class="doc-card-desc">
                       Documento bancario donde se domiciliará el pago de cuotas. Debe figurar el
                       IBAN y el nombre del titular.
@@ -2909,8 +3501,28 @@
               </div>
 
               <div class="doc-sample-bar">
-                <button class="sample-doc-btn" type="button" id="btn-sample-bank">
-                  ✨ Cargar ejemplo bancario (sin validez)
+                <button
+                  class="sample-doc-btn"
+                  type="button"
+                  id="btn-sample-bank"
+                  title="Carga un recibo bancario de ejemplo, sin validez legal"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"
+                    ></path>
+                  </svg>
+                  Probar con ejemplo
                 </button>
               </div>
 
@@ -2920,12 +3532,18 @@
             </div>
 
             <!-- 3. Copia de la escritura del inmueble -->
-            <div class="doc-upload-card" id="card-doc-deed">
+            <div
+              class="doc-upload-card doc-upload-card--required doc-upload-card--wide"
+              id="card-doc-deed"
+            >
               <div class="doc-card-header">
                 <div class="doc-card-title-wrap">
                   <span class="doc-card-num">3</span>
                   <div>
-                    <h3 class="doc-card-title">Copia de la escritura del inmueble *</h3>
+                    <div class="doc-card-title-row">
+                      <h3 class="doc-card-title">Copia de la escritura del inmueble</h3>
+                      <span class="doc-required-tag">Obligatorio</span>
+                    </div>
                     <p class="doc-card-desc">
                       Copia simple o escritura notarial de compraventa/propiedad que acredite la
                       posesión del inmueble o parcela.
@@ -2971,8 +3589,28 @@
               </div>
 
               <div class="doc-sample-bar">
-                <button class="sample-doc-btn" type="button" id="btn-sample-deed">
-                  ✨ Cargar ejemplo de escritura (sin validez)
+                <button
+                  class="sample-doc-btn"
+                  type="button"
+                  id="btn-sample-deed"
+                  title="Carga una escritura de ejemplo, sin validez legal"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"
+                    ></path>
+                  </svg>
+                  Probar con ejemplo
                 </button>
               </div>
 
@@ -2982,9 +3620,38 @@
             </div>
           </div>
 
-          <div class="docs-summary-bar" id="docs-summary-bar">
-            <div class="docs-summary-text">
-              <span id="docs-summary-status">0 de 3 documentos subidos</span>
+          <div class="docs-summary-bar" id="docs-summary-bar" aria-live="polite">
+            <span class="docs-summary-icon" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </span>
+            <div class="docs-summary-body">
+              <div class="docs-summary-row">
+                <span id="docs-summary-status">0 de 3 documentos subidos</span>
+                <span class="docs-summary-percent" id="docs-summary-percent">0%</span>
+              </div>
+              <div
+                class="docs-summary-track"
+                id="docs-summary-progress"
+                role="progressbar"
+                aria-label="Documentos del propietario recibidos"
+                aria-valuemin="0"
+                aria-valuemax="3"
+                aria-valuenow="0"
+              >
+                <span class="docs-summary-fill" id="docs-summary-fill"></span>
+              </div>
               <span class="docs-summary-subtext" id="docs-summary-subtext"
                 >Sube los tres documentos requeridos para completar el expediente.</span
               >
@@ -3313,10 +3980,34 @@
           </section>
         </section>
         <section class="community-editor-pane" data-od-pane="docs" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <p class="eyebrow">EXPEDIENTE DOCUMENTAL</p>
-              <h3>Documentación requerida del propietario</h3>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="13"></line>
+                  <line x1="8" y1="17" x2="13" y2="17"></line>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación requerida
+                  <span class="doc-pane-count" id="owner-detail-doc-count">0/3</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Expediente del propietario: DNI, domiciliación bancaria y escritura del inmueble.
+                </p>
+              </div>
             </div>
             <span class="status-badge" id="owner-detail-doc-badge">Sin documentación</span>
           </div>
@@ -3821,24 +4512,105 @@
           <div class="community-properties-list" id="tenant-properties-list"></div>
         </section>
 
-        <section class="community-editor-pane" id="tenant-tab-docs" data-tenant-pane="docs" hidden>
-          <div class="docs-callout">
-            <div class="docs-callout-icon">ℹ️</div>
-            <div>
-              <strong>Documentación del inquilino:</strong>
-              <p>
-                El sistema valida de forma automática la legibilidad y correspondencia de cada
-                archivo. Tras superarla, el Administrador recibirá un aviso para su aprobación.
-              </p>
+        <section
+          class="community-editor-pane docs-pane"
+          id="tenant-tab-docs"
+          data-tenant-pane="docs"
+          hidden
+        >
+          <div class="detail-section-heading doc-pane-heading docs-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="7.5" cy="15.5" r="5.5"></circle>
+                  <path d="m21 2-9.6 9.6"></path>
+                  <path d="m15.5 7.5 3 3L22 7l-3-3"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación del inquilino
+                  <span class="doc-pane-count" id="tenant-docs-count">0/2</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Dos documentos obligatorios. Validamos automáticamente cada archivo y el
+                  administrador recibe un aviso para su aprobación.
+                </p>
+              </div>
             </div>
           </div>
+
+          <div class="docs-meta-strip" aria-label="Requisitos de la documentación">
+            <span class="docs-meta-chip">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              PDF, JPG, PNG o WEBP · máx. 15 MB
+            </span>
+            <span class="docs-meta-chip">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              Validación automática
+            </span>
+            <span class="docs-meta-chip">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              Aviso al administrador
+            </span>
+          </div>
           <div class="docs-upload-container">
-            <div class="doc-upload-card" id="tenant-card-doc-dni">
+            <div class="doc-upload-card doc-upload-card--required" id="tenant-card-doc-dni">
               <div class="doc-card-header">
                 <div class="doc-card-title-wrap">
                   <span class="doc-card-num">1</span>
                   <div>
-                    <h3 class="doc-card-title">Copia de DNI / NIE / CIF *</h3>
+                    <div class="doc-card-title-row">
+                      <h3 class="doc-card-title">Copia de DNI / NIE / CIF</h3>
+                      <span class="doc-required-tag">Obligatorio</span>
+                    </div>
                     <p class="doc-card-desc">
                       Documento de identidad del inquilino (PDF o JPG/PNG).
                     </p>
@@ -3856,6 +4628,23 @@
                   class="doc-file-input"
                 />
                 <div class="dropzone-content">
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+                    <circle cx="8" cy="10" r="2"></circle>
+                    <path d="M6 16c0-1.1.9-2 2-2h.5a2 2 0 0 1 2 2"></path>
+                    <path d="M14 9h5"></path>
+                    <path d="M14 13h3"></path>
+                  </svg>
                   <p class="dropzone-text">
                     <strong>Arrastra tu documento aquí</strong> o
                     <span class="dropzone-browse">selecciona un archivo</span>
@@ -3864,67 +4653,178 @@
                 </div>
               </div>
               <div class="doc-sample-bar">
-                <button class="sample-doc-btn" type="button" id="tenant-btn-sample-dni">
-                  ✨ Cargar documento de prueba
+                <button
+                  class="sample-doc-btn"
+                  type="button"
+                  id="tenant-btn-sample-dni"
+                  title="Carga un documento de identidad de ejemplo, sin validez legal"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"
+                    ></path>
+                  </svg>
+                  Probar con ejemplo
                 </button>
               </div>
               <div class="doc-validation-result" id="tenant-result-doc-dni" hidden></div>
             </div>
-          </div>
-          <div class="doc-upload-card" id="tenant-card-doc-contract">
-            <div class="doc-card-header">
-              <div class="doc-card-title-wrap">
-                <span class="doc-card-num">2</span>
-                <div>
-                  <h3 class="doc-card-title">Contrato de arrendamiento *</h3>
-                  <p class="doc-card-desc">Contrato firmado (PDF o JPG/PNG).</p>
+            <div class="doc-upload-card doc-upload-card--required" id="tenant-card-doc-contract">
+              <div class="doc-card-header">
+                <div class="doc-card-title-wrap">
+                  <span class="doc-card-num">2</span>
+                  <div>
+                    <div class="doc-card-title-row">
+                      <h3 class="doc-card-title">Contrato de arrendamiento</h3>
+                      <span class="doc-required-tag">Obligatorio</span>
+                    </div>
+                    <p class="doc-card-desc">Contrato firmado (PDF o JPG/PNG).</p>
+                  </div>
+                </div>
+                <span
+                  class="doc-card-badge status-badge doc-pending"
+                  id="tenant-badge-doc-contract"
+                  >Pendiente</span
+                >
+              </div>
+              <div class="doc-dropzone" id="tenant-dropzone-contract">
+                <input
+                  type="file"
+                  id="tenant-input-doc-contract"
+                  accept=".pdf,image/jpeg,image/png,image/webp"
+                  class="doc-file-input"
+                />
+                <div class="dropzone-content">
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="8" y1="13" x2="16" y2="13"></line>
+                    <line x1="8" y1="17" x2="13" y2="17"></line>
+                  </svg>
+                  <p class="dropzone-text">
+                    <strong>Arrastra el contrato aquí</strong> o
+                    <span class="dropzone-browse">selecciona un archivo</span>
+                  </p>
+                  <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
                 </div>
               </div>
-              <span class="doc-card-badge status-badge doc-pending" id="tenant-badge-doc-contract"
-                >Pendiente</span
-              >
-            </div>
-            <div class="doc-dropzone" id="tenant-dropzone-contract">
-              <input
-                type="file"
-                id="tenant-input-doc-contract"
-                accept=".pdf,image/jpeg,image/png,image/webp"
-                class="doc-file-input"
-              />
-              <div class="dropzone-content">
-                <p class="dropzone-text">
-                  <strong>Arrastra el contrato aquí</strong> o
-                  <span class="dropzone-browse">selecciona un archivo</span>
-                </p>
-                <p class="dropzone-formats">PDF, JPG, PNG o WEBP (máx. 15 MB)</p>
+              <div class="doc-sample-bar">
+                <button
+                  class="sample-doc-btn"
+                  type="button"
+                  id="tenant-btn-sample-contract"
+                  title="Carga un contrato de ejemplo, sin validez legal"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"
+                    ></path>
+                  </svg>
+                  Probar con ejemplo
+                </button>
               </div>
+              <div class="doc-validation-result" id="tenant-result-doc-contract" hidden></div>
             </div>
-            <div class="doc-sample-bar">
-              <button class="sample-doc-btn" type="button" id="tenant-btn-sample-contract">
-                ✨ Cargar contrato de prueba
-              </button>
-            </div>
-            <div class="doc-validation-result" id="tenant-result-doc-contract" hidden></div>
           </div>
-          <div class="docs-summary-bar" id="tenant-docs-summary-bar">
-            <div class="docs-summary-text">
-              <span id="tenant-docs-summary-status">0 de 2 documentos subidos</span>
+          <div class="docs-summary-bar" id="tenant-docs-summary-bar" aria-live="polite">
+            <span class="docs-summary-icon" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </span>
+            <div class="docs-summary-body">
+              <div class="docs-summary-row">
+                <span id="tenant-docs-summary-status">0 de 2 documentos subidos</span>
+                <span class="docs-summary-percent" id="tenant-docs-summary-percent">0%</span>
+              </div>
+              <div
+                class="docs-summary-track"
+                id="tenant-docs-summary-progress"
+                role="progressbar"
+                aria-label="Documentos del inquilino recibidos"
+                aria-valuemin="0"
+                aria-valuemax="2"
+                aria-valuenow="0"
+              >
+                <span class="docs-summary-fill" id="tenant-docs-summary-fill"></span>
+              </div>
               <span class="docs-summary-subtext" id="tenant-docs-summary-subtext"
                 >Sube la copia del DNI y el contrato de arrendamiento para completar el
                 expediente.</span
               >
             </div>
           </div>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Archivos y carpetas (<span id="tenant-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Documentación adicional del inquilino, organizada en carpetas. Los cambios se
-                guardan al instante.
-              </p>
+          <div class="docs-library-section">
+            <div class="detail-section-heading doc-pane-heading">
+              <div class="doc-pane-title">
+                <span class="doc-pane-icon" aria-hidden="true">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </span>
+                <div>
+                  <h3>
+                    Archivos y carpetas
+                    <span class="doc-pane-count" id="tenant-doc-count">0</span>
+                  </h3>
+                  <p class="detail-section-subtitle">
+                    Documentación adicional del inquilino, organizada en carpetas. Los cambios se
+                    guardan al instante.
+                  </p>
+                </div>
+              </div>
             </div>
+            <div class="doc-library-host" id="tenant-document-library"></div>
           </div>
-          <div class="doc-library-host" id="tenant-document-library"></div>
         </section>
 
         <p class="form-error" id="tenant-form-error" role="alert"></p>
@@ -4125,12 +5025,16 @@
             <span class="detail-value" id="tenant-detail-contract-status"></span>
           </div>
           <div class="detail-item full">
-            <span class="detail-label">Documentación</span>
+            <span class="detail-label"
+              >Documentación obligatoria
+              <span class="doc-pane-count" id="tenant-detail-docs-count">0/2</span></span
+            >
             <div class="doc-file-list" id="tenant-detail-docs-list"></div>
           </div>
           <div class="detail-item full">
             <span class="detail-label"
-              >Archivos y carpetas (<span id="tenant-detail-library-count">0</span>)</span
+              >Archivos y carpetas
+              <span class="doc-pane-count" id="tenant-detail-library-count">0</span></span
             >
             <div class="doc-library-host" id="tenant-detail-document-library"></div>
           </div>
@@ -4820,13 +5724,34 @@
           <div class="community-properties-list" id="property-tenants-list"></div>
         </section>
         <section class="property-editor-pane" data-property-pane="docs" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación del inmueble (<span id="property-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Escrituras, certificados energéticos y otros archivos organizados en carpetas. Los
-                cambios se guardan al instante.
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 21h18"></path>
+                  <path d="M5 21V7l7-4 7 4v14"></path>
+                  <path d="M9 21v-6h6v6"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación del inmueble
+                  <span class="doc-pane-count" id="property-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Escrituras, certificados energéticos y otros archivos organizados en carpetas. Los
+                  cambios se guardan al instante.
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="property-document-list"></div>
@@ -5048,12 +5973,33 @@
           </div>
         </section>
         <section class="community-editor-pane" data-pd-pane="docs" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Documentación del inmueble (<span id="property-detail-doc-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
-                Archivos y carpetas del inmueble (sólo lectura).
-              </p>
+          <div class="detail-section-heading doc-pane-heading">
+            <div class="doc-pane-title">
+              <span class="doc-pane-icon" aria-hidden="true">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 21h18"></path>
+                  <path d="M5 21V7l7-4 7 4v14"></path>
+                  <path d="M9 21v-6h6v6"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>
+                  Documentación del inmueble
+                  <span class="doc-pane-count" id="property-detail-doc-count">0</span>
+                </h3>
+                <p class="detail-section-subtitle">
+                  Archivos y carpetas del inmueble (sólo lectura).
+                </p>
+              </div>
             </div>
           </div>
           <div class="doc-library-host" id="property-detail-documents"></div>
@@ -5630,6 +6576,33 @@
         </div>
 
         <div class="dialog-actions">
+          <button
+            class="icon-action-btn btn-delete"
+            type="button"
+            id="delete-admin-email-btn"
+            aria-label="Eliminar notificación"
+            title="Eliminar notificación"
+            hidden
+            style="margin-right: auto"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+            </svg>
+          </button>
           <button class="secondary-button" type="button" id="close-admin-email-btn">Cerrar</button>
           <a class="secondary-button" id="email-mailto-link" href="#" target="_blank"
             >Abrir en cliente de correo local (mailto)</a
@@ -5757,13 +6730,15 @@
               aria-live="polite"
             ></div>
             <button
-              class="secondary-button notification-mark-all"
+              class="icon-action-btn btn-info btn-lg notification-mark-all"
               type="button"
               id="mark-all-owner-notifs-read-btn"
+              aria-label="Marcar todos los avisos como leídos"
+              title="Marcar todos los avisos como leídos"
             >
               <svg
-                width="18"
-                height="18"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -5772,8 +6747,8 @@
                 stroke-linejoin="round"
                 aria-hidden="true"
               >
-                <path d="m3 12 4 4L17 6M12 16l9-9" /></svg
-              ><span>Marcar todos como leídos</span>
+                <path d="m3 12 4 4L17 6M12 16l9-9" />
+              </svg>
             </button>
           </div>
           <div class="notification-inbox-toolbar">
@@ -6491,7 +7466,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
-    <script src="js/municipios-ine.js?v=3"></script>
-    <script type="module" src="js/main.js?v=3"></script>
+    <script src="js/municipios-ine.js?v=4"></script>
+    <script type="module" src="js/main.js?v=11"></script>
   </body>
 </html>

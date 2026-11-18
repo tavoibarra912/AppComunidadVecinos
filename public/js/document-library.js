@@ -6,6 +6,9 @@ const ICONS = {
   folder:
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
   file: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
+  home: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path><path d="M9 22V12h6v10"></path></svg>',
+  search:
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
   eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
   download:
     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
@@ -19,7 +22,57 @@ const ICONS = {
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>',
   upload:
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>',
+  uploadLg:
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>',
+  list: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3.5 6h.01"></path><path d="M3.5 12h.01"></path><path d="M3.5 18h.01"></path></svg>',
+  grid: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>',
+  close:
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 6-12 12"></path><path d="m6 6 12 12"></path></svg>',
+  save: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>',
 };
+
+// Iconos seleccionables para las carpetas: mismos nombres que el menú lateral.
+const folderIconSvg = (paths, size = 20) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const FOLDER_ICON_PATHS = {
+  folder:
+    '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>',
+  home: '<path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path><path d="M9 22V12h6v10"></path>',
+  communities:
+    '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path><path d="M10 18h4"></path>',
+  properties:
+    '<rect width="16" height="20" x="4" y="2" rx="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M12 6h.01"></path><path d="M16 6h.01"></path><path d="M8 10h.01"></path><path d="M12 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path>',
+  owners:
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
+  tenants:
+    '<circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3L22 7l-3-3"></path>',
+  fees: '<path d="M4 10h12"></path><path d="M4 14h9"></path><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"></path>',
+  posts:
+    '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>',
+  settings:
+    '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3"></path><path d="M14 2v4M8 10v4M16 18v4"></path>',
+  documents:
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',
+  archive:
+    '<rect width="20" height="5" x="2" y="3" rx="1"></rect><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path><path d="M10 12h4"></path>',
+  shield:
+    '<path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>',
+};
+const FOLDER_ICON_OPTIONS = [
+  ["folder", "Carpeta"],
+  ["home", "Inicio"],
+  ["communities", "Comunidades"],
+  ["properties", "Inmuebles"],
+  ["owners", "Propietarios"],
+  ["tenants", "Inquilinos"],
+  ["fees", "Cuotas"],
+  ["posts", "Comunicación"],
+  ["settings", "Administración"],
+  ["documents", "Documentos"],
+  ["archive", "Archivo"],
+  ["shield", "Seguros y actas"],
+];
+const folderIcon = (key) => folderIconSvg(FOLDER_ICON_PATHS[key] || FOLDER_ICON_PATHS.folder);
 
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const formatSize = (bytes) => {
@@ -89,7 +142,7 @@ function makeDialog(title, eyebrow, contentHtml, footerHtml) {
   dialog.innerHTML = `<div class="dialog-content">
     <div class="dialog-header">
       <div><p class="eyebrow">${h(eyebrow)}</p><h2>${h(title)}</h2></div>
-      <button class="icon-action-btn btn-cancel btn-lg" type="button" data-library-dialog-close aria-label="Cerrar">×</button>
+      <button class="icon-action-btn btn-cancel btn-lg" type="button" data-library-dialog-close aria-label="Cerrar" title="Cerrar">${ICONS.close}</button>
     </div>
     <div class="doc-library-dialog-body">${contentHtml}</div>
     <div class="dialog-actions">${footerHtml}</div>
@@ -133,6 +186,65 @@ function openTextDialog({
     button.disabled = true;
     try {
       await onSubmit(name);
+      dialog.close();
+    } catch (exception) {
+      error.textContent = exception.message;
+      button.disabled = false;
+    }
+  };
+  dialog
+    .querySelectorAll("[data-library-dialog-close]")
+    .forEach((button) => button.addEventListener("click", () => dialog.close()));
+  dialog.querySelector("[data-library-dialog-submit]").addEventListener("click", submit);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submit();
+    }
+  });
+  input.focus();
+  input.select();
+}
+
+function openFolderDialog({ folder = null, onSubmit }) {
+  const current = folder?.icon || "folder";
+  const dialog = makeDialog(
+    folder ? "Renombrar carpeta" : "Nueva carpeta",
+    "BIBLIOTECA DOCUMENTAL",
+    `<label class="full">Nombre de la carpeta<input name="library-name" maxlength="180" value="${h(folder?.name || "")}" autocomplete="off" /></label>
+     <div class="doc-library-icon-field"><span class="doc-library-icon-field-label">Icono</span><div class="doc-library-icon-picker" role="radiogroup" aria-label="Icono de la carpeta">${FOLDER_ICON_OPTIONS.map(
+       ([key, label]) =>
+         `<button type="button" class="doc-library-icon-option${key === current ? " is-selected" : ""}" data-folder-icon="${key}" role="radio" aria-checked="${key === current}" aria-label="${label}" title="${label}">${folderIcon(key)}</button>`,
+     ).join("")}</div></div>
+     <p class="form-error" role="alert"></p>`,
+    `<button class="icon-action-btn btn-cancel btn-lg" type="button" data-library-dialog-close aria-label="Cancelar" title="Cancelar">${ICONS.close}</button>
+     <button class="icon-action-btn btn-save btn-lg" type="button" data-library-dialog-submit aria-label="${folder ? "Guardar cambios" : "Crear carpeta"}" title="${folder ? "Guardar cambios" : "Crear carpeta"}">${ICONS.save}</button>`,
+  );
+  const input = dialog.querySelector("[name=library-name]");
+  const error = dialog.querySelector(".form-error");
+  let icon = current;
+  dialog.querySelectorAll("[data-folder-icon]").forEach((button) =>
+    button.addEventListener("click", () => {
+      icon = button.dataset.folderIcon;
+      dialog.querySelectorAll("[data-folder-icon]").forEach((option) => {
+        const selected = option === button;
+        option.classList.toggle("is-selected", selected);
+        option.setAttribute("aria-checked", String(selected));
+      });
+    }),
+  );
+  const submit = async () => {
+    const name = input.value.trim();
+    if (!name) {
+      error.textContent = "Indica un nombre.";
+      input.focus();
+      return;
+    }
+    const button = dialog.querySelector("[data-library-dialog-submit]");
+    button.disabled = true;
+    error.textContent = "";
+    try {
+      await onSubmit({ name, icon });
       dialog.close();
     } catch (exception) {
       error.textContent = exception.message;
@@ -237,7 +349,7 @@ function openPreviewDialog(doc) {
 }
 
 function documentMeta(doc) {
-  const parts = [typeLabel(doc), formatSize(doc.fileSize)];
+  const parts = [formatSize(doc.fileSize)];
   if (doc.uploadedAt) parts.push(formatDate(doc.uploadedAt));
   if (doc.uploadedByName) parts.push(`Subido por ${doc.uploadedByName}`);
   return parts.filter(Boolean).join(" · ");
@@ -247,7 +359,8 @@ export function createDocumentLibrary(options) {
   const root = options.container;
   if (!root) throw new Error("La biblioteca documental necesita un contenedor.");
   const category = options.category || "document";
-  const foldersEnabled = category !== "statutes";
+  // Documentos y estatutos comparten la misma biblioteca con carpetas propias.
+  const foldersEnabled = true;
   const view = {
     entityId: "",
     documents: [],
@@ -273,39 +386,59 @@ export function createDocumentLibrary(options) {
   root.dataset.category = category;
   root.innerHTML = `<div class="doc-library-toolbar">
       <div class="doc-library-toolbar-main">
-        ${foldersEnabled ? `<button type="button" class="secondary-button doc-library-new-folder">${ICONS.folderAdd} Nueva carpeta</button>` : ""}
-        <label class="primary-button doc-library-upload">${ICONS.upload} Subir archivos<input type="file" multiple hidden /></label>
+        ${foldersEnabled ? `<button type="button" class="icon-action-btn btn-folder btn-lg doc-library-new-folder" aria-label="Nueva carpeta" title="Nueva carpeta">${ICONS.folderAdd}</button>` : ""}
+        <button type="button" class="icon-action-btn btn-add btn-lg doc-library-upload" aria-label="Subir archivos" title="Subir archivos">${ICONS.uploadLg}</button>
+        <input type="file" class="doc-library-upload-input" multiple hidden />
       </div>
       <div class="doc-library-toolbar-tools">
-        <input type="search" class="doc-library-search" placeholder="Buscar por nombre…" aria-label="Buscar por nombre" />
-        <select class="doc-library-sort" aria-label="Ordenar por">
-          <option value="name">Nombre</option>
-          <option value="date">Fecha</option>
-          <option value="size">Tamaño</option>
-        </select>
-        <button type="button" class="doc-library-sort-dir" title="Invertir el orden" aria-label="Invertir el orden">↑</button>
+        <label class="doc-library-search-field">
+          <span class="doc-library-search-icon" aria-hidden="true">${ICONS.search}</span>
+          <input type="search" class="doc-library-search" placeholder="Buscar archivos y carpetas…" aria-label="Buscar por nombre" />
+        </label>
+        <div class="doc-library-sort-group">
+          <select class="doc-library-sort" aria-label="Ordenar por">
+            <option value="name">Nombre</option>
+            <option value="date">Fecha</option>
+            <option value="size">Tamaño</option>
+          </select>
+          <button type="button" class="doc-library-sort-dir" title="Invertir el orden" aria-label="Invertir el orden">↑</button>
+        </div>
         <div class="doc-library-view" role="group" aria-label="Vista">
-          <button type="button" data-library-view="list" class="active" title="Vista de lista">Lista</button>
-          <button type="button" data-library-view="grid" title="Vista de cuadrícula">Cuadrícula</button>
+          <button type="button" data-library-view="list" class="active" aria-label="Vista de lista" title="Vista de lista">${ICONS.list}</button>
+          <button type="button" data-library-view="grid" aria-label="Vista de cuadrícula" title="Vista de cuadrícula">${ICONS.grid}</button>
         </div>
       </div>
     </div>
-    <nav class="doc-library-breadcrumbs" aria-label="Ruta de carpetas"></nav>
+    <div class="doc-library-pathbar">
+      <nav class="doc-library-breadcrumbs" aria-label="Ruta de carpetas"></nav>
+      <span class="doc-library-path-meta"></span>
+    </div>
     <div class="doc-library-dropzone">${ICONS.upload}<span><strong>Arrastrá archivos acá</strong> o usá «Subir archivos»</span></div>
     <div class="doc-library-content"></div>
     <p class="doc-library-status" aria-live="polite"></p>`;
 
   const toolbar = root.querySelector(".doc-library-toolbar");
-  const uploadLabel = root.querySelector(".doc-library-upload");
-  const uploadInput = uploadLabel?.querySelector("input");
+  const uploadButton = root.querySelector(".doc-library-upload");
+  const uploadInput = root.querySelector(".doc-library-upload-input");
   const newFolderButton = root.querySelector(".doc-library-new-folder");
   const searchInput = root.querySelector(".doc-library-search");
   const sortSelect = root.querySelector(".doc-library-sort");
   const sortButton = root.querySelector(".doc-library-sort-dir");
   const breadcrumbs = root.querySelector(".doc-library-breadcrumbs");
+  const pathMeta = root.querySelector(".doc-library-path-meta");
   const dropzone = root.querySelector(".doc-library-dropzone");
   const content = root.querySelector(".doc-library-content");
   const status = root.querySelector(".doc-library-status");
+
+  // La biblioteca se monta dentro del formulario de la entidad: Enter en sus
+  // campos no debe enviar ese formulario (guardaba y cerraba el editor completo).
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    const field = event.target;
+    if (!(field instanceof HTMLInputElement)) return;
+    if (["file", "checkbox", "radio"].includes(field.type)) return;
+    event.preventDefault();
+  });
 
   const syncData = () => {
     if (!options.getData) return;
@@ -319,10 +452,16 @@ export function createDocumentLibrary(options) {
   const updateChrome = () => {
     const writable = canWrite();
     toolbar.hidden = false;
-    if (uploadLabel) uploadLabel.hidden = !writable;
+    if (uploadButton) uploadButton.hidden = !writable;
     if (newFolderButton) newFolderButton.hidden = !writable || !foldersEnabled || !!view.search;
-    if (dropzone) dropzone.hidden = !writable;
-    if (sortButton) sortButton.textContent = view.direction > 0 ? "↑" : "↓";
+    if (dropzone) dropzone.hidden = !writable || !!view.search;
+    if (sortButton) {
+      sortButton.textContent = view.direction > 0 ? "↑" : "↓";
+      const label =
+        view.direction > 0 ? "Orden ascendente · invertir" : "Orden descendente · invertir";
+      sortButton.title = label;
+      sortButton.setAttribute("aria-label", label);
+    }
     root.querySelectorAll("[data-library-view]").forEach((button) => {
       button.classList.toggle("active", button.dataset.libraryView === view.mode);
     });
@@ -390,7 +529,7 @@ export function createDocumentLibrary(options) {
     const rootButton = document.createElement("button");
     rootButton.type = "button";
     rootButton.className = "doc-library-crumb";
-    rootButton.textContent = "Inicio";
+    rootButton.innerHTML = `${ICONS.home}<span>Inicio</span>`;
     rootButton.dataset.libraryDropFolder = "";
     if (!view.currentFolderId) rootButton.classList.add("is-current");
     rootButton.addEventListener("click", () => navigateFolder(""));
@@ -411,25 +550,34 @@ export function createDocumentLibrary(options) {
     }
   };
 
+  const itemButton = (action, title, icon, variant = "") =>
+    `<button type="button" class="icon-action-btn btn-sm ${variant}" data-library-action="${action}" title="${title}" aria-label="${title}">${icon}</button>`;
+
   const itemActions = (item, kind) => {
     const writable = canWrite();
-    if (!writable) {
+    const parts = [];
+    if (kind === "document" && item.previewUrl)
+      parts.push(itemButton("preview", "Vista previa", ICONS.eye, "btn-info"));
+    if (kind === "document")
+      parts.push(
+        `<a class="icon-action-btn btn-sm btn-download" href="${h(item.url)}" target="_blank" rel="noopener" title="Descargar" aria-label="Descargar">${ICONS.download}</a>`,
+      );
+    if (writable) {
+      parts.push(
+        itemButton(
+          "rename",
+          kind === "folder" ? "Renombrar carpeta" : "Renombrar",
+          ICONS.edit,
+          "btn-edit",
+        ),
+      );
+      if (kind === "folder" || foldersEnabled)
+        parts.push(itemButton("move", "Mover a…", ICONS.move, "btn-move"));
       if (kind === "document")
-        return `<div class="doc-library-item-actions">${item.previewUrl ? `<button type="button" data-library-action="preview" title="Vista previa">${ICONS.eye}</button>` : ""}<a href="${h(item.url)}" title="Descargar" target="_blank" rel="noopener">${ICONS.download}</a></div>`;
-      return "";
+        parts.push(itemButton("replace", "Reemplazar archivo", ICONS.replace, "btn-replace"));
+      parts.push(itemButton("delete", "Eliminar", ICONS.trash, "btn-delete"));
     }
-    const move =
-      kind === "document" && !foldersEnabled
-        ? ""
-        : `<button type="button" data-library-action="move" title="Mover a…">${ICONS.move}</button>`;
-    return `<div class="doc-library-item-actions">
-      ${kind === "document" && item.previewUrl ? `<button type="button" data-library-action="preview" title="Vista previa">${ICONS.eye}</button>` : ""}
-      ${kind === "document" ? `<a href="${h(item.url)}" title="Descargar" target="_blank" rel="noopener">${ICONS.download}</a>` : ""}
-      <button type="button" data-library-action="rename" title="Renombrar">${ICONS.edit}</button>
-      ${move}
-      ${kind === "document" ? `<button type="button" data-library-action="replace" title="Reemplazar archivo">${ICONS.replace}</button>` : ""}
-      <button type="button" data-library-action="delete" class="danger" title="Eliminar">${ICONS.trash}</button>
-    </div>`;
+    return parts.length ? `<div class="doc-library-item-actions">${parts.join("")}</div>` : "";
   };
 
   const folderRow = (folder) => {
@@ -441,9 +589,10 @@ export function createDocumentLibrary(options) {
     element.tabIndex = 0;
     const count = descendants(view.folders, folder.id).size;
     const docs = view.documents.filter((doc) => doc.folderId === folder.id).length;
+    const summary = `${docs} ${docs === 1 ? "documento" : "documentos"}${count ? ` · ${count} ${count === 1 ? "subcarpeta" : "subcarpetas"}` : ""}`;
     element.innerHTML = `<button type="button" class="doc-library-item-main" data-library-open-folder>
-        <span class="doc-library-item-icon">${ICONS.folder}</span>
-        <span class="doc-library-item-text"><strong>${h(folder.name)}</strong><span>${docs} ${docs === 1 ? "documento" : "documentos"}${count ? ` · ${count} ${count === 1 ? "subcarpeta" : "subcarpetas"}` : ""}</span></span>
+        <span class="doc-library-item-icon">${folderIcon(folder.icon)}</span>
+        <span class="doc-library-item-text"><strong>${h(folder.name)}</strong><span class="doc-library-item-meta">${summary}</span></span>
       </button>${itemActions(folder, "folder")}`;
     return element;
   };
@@ -458,7 +607,7 @@ export function createDocumentLibrary(options) {
       : "";
     element.innerHTML = `<button type="button" class="doc-library-item-main" data-library-open-document>
         <span class="doc-library-item-icon">${ICONS.file}</span>
-        <span class="doc-library-item-text"><strong>${h(doc.fileName)}</strong><span>${h(documentMeta(doc))}${location}</span></span>
+        <span class="doc-library-item-text"><strong>${h(doc.fileName)}</strong><span class="doc-library-item-meta"><span class="doc-library-kind">${h(typeLabel(doc))}</span>${h(documentMeta(doc))}${location ? ` ${location}` : ""}</span></span>
       </button>${itemActions(doc, "document")}`;
     return element;
   };
@@ -473,13 +622,16 @@ export function createDocumentLibrary(options) {
     if (!folders.length && !documents.length) {
       const empty = document.createElement("div");
       empty.className = "doc-library-empty";
-      empty.innerHTML = `<strong>${view.search ? "Sin resultados" : "Todavía no hay archivos"}</strong><p>${view.search ? "Prueba con otro nombre o limpia la búsqueda." : h(options.emptyText || "Sube documentos o crea una carpeta para empezar a organizarlos.")}</p>`;
+      empty.innerHTML = `<span class="doc-library-empty-icon">${view.search ? ICONS.search : ICONS.file}</span>
+        <strong>${view.search ? "Sin resultados" : "Todavía no hay archivos"}</strong>
+        <p>${view.search ? "Prueba con otro nombre o limpia la búsqueda." : h(options.emptyText || "Sube documentos o crea una carpeta para empezar a organizarlos.")}</p>
+        ${!view.search && canWrite() ? `<button type="button" class="secondary-button doc-library-empty-upload" data-library-empty-upload>${ICONS.upload}<span>Subir archivos</span></button>` : ""}`;
       content.append(empty);
     } else {
       if (folders.length) {
         const section = document.createElement("div");
         section.className = "doc-library-section";
-        section.innerHTML = `<h4>${view.search ? "Carpetas encontradas" : "Carpetas"}</h4>`;
+        section.innerHTML = `<h4>${view.search ? "Carpetas encontradas" : "Carpetas"}<span>${folders.length}</span></h4>`;
         const list = document.createElement("div");
         list.className = "doc-library-items";
         folders.forEach((folder) => list.append(folderRow(folder)));
@@ -489,7 +641,7 @@ export function createDocumentLibrary(options) {
       if (documents.length) {
         const section = document.createElement("div");
         section.className = "doc-library-section";
-        section.innerHTML = `<h4>${view.search ? "Documentos encontrados" : "Documentos"}</h4>`;
+        section.innerHTML = `<h4>${view.search ? "Documentos encontrados" : "Documentos"}<span>${documents.length}</span></h4>`;
         const list = document.createElement("div");
         list.className = "doc-library-items";
         documents.forEach((doc) => list.append(documentRow(doc)));
@@ -500,6 +652,10 @@ export function createDocumentLibrary(options) {
     const total = view.search
       ? folders.length + documents.length
       : filteredFolders().length + filteredDocuments().length;
+    if (pathMeta)
+      pathMeta.textContent = view.search
+        ? `${total} ${total === 1 ? "resultado" : "resultados"}`
+        : `${total} ${total === 1 ? "elemento" : "elementos"} en esta carpeta`;
     status.textContent = view.search
       ? `${total} ${total === 1 ? "resultado" : "resultados"}`
       : `${view.documents.length} ${view.documents.length === 1 ? "documento" : "documentos"} · ${view.folders.length} ${view.folders.length === 1 ? "carpeta" : "carpetas"}`;
@@ -560,30 +716,29 @@ export function createDocumentLibrary(options) {
   };
 
   const askFolderName = (folder = null) => {
-    openTextDialog({
-      title: folder ? "Renombrar carpeta" : "Nueva carpeta",
-      label: "Nombre de la carpeta",
-      value: folder?.name || "",
-      submitLabel: folder ? "Guardar" : "Crear",
-      onSubmit: async (name) => {
+    openFolderDialog({
+      folder,
+      onSubmit: async ({ name, icon }) => {
         const entity = entityId();
         if (!entity) throw new Error("Guarda el registro antes de crear carpetas.");
         if (folder) {
-          const updated = await api.updateDocumentFolder(folder.id, { name });
+          const updated = await api.updateDocumentFolder(folder.id, { name, icon });
           const index = view.folders.findIndex((item) => item.id === folder.id);
           if (index >= 0 && updated) view.folders[index] = updated;
         } else {
           const created = await api.createDocumentFolder({
             entityType: options.entityType,
             entityId: entity,
+            category,
             parentId: view.currentFolderId,
             name,
+            icon,
           });
           if (created) view.folders.push(created);
         }
         await options.onChange?.();
         render();
-        toast(folder ? "Carpeta renombrada." : "Carpeta creada.");
+        toast(folder ? "Carpeta actualizada." : "Carpeta creada.");
       },
     });
   };
@@ -694,6 +849,14 @@ export function createDocumentLibrary(options) {
   };
 
   content.addEventListener("click", (event) => {
+    if (event.target.closest("[data-library-empty-upload]")) {
+      if (!canWrite()) return;
+      uploadInput.dataset.replaceId = "";
+      uploadInput.multiple = true;
+      uploadInput.value = "";
+      uploadInput.click();
+      return;
+    }
     const actionButton = event.target.closest("[data-library-action]");
     const folderElement = event.target.closest("[data-folder-id]");
     const documentElement = event.target.closest("[data-document-id]");
@@ -754,16 +917,15 @@ export function createDocumentLibrary(options) {
   );
   newFolderButton?.addEventListener("click", () => askFolderName());
 
-  uploadLabel?.addEventListener("click", (event) => {
-    if (event.target === uploadInput) return;
+  uploadButton?.addEventListener("click", () => {
     if (!canWrite()) {
-      event.preventDefault();
       toast("No tienes permiso para subir documentos.");
       return;
     }
     uploadInput.dataset.replaceId = "";
     uploadInput.multiple = true;
     uploadInput.value = "";
+    uploadInput.click();
   });
   uploadInput?.addEventListener("change", async () => {
     const files = [...(uploadInput.files || [])];

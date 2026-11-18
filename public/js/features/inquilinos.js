@@ -9,6 +9,7 @@ import {
   getTenantContractStatus,
   tenantAuthorizationCatalog,
   tenantAuthorizationLabel,
+  tenantAuthorizationDescription,
   PROPERTY_TYPE_LABELS,
   hasPermission,
   requirePermission,
@@ -392,12 +393,25 @@ function renderTenantAuthorizations(selectedValues = []) {
   }
   for (const item of catalog) {
     const label = document.createElement("label");
+    label.className = "tenant-auth-option";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.name = "authorizations";
     input.value = item.id;
     input.checked = selected.has(item.id);
-    label.append(input, document.createTextNode(` ${item.label}`));
+    const text = document.createElement("span");
+    text.className = "tenant-auth-text";
+    const title = document.createElement("span");
+    title.className = "tenant-auth-title";
+    title.textContent = item.label || "";
+    text.append(title);
+    if (item.description) {
+      const desc = document.createElement("span");
+      desc.className = "tenant-auth-desc";
+      desc.textContent = item.description;
+      text.append(desc);
+    }
+    label.append(input, text);
     box.append(label);
   }
   const hint = document.querySelector("#tenant-authorizations-hint");
@@ -508,6 +522,8 @@ export function openTenantEditor(
   updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
   renderTenantPropertyTab();
   switchTenantDialogTab(initialTab);
+  // Mantiene el contador de la pestaña sincronizado aunque se abra en otra pestaña.
+  renderTenantDialogDocs();
   updateTenantUserSelect(tenant?.userId || "");
   document.querySelector("#tenant-dialog-title").textContent = tenant
     ? readonly
@@ -637,8 +653,10 @@ function renderTenantDocCard(key, ids) {
   const dropzone = document.querySelector(dropzoneId);
   const result = document.querySelector(resultId);
   const doc = tenantEditingDocs[key];
+  const sampleBar = card.querySelector(".doc-sample-bar");
   if (doc) {
     card.classList.add("is-valid");
+    if (sampleBar) sampleBar.hidden = true;
     const isApproved = doc.adminApproval?.status === "approved";
     const isRejected = doc.adminApproval?.status === "rejected";
     if (isApproved) {
@@ -648,7 +666,7 @@ function renderTenantDocCard(key, ids) {
       badge.className = "status-badge doc-rejected";
       badge.textContent = "Rechazado";
     } else {
-      badge.className = "status-badge doc-approved";
+      badge.className = "status-badge doc-pending-admin";
       badge.textContent = "Pendiente de revisión";
     }
     if (result) {
@@ -658,21 +676,46 @@ function renderTenantDocCard(key, ids) {
       header.className = "doc-validation-header";
       header.innerHTML = sanitizeHtml(`
         <div class="doc-file-meta">
-          <span class="doc-file-icon">📄</span>
+          <span class="doc-validation-icon" aria-hidden="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </span>
           <div>
             <p class="doc-file-name">${escapeHtml(doc.fileName)}</p>
             <p class="doc-file-size">${Math.round(doc.fileSize / 1024)} KB · Subido el ${escapeHtml(doc.uploadedAt)}</p>
           </div>
         </div>
         <div class="doc-file-actions">
-          <button class="btn-doc-action" type="button" data-action="view">👁️ Ver</button>
-          <button class="btn-doc-action danger" type="button" data-action="remove">🗑️ Quitar</button>
+          <button class="btn-doc-action" type="button" data-action="view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Ver
+          </button>
+          <button class="btn-doc-action danger" type="button" data-action="remove">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
+            </svg>
+            Quitar
+          </button>
         </div>
       `);
       const reviewNote = document.createElement("p");
       reviewNote.className = "form-intro";
-      reviewNote.textContent =
-        "La identidad, titularidad y legibilidad requieren revisión administrativa.";
+      if (isApproved) {
+        reviewNote.textContent = "Documento revisado y aprobado por el administrador.";
+      } else if (isRejected) {
+        const reason = doc.adminApproval?.notes ? `: “${doc.adminApproval.notes}”` : "";
+        reviewNote.textContent = `El administrador ha rechazado este documento${reason}. Vuelve a subirlo para corregirlo.`;
+      } else {
+        reviewNote.textContent =
+          "La identidad, titularidad y legibilidad requieren revisión administrativa.";
+      }
       result.append(header, reviewNote);
 
       header.querySelector('[data-action="view"]').addEventListener("click", () => {
@@ -688,6 +731,7 @@ function renderTenantDocCard(key, ids) {
     if (dropzone) dropzone.style.display = "none";
   } else {
     card.classList.remove("is-valid");
+    if (sampleBar) sampleBar.hidden = tenantDialogReadOnly;
     badge.className = "status-badge doc-none";
     badge.textContent = "Pendiente";
     if (result) {
@@ -699,8 +743,8 @@ function renderTenantDocCard(key, ids) {
 }
 
 function renderTenantDialogDocs() {
-  document.querySelectorAll("#tenant-tab-docs .sample-doc-btn").forEach((button) => {
-    button.hidden = tenantDialogReadOnly;
+  document.querySelectorAll("#tenant-tab-docs .doc-sample-bar").forEach((bar) => {
+    bar.hidden = tenantDialogReadOnly;
   });
   renderTenantDocCard("dni", {
     cardId: "#tenant-card-doc-dni",
@@ -717,27 +761,34 @@ function renderTenantDialogDocs() {
     inputId: "#tenant-input-doc-contract",
   });
   const count = (tenantEditingDocs["dni"] ? 1 : 0) + (tenantEditingDocs["contract"] ? 1 : 0);
+  const totalDocs = 2;
+  const percent = Math.round((count / totalDocs) * 100);
   const statusEl = document.querySelector("#tenant-docs-summary-status");
-  if (statusEl) statusEl.textContent = `${count} de 2 documentos recibidos`;
+  if (statusEl) statusEl.textContent = `${count} de ${totalDocs} documentos recibidos`;
   const subtextEl = document.querySelector("#tenant-docs-summary-subtext");
   const summaryBar = document.querySelector("#tenant-docs-summary-bar");
+  const percentEl = document.querySelector("#tenant-docs-summary-percent");
+  const fillEl = document.querySelector("#tenant-docs-summary-fill");
+  const progressEl = document.querySelector("#tenant-docs-summary-progress");
+  const countEl = document.querySelector("#tenant-docs-count");
+  if (countEl) countEl.textContent = `${count}/${totalDocs}`;
+  if (percentEl) percentEl.textContent = `${percent}%`;
+  if (fillEl) fillEl.style.width = `${percent}%`;
+  if (progressEl) progressEl.setAttribute("aria-valuenow", String(count));
   if (summaryBar) {
-    if (count === 2) {
+    summaryBar.classList.toggle("is-complete", count === totalDocs);
+    if (count === totalDocs) {
       if (subtextEl)
         subtextEl.textContent =
           "Archivos recibidos. Al guardar se remitirá un aviso al administrador para su revisión.";
-      summaryBar.style.background = "#f0fdf4";
-      summaryBar.style.borderColor = "#86efac";
     } else {
       if (subtextEl)
         subtextEl.textContent =
           "Sube la copia del DNI y el contrato de arrendamiento para completar el expediente.";
-      summaryBar.style.background = "#f1f5f9";
-      summaryBar.style.borderColor = "#e2e8f0";
     }
   }
   const badgeTab = document.querySelector("#tenant-tab-docs-badge");
-  if (badgeTab) badgeTab.textContent = `${count}/2`;
+  if (badgeTab) badgeTab.textContent = `${count}/${totalDocs}`;
 }
 
 async function handleTenantDocUpload(file, docType) {
@@ -1224,13 +1275,24 @@ export function openTenantDetail(ownerId, tenantId) {
   authorizations.replaceChildren();
   const tenantCommunity =
     state.properties.find((item) => item.id === tenant.propertyId)?.communityId || "";
-  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map((v) =>
-    tenantAuthorizationLabel(v, tenantCommunity),
-  );
-  if (labels.length === 0) labels.push("No hay autorizaciones predefinidas registradas.");
-  labels.forEach((label) => {
+  const labels = (Array.isArray(tenant.authorizations) ? tenant.authorizations : []).map((v) => ({
+    label: tenantAuthorizationLabel(v, tenantCommunity),
+    description: tenantAuthorizationDescription(v, tenantCommunity),
+  }));
+  if (labels.length === 0)
+    labels.push({ label: "No hay autorizaciones predefinidas registradas.", description: "" });
+  labels.forEach(({ label, description }) => {
     const item = document.createElement("li");
-    item.textContent = label;
+    const title = document.createElement("strong");
+    title.className = "tenant-auth-title";
+    title.textContent = label;
+    item.append(title);
+    if (description) {
+      const desc = document.createElement("span");
+      desc.className = "tenant-auth-desc";
+      desc.textContent = description;
+      item.append(desc);
+    }
     authorizations.append(item);
   });
   const tenantNotesEl = document.querySelector("#tenant-detail-authorization-notes");
@@ -1264,7 +1326,7 @@ export function openTenantDetail(ownerId, tenantId) {
           ? "doc-approved"
           : isRejected
             ? "doc-rejected"
-            : "doc-approved"
+            : "doc-pending-admin"
         : "doc-none";
 
       card.innerHTML = sanitizeHtml(`
@@ -1286,7 +1348,14 @@ export function openTenantDetail(ownerId, tenantId) {
         const viewBtn = document.createElement("button");
         viewBtn.className = "btn-doc-action";
         viewBtn.type = "button";
-        viewBtn.textContent = "👁️ Ver";
+        viewBtn.title = `Ver ${label}`;
+        viewBtn.innerHTML = sanitizeHtml(`
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          Ver
+        `);
         viewBtn.onclick = () => {
           openDocViewer(tenant, key, doc);
         };
@@ -1295,6 +1364,11 @@ export function openTenantDetail(ownerId, tenantId) {
       }
       docsListEl.append(card);
     });
+    const docsCountEl = document.querySelector("#tenant-detail-docs-count");
+    if (docsCountEl) {
+      const uploaded = docKeys.filter(({ key }) => tenant.documents?.[key]).length;
+      docsCountEl.textContent = `${uploaded}/${docKeys.length}`;
+    }
   }
   const viewPropertyButton = document.querySelector("#tenant-detail-view-property");
   viewPropertyButton.hidden = !property;

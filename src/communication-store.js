@@ -364,6 +364,10 @@ export function summary(post, user, data = policyData()) {
 }
 export function detail(post, user) {
   const result = summary(post, user);
+  result.canDelete =
+    post.createdBy === user.id ||
+    result.canModerate ||
+    allowed(user, "comm:eliminar", post.communityId);
   const users = db.prepare("SELECT id,nombre,apellido,usuario FROM users").all();
   const name = (id) => {
     const u = users.find((u) => u.id === id);

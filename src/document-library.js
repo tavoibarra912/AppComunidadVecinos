@@ -10,6 +10,30 @@ export const DOCUMENT_ENTITY_TABLES = Object.freeze({
 });
 export const MAX_FOLDER_DEPTH = 5;
 
+// Iconos admitidos en las carpetas: los nombres coinciden con los del menú
+// lateral y con los que dibuja la biblioteca en el cliente.
+export const FOLDER_ICONS = Object.freeze([
+  "folder",
+  "home",
+  "communities",
+  "properties",
+  "owners",
+  "tenants",
+  "fees",
+  "posts",
+  "settings",
+  "documents",
+  "archive",
+  "shield",
+]);
+
+export function normalizeFolderIcon(value) {
+  const icon = String(value ?? "folder")
+    .trim()
+    .toLowerCase();
+  return FOLDER_ICONS.includes(icon) ? icon : "folder";
+}
+
 export function normalizeEntityType(value) {
   const entityType = String(value || "")
     .trim()
@@ -103,8 +127,10 @@ export function getFolderRow(entityType, entityId, folderId) {
   );
 }
 
-export function listFolders(entityType, entityId) {
-  return listDocumentFolders(entityType, entityId);
+export function listFolders(entityType, entityId, category = "") {
+  const folders = listDocumentFolders(entityType, entityId);
+  if (!category) return folders;
+  return folders.filter((folder) => (folder.category || "document") === category);
 }
 
 export function folderPath(entityType, entityId, folderId) {
@@ -196,22 +222,21 @@ export function findNameConflict({
     )
   )
     return "Ya existe un documento con ese nombre en esta carpeta.";
-  if (category === "document") {
-    const folder = db
-      .prepare(
-        "SELECT id FROM document_folders WHERE entityType = ? AND entityId = ? AND parentId = ? AND nameKey = ? AND id <> ?",
-      )
-      .get(entityType, entityId, folderId, nameKey, excludeFolderId);
-    if (folder) return "Ya existe una carpeta con ese nombre en esta ubicación.";
-  }
+  const folder = db
+    .prepare(
+      "SELECT id FROM document_folders WHERE entityType = ? AND entityId = ? AND category = ? AND parentId = ? AND nameKey = ? AND id <> ?",
+    )
+    .get(entityType, entityId, category, folderId, nameKey, excludeFolderId);
+  if (folder) return "Ya existe una carpeta con ese nombre en esta ubicación.";
   return "";
 }
 
-export function createFolder({ entityType, entityId, parentId = "", name, user }) {
+export function createFolder({ entityType, entityId, parentId = "", name, icon, category, user }) {
+  const folderCategory = normalizeCategory(category) || "document";
   const sanitized = sanitizeFolderName(name);
   if (sanitized.error) throw Object.assign(new Error(sanitized.error), { status: 400 });
   const parent = parentId ? getFolderRow(entityType, entityId, parentId) : null;
-  if (parentId && !parent)
+  if (parentId && (!parent || (parent.category || "document") !== folderCategory))
     throw Object.assign(new Error("La carpeta de destino no existe."), {
       status: 400,
     });
@@ -227,7 +252,7 @@ export function createFolder({ entityType, entityId, parentId = "", name, user }
     entityId,
     folderId: parentId,
     nameKey,
-    category: "document",
+    category: folderCategory,
   });
   if (conflict) throw Object.assign(new Error(conflict), { status: 409 });
   const userInfo = uploaderFromUser(user);
@@ -238,13 +263,15 @@ export function createFolder({ entityType, entityId, parentId = "", name, user }
     parentId,
     name: sanitized.name,
     nameKey,
+    icon: normalizeFolderIcon(icon),
+    category: folderCategory,
     createdAt: new Date().toISOString(),
     createdBy: userInfo.id,
     createdByName: userInfo.name,
   };
   try {
     db.prepare(
-      "INSERT INTO document_folders (id,entityType,entityId,parentId,name,nameKey,createdAt,createdBy,createdByName) VALUES (?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO document_folders (id,entityType,entityId,parentId,name,nameKey,icon,category,createdAt,createdBy,createdByName) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
     ).run(
       row.id,
       row.entityType,
@@ -252,6 +279,8 @@ export function createFolder({ entityType, entityId, parentId = "", name, user }
       row.parentId,
       row.name,
       row.nameKey,
+      row.icon,
+      row.category,
       row.createdAt,
       row.createdBy,
       row.createdByName,
@@ -266,9 +295,10 @@ export function createFolder({ entityType, entityId, parentId = "", name, user }
   return documentFolderFromRow(row);
 }
 
-export function updateFolder({ entityType, entityId, folderId, name, parentId, user }) {
+export function updateFolder({ entityType, entityId, folderId, name, parentId, icon, user }) {
   const current = getFolderRow(entityType, entityId, folderId);
   if (!current) throw Object.assign(new Error("Carpeta no encontrada."), { status: 404 });
+  const folderCategory = current.category || "document";
   let nextName = current.name;
   if (name !== undefined) {
     const sanitized = sanitizeFolderName(name);
@@ -289,7 +319,7 @@ export function updateFolder({ entityType, entityId, folderId, name, parentId, u
         status: 400,
       });
     const parent = nextParentId ? getFolderRow(entityType, entityId, nextParentId) : null;
-    if (nextParentId && !parent)
+    if (nextParentId && (!parent || (parent.category || "document") !== folderCategory))
       throw Object.assign(new Error("La carpeta de destino no existe."), {
         status: 400,
       });
@@ -308,17 +338,15 @@ export function updateFolder({ entityType, entityId, folderId, name, parentId, u
     entityId,
     folderId: nextParentId,
     nameKey,
-    category: "document",
+    category: folderCategory,
     excludeFolderId: current.id,
   });
   if (conflict) throw Object.assign(new Error(conflict), { status: 409 });
+  const nextIcon = icon === undefined ? current.icon || "folder" : normalizeFolderIcon(icon);
   try {
-    db.prepare("UPDATE document_folders SET parentId = ?, name = ?, nameKey = ? WHERE id = ?").run(
-      nextParentId,
-      nextName,
-      nameKey,
-      current.id,
-    );
+    db.prepare(
+      "UPDATE document_folders SET parentId = ?, name = ?, nameKey = ?, icon = ? WHERE id = ?",
+    ).run(nextParentId, nextName, nameKey, nextIcon, current.id);
   } catch (error) {
     if (String(error?.message || "").includes("UNIQUE"))
       throw Object.assign(new Error("Ya existe una carpeta con ese nombre en esta ubicación."), {
@@ -366,12 +394,13 @@ export function moveDocumentToFolder({ entityType, entityId, documentId, folderI
     .prepare("SELECT * FROM documents WHERE id = ? AND entityType = ? AND entityId = ?")
     .get(documentId, entityType, entityId);
   if (!document) throw Object.assign(new Error("Documento no encontrado."), { status: 404 });
-  if (document.category === "statutes" && folderId)
-    throw Object.assign(new Error("Los estatutos no se organizan en carpetas."), { status: 400 });
-  if (folderId && !getFolderRow(entityType, entityId, folderId))
-    throw Object.assign(new Error("La carpeta de destino no existe."), {
-      status: 400,
-    });
+  if (folderId) {
+    const folder = getFolderRow(entityType, entityId, folderId);
+    if (!folder || (folder.category || "document") !== (document.category || "document"))
+      throw Object.assign(new Error("La carpeta de destino no existe."), {
+        status: 400,
+      });
+  }
   const nameKey = normalizeNameKey(document.fileName);
   const conflict = findNameConflict({
     entityType,

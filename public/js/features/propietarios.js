@@ -115,6 +115,7 @@ const closeOwnerDetailDialog = document.querySelector("#close-owner-detail-dialo
 const closeOwnerDetailBtn = document.querySelector("#close-owner-detail-btn");
 const ownerDetailEditBtn = document.querySelector("#owner-detail-edit-btn");
 const ownerDetailDocsGrid = document.querySelector("#owner-detail-docs-grid");
+const ownerDetailDocCount = document.querySelector("#owner-detail-doc-count");
 const ownerDetailApprovalPanel = document.querySelector("#owner-detail-approval-panel");
 const ownerDetailPropertyCommunity = document.querySelector("#owner-detail-property-community");
 const ownerDetailPropertySelect = document.querySelector("#owner-detail-property-select");
@@ -1023,20 +1024,32 @@ export function renderDetailDocsGrid(o) {
     { key: "bankReceipt", title: "Recibo bancario o certificado de titularidad" },
     { key: "propertyDeed", title: "Copia de la escritura del inmueble" },
   ];
+  let uploadedCount = 0;
 
   docKeys.forEach(({ key, title }) => {
     const doc = docs[key];
+    const isApproved = doc?.adminApproval?.status === "approved";
+    const isRejected = doc?.adminApproval?.status === "rejected";
+    const statusClass = doc ? (isApproved ? "approved" : isRejected ? "rejected" : "pending") : "";
     const card = document.createElement("div");
-    card.className = `detail-doc-card ${doc ? (doc.adminApproval?.status === "approved" ? "approved" : "pending") : ""}`;
+    card.className = `detail-doc-card ${statusClass}`.trim();
 
     if (doc) {
-      const isApproved = doc.adminApproval?.status === "approved";
-      const isRejected = doc.adminApproval?.status === "rejected";
+      uploadedCount++;
       let approvalBadge =
-        '<span class="status-badge doc-pending-admin">⏳ Pendiente aprobación</span>';
-      if (isApproved)
-        approvalBadge = '<span class="status-badge doc-approved">✓ Aprobado por Admin</span>';
-      if (isRejected) approvalBadge = '<span class="status-badge doc-rejected">✗ Rechazado</span>';
+        '<span class="status-badge doc-pending-admin">Pendiente de revisión</span>';
+      let reviewNote = "Pendiente de evaluación administrativa";
+      if (isApproved) {
+        approvalBadge = '<span class="status-badge doc-approved">Aprobado por Admin</span>';
+        reviewNote = "Aprobada por el administrador";
+      }
+      if (isRejected) {
+        approvalBadge = '<span class="status-badge doc-rejected">Rechazado</span>';
+        const reason = doc.adminApproval?.notes
+          ? `: ${escapeHtml(doc.adminApproval.notes)}`
+          : "";
+        reviewNote = `Rechazada${reason}`;
+      }
 
       card.innerHTML = sanitizeHtml(`
         <div class="detail-doc-card-top">
@@ -1047,11 +1060,25 @@ export function renderDetailDocsGrid(o) {
           ${approvalBadge}
         </div>
         <div class="detail-doc-metrics">
-          <strong>Revisión:</strong> Pendiente de evaluación administrativa · Subido el ${escapeHtml(doc.uploadedAt)}
+          <strong>Revisión:</strong> ${reviewNote} · Subido el ${escapeHtml(doc.uploadedAt)}
         </div>
         <div class="detail-doc-actions">
-          <button class="secondary-button" style="padding: 6px 12px; font-size: 12px;" type="button" data-action="view-doc" data-key="${key}">👁️ Ver documento</button>
-          <button class="secondary-button" style="padding: 6px 12px; font-size: 12px;" type="button" data-action="replace-doc" data-key="${key}">🔄 Cambiar</button>
+          <button class="btn-doc-action" type="button" data-action="view-doc" data-key="${key}" title="Ver documento">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Ver documento
+          </button>
+          <button class="btn-doc-action" type="button" data-action="replace-doc" data-key="${key}" title="Cambiar documento">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+            Cambiar
+          </button>
         </div>
       `);
 
@@ -1071,11 +1098,18 @@ export function renderDetailDocsGrid(o) {
           </div>
           <span class="status-badge doc-none">No subido</span>
         </div>
-        <div class="detail-doc-metrics" style="color: #64748b;">
+        <div class="detail-doc-metrics detail-doc-metrics--empty">
           El asociado todavía no ha subido este documento a la plataforma.
         </div>
         <div class="detail-doc-actions">
-          <button class="primary-button" style="padding: 6px 12px; font-size: 12px;" type="button" data-action="upload-doc" data-key="${key}">+ Subir documento</button>
+          <button class="btn-doc-action primary" type="button" data-action="upload-doc" data-key="${key}" title="Subir documento">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Subir documento
+          </button>
         </div>
       `);
       card.querySelector('[data-action="upload-doc"]').addEventListener("click", () => {
@@ -1086,6 +1120,10 @@ export function renderDetailDocsGrid(o) {
 
     ownerDetailDocsGrid.append(card);
   });
+
+  if (ownerDetailDocCount) {
+    ownerDetailDocCount.textContent = `${uploadedCount}/${docKeys.length}`;
+  }
 }
 
 export function renderDetailApprovalPanel(o, docStatus) {

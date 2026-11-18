@@ -287,9 +287,17 @@
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   margin-top: 8px;
+}
+.notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
 }
 .notification-date {
   font-size: 12px;
@@ -324,9 +332,10 @@
   color: #475569;
   line-height: 1.65;
 }
-.notification-read-button {
-  padding: 8px 11px;
-  font-size: 12px;
+.notification-read-button,
+.notification-delete-button,
+.notification-receipt-button {
+  flex-shrink: 0;
 }
 .notification-inbox-feedback {
   margin: 14px 0 0;
