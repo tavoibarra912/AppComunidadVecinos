@@ -182,6 +182,7 @@ export function renderOwners() {
     newOwnerBtn.hidden = state.activeRole === "owner" || !hasPermission("owner:create");
   if (!ownerTable) {
     ownerTable = createDataTable({
+      addButton: document.querySelector("#new-owner"),
       mount: document.querySelector("#propietarios-table"),
       storageKey: "propietarios",
       searchInput: ownerSearch,
@@ -408,10 +409,7 @@ export function renderOwners() {
     getView: () => ownerTable?.getExportState(),
     getFilters: () => ({ query: ownerSearch?.value || "" }),
   });
-  if (exportWrap) {
-    const toolbar = ownerSearch?.closest(".toolbar") || ownerSearch?.parentElement?.parentElement;
-    toolbar?.appendChild(exportWrap);
-  }
+  ownerTable.setExportControl?.(exportWrap);
 }
 
 export function switchOwnerDialogTab(tab) {

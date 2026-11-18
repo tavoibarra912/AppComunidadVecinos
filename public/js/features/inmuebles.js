@@ -779,6 +779,7 @@ export function renderProperties() {
   if (newPropertyBtn) newPropertyBtn.hidden = !hasPermission("property:create");
   if (!propertyTable) {
     propertyTable = createDataTable({
+      addButton: document.querySelector("#new-property"),
       mount: document.querySelector("#inmuebles-table"),
       storageKey: "inmuebles",
       searchInput: propertySearch,
@@ -1000,11 +1001,7 @@ export function renderProperties() {
     getView: () => propertyTable?.getExportState(),
     getFilters: () => ({ query: propertySearch?.value || "" }),
   });
-  if (exportWrap) {
-    const toolbar =
-      propertySearch?.closest(".toolbar") || propertySearch?.parentElement?.parentElement;
-    toolbar?.appendChild(exportWrap);
-  }
+  propertyTable.setExportControl?.(exportWrap);
 }
 
 export function openPropertyDetail(id) {

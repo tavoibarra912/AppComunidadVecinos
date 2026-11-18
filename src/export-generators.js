@@ -25,6 +25,13 @@ function formatValue(val, col) {
   }
   return String(val);
 }
+const groupCounts = (rows) =>
+  rows.reduce(
+    (map, row) => map.set(row.__exportGroup, (map.get(row.__exportGroup) || 0) + 1),
+    new Map(),
+  );
+const groupTitle = (row, metadata, counts) =>
+  `${metadata.groupText}: ${row.__exportGroup} (${counts.get(row.__exportGroup)} ${counts.get(row.__exportGroup) === 1 ? "registro" : "registros"})`;
 
 /**
  * 1. Generador CSV
@@ -43,6 +50,7 @@ export async function generateCsv({ dataset, rows, columns, metadata }) {
     ["# Registros", rows.length],
     ["# Filtros", metadata.filtersText],
     ["# Orden", metadata.sortText],
+    ["# Agrupación", metadata.groupText || "Sin agrupación"],
     ["# Fuente", dataset.source],
     ["# Fórmulas", dataset.formulas || ""],
     ["# Unidades", dataset.units || ""],
@@ -56,7 +64,15 @@ export async function generateCsv({ dataset, rows, columns, metadata }) {
   lines.push(header);
 
   // Filas de datos
+  const counts = groupCounts(rows);
+  let previousGroup = null;
   for (const row of rows) {
+    if (metadata.groupText && previousGroup !== row.__exportGroup) {
+      lines.push(
+        [groupTitle(row, metadata, counts), ...columns.slice(1).map(() => "")].map(quote).join(";"),
+      );
+      previousGroup = row.__exportGroup;
+    }
     const rowValues = columns.map((col) => {
       const raw = row[col.key];
       const val = formatValue(raw, col);
@@ -111,7 +127,19 @@ export async function generateXlsx({ dataset, rows, columns, metadata }) {
   });
 
   // Filas
+  const counts = groupCounts(rows);
+  let previousGroup = null;
+  dataSheet.properties.outlineProperties = { summaryBelow: false };
   rows.forEach((row, rowIndex) => {
+    if (metadata.groupText && previousGroup !== row.__exportGroup) {
+      const heading = dataSheet.addRow([groupTitle(row, metadata, counts)]);
+      if (columns.length > 1)
+        dataSheet.mergeCells(heading.number, 1, heading.number, columns.length);
+      heading.font = { bold: true, color: { argb: "FF17413F" } };
+      heading.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8F3F1" } };
+      heading.alignment = { wrapText: true };
+      previousGroup = row.__exportGroup;
+    }
     const rowData = {};
     columns.forEach((col) => {
       let val = row[col.key];
@@ -126,6 +154,7 @@ export async function generateXlsx({ dataset, rows, columns, metadata }) {
     });
 
     const addedRow = dataSheet.addRow(rowData);
+    if (metadata.groupText) addedRow.outlineLevel = 1;
     addedRow.height = 20;
 
     const isEven = rowIndex % 2 === 1;
@@ -186,6 +215,7 @@ export async function generateXlsx({ dataset, rows, columns, metadata }) {
     { param: "Total de registros", value: rows.length },
     { param: "Filtros aplicados", value: metadata.filtersText || "Ninguno (todos los registros)" },
     { param: "Criterio de orden", value: metadata.sortText || "Por defecto" },
+    { param: "Agrupación", value: metadata.groupText || "Sin agrupación" },
     { param: "Fuente de datos", value: dataset.source || "Base de datos de la plataforma" },
   ];
 
@@ -259,6 +289,7 @@ export async function generatePdf({
       for (const text of [
         `Filtros: ${metadata.filtersText}`,
         `Orden: ${metadata.sortText}`,
+        `Agrupación: ${metadata.groupText || "Sin agrupación"}`,
         `Fuente: ${dataset.source}`,
         `Registros: ${rows.length}`,
         dataset.formulas ? `Fórmulas: ${dataset.formulas}` : "",
@@ -286,8 +317,22 @@ export async function generatePdf({
         );
         doc.y = y + height;
       };
-      if (!wide) tableHeader();
+      if (!wide && !metadata.groupText) tableHeader();
+      const counts = groupCounts(rows);
+      let previousGroup = null;
       for (const [index, row] of rows.entries()) {
+        if (metadata.groupText && previousGroup !== row.__exportGroup) {
+          if (doc.y > doc.page.height - 120) newPage();
+          doc.x = 36;
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .fillColor("#17413f")
+            .text(groupTitle(row, metadata, counts), { width });
+          doc.moveDown(0.5);
+          if (!wide) tableHeader();
+          previousGroup = row.__exportGroup;
+        }
         const values = columns.map((c) => formatValue(row[c.key], c));
         doc.font("Helvetica").fontSize(8);
         const height =

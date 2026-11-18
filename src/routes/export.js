@@ -55,6 +55,7 @@ router.post("/:tableId", async (req, res, next) => {
       sort = null,
       columns = null,
       itemIds = null,
+      groupBy = null,
     } = req.body || {};
 
     const result = await exportDataset({
@@ -65,6 +66,7 @@ router.post("/:tableId", async (req, res, next) => {
       sort,
       columns,
       itemIds,
+      groupBy,
       req,
     });
 

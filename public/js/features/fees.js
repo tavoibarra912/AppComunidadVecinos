@@ -596,7 +596,17 @@ function exportList(parent, tableId, rows, columns = null, filters = {}) {
     permission: "fee:export",
     getView: () => ({ itemIds: rows.map((r) => String(r.id)), columns, filters }),
   });
-  if (control) parent.append(control);
+  if (control) {
+    const heading = [...parent.children].find((node) =>
+      node.classList.contains("fee-section-heading"),
+    );
+    const add = heading?.querySelector(":scope > button");
+    if (add) {
+      const actions = el("div", undefined, "table-list-actions");
+      actions.append(control, add);
+      heading.append(actions);
+    } else parent.append(control);
+  }
 }
 function table(headers, rows) {
   const wrap = el("div", undefined, "fee-table-scroll"),

@@ -45,6 +45,15 @@ test("tablas: exporta todas las filas filtradas antes de paginar y las columnas 
   let snapshot = JSON.parse(JSON.stringify(table.getExportState()));
   assert.equal(snapshot.itemIds.length, 12);
   assert.deepEqual(snapshot.columns, ["score", "name"]);
+  const exportControl = w.document.createElement("div");
+  exportControl.className = "table-export-wrap";
+  const add = w.document.createElement("button");
+  add.id = "add";
+  w.document.querySelector(".table-engine-actions").append(add);
+  table.setExportControl(exportControl);
+  assert.equal(w.document.querySelector(".table-engine-controls").firstElementChild.id, "search");
+  assert.equal(w.document.querySelector(".table-engine-actions").firstElementChild, exportControl);
+  assert.equal(exportControl.nextElementSibling, add);
   w.document.querySelector('th[data-col="score"] button').click();
   snapshot = JSON.parse(JSON.stringify(table.getExportState()));
   assert.equal(snapshot.itemIds[0], "11");
@@ -54,6 +63,12 @@ test("tablas: exporta todas las filas filtradas antes de paginar y las columnas 
   search.dispatchEvent(new w.Event("input"));
   snapshot = JSON.parse(JSON.stringify(table.getExportState()));
   assert.deepEqual(snapshot.itemIds, ["11", "10", "1"]);
+  const group = w.document.querySelector(".table-engine-group select");
+  group.value = "name";
+  group.dispatchEvent(new w.Event("change"));
+  snapshot = JSON.parse(JSON.stringify(table.getExportState()));
+  assert.equal(snapshot.groupBy, "name");
+  assert.deepEqual(snapshot.itemIds, ["1", "10", "11"]);
   search.value = "sin resultados";
   assert.deepEqual(Array.from(table.getExportState().itemIds), []);
 });
@@ -91,6 +106,8 @@ test("exportar: oculta controles sin permiso, manda el estado de la vista y ofre
   });
   w.document.querySelector("#root").append(control);
   const button = control.querySelector("button");
+  assert.equal(button.textContent.trim(), "");
+  assert.equal(button.getAttribute("aria-label"), "Exportar");
   button.dispatchEvent(new w.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
   assert.equal(button.getAttribute("aria-expanded"), "true");
   assert.equal(w.document.activeElement.getAttribute("role"), "menuitem");

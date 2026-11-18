@@ -338,7 +338,6 @@ export function renderInformesPage() {
     getView: () => dataTableInstance?.getExportState(),
     getFilters: () => ({ communityId: selectedCommunityId }),
   });
-  if (exportBtn) toolbar.appendChild(exportBtn);
 
   root.appendChild(toolbar);
 
@@ -377,6 +376,8 @@ export function renderInformesPage() {
     emptyTitle: "Sin datos para este informe",
     emptyText: "Ajusta los filtros o verifica que existan datos registrados.",
   });
+
+  dataTableInstance.setExportControl(exportBtn);
 
   // Carga inicial de datos desde el servidor
   fetchReportRows(report.id, selectedCommunityId);

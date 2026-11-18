@@ -440,6 +440,7 @@ function renderUsers() {
   if (!puedeAdministrar()) return;
   if (!userTable) {
     userTable = createDataTable({
+      addButton: document.querySelector("#new-user"),
       mount: document.querySelector("#usuarios-table"),
       entitySingular: "usuario",
       entityPlural: "usuarios",
@@ -542,10 +543,7 @@ function renderUsers() {
     getView: () => userTable?.getExportState(),
     getFilters: () => ({}),
   });
-  if (exportWrap) {
-    const usersTable = document.querySelector("#usuarios-table");
-    usersTable?.parentElement?.insertBefore(exportWrap, usersTable);
-  }
+  userTable.setExportControl?.(exportWrap);
 }
 
 function iconBtn(className, title, ariaLabel, svg) {
@@ -771,6 +769,7 @@ function renderRoles() {
   if (!puedeAdministrar()) return;
   if (!rolesTable) {
     rolesTable = createDataTable({
+      addButton: document.querySelector("#new-role"),
       mount: document.querySelector("#roles-table"),
       entitySingular: "rol",
       entityPlural: "roles",
@@ -861,10 +860,7 @@ function renderRoles() {
     getView: () => rolesTable?.getExportState(),
     getFilters: () => ({}),
   });
-  if (rolesExportWrap) {
-    const rolesTableEl = document.querySelector("#roles-table");
-    rolesTableEl?.parentElement?.insertBefore(rolesExportWrap, rolesTableEl);
-  }
+  rolesTable.setExportControl?.(rolesExportWrap);
 }
 
 const roleDialog = document.querySelector("#role-dialog");

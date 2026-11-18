@@ -6513,3 +6513,111 @@ dialog {
     width: 150px;
   }
 }
+
+/* Barra común de tablas: búsqueda, agrupación, columnas y acciones. */
+.table-engine-controls {
+  gap: 12px;
+  align-items: center;
+}
+.table-engine-search {
+  display: block;
+  flex: 1 1 200px;
+  min-width: 160px;
+  max-width: 300px;
+  margin: 0;
+}
+.table-engine-search input {
+  width: 100%;
+  height: 40px;
+  box-sizing: border-box;
+  margin: 0;
+}
+.table-engine-controls .table-engine-group {
+  margin: 0;
+}
+.table-engine-controls .combo-box-input,
+.table-engine-controls select {
+  height: 40px;
+  box-sizing: border-box;
+}
+.table-engine-controls .table-columns-btn {
+  height: 40px;
+  box-sizing: border-box;
+}
+.table-engine-actions,
+.table-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+.table-engine-actions:empty {
+  display: none;
+}
+.table-export-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  flex: 0 0 40px;
+}
+.table-export-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.table-export-btn[aria-busy="true"] svg {
+  animation: export-loading 1s linear infinite;
+}
+.table-engine-actions > .icon-action-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+}
+.table-engine-actions > .icon-action-btn svg {
+  width: 20px;
+  height: 20px;
+}
+@keyframes export-loading {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-export-btn[aria-busy="true"] svg {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .table-engine-search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .table-engine-controls {
+    padding: 12px;
+  }
+  .table-engine-controls .table-columns-wrap {
+    margin-left: 0;
+  }
+  .table-engine-actions {
+    margin-left: auto;
+  }
+}
+
+.table-list-actions > button {
+  height: 40px;
+  box-sizing: border-box;
+}
+#audit-filter .table-export-btn {
+  width: 42px;
+  height: 42px;
+}
+.doc-library-toolbar .table-export-btn {
+  width: 44px;
+  height: 44px;
+}
+
+input.table-engine-search {
+  height: 40px;
+  box-sizing: border-box;
+}

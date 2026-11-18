@@ -235,6 +235,7 @@ export function renderTenants() {
   }
   if (!tenantTable) {
     tenantTable = createDataTable({
+      addButton: document.querySelector("#new-tenant"),
       mount: document.querySelector("#inquilinos-table"),
       storageKey: "inquilinos",
       searchInput: tenantSearch,
@@ -385,10 +386,7 @@ export function renderTenants() {
     getView: () => tenantTable?.getExportState(),
     getFilters: () => ({ query: tenantSearch?.value || "" }),
   });
-  if (exportWrap) {
-    const toolbar = tenantSearch?.closest(".toolbar") || tenantSearch?.parentElement?.parentElement;
-    toolbar?.appendChild(exportWrap);
-  }
+  tenantTable.setExportControl?.(exportWrap);
 }
 
 function tenantCommunityId() {

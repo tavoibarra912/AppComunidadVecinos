@@ -139,6 +139,7 @@ export const TABLE_VIEWS = {
           ),
         ),
         communityId: c.id,
+        __groupValues: { name: c.name },
         name: c.name + (c.notes ? "\n" + richTextToPlainText(c.notes) : ""),
         properties: visible.properties.filter((p) => p.communityId === c.id).length,
       }));
@@ -163,6 +164,7 @@ export const TABLE_VIEWS = {
       const { visible, permits } = context(user);
       return visible.properties.map((p) => ({
         id: p.id,
+        __groupValues: { plot: p.plot },
         communityId: p.communityId,
         community:
           visible.communities.find((c) => c.id === p.communityId)?.name ||
@@ -217,6 +219,7 @@ export const TABLE_VIEWS = {
           const props = linkedProperties(o, visible);
           return {
             id: o.id,
+            __groupValues: { name: `${o.name} ${o.surname}` },
             communityIds: [...new Set(props.map((p) => p.communityId))],
             community:
               [
@@ -259,6 +262,7 @@ export const TABLE_VIEWS = {
         const p = visible.properties.find((p) => p.id === t.propertyId);
         return {
           id: t.id,
+          __groupValues: { name: `${t.name} ${t.surname} ${t.documentId || ""}` },
           communityId: p?.communityId || "",
           name: name(t),
           owner: name(visible.owners.find((o) => o.id === t.ownerId)),
@@ -281,18 +285,21 @@ export const TABLE_VIEWS = {
       ["perfiles", "Perfiles"],
     ],
     (user) => {
-      const { policy } = context(user);
+      const { visible } = context(user);
       return listUsers().map((u) => ({
         id: u.id,
-        usuario: u.usuario,
+        usuario: [u.usuario, `${u.nombre || ""} ${u.apellido || ""}`.trim()]
+          .filter(Boolean)
+          .join("\n"),
+        __groupValues: { usuario: u.usuario },
         email: u.email,
         rol: u.rol,
         activo: u.activo ? "Activo" : "Inactivo",
         perfiles:
           [
-            policy.owners.some((o) => o.userId === u.id) ? "Propietario" : "",
-            policy.tenants.some((t) => t.userId === u.id) ? "Inquilino" : "",
-            policy.communities.some((c) => c.adminUserId === u.id) ? "Admin de Comunidad" : "",
+            visible.owners.some((o) => o.userId === u.id) ? "Propietario" : "",
+            visible.tenants.some((t) => t.userId === u.id) ? "Inquilino" : "",
+            visible.communities.some((c) => c.adminUserId === u.id) ? "Admin de Comunidad" : "",
           ]
             .filter(Boolean)
             .join(", ") || "—",
@@ -310,11 +317,12 @@ export const TABLE_VIEWS = {
       ["permisos", "Permisos", "number"],
       ["usuarios", "Usuarios", "number"],
     ],
-    () => {
-      const users = listUsers();
+    (user) => {
+      const users = context(user).visible.users;
       return listRoles().map((r) => ({
         id: r.id,
-        nombre: r.nombre,
+        nombre: r.nombre + (r.sistema ? " · Sistema" : ""),
+        __groupValues: { nombre: r.nombre },
         descripcion: r.descripcion || "—",
         permisos: r.permisos.length,
         usuarios: users.filter((u) => u.rol === r.nombre).length,

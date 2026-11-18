@@ -87,6 +87,66 @@ test("exportación: CSV, XLSX y PDF reales con las mismas filas y columnas elegi
     }
   }
 });
+test("exportación: conserva agrupación incluso cuando su columna está oculta", async () => {
+  const rows = previewDataset(input()).rows.slice(0, 2);
+  for (const format of ["csv", "xlsx", "pdf"]) {
+    const file = await exportDataset(
+      input("communities", {
+        format,
+        itemIds: rows.map((r) => r.id),
+        columns: ["name"],
+        groupBy: "city",
+      }),
+    );
+    assert.equal(file.rowCount, 2);
+    if (format === "csv") {
+      const text = file.buffer.toString("utf8");
+      assert.ok(text.includes("Municipio:"));
+      assert.ok(text.includes(rows[0].name));
+      assert.ok(!text.includes('"Acciones"'));
+    }
+    if (format === "xlsx") {
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(file.buffer);
+      const sheet = wb.getWorksheet("Datos");
+      assert.equal(sheet.getCell("A1").value, "Comunidad");
+      assert.match(sheet.getCell("A2").value, /^Municipio:/);
+      assert.equal(sheet.getCell("A3").value, rows[0].name);
+      assert.equal(sheet.getRow(3).outlineLevel, 1);
+      assert.equal(sheet.columnCount, 1);
+    }
+    if (format === "pdf") assert.equal(file.buffer.subarray(0, 5).toString(), "%PDF-");
+  }
+  await assert.rejects(exportDataset(input("communities", { groupBy: "passwordHash" })), {
+    status: 400,
+  });
+});
+test("exportación: agrupar no añade campos ocultos ni relaciones fuera de la vista", async () => {
+  const noted = previewDataset(input()).rows.find((row) => row.name.includes("\n"));
+  assert.ok(noted);
+  const file = await exportDataset(
+    input("communities", { itemIds: [noted.id], columns: ["address"], groupBy: "name" }),
+  );
+  assert.ok(
+    !file.buffer.toString("utf8").includes(noted.name.split("\n")[1]),
+    "Las notas ocultas no forman parte del encabezado del grupo",
+  );
+  db.prepare("INSERT INTO roles(id,nombre,permisos) VALUES(?,?,?)").run(
+    "export-admin-view",
+    "export-admin-view",
+    JSON.stringify(["admin:users", "admin:export", "export:read"]),
+  );
+  const reader = { ...admin, rol: "export-admin-view" };
+  assert.ok(
+    previewDataset(input("users", { user: reader })).rows.every((row) => row.perfiles === "—"),
+  );
+  db.prepare("UPDATE roles SET permisos=? WHERE id=?").run(
+    JSON.stringify(["admin:roles", "admin:export", "export:read"]),
+    "export-admin-view",
+  );
+  const roles = previewDataset(input("roles", { user: reader })).rows;
+  assert.ok(roles.every((row) => row.usuarios === (row.nombre === "export-admin-view" ? 1 : 0)));
+});
 test("exportación: selección vacía, inválida, columnas desconocidas, filtros y orden se rechazan", async () => {
   await assert.rejects(exportDataset(input("communities", { itemIds: [] })), { status: 422 });
   for (const extra of [

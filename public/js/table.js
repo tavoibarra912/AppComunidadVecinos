@@ -48,6 +48,7 @@ function crearInstancia(options) {
     columns,
     getRows,
     searchInput = null,
+    addButton = null,
     countEl = null,
     entitySingular = "registro",
     entityPlural = "registros",
@@ -60,6 +61,7 @@ function crearInstancia(options) {
   if (!mount) throw new Error("createDataTable: falta el elemento mount.");
   if (!Array.isArray(columns) || columns.length === 0)
     throw new Error("createDataTable: faltan columnas.");
+  countEl?.remove?.();
 
   // --- Estado ---
   // Solo son visibles por defecto las columnas con defaultVisible === true;
@@ -141,6 +143,15 @@ function crearInstancia(options) {
 
   // Barra de controles: Agrupar por + Columnas
   const controls = el("div", "table-engine-controls");
+  if (searchInput) {
+    const searchHost = searchInput.closest("label") || searchInput;
+    const oldToolbar = searchHost.parentElement;
+    searchHost.classList.add("table-engine-search");
+    if (!searchInput.getAttribute("aria-label") && !searchInput.labels?.length)
+      searchInput.setAttribute("aria-label", "Buscar en la tabla");
+    controls.append(searchHost);
+    if (oldToolbar?.matches(".toolbar") && !oldToolbar.children.length) oldToolbar.hidden = true;
+  }
   const groupLabel = el("label", "table-engine-group");
   groupLabel.append(el("span", null, "Agrupar por"));
   const groupSelect = el("select", "filter-select");
@@ -158,6 +169,9 @@ function crearInstancia(options) {
   columnsMenu.hidden = true;
   columnsWrap.append(columnsBtn, columnsMenu);
   controls.append(columnsWrap);
+  const actionSlot = el("div", "table-engine-actions");
+  controls.append(actionSlot);
+  if (addButton) actionSlot.append(addButton);
   mount.append(controls);
 
   // Tabla
@@ -346,31 +360,38 @@ function crearInstancia(options) {
     return String(col.value ? col.value(row) : "").toLocaleLowerCase("es");
   }
 
-  function refresh() {
-    const allRows = getRows() || [];
+  function configuredRows() {
     const query = currentQuery();
-
-    // 1. Filtro único de texto sobre todas las columnas
-    let rows = allRows;
-    if (query) {
-      rows = rows.filter((row) => columns.some((col) => columnValue(col, row).includes(query)));
-    }
-
-    // 2. Orden
+    let rows = (getRows() || []).filter(
+      (row) => !query || columns.some((col) => columnValue(col, row).includes(query)),
+    );
     if (sortKey) {
-      const col = columns.find((item) => item.key === sortKey);
-      const factor = sortDir === "desc" ? -1 : 1;
+      const col = byKey.get(sortKey);
       rows = rows
         .slice()
         .sort(
           (a, b) =>
-            factor *
-            COLLATOR.compare(
-              String(col.value ? col.value(a) : ""),
-              String(col.value ? col.value(b) : ""),
-            ),
+            (sortDir === "desc" ? -1 : 1) *
+            COLLATOR.compare(String(col.value?.(a) ?? ""), String(col.value?.(b) ?? "")),
         );
     }
+    if (groupKey) {
+      const col = byKey.get(groupKey);
+      rows = rows
+        .slice()
+        .sort((a, b) =>
+          COLLATOR.compare(
+            String(col.value?.(a) ?? "") || "—",
+            String(col.value?.(b) ?? "") || "—",
+          ),
+        );
+    }
+    return rows;
+  }
+
+  function refresh() {
+    const allRows = getRows() || [];
+    const rows = configuredRows();
 
     // 3. Paginación (sobre las filas filtradas; la agrupación se aplica dentro de la página)
     const totalItems = rows.length;
@@ -398,7 +419,7 @@ function crearInstancia(options) {
       const groups = new Map();
       pagedRows.forEach((row) => {
         const rawValue = groupCol.value ? groupCol.value(row) : "";
-        const key = rawValue || "—";
+        const key = String(rawValue ?? "") || "—";
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(row);
       });
@@ -495,40 +516,20 @@ function crearInstancia(options) {
 
   const tabla = {
     refresh,
+    setExportControl(control) {
+      actionSlot.querySelector(".table-export-wrap")?.remove();
+      if (control) actionSlot.insertBefore(control, actionSlot.firstChild);
+    },
     getExportState() {
       const query = currentQuery();
-      let rows = (getRows() || []).filter(
-        (row) => !query || columns.some((col) => columnValue(col, row).includes(query)),
-      );
-      if (sortKey) {
-        const col = byKey.get(sortKey);
-        rows = rows
-          .slice()
-          .sort(
-            (a, b) =>
-              (sortDir === "desc" ? -1 : 1) *
-              COLLATOR.compare(String(col.value?.(a) ?? ""), String(col.value?.(b) ?? "")),
-          );
-      }
-      if (groupKey) {
-        const col = byKey.get(groupKey);
-        rows = rows.flatMap((_, index) =>
-          index % pageSize
-            ? []
-            : rows
-                .slice(index, index + pageSize)
-                .slice()
-                .sort((a, b) =>
-                  COLLATOR.compare(String(col.value?.(a) || "—"), String(col.value?.(b) || "—")),
-                ),
-        );
-      }
+      const rows = configuredRows();
       return {
         itemIds: rows.map((row) => String(row.id ?? row.tenant?.id)),
         columns: orderedColumns()
           .filter((col) => visible.get(col.key) && col.key !== "actions")
           .map((col) => col.key),
         sort: sortKey ? { key: sortKey, dir: sortDir } : null,
+        groupBy: groupKey || null,
         filters: { query },
       };
     },

@@ -39,6 +39,7 @@ function select({
   sort = null,
   columns = null,
   itemIds = null,
+  groupBy = null,
   forExport = true,
 }) {
   if (typeof tableId !== "string" || !Object.hasOwn(EXPORT_INVENTORY, tableId))
@@ -59,6 +60,7 @@ function select({
   if (filters.communityId && !allowed(user, "community:read", filters.communityId, policy))
     throw new ExportError("Comunidad fuera de tu ámbito.", 403);
   const columnMap = new Map(dataset.columns.map((c) => [c.key, c]));
+  if (groupBy !== null && (typeof groupBy !== "string" || !columnMap.has(groupBy))) invalid();
   if (
     columns !== null &&
     (!Array.isArray(columns) ||
@@ -151,11 +153,21 @@ function select({
           collator.compare(String(a[sort.key] ?? ""), String(b[sort.key] ?? "")),
       );
     }
+    if (groupBy) {
+      const collator = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
+      rows.sort((a, b) =>
+        collator.compare(
+          String(a.__groupValues?.[groupBy] ?? a[groupBy] ?? "—"),
+          String(b.__groupValues?.[groupBy] ?? b[groupBy] ?? "—"),
+        ),
+      );
+    }
   }
   return {
     dataset,
     rows,
     columns: columns === null ? dataset.columns : columns.map((key) => columnMap.get(key)),
+    groupBy,
   };
 }
 export function previewDataset(input) {
@@ -227,7 +239,7 @@ export async function exportDataset(input) {
   const started = performance.now();
   let rowCount = 0;
   try {
-    const { dataset, rows, columns } = select(input);
+    const { dataset, rows, columns, groupBy } = select(input);
     if (typeof format !== "string" || !dataset.formats.includes(format))
       throw new ExportError("Formato de exportación no válido.");
     const limits = dataset.limits[format];
@@ -249,13 +261,19 @@ export async function exportDataset(input) {
         : input.itemIds
           ? "Orden de la vista"
           : "Por defecto",
+      groupText: groupBy ? dataset.columns.find((c) => c.key === groupBy).label : "",
     };
     const { fetchData, ...definition } = dataset;
     const buffer = await generate(
       {
         format,
         dataset: definition,
-        rows: rows.map((r) => Object.fromEntries(columns.map((c) => [c.key, r[c.key] ?? ""]))),
+        rows: rows.map((r) => ({
+          ...Object.fromEntries(columns.map((c) => [c.key, r[c.key] ?? ""])),
+          ...(groupBy
+            ? { __exportGroup: String(r.__groupValues?.[groupBy] ?? r[groupBy] ?? "") || "—" }
+            : {}),
+        })),
         columns,
         metadata,
         maxBytes: limits.bytes,
@@ -280,6 +298,7 @@ export async function exportDataset(input) {
         period: filters.period || "",
         sort,
         columns: columns.map((c) => c.key),
+        groupBy,
       },
     });
     return {

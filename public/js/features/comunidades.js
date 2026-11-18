@@ -207,6 +207,7 @@ export function renderCommunities() {
   if (newCommunityBtn) newCommunityBtn.hidden = !hasPermission("community:create");
   if (!communityTable) {
     communityTable = createDataTable({
+      addButton: document.querySelector("#new-community"),
       mount: document.querySelector("#comunidades-table"),
       storageKey: "comunidades",
       searchInput: communitySearch,
@@ -375,10 +376,7 @@ export function renderCommunities() {
     getView: () => communityTable?.getExportState(),
     getFilters: () => ({ query: communitySearch?.value || "" }),
   });
-  if (exportWrap) {
-    const toolbar = document.querySelector("#comunidades-toolbar");
-    toolbar?.appendChild(exportWrap);
-  }
+  communityTable.setExportControl?.(exportWrap);
 }
 
 export function openCommunityEditor(id = null, defaultTab = "details", readonly = false) {

@@ -42,12 +42,13 @@ export async function downloadExport({
   sort = null,
   columns = null,
   itemIds = null,
+  groupBy = null,
 }) {
   const requestedUserId = state.currentUserId;
   const response = await fetch(`/api/export/${encodeURIComponent(tableId)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ format, filters, sort, columns, itemIds }),
+    body: JSON.stringify({ format, filters, sort, columns, itemIds, groupBy }),
   });
 
   if (!response.ok) {
@@ -122,6 +123,8 @@ export function createExportDropdown({
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "table-export-btn";
+  btn.title = "Exportar";
+  btn.setAttribute("aria-label", "Exportar");
   btn.setAttribute("aria-haspopup", "menu");
   btn.setAttribute("aria-expanded", "false");
   btn.innerHTML = `
@@ -129,10 +132,6 @@ export function createExportDropdown({
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
       <polyline points="7 10 12 15 17 10"></polyline>
       <line x1="12" y1="15" x2="12" y2="3"></line>
-    </svg>
-    <span>Exportar</span>
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-      <polyline points="6 9 12 15 18 9"></polyline>
     </svg>
   `;
 
@@ -160,7 +159,8 @@ export function createExportDropdown({
 
       const originalHtml = btn.innerHTML;
       btn.disabled = true;
-      btn.textContent = "Exportando…";
+      btn.setAttribute("aria-busy", "true");
+      btn.setAttribute("aria-label", "Generando exportación");
 
       try {
         if (!hasPermission("export:read") || (requiredPerm && !hasPermission(requiredPerm)))
@@ -169,6 +169,8 @@ export function createExportDropdown({
         const filters = { ...(getFilters() || {}), ...(view?.filters || {}) };
         const sort = view?.sort ?? getSort();
         const columns = view?.columns ?? getColumns();
+        if (Array.isArray(columns) && !columns.length)
+          throw new Error("Selecciona al menos una columna visible para exportar.");
         const itemIds = view?.itemIds ?? getItemIds();
 
         await downloadExport({
@@ -178,6 +180,7 @@ export function createExportDropdown({
           sort,
           columns,
           itemIds,
+          groupBy: view?.groupBy || null,
         });
         showExportToast(`Archivo ${opt.format.toUpperCase()} generado correctamente.`);
       } catch (err) {
@@ -185,6 +188,8 @@ export function createExportDropdown({
       } finally {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
+        btn.removeAttribute("aria-busy");
+        btn.setAttribute("aria-label", "Exportar");
       }
     });
 
