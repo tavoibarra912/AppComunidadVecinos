@@ -25,7 +25,30 @@ export const FOLDER_ICONS = Object.freeze([
   "documents",
   "archive",
   "shield",
+  "wrench",
+  "calendar",
+  "contract",
+  "receipt",
+  "legal",
+  "image",
+  "star",
+  "briefcase",
 ]);
+export const FOLDER_COLORS = Object.freeze([
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "slate",
+]);
+export function normalizeFolderColor(value) {
+  return FOLDER_COLORS.includes(value) ? value : "teal";
+}
 
 export function normalizeFolderIcon(value) {
   const icon = String(value ?? "folder")
@@ -231,7 +254,16 @@ export function findNameConflict({
   return "";
 }
 
-export function createFolder({ entityType, entityId, parentId = "", name, icon, category, user }) {
+export function createFolder({
+  entityType,
+  entityId,
+  parentId = "",
+  name,
+  icon,
+  color,
+  category,
+  user,
+}) {
   const folderCategory = normalizeCategory(category) || "document";
   const sanitized = sanitizeFolderName(name);
   if (sanitized.error) throw Object.assign(new Error(sanitized.error), { status: 400 });
@@ -264,6 +296,7 @@ export function createFolder({ entityType, entityId, parentId = "", name, icon, 
     name: sanitized.name,
     nameKey,
     icon: normalizeFolderIcon(icon),
+    color: normalizeFolderColor(color),
     category: folderCategory,
     createdAt: new Date().toISOString(),
     createdBy: userInfo.id,
@@ -271,7 +304,7 @@ export function createFolder({ entityType, entityId, parentId = "", name, icon, 
   };
   try {
     db.prepare(
-      "INSERT INTO document_folders (id,entityType,entityId,parentId,name,nameKey,icon,category,createdAt,createdBy,createdByName) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO document_folders (id,entityType,entityId,parentId,name,nameKey,icon,color,category,createdAt,createdBy,createdByName) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
     ).run(
       row.id,
       row.entityType,
@@ -280,6 +313,7 @@ export function createFolder({ entityType, entityId, parentId = "", name, icon, 
       row.name,
       row.nameKey,
       row.icon,
+      row.color,
       row.category,
       row.createdAt,
       row.createdBy,
@@ -295,7 +329,16 @@ export function createFolder({ entityType, entityId, parentId = "", name, icon, 
   return documentFolderFromRow(row);
 }
 
-export function updateFolder({ entityType, entityId, folderId, name, parentId, icon, user }) {
+export function updateFolder({
+  entityType,
+  entityId,
+  folderId,
+  name,
+  parentId,
+  icon,
+  color,
+  user,
+}) {
   const current = getFolderRow(entityType, entityId, folderId);
   if (!current) throw Object.assign(new Error("Carpeta no encontrada."), { status: 404 });
   const folderCategory = current.category || "document";
@@ -343,10 +386,11 @@ export function updateFolder({ entityType, entityId, folderId, name, parentId, i
   });
   if (conflict) throw Object.assign(new Error(conflict), { status: 409 });
   const nextIcon = icon === undefined ? current.icon || "folder" : normalizeFolderIcon(icon);
+  const nextColor = color === undefined ? current.color || "teal" : normalizeFolderColor(color);
   try {
     db.prepare(
-      "UPDATE document_folders SET parentId = ?, name = ?, nameKey = ?, icon = ? WHERE id = ?",
-    ).run(nextParentId, nextName, nameKey, nextIcon, current.id);
+      "UPDATE document_folders SET parentId = ?, name = ?, nameKey = ?, icon = ?, color = ? WHERE id = ?",
+    ).run(nextParentId, nextName, nameKey, nextIcon, nextColor, current.id);
   } catch (error) {
     if (String(error?.message || "").includes("UNIQUE"))
       throw Object.assign(new Error("Ya existe una carpeta con ese nombre en esta ubicación."), {

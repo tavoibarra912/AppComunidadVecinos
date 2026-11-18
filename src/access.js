@@ -114,6 +114,13 @@ export function resourceAccess(req, res, next) {
   }
   const [collection, id] = parts;
   const entity = entities[collection];
+  // The cascade service checks the root and every affected resource itself.
+  if (
+    entity &&
+    ((req.method === "DELETE" && req.query.cascade === "true") ||
+      (parts.length === 3 && parts[2] === "cascade-preview"))
+  )
+    return next();
   if (!entity || parts.length > 2) return next();
   const data = policyData();
   const permits = (p, resource = "") => allowed(req.user, p, resource, data);
@@ -390,17 +397,6 @@ export function resourceAccess(req, res, next) {
       hidePayloadDocuments(canReadDocuments, body, id || req.body.id || req.body.ownerId || ""),
     );
   };
-  next();
-}
-
-/**
- * Middleware que exige el permiso cascade-delete.
- * Solo super_admin (o roles con este permiso asignado) pueden iniciar
- * un borrado en cascada de entidades con dependencias.
- */
-export function requireCascadeDelete(req, res, next) {
-  const data = policyData();
-  if (!allowed(req.user, "cascade-delete", "", data)) return deny(res);
   next();
 }
 

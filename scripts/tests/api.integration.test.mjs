@@ -1569,6 +1569,35 @@ function pdfForm(entityType, entityId, name, { folderId = "", category = "" } = 
   return form;
 }
 
+test("biblioteca documental: iconos ampliados y colores persisten y se normalizan", async () => {
+  const created = await admin("/documents/folders", "POST", {
+    entityType: "community",
+    entityId: "com-seed-1",
+    name: "Colores e iconos",
+    icon: "calendar",
+    color: "violet",
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.equal(created.data.color, "violet");
+  assert.equal(created.data.icon, "calendar");
+  const changed = await admin(`/documents/folders/${created.data.id}`, "PATCH", {
+    color: "blue",
+    icon: "legal",
+  });
+  assert.equal(changed.status, 200, JSON.stringify(changed.data));
+  assert.equal(changed.data.color, "blue");
+  assert.equal(changed.data.icon, "legal");
+  const listing = await admin("/documents?entityType=community&entityId=com-seed-1");
+  assert.equal(listing.data.folders.find((f) => f.id === created.data.id).color, "blue");
+  const safe = await admin(`/documents/folders/${created.data.id}`, "PATCH", {
+    color: "red; background:url(evil)",
+    icon: "unknown",
+  });
+  assert.equal(safe.data.color, "teal");
+  assert.equal(safe.data.icon, "folder");
+  await admin(`/documents/folders/${created.data.id}?confirm=1`, "DELETE");
+});
+
 test("biblioteca documental: carpetas, duplicados, mudanza y borrado en cascada", async () => {
   const before = readdirSync(UPLOADS_DIR).sort();
   const target = { entityType: "community", entityId: "com-seed-1" };

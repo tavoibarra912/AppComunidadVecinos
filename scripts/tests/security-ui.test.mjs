@@ -137,6 +137,7 @@ test("UI auditoría: filtra y pagina por API, trata contenido como texto y recha
   const calls = [];
   let allowed = true;
   const ui = fixture("audit", ["renderAudit"], {
+    renderCascadeArchiveHistory: () => {},
     hasPermission: () => allowed,
     api: {
       listAudit: async (params) => {

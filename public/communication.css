@@ -221,6 +221,11 @@
 .comm-inbox-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
 }
 .comm-empty p {
   color: var(--muted);

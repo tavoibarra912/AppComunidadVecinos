@@ -13,8 +13,10 @@ import { removeEntityFiles } from "./documents.js";
 import { sanitizeRichText } from "../rich-text.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { validateBrand } from "../branding.js";
+import { registerCascadeRoutes } from "../cascade-delete.js";
 
 const router = Router();
+registerCascadeRoutes(router, "communities");
 router.use((req, res, next) => {
   if (["POST", "PUT"].includes(req.method)) {
     const data = req.body || {};
@@ -168,7 +170,9 @@ router.put(
   }),
 );
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", deleteCommunityNormal);
+
+function deleteCommunityNormal(req, res) {
   const feeTables = [
     "fee_plans",
     "fee_receipts",
@@ -198,6 +202,6 @@ router.delete("/:id", (req, res) => {
   removeEntityFiles("community", existing.id);
   db.prepare("DELETE FROM communities WHERE id = ?").run(existing.id);
   res.json({ ok: true });
-});
+}
 
 export default router;

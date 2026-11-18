@@ -270,6 +270,7 @@ ensureColumns("documents", {
 // Las carpetas existentes conservan el icono genérico de carpeta.
 ensureColumns("document_folders", {
   icon: "TEXT NOT NULL DEFAULT 'folder'",
+  color: "TEXT NOT NULL DEFAULT 'teal'",
   category: "TEXT NOT NULL DEFAULT 'document'",
 });
 // Documentos y estatutos tienen árboles de carpetas independientes: la
@@ -1178,6 +1179,7 @@ export function documentFolderFromRow(row) {
     parentId: row.parentId || "",
     name: row.name,
     icon: row.icon || "folder",
+    color: row.color || "teal",
     category: row.category || "document",
     createdAt: row.createdAt,
     createdBy: row.createdBy || "",

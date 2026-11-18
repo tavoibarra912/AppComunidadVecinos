@@ -31,6 +31,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     const error = new Error(result?.error || `Error del servidor (${response.status}).`);
     error.status = response.status;
+    error.code = result?.code;
     if (
       response.status === 401 &&
       path !== "/auth/me" &&
@@ -44,6 +45,20 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  cascadeArchives: (offset = 0) => request(`/cascade-archives?offset=${offset}`),
+  cascadeReview: (collection, id, payload) =>
+    request(`/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/cascade-preview`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  cascadePreview: (collection, id) =>
+    request(`/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/cascade-preview`),
+  cascadeDelete: (collection, id, payload) =>
+    request(`/${encodeURIComponent(collection)}/${encodeURIComponent(id)}?cascade=true`, {
+      method: "DELETE",
+      body: JSON.stringify(payload),
+    }),
+  cascadeArchive: (id) => request(`/cascade-archives/${encodeURIComponent(id)}`),
   fees: (path, method = "GET", payload) =>
     request(`/fees${path}`, {
       method,

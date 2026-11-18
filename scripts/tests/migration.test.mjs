@@ -7,6 +7,45 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 
+test("migración: las carpetas anteriores conservan sus datos y reciben color por defecto", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-folder-color-test-"));
+  const dbPath = path.join(directory, "penarrubia.db"),
+    legacy = new DatabaseSync(dbPath);
+  legacy.exec(`CREATE TABLE document_folders (
+    id TEXT PRIMARY KEY, entityType TEXT NOT NULL, entityId TEXT NOT NULL,
+    parentId TEXT NOT NULL DEFAULT '', name TEXT NOT NULL, nameKey TEXT NOT NULL,
+    icon TEXT NOT NULL DEFAULT 'folder', category TEXT NOT NULL DEFAULT 'document',
+    createdAt TEXT NOT NULL DEFAULT '', createdBy TEXT NOT NULL DEFAULT '', createdByName TEXT NOT NULL DEFAULT ''
+  ); INSERT INTO document_folders(id,entityType,entityId,name,nameKey,icon) VALUES('old','community','c1','Actas','actas','shield');`);
+  legacy.close();
+  const url = new URL("../../src/db.js", import.meta.url).href;
+  const result = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", `const {db}=await import(${JSON.stringify(url)});db.close();`],
+    {
+      env: {
+        ...process.env,
+        APP_DATA_DIR: directory,
+        APP_UPLOADS_DIR: path.join(directory, "uploads"),
+      },
+      encoding: "utf8",
+    },
+  );
+  const check = new DatabaseSync(dbPath);
+  try {
+    assert.equal(result.status, 0, result.stderr);
+    const row = check.prepare("SELECT * FROM document_folders WHERE id='old'").get();
+    assert.equal(row.color, "teal");
+    assert.equal(row.icon, "shield");
+    assert.equal(row.name, "Actas");
+  } finally {
+    check.close();
+    assert.equal(path.dirname(directory), path.resolve(tmpdir()));
+    assert.ok(path.basename(directory).startsWith("penarrubia-folder-color-test-"));
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("migración: SSO no recibe contraseñas predecibles y revoca las antiguas", async () => {
   const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-migration-test-"));
   process.env.APP_DATA_DIR = directory;

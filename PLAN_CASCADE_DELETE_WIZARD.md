@@ -1,238 +1,131 @@
-# Plan de diseño: Borrado en cascada tipo Wizard
+# Asistente de borrado en cascada
 
-**Rama:** `feat/cascade-delete-wizard` (desde `main`)
-**Estado:** Solo planificación. No se implementa lógica de borrado destructiva aún.
-**Issues relacionados:** #195 (Eliminar comunidades), #196 (Eliminar propietarios)
+Estado: implementado en `feat/cascade-delete-wizard`, continuando el piloto de Cline.
+Origen de la rama: `main` en `9266852`. Issues: #195 y #196.
 
----
+## Alcance implementado
 
-## 1. Objetivo
+- Permiso maestro `cascade-delete`, configurable en Administración → Roles.
+- Acción adicional **Avanzado** en propietarios, inquilinos, inmuebles y comunidades.
+- Asistente de cinco pasos con evaluación, selección por dependencia, revisión exacta
+  en el servidor, confirmaciones y resultado.
+- Reasignación de titularidad y de inquilinos, desvinculación, finalización de contratos,
+  traslado a comunidades existentes o creación de una comunidad temporal con NIF válido.
+- Borrado global de propietarios con información de sus relaciones en otras comunidades
+  y confirmación expresa, también desde una comunidad.
+- Histórico financiero conservado, liquidación final o eliminación definitiva opcional.
+  La eliminación financiera admite cuotas activas sin liquidación previa y exige una
+  casilla específica. Los recibos compartidos requieren otra confirmación.
+- Traslado conjunto de finanzas y publicaciones cuando todos los inmuebles se trasladan
+  a una misma comunidad y moneda.
+- Conservación o eliminación de documentos, notificaciones y publicaciones; acta persistente
+  y adjuntos recuperables desde **Administración → Auditoría → Histórico de borrados**.
+- Eliminación opcional de cuentas de acceso sin otros perfiles, con permiso `admin:users`,
+  protección de cuentas administrativas y revocación de sesiones.
 
-Permitir a un usuario con un permiso nuevo (ej. `cascade-delete`) borrar una entidad (comunidad, propietario, inmueble o inquilino) a través de un **wizard multi-paso** que:
+## Contrato de la API
 
-1. Evalúe automáticamente qué dependencias tiene la entidad (inmuebles, cuotas, inquilinos, notificaciones, documentos, publicaciones, etc.).
-2. Ofrezca opciones por cada dependencia: reasignar, dejar huérfano, liquidar, mover a otra comunidad, crear comunidad temporal, etc.
-3. Ejecute el borrado en una transacción solo tras confirmación explícita del usuario.
+Las cuatro colecciones (`owners`, `tenants`, `properties`, `communities`) ofrecen:
 
+- `GET /api/:collection/:id/cascade-preview`: relaciones y `previewToken`.
+- `POST /api/:collection/:id/cascade-preview`: plan elegido y token; devuelve alcance
+  financiero exacto, `executionToken` firmado y confirmaciones necesarias, sin modificar datos.
+- `DELETE /api/:collection/:id?cascade=true`: plan, token y confirmaciones; ejecuta
+  atómicamente con el `executionToken` de la revisión. El DELETE sin `cascade=true` mantiene su comportamiento anterior.
 
----
+El cuerpo contiene `actions.properties`, `actions.owners` y `actions.tenants`, mapas
+por ID. Cada entrada tiene `action` y, si corresponde, `newOwnerId`, `newPropertyId`
+o `newCommunityId`. También contiene las políticas `finance`, `documents`,
+`notifications`, `posts`, `user` y, opcionalmente, `temporaryCommunity: {name,nif}`.
+No se admiten entidades ajenas al árbol ni acciones desconocidas.
 
-## 2. Nuevo permiso
+Confirmaciones: `confirmDelete`; `confirmGlobalDelete` cuando hay propietarios
+eliminados en varias comunidades; `confirmDeleteFinancial` para borrar finanzas;
+`confirmSharedFinancial` para anular o eliminar recibos con varios titulares.
 
-Se propone agregar un permiso maestro y, opcionalmente, permisos granulares por entidad:
+La ejecución devuelve `archiveId`, `temporaryCommunityId` y `settlement`.
+Los históricos se consultan mediante `GET /api/cascade-archives?offset=0` y
+`GET /api/cascade-archives/:id`. Los adjuntos conservados tienen descargas autorizadas.
 
-| Permiso | Descripción | Rol por defecto |
-|---------|-------------|-----------------|
-| `cascade-delete` | Borrado en cascada de entidades con dependencias | `super_admin` |
-| `owner:cascade-delete` | Borrado en cascada de propietarios | `super_admin` |
-| `community:cascade-delete` | Borrado en cascada de comunidades | `super_admin` |
-| `property:cascade-delete` | Borrado en cascada de inmuebles | `super_admin` |
-| `tenant:cascade-delete` | Borrado en cascada de inquilinos | `super_admin` |
+## Semántica financiera
 
-**Archivos a tocar (solo definición, sin uso todavía):**
-- `public/js/permissions.js` — agregar entradas en `PERMISSIONS` y etiquetas en `PERMISSION_LABELS`.
-- `src/db.js` — agregar permisos a los roles del sistema si se desea.
-- `public/js/features/administracion.js` — opcional: exponer en la pestaña de Roles para asignar el permiso.
+- `keep_historical`: conserva recibos, fotografías de titulares y pagos. El histórico
+  sigue consultable en el acta aunque la entidad ya no exista.
+- `liquidate_final`: anula los recibos afectados, perdona su saldo pendiente y libera
+  las aplicaciones de cobro como crédito del pagador. El acta desglosa por moneda.
+  No crea pagos ficticios ni afirma haber realizado una transferencia bancaria.
+- `delete`: elimina los recibos y pagos del alcance confirmado y sus aplicaciones,
+  eventos, avisos y justificantes correspondientes. En una comunidad elimina también
+  planes, derramas, servicios y sus adjuntos; no exige liquidar primero.
+- `reassign_community`: traslada el libro de la comunidad al destino común de todos
+  los inmuebles; conserva las fotografías originales y rechaza monedas diferentes.
 
+Los recibos compartidos son indivisibles: no se borra solo el porcentaje de un
+cotitular. El resumen informa el alcance y exige confirmación. Retirar un pago
+puede aumentar el pendiente de otros recibos: el resumen advierte ese efecto.
+Los repartos existentes mantienen sus fotografías históricas y no se recalculan
+ni redistribuyen importes automáticamente al retirar inmuebles. Los repartos que ya no
+puedan emitir se cierran tras avisarlo en el resumen, con confirmación adicional si
+son compartidos; sus recibos existentes mantienen el saldo salvo la política financiera elegida.
 
----
+## Integridad y permisos
 
-## 3. Arquitectura del wizard
+La lógica común vive en `src/cascade-delete.js`. Sustituye las implementaciones
+parciales que consultaban columnas inexistentes, no aplicaban reasignaciones o
+retiraban archivos antes de saber si la transacción terminaría correctamente.
 
-### 3.1 Endpoints backend (propuestos, sin tocar rutas existentes)
+La vista previa y la ejecución usan el mismo árbol de relaciones. El token incluye
+registros y dependencias relevantes; cualquier cambio obliga a volver a evaluar.
+El resumen final firma también los destinos y las cuentas que se eliminarán; un
+cambio posterior en ellos invalida la ejecución. Las reasignaciones transfieren el
+arrendador de los contratos al nuevo titular. La sincronización afecta únicamente
+los registros de la operación y conserva el inmueble principal cuando sigue vinculado.
+Los contratos futuros o ya finalizados no admiten alterar su fecha histórica mediante
+la opción de finalizar hoy.
+Los permisos se vuelven a comprobar para el origen, los destinos y las comunidades
+externas. Confirmar un borrado global no amplía el ámbito de un usuario.
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/api/:entity/:id/cascade-preview` | Devuelve el árbol de dependencias de la entidad y las opciones disponibles por cada una. Requiere permiso `cascade-delete` (o granular). |
-| `DELETE` | `/api/:entity/:id?cascade=true` | Ejecuta el borrado en cascada con las acciones elegidas. Cuerpo JSON con el plan de acciones. Requiere permiso y confirmación. |
+La ejecución usa `BEGIN IMMEDIATE` y mantiene auditoría y acta dentro de la misma
+transacción. Un error revierte todas las modificaciones de la base. Los archivos
+se retiran solo después del commit. Se reconstruyen titularidades, porcentajes,
+inquilinos e información de la comunidad principal de los propietarios conservados.
 
-` :entity` ∈ `communities`, `owners`, `properties`, `tenants`.
+`cascade_archives` guarda actas e históricos seleccionados. Las descargas vuelven
+a comprobar sesión, permiso y ámbito. Un creador conserva acceso al histórico de
+una comunidad eliminada si mantiene los permisos explícitos correspondientes;
+no obtiene acceso a comunidades existentes que ya no administra.
 
-### 3.2 Flujo del wizard (frontend)
+## Verificación
 
-```
-Paso 1: Selección de entidad
-  └─ Usuario hace clic en "Eliminar (avanzado)" en propietario / inquilino / inmueble / comunidad
+Pruebas en bases SQLite temporales y archivos aislados, sin tocar datos operativos.
+Cobertura de permisos, las cuatro entidades, revisión sin efectos, borrado global,
+recibos compartidos, eliminación financiera, liquidación, traslados, comunidad temporal,
+históricos y adjuntos, concurrencia, destinos inválidos, rollback y DELETE normal.
+Pruebas de interfaz para pasos, confirmaciones, cambios de opciones, recuperación de
+conflictos y fallos al refrescar después de una operación completada.
+La suite general sigue siendo `npm test`.
 
-Paso 2: Evaluación de dependencias
-  └─ El backend devuelve qué hay asociado y opciones válidas por cada uno
+## Revisión posterior
 
-Paso 3: Configuración de acciones por dependencia
-  ├─ Para cada inmueble: [Reasignar a otro propietario] [Dejar huérfano] [Mover a otra comunidad]
-  ├─ Para cada inquilino: [Reasignar a otro inmueble] [Dar de baja] [Mover con el inmueble]
-  ├─ Para cuotas/recibos: [Anular y liquidar final] [Dejar como histórico huérfano] [Mover a otra comunidad]
-  ├─ Para notificaciones/documentos: [Borrar] [Conservar como histórico]
-  └─ Para sub-entidades: [Crear comunidad temporal y mover todo ahí]
+Se añadieron regresiones para efectos sobre registros ajenos, cambios concurrentes
+en destinos, fechas de contratos, permisos de documentos, Comunicación y buzones,
+cierre de repartos compartidos, traslado de comunidades vacías, monedas incompatibles,
+revocación de acceso a históricos y descargas de documentos embebidos.
+El resumen muestra las cuentas concretas que se eliminarán. Sus sesiones y correos
+pendientes de recuperación se retiran con la cuenta; los perfiles restantes bloquean
+la eliminación. Un fallo simulado al guardar el acta verifica el rollback completo,
+incluidos archivos físicos. Los conflictos de datos conservan las opciones elegidas;
+solo `CASCADE_STALE` reinicia la evaluación.
 
-Paso 4: Resumen y confirmación
-  ├─ Listado de lo que se borrará, reasignará o dejará huérfano
-  ├─ Advertencia si hay datos financieros afectados
-  └─ Checkbox "Entiendo que esta acción no se puede deshacer"
+## Interfaz y relaciones verificadas
 
-Paso 5: Ejecución
-  ├─ Llamada a DELETE con cuerpo de acciones
-  ├─ Respuesta con resultado (OK / errores parciales)
-  └─ Redirección o toast de resultado
-```
+Los controles de cierre y navegación del asistente usan iconos con nombres accesibles.
+La acción de borrado avanzado usa una papelera con controles de ajustes; los borrados normales comparten
+el mismo icono. El histórico está integrado en Auditoría, junto al control de
+actualización con el mismo icono que Inicio. Los auditores autorizados pueden consultar
+actas sin recibir el permiso destructivo `cascade-delete`.
 
-
----
-
-## 4. Reglas por entidad (qué se evalúa y opciones)
-
-### 4.1 Propietario (`owners`)
-
-**Dependencias a evaluar:**
-- Inmuebles donde es titular (`properties.ownerIds` incluye su id)
-- Inquilinos vinculados a esos inmuebles (`tenants.ownerId` o `tenants` en `property.tenantIds`)
-- Recibos de cuotas donde aparece en `snapshot.owners` (`fee_receipts`)
-- Pagos (`fee_payments.ownerId`)
-- Notificaciones (`owner_notifications.ownerId`, `admin_emails.ownerId`)
-- Documentos del expediente (`owners.documents`)
-- Usuario vinculado (`owners.userId`)
-
-**Opciones por dependencia:**
-| Dependencia | Opciones |
-|-------------|----------|
-| Inmueble sin inquilino | Reasignar a otro propietario / Dejar huérfano (quitar de ownerIds) / Borrar inmueble también |
-| Inmueble con inquilino | Reasignar propietario e inquilino juntos / Mover inquilino a otro inmueble / Bloquear borrado hasta desvincular |
-| Cuotas con snapshot | Dejar como histórico (no tocar) / Anular y generar liquidación final / Marcar como huérfano |
-| Pagos | Dejar como histórico / Reasignar a otro propietario |
-| Notificaciones | Borrar / Conservar |
-| Documentos expediente | Borrar / Descargar y conservar copia |
-| Usuario vinculado | Desvincular (userId = '') / Borrar usuario si no tiene otros roles |
-
-**Bloqueadores:** Si el propietario es el único titular de un inmueble con contrato de inquilino vigente, el wizard debe exigir reasignar al inquilino primero o cancelar el contrato.
-
-### 4.2 Inquilino (`tenants`)
-
-**Dependencias:**
-- Inmueble donde vive (`tenants.propertyId`)
-- Contrato (fechas, documentos)
-- Notificaciones dirigidas a él
-- Documentos del expediente
-
-**Opciones:**
-| Dependencia | Opciones |
-|-------------|----------|
-| Inmueble asociado | Desvincular inquilino (propertyId = '') / Mover inquilino a otro inmueble / Borrar inquilino y dejar inmueble libre |
-| Contrato | Finalizar contrato con fecha de hoy / Anular contrato |
-| Documentos | Borrar / Conservar |
-
-### 4.3 Inmueble (`properties`)
-
-**Dependencias:**
-- Propietarios vinculados (`ownerIds`)
-- Inquilinos asociados (`tenantIds`)
-- Cuotas y servicios asignados a ese propertyId (`fee_receipts.propertyId`, `service_bills`)
-- Documentos del inmueble
-
-**Opciones:**
-| Dependencia | Opciones |
-|-------------|----------|
-| Propietarios | Reasignar inmueble a otro propietario / Quitar de ownerIds (huérfano) |
-| Inquilinos | Mover inquilino a otro inmueble / Dar de baja al inquilino / Bloquear si tiene contrato vigente |
-| Cuotas/services | Anular y liquidar / Dejar histórico huérfano / Mover a otro inmueble de la misma comunidad |
-
-**Bloqueador:** No se puede borrar un inmueble con cuotas no anuladas sin elegir una opción de liquidación o reasignación.
-
-### 4.4 Comunidad (`communities`)
-
-**Dependencias:**
-- Propietarios de la comunidad (`owners.communityId`)
-- Inmuebles (`properties.communityId`)
-- Inquilinos de esos inmuebles
-- Cuotas, derramas, servicios (`fee_plans`, `fee_receipts`, `fee_assessments`, `service_bills` con `communityId`)
-- Publicaciones de comunicación (`communication_posts.communityId`)
-- Notificaciones de la comunidad
-- Documentos de la comunidad
-- Configuración de marca, ajustes, roles
-
-**Opciones:**
-| Dependencia | Opciones |
-|-------------|----------|
-| Propietarios | Mover a otra comunidad / Borrar propietarios (requiere cascade-delete en owners) / Dejar sin comunidad |
-| Inmuebles | Mover a otra comunidad / Borrar inmuebles |
-| Cuotas y servicios | Anular todos y liquidar / Dejar como histórico huérfano / Mover a otra comunidad |
-| Publicaciones | Borrar / Mover a otra comunidad / Conservar como histórico |
-| Marca y ajustes | Borrar con la comunidad / Exportar configuración antes de borrar |
-
-**Opción especial:** "Crear comunidad temporal" — mover todos los propietarios, inmuebles e inquilinos a una comunidad nueva temporal antes de borrar la original.
-
-
----
-
-## 5. Acciones del wizard (catálogo)
-
-| Acción | Qué hace | Cuándo aplicar |
-|--------|----------|----------------|
-| `reassign_owner` | Cambia titularidad del inmueble a otro propietario existente | Propietario o inmueble |
-| `reassign_property` | Mueve inquilino o cuotas a otro inmueble | Inquilino, cuotas |
-| `reassign_community` | Mueve propietario/inmueble a otra comunidad existente | Comunidad, propietario, inmueble |
-| `orphan` | Setea referencias a null / vacío (huérfano) | Cualquier dependencia |
-| `liquidate_final` | Genera recibo final, anula pendientes, cierra deuda | Cuotas de propietario/inmueble/comunidad |
-| `cancel_contract` | Finaliza contrato de inquilino con fecha actual | Inquilino |
-| `create_temp_community` | Crea comunidad nueva y mueve todo ahí | Comunidad |
-| `delete_historical` | Borra notificaciones, documentos, publicaciones antiguas | Cualquier entidad |
-| `keep_historical` | Conserva como solo lectura sin borrar | Cuotas, documentos |
-
----
-
-## 6. Consideraciones de integridad y riesgos
-
-| Riesgo | Mitigación propuesta |
-|--------|---------------------|
-| Datos financieros huérfanos (fee_receipts con snapshot del owner borrado) | Nunca borrar `fee_receipts` ni `fee_payments`. Opción `liquidate_final` o `keep_historical`. |
-| Propietario compartido entre comunidades (F06 auditoría) | Al borrar de una comunidad, solo quitar de esa comunidad; no borrar al propietario globalmente a menos que se elija explícitamente. |
-| Inquilino sin inmueble | Permitir `propertyId = ''` solo si se elige `orphan` o `reassign_property`. |
-| Comunidad con cuotas activas | Exigir `liquidate_final` o `reassign_community` antes de permitir el borrado. |
-| Auditoría | Registrar en `access_audit` el borrado en cascada con detalle de qué acciones se tomaron. |
-
----
-
-## 7. Archivos implicados (futura implementación)
-
-**Backend:**
-- `src/routes/owners.js` — agregar ruta `GET /:id/cascade-preview` y `DELETE /:id?cascade=`
-- `src/routes/communities.js` — igual
-- `src/routes/properties.js` — igual
-- `src/routes/tenants.js` — igual
-- `src/access.js` — middleware de permiso `cascade-delete`
-- `src/db.js` — consultas de dependencias (joins entre tablas)
-
-**Frontend:**
-- `public/js/features/propietarios.js` — botón "Eliminar (avanzado)" y llamada al wizard
-- `public/js/features/inquilinos.js` — igual
-- `public/js/features/comunidades.js` — igual
-- `public/js/features/properties.js` (o dentro de comunidades.js) — igual
-- Nuevo componente `public/js/features/cascade-wizard.js` — lógica del wizard (pasos, render, confirmación)
-- `public/styles.css` — estilos del wizard (pasos, árbol de dependencias, selects)
-
-**Documentación:**
-- `README.md` — actualizar sección de eliminación para reflejar el nuevo permiso y modo wizard.
-
----
-
-## 8. Próximos pasos (cuando se decida implementar)
-
-1. Crear los endpoints `cascade-preview` en las 4 rutas sin modificar los `DELETE` existentes.
-2. Agregar el permiso `cascade-delete` en `permissions.js` y `administracion.js`.
-3. Construir el componente wizard en frontend.
-4. Conectar paso 2 (preview) con el árbol de dependencias.
-5. Implementar paso 5 (ejecución transaccional) solo detrás del permiso y confirmación.
-6. Agregar pruebas unitarias para el preview de dependencias.
-7. Actualizar `README.md`.
-
----
-
-## 9. ¿Qué NO se hace en esta rama
-
-- No se modifica el comportamiento actual de `DELETE /owners/:id`, `DELETE /communities/:id`, etc.
-- No se borra ningún dato financiero automáticamente.
-- No se cambia el permiso existente `owner:delete` ni `community:delete`.
-- No se toca `main`.
-
----
-
-**Rama creada:** `feat/cascade-delete-wizard`  
-**Push:** pendiente de tu confirmación para subir a GitHub y abrir PR.
+Las comunidades relacionadas se calculan desde inmuebles, contratos y registros
+financieros reales. Los campos desnormalizados de comunidad principal del propietario
+no crean vínculos: pueden conservar valores antiguos y no son la fuente de pertenencia.
+La vista previa describe el motivo de las relaciones que muestra.
