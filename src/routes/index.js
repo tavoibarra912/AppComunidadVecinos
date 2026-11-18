@@ -68,7 +68,6 @@ router.use((req, res, next) => {
   const policy = policyData();
   const isAdmin = [
     "admin:settings",
-    "admin:branding",
     "admin:users",
     "admin:roles",
     "admin:providers",

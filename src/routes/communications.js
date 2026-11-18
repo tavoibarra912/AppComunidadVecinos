@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import multer from "multer";
 import { db } from "../db.js";
+import { recordAudit } from "../audit.js";
 import { documentLimits, allowedDocumentLabels, detectContentType } from "../document-policy.js";
 import { policyData, allowed } from "../security.js";
 import { textosActuales, aplicarPlantilla, nombrePlataforma } from "../textos-envio.js";
@@ -291,6 +292,17 @@ router.delete(
       canModerate(req.user, p.communityId, data) ||
       allowed(req.user, "comm:eliminar", p.communityId, data);
     if (!canErase) throw problem("No puedes eliminar esta publicación.", 403);
+    // Se conserva un rastro de auditoría global aunque las filas post-específicas
+    // de communication_audit se borren con la publicación.
+    recordAudit({
+      actor: req.user,
+      action: "communications.post-deleted",
+      resourceType: "post",
+      resourceId: p.id,
+      outcome: "success",
+      req,
+      details: { createdBy: p.createdBy, communityId: p.communityId },
+    });
     transaction(() => {
       db.prepare("DELETE FROM communication_recipients WHERE postId=?").run(p.id);
       db.prepare("DELETE FROM communication_comments WHERE postId=?").run(p.id);

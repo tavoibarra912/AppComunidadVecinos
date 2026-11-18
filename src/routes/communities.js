@@ -29,7 +29,7 @@ router.use((req, res, next) => {
     if (data.logoDataUrl !== undefined) {
       const logo = data.logoDataUrl;
       const LOGO = /^data:image\/(png|jpeg|svg\+xml|webp);base64,/;
-      if (logo !== "" && (typeof logo !== "string" || logo.length > 307_264 || !LOGO.test(logo)))
+      if (logo !== "" && (typeof logo !== "string" || logo.length > 230_400 || !LOGO.test(logo)))
         return res.status(400).json({
           error:
             "El logo de la comunidad debe ser una imagen PNG, JPG, SVG o WebP de menos de 225 KB.",
@@ -159,7 +159,9 @@ router.put(
       data.currency || "",
       data.adminUserId !== undefined ? data.adminUserId : existing.adminUserId || "",
       data.logoDataUrl !== undefined ? data.logoDataUrl : existing.logoDataUrl || "",
-      data.marca !== undefined ? JSON.stringify(data.marca) : JSON.stringify(existing.marca || {}),
+      data.marca !== undefined
+        ? JSON.stringify({ ...(existing.marca || {}), ...data.marca })
+        : JSON.stringify(existing.marca || {}),
       existing.id,
     );
     res.json(findCommunity(existing.id));

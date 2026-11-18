@@ -107,7 +107,7 @@ export function validateBrand(marca) {
     marca.logoDataUrl !== undefined &&
     marca.logoDataUrl !== "" &&
     (typeof marca.logoDataUrl !== "string" ||
-      marca.logoDataUrl.length > 300_000 ||
+      marca.logoDataUrl.length > 230_400 ||
       !LOGO.test(marca.logoDataUrl))
   )
     return "El logo debe ser una imagen PNG, JPG, SVG o WebP de menos de 225 KB.";
