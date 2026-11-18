@@ -18,6 +18,13 @@ function brandTitle() {
   return effectiveBrand(state.settings?.marca || readInjectedBrand(), state).nombre || "Peñarrubia";
 }
 
+// El texto del menú vive en su propio span para no borrar el icono de la sección.
+function setNavLabel(link, text) {
+  const label = link?.querySelector(".nav-item-label");
+  if (label) label.textContent = text;
+  else if (link) link.textContent = text;
+}
+
 const userAvatar = document.querySelector("#user-avatar");
 const userRoleLabel = document.querySelector("#user-role-label");
 const newOwnerBtn = document.querySelector("#new-owner");
@@ -61,11 +68,13 @@ export function applyRoleUI() {
   const isOwner = state.activeRole === "owner";
   const user = getCurrentUser();
   const feeAccess = feeNavigation();
-  for (const link of [navCuotas, mobileNavCuotas]) {
-    if (link) {
-      link.hidden = !feeAccess.visible;
-      link.textContent = feeAccess.title;
-    }
+  if (navCuotas) {
+    navCuotas.hidden = !feeAccess.visible;
+    setNavLabel(navCuotas, feeAccess.title);
+  }
+  if (mobileNavCuotas) {
+    mobileNavCuotas.hidden = !feeAccess.visible;
+    mobileNavCuotas.textContent = feeAccess.title;
   }
   const account = accountView(state, ROLE_LABELS);
   const roleLabel = ROLE_LABELS[user?.rol] || user?.rol || "";
@@ -88,10 +97,10 @@ export function applyRoleUI() {
   if (sidebarLabel) {
     sidebarLabel.textContent = isOwner ? "MI ÁREA PERSONAL" : "GESTIÓN ADMINISTRADOR";
   }
-  if (navComunidades) navComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
+  if (navComunidades) setNavLabel(navComunidades, isOwner ? "Mi Comunidad" : "Comunidades");
   if (mobileNavComunidades)
     mobileNavComunidades.textContent = isOwner ? "Mi Comunidad" : "Comunidades";
-  if (navPropietarios) navPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
+  if (navPropietarios) setNavLabel(navPropietarios, isOwner ? "Mi Perfil" : "Propietarios");
   if (mobileNavPropietarios)
     mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (navInmuebles) navInmuebles.hidden = !hasPermission("property:read");

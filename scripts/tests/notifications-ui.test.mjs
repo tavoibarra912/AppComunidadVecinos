@@ -104,7 +104,7 @@ test("avisos: el propietario ve y marca todo lo de todos sus perfiles", async ()
     assert.match(w.document.querySelector("#owner-inbox-list").textContent, /segundo perfil/);
     assert.doesNotMatch(w.document.querySelector("#owner-inbox-list").textContent, /otra persona/);
     const bulk = w.document.querySelector("#mark-all-owner-notifs-read-btn");
-    assert.equal(bulk.querySelector("span").textContent, "Marcar 2 como leídos");
+    assert.equal(bulk.getAttribute("aria-label"), "Marcar 2 avisos como leídos");
     bulk.click();
     await flush();
     assert.deepEqual(calls.sort(), ["o1", "o2"]);

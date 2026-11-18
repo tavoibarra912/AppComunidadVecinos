@@ -323,6 +323,8 @@ document.querySelectorAll("[data-close-issue-reporter]").forEach((button) => {
 });
 
 dialog?.addEventListener("cancel", (event) => {
+  // El «cancel» del selector de archivos burbujea hasta aquí: no es Escape.
+  if (event.target !== dialog) return;
   if (!submitting) return;
   event.preventDefault();
 });

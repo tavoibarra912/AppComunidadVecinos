@@ -205,9 +205,14 @@ export function renderFeesPage() {
   pageLoadedAt = state.loadedAt;
   root.replaceChildren();
   const heading = el("div", undefined, "page-heading"),
-    title = el("div");
-  title.append(
-    el("p", kind === "community" ? "GESTIÓN FINANCIERA" : "ÁREA DEL PROPIETARIO", "eyebrow"),
+    title = el("div"),
+    titleRow = el("div", undefined, "page-title-row"),
+    titleIcon = el("span", undefined, "page-title-icon");
+  titleIcon.setAttribute("aria-hidden", "true");
+  titleIcon.innerHTML =
+    '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg>';
+  titleRow.append(
+    titleIcon,
     el(
       "h1",
       kind === "community"
@@ -216,6 +221,10 @@ export function renderFeesPage() {
           ? "Mis cuotas"
           : "Cuotas del propietario",
     ),
+  );
+  title.append(
+    el("p", kind === "community" ? "GESTIÓN FINANCIERA" : "ÁREA DEL PROPIETARIO", "eyebrow"),
+    titleRow,
     el(
       "p",
       kind === "community"
@@ -367,6 +376,8 @@ function ensureDialog() {
     dialog.querySelector("[data-fee-close]").disabled = false;
   });
   dialog.addEventListener("cancel", (event) => {
+    // El «cancel» del selector de archivos burbujea hasta aquí: no es Escape.
+    if (event.target !== dialog) return;
     if (dialog.dataset.busy === "true") event.preventDefault();
   });
   dialog.querySelector("form").addEventListener("submit", (event) => {
@@ -1689,12 +1700,17 @@ async function showService(id) {
       row.append(link, el("span", date(attachment.createdAt)));
       if (service.canEdit)
         row.append(
-          button("Eliminar adjunto", async () => {
-            await api.fees(`/service-attachments/${encodeURIComponent(attachment.id)}`, "DELETE");
-            await reloadAll();
-            await showService(service.id);
-            toast("Adjunto eliminado.");
-          }),
+          iconButton(
+            "Eliminar adjunto",
+            async () => {
+              await api.fees(`/service-attachments/${encodeURIComponent(attachment.id)}`, "DELETE");
+              await reloadAll();
+              await showService(service.id);
+              toast("Adjunto eliminado.");
+            },
+            "delete",
+            "remove",
+          ),
         );
       attachments.append(row);
     }
@@ -2444,10 +2460,7 @@ function downloadReceipt(r) {
 
 // Links from both notification inboxes open the same authorized receipt detail.
 window.addEventListener("fees:receipt", (event) => {
-  for (const node of document.querySelectorAll(
-    "#notifications-dialog[open],#admin-email-dialog[open]",
-  ))
-    node.close();
+  // El recibo se abre sobre el buzón: al cerrarlo se vuelve al aviso de origen.
   if (feeNavigation().visible) window.location.hash = "#cuotas";
   showReceipt(event.detail.id);
 });

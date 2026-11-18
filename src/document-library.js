@@ -10,6 +10,30 @@ export const DOCUMENT_ENTITY_TABLES = Object.freeze({
 });
 export const MAX_FOLDER_DEPTH = 5;
 
+// Iconos admitidos en las carpetas: los nombres coinciden con los del menú
+// lateral y con los que dibuja la biblioteca en el cliente.
+export const FOLDER_ICONS = Object.freeze([
+  "folder",
+  "home",
+  "communities",
+  "properties",
+  "owners",
+  "tenants",
+  "fees",
+  "posts",
+  "settings",
+  "documents",
+  "archive",
+  "shield",
+]);
+
+export function normalizeFolderIcon(value) {
+  const icon = String(value ?? "folder")
+    .trim()
+    .toLowerCase();
+  return FOLDER_ICONS.includes(icon) ? icon : "folder";
+}
+
 export function normalizeEntityType(value) {
   const entityType = String(value || "")
     .trim()
@@ -207,7 +231,7 @@ export function findNameConflict({
   return "";
 }
 
-export function createFolder({ entityType, entityId, parentId = "", name, user }) {
+export function createFolder({ entityType, entityId, parentId = "", name, icon, user }) {
   const sanitized = sanitizeFolderName(name);
   if (sanitized.error) throw Object.assign(new Error(sanitized.error), { status: 400 });
   const parent = parentId ? getFolderRow(entityType, entityId, parentId) : null;
@@ -238,13 +262,14 @@ export function createFolder({ entityType, entityId, parentId = "", name, user }
     parentId,
     name: sanitized.name,
     nameKey,
+    icon: normalizeFolderIcon(icon),
     createdAt: new Date().toISOString(),
     createdBy: userInfo.id,
     createdByName: userInfo.name,
   };
   try {
     db.prepare(
-      "INSERT INTO document_folders (id,entityType,entityId,parentId,name,nameKey,createdAt,createdBy,createdByName) VALUES (?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO document_folders (id,entityType,entityId,parentId,name,nameKey,icon,createdAt,createdBy,createdByName) VALUES (?,?,?,?,?,?,?,?,?,?)",
     ).run(
       row.id,
       row.entityType,
@@ -252,6 +277,7 @@ export function createFolder({ entityType, entityId, parentId = "", name, user }
       row.parentId,
       row.name,
       row.nameKey,
+      row.icon,
       row.createdAt,
       row.createdBy,
       row.createdByName,
@@ -266,7 +292,7 @@ export function createFolder({ entityType, entityId, parentId = "", name, user }
   return documentFolderFromRow(row);
 }
 
-export function updateFolder({ entityType, entityId, folderId, name, parentId, user }) {
+export function updateFolder({ entityType, entityId, folderId, name, parentId, icon, user }) {
   const current = getFolderRow(entityType, entityId, folderId);
   if (!current) throw Object.assign(new Error("Carpeta no encontrada."), { status: 404 });
   let nextName = current.name;
@@ -312,13 +338,11 @@ export function updateFolder({ entityType, entityId, folderId, name, parentId, u
     excludeFolderId: current.id,
   });
   if (conflict) throw Object.assign(new Error(conflict), { status: 409 });
+  const nextIcon = icon === undefined ? current.icon || "folder" : normalizeFolderIcon(icon);
   try {
-    db.prepare("UPDATE document_folders SET parentId = ?, name = ?, nameKey = ? WHERE id = ?").run(
-      nextParentId,
-      nextName,
-      nameKey,
-      current.id,
-    );
+    db.prepare(
+      "UPDATE document_folders SET parentId = ?, name = ?, nameKey = ?, icon = ? WHERE id = ?",
+    ).run(nextParentId, nextName, nameKey, nextIcon, current.id);
   } catch (error) {
     if (String(error?.message || "").includes("UNIQUE"))
       throw Object.assign(new Error("Ya existe una carpeta con ese nombre en esta ubicación."), {

@@ -327,6 +327,7 @@ router.post("/folders", (req, res, next) => {
       entityId: target.entityId,
       parentId,
       name: req.body?.name,
+      icon: req.body?.icon,
       user: req.user,
     });
     res.status(201).json(folder);
@@ -343,14 +344,21 @@ router.patch("/folders/:id", (req, res, next) => {
       return deny(res, "No tienes permiso para editar carpetas en este registro.");
     if (!allowed(req.user, permissionFor("upload"), row.entityId))
       return deny(res, "No tienes permiso para gestionar documentos.");
-    if (req.body?.name === undefined && req.body?.parentId === undefined)
-      return res.status(400).json({ error: "Indica el nuevo nombre o la carpeta de destino." });
+    if (
+      req.body?.name === undefined &&
+      req.body?.parentId === undefined &&
+      req.body?.icon === undefined
+    )
+      return res
+        .status(400)
+        .json({ error: "Indica el nuevo nombre, el icono o la carpeta de destino." });
     const folder = updateFolder({
       entityType: row.entityType,
       entityId: row.entityId,
       folderId: row.id,
       name: req.body?.name,
       parentId: req.body?.parentId === undefined ? undefined : String(req.body.parentId || ""),
+      icon: req.body?.icon,
       user: req.user,
     });
     res.json(folder);

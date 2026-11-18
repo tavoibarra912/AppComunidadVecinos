@@ -154,6 +154,7 @@ db.exec(`
     parentId TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL,
     nameKey TEXT NOT NULL,
+    icon TEXT NOT NULL DEFAULT 'folder',
     createdAt TEXT NOT NULL DEFAULT '',
     createdBy TEXT NOT NULL DEFAULT '',
     createdByName TEXT NOT NULL DEFAULT ''
@@ -265,6 +266,10 @@ ensureColumns("documents", {
   category: "TEXT NOT NULL DEFAULT 'document'",
   uploadedBy: "TEXT NOT NULL DEFAULT ''",
   uploadedByName: "TEXT NOT NULL DEFAULT ''",
+});
+// Las carpetas existentes conservan el icono genérico de carpeta.
+ensureColumns("document_folders", {
+  icon: "TEXT NOT NULL DEFAULT 'folder'",
 });
 // El índice usa `folderId`: se crea después de asegurar la columna para que
 // las bases creadas con el esquema anterior puedan migrar sin errores.
@@ -1164,6 +1169,7 @@ export function documentFolderFromRow(row) {
     entityId: row.entityId,
     parentId: row.parentId || "",
     name: row.name,
+    icon: row.icon || "folder",
     createdAt: row.createdAt,
     createdBy: row.createdBy || "",
     createdByName: row.createdByName || "",

@@ -218,6 +218,10 @@
   color: var(--muted);
   font-size: 12px;
 }
+.comm-inbox-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .comm-empty p {
   color: var(--muted);
   line-height: 1.6;

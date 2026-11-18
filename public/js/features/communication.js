@@ -34,6 +34,8 @@ const local = (value) => {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 const iso = (value) => (value ? new Date(value).toISOString() : "");
+const TRASH_ICON =
+  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 let metadata = null,
   posts = [],
   view = "board",
@@ -62,7 +64,13 @@ dialog.id = "comm-dialog";
 dialog.className = "comm-dialog";
 dialog.setAttribute("aria-labelledby", "comm-dialog-title");
 document.body.append(dialog);
+// Pila de vistas del diálogo: cerrar una vista interna vuelve a la anterior.
+let dialogStack = [];
+const COMM_ICON =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 function showDialog(title, body) {
+  // Abrir desde la página inicia una vista raíz.
+  if (!dialog.open) dialogStack = [];
   dialog.innerHTML = `<div class="comm-dialog-header"><h2 id="comm-dialog-title">${h(title)}</h2><button type="button" class="icon-action-btn btn-cancel btn-lg" data-comm-close aria-label="Cerrar diálogo" title="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div class="comm-dialog-body">${body}</div><p class="comm-error" id="comm-error" role="alert"></p>`;
   if (!dialog.open) dialog.showModal();
   dialog.querySelector("[data-comm-close]").focus();
@@ -76,9 +84,16 @@ function closeDialog() {
     return;
   editorSnapshot = "";
   editorPost = null;
+  const previous = dialogStack.pop();
+  if (previous) {
+    previous();
+    return;
+  }
   dialog.close();
 }
 dialog.addEventListener("cancel", (e) => {
+  // El «cancel» del selector de archivos burbujea hasta el diálogo: se ignora.
+  if (e.target !== dialog) return;
   e.preventDefault();
   e.stopImmediatePropagation();
   closeDialog();
@@ -233,30 +248,40 @@ $("#comm-content").addEventListener("click", (e) => {
 });
 $("#comm-refresh").addEventListener("click", (e) => action(refreshCommunication, e.currentTarget));
 $("#comm-new").addEventListener("click", () => openEditor());
+function showInbox() {
+  const notifications = posts
+    .filter((p) => p.recipient && !["draft", "scheduled"].includes(p.phase))
+    .sort(
+      (a, b) =>
+        Number(!!a.recipient.readAt) - Number(!!b.recipient.readAt) ||
+        b.updatedAt.localeCompare(a.updatedAt),
+    );
+  showDialog(
+    "Mis comunicaciones",
+    `<p class="comm-muted">Avisos, eventos y reuniones dirigidos a tu cuenta. Las publicaciones sin leer aparecen primero.</p>${notifications.length ? `<div class="comm-inbox-list">${notifications.map((p) => `<button type="button" data-inbox-post="${h(p.id)}"><strong>${h(p.title)}</strong><span>${h(p.communityName)} · ${h(date(p.updatedAt))}${!p.recipient.readAt ? " · Sin leer" : ""}</span></button>`).join("")}</div>` : "<p>No tienes comunicaciones recibidas todavía.</p>"}<div class="comm-inbox-actions"><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-board" aria-label="Abrir tablón de la comunidad" title="Abrir tablón de la comunidad">${COMM_ICON}</button></div>`,
+  );
+  dialog.querySelectorAll("[data-inbox-post]").forEach((button) =>
+    button.addEventListener("click", () =>
+      action(async () => {
+        dialogStack.push(showInbox);
+        await openPost(button.dataset.inboxPost);
+      }, button),
+    ),
+  );
+  $("#comm-inbox-board").addEventListener("click", () => {
+    dialogStack = [];
+    dialog.close();
+    // Cerrar el buzón deja al usuario en el tablón.
+    window.location.hash = "#comunicacion";
+  });
+}
 $("#comm-inbox-link").addEventListener("click", (e) => {
   e.preventDefault();
   action(async () => {
     await refreshCommunication();
     editorSnapshot = "";
-    const notifications = posts
-      .filter((p) => p.recipient && !["draft", "scheduled"].includes(p.phase))
-      .sort(
-        (a, b) =>
-          Number(!!a.recipient.readAt) - Number(!!b.recipient.readAt) ||
-          b.updatedAt.localeCompare(a.updatedAt),
-      );
-    showDialog(
-      "Mis comunicaciones",
-      `<p class="comm-muted">Avisos, eventos y reuniones dirigidos a tu cuenta. Las publicaciones sin leer aparecen primero.</p>${notifications.length ? `<div class="comm-inbox-list">${notifications.map((p) => `<button type="button" data-inbox-post="${h(p.id)}"><strong>${h(p.title)}</strong><span>${h(p.communityName)} · ${h(date(p.updatedAt))}${!p.recipient.readAt ? " · Sin leer" : ""}</span></button>`).join("")}</div>` : "<p>No tienes comunicaciones recibidas todavía.</p>"}<a href="#comunicacion" id="comm-inbox-board">Abrir tablón de la comunidad</a>`,
-    );
-    dialog
-      .querySelectorAll("[data-inbox-post]")
-      .forEach((button) =>
-        button.addEventListener("click", () =>
-          action(() => openPost(button.dataset.inboxPost), button),
-        ),
-      );
-    $("#comm-inbox-board").addEventListener("click", () => dialog.close());
+    dialogStack = [];
+    showInbox();
   });
 });
 document.addEventListener("keydown", (e) => {
@@ -397,6 +422,8 @@ function openEditor(post = null) {
       );
       editorSnapshot = "";
       editorPost = null;
+      // La vista del detalle reemplaza al editor: su vuelta ya no aplica.
+      dialogStack.pop();
       await refreshCommunication();
       await openPost(result.id);
       toast(payload.status === "draft" ? "Borrador guardado." : "Publicación guardada.");
@@ -561,7 +588,7 @@ async function openPost(id, tab = "publication") {
   ];
   showDialog(
     p.title,
-    `<div class="comm-detail-meta"><span class="comm-tag comm-tag-type">${h(types[p.type])}</span><span class="comm-tag comm-tag-phase comm-tag-phase-${p.phase}">${h(phases[p.phase])}</span><span class="comm-tag comm-tag-comunidad">${h(p.communityName)}</span>${p.canManage ? '<button type="button" class="secondary-button" data-edit-post>Editar publicación</button>' : ""}${p.canDelete ? '<button type="button" class="secondary-button" data-delete-post>Eliminar publicación</button>' : ""}</div><div class="comm-tabs" id="comm-detail-tabs" role="tablist" aria-label="Detalle de publicación">${tabs.map(([id, label]) => `<button type="button" role="tab" data-detail-tab="${id}" aria-selected="${detailTab === id}">${label}</button>`).join("")}</div>
+    `<div class="comm-detail-meta"><span class="comm-tag comm-tag-type">${h(types[p.type])}</span><span class="comm-tag comm-tag-phase comm-tag-phase-${p.phase}">${h(phases[p.phase])}</span><span class="comm-tag comm-tag-comunidad">${h(p.communityName)}</span>${p.canManage ? '<button type="button" class="secondary-button" data-edit-post>Editar publicación</button>' : ""}${p.canDelete ? `<button type="button" class="icon-action-btn btn-delete" data-delete-post aria-label="Eliminar publicación" title="Eliminar publicación">${TRASH_ICON}</button>` : ""}</div><div class="comm-tabs" id="comm-detail-tabs" role="tablist" aria-label="Detalle de publicación">${tabs.map(([id, label]) => `<button type="button" role="tab" data-detail-tab="${id}" aria-selected="${detailTab === id}">${label}</button>`).join("")}</div>
     <div data-detail-panel="publication" ${detailTab !== "publication" ? "hidden" : ""}><p class="comm-body-text">${h(p.body)}</p><dl class="comm-detail-dates"><div><dt>Publicación</dt><dd>${h(date(p.publishAt))}</dd></div>${p.startsAt ? `<div><dt>Inicio</dt><dd>${h(date(p.startsAt))}</dd></div><div><dt>Fin</dt><dd>${h(date(p.endsAt))}</dd></div>` : ""}<div><dt>Destinatarios</dt><dd>${h(audienceLabels[p.audience.mode])}</dd></div>${p.archiveAt ? `<div><dt>Archivo</dt><dd>${h(date(p.archiveAt))}</dd></div>` : ""}</dl>${p.receiptRequired && p.recipient ? `<div class="comm-callout">${p.recipient.receiptAt ? `Confirmaste la recepción el ${h(date(p.recipient.receiptAt))}.` : '<p>Se solicita que confirmes la recepción de esta publicación.</p><button type="button" class="primary-button" data-receipt>Confirmar recepción</button>'}</div>` : ""}<h3>Documentos adjuntos</h3>${filesView(p, "attachment")}${p.canManage ? uploadForm("attachment") : ""}</div>
     ${p.type === "meeting" ? `<div data-detail-panel="meeting" ${detailTab !== "meeting" ? "hidden" : ""}>${meetingView(p)}</div>` : ""}
     <div data-detail-panel="participation" ${detailTab !== "participation" ? "hidden" : ""}>${participationView(p)}</div>
@@ -578,7 +605,10 @@ async function openPost(id, tab = "publication") {
       el.hidden = el.dataset.detailPanel !== detailTab;
     });
   });
-  dialog.querySelector("[data-edit-post]")?.addEventListener("click", () => openEditor(p));
+  dialog.querySelector("[data-edit-post]")?.addEventListener("click", () => {
+    dialogStack.push(() => openPost(p.id, detailTab));
+    openEditor(p);
+  });
   dialog.querySelector("[data-delete-post]")?.addEventListener("click", (e) =>
     action(async () => {
       if (
@@ -588,6 +618,7 @@ async function openPost(id, tab = "publication") {
       )
         return;
       await request(`/posts/${p.id}`, "DELETE");
+      dialogStack = [];
       closeDialog();
       await refreshCommunication();
       toast("Publicación eliminada.");
@@ -720,7 +751,7 @@ function uploadForm(kind) {
 function filesView(p, kind) {
   const files = p.files.filter((f) => f.kind === kind);
   return files.length
-    ? `<ul class="comm-file-list">${files.map((f) => `<li><div><a href="/api/communications/posts/${encodeURIComponent(p.id)}/files/${encodeURIComponent(f.id)}" download>${h(f.name)}</a><small>${h(date(f.createdAt))} · ${Math.ceil(f.size / 1024)} KB${kind === "minutes" ? ` · ${f.final ? "Publicada" : "Borrador"}` : ""}</small></div>${p.canManage && !f.final ? `<div class="comm-actions">${kind === "minutes" ? `<button type="button" class="secondary-button" data-publish-minutes="${h(f.id)}">Publicar acta</button>` : ""}<button type="button" class="secondary-button" data-delete-file="${h(f.id)}">Eliminar</button></div>` : ""}</li>`).join("")}</ul>`
+    ? `<ul class="comm-file-list">${files.map((f) => `<li><div><a href="/api/communications/posts/${encodeURIComponent(p.id)}/files/${encodeURIComponent(f.id)}" download>${h(f.name)}</a><small>${h(date(f.createdAt))} · ${Math.ceil(f.size / 1024)} KB${kind === "minutes" ? ` · ${f.final ? "Publicada" : "Borrador"}` : ""}</small></div>${p.canManage && !f.final ? `<div class="comm-actions">${kind === "minutes" ? `<button type="button" class="secondary-button" data-publish-minutes="${h(f.id)}">Publicar acta</button>` : ""}<button type="button" class="icon-action-btn btn-delete" data-delete-file="${h(f.id)}" aria-label="Eliminar documento adjunto" title="Eliminar documento adjunto">${TRASH_ICON}</button></div>` : ""}</li>`).join("")}</ul>`
     : `<p class="comm-muted">${kind === "minutes" ? "Todavía no hay actas disponibles." : "No hay documentos adjuntos."}</p>`;
 }
 function meetingView(p) {
@@ -748,7 +779,7 @@ function participationView(p) {
   }
   if (!participa)
     return '<p class="comm-muted">La participación (comentarios y consultas) no está habilitada para tu rol.</p>';
-  return `${poll}<h3>Comentarios</h3>${p.comments.length ? `<div class="comm-comments">${p.comments.map((c) => `<article><div class="comm-card-meta"><strong>${h(c.author)}</strong><span>${h(date(c.createdAt))}</span>${c.canDelete ? `<button type="button" class="text-link-button" data-delete-comment="${h(c.id)}">Eliminar</button>` : ""}</div><p class="comm-body-text">${h(c.body)}</p></article>`).join("")}</div>` : '<p class="comm-muted">Todavía no hay comentarios.</p>'}${p.commentsEnabled && interactive ? '<form id="comm-comment"><label>Tu comentario<textarea name="comment" rows="3" required maxlength="3000"></textarea></label><button type="submit" class="primary-button">Publicar comentario</button></form>' : `<p class="comm-muted">${p.commentsEnabled ? "Esta publicación no admite nuevas respuestas por su estado." : "Los comentarios están desactivados."}</p>`}`;
+  return `${poll}<h3>Comentarios</h3>${p.comments.length ? `<div class="comm-comments">${p.comments.map((c) => `<article><div class="comm-card-meta"><strong>${h(c.author)}</strong><span>${h(date(c.createdAt))}</span>${c.canDelete ? `<button type="button" class="icon-action-btn btn-delete" data-delete-comment="${h(c.id)}" aria-label="Eliminar comentario" title="Eliminar comentario">${TRASH_ICON}</button>` : ""}</div><p class="comm-body-text">${h(c.body)}</p></article>`).join("")}</div>` : '<p class="comm-muted">Todavía no hay comentarios.</p>'}${p.commentsEnabled && interactive ? '<form id="comm-comment"><label>Tu comentario<textarea name="comment" rows="3" required maxlength="3000"></textarea></label><button type="submit" class="primary-button">Publicar comentario</button></form>' : `<p class="comm-muted">${p.commentsEnabled ? "Esta publicación no admite nuevas respuestas por su estado." : "Los comentarios están desactivados."}</p>`}`;
 }
 function trackingView(p) {
   const states = {

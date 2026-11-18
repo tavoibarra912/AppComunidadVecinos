@@ -42,6 +42,19 @@ const shortDate = (value) =>
     : "—";
 const button = (label, action, id = "", primary = false) =>
   `<button type="button" class="${primary ? "primary-button" : "secondary-button"}" data-dashboard-action="${action}" ${id ? `data-id="${h(id)}"` : ""}>${h(label)}</button>`;
+// Iconos de acción: los mismos que el menú lateral y el título de cada pantalla.
+const ICONS = {
+  refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+  communities:
+    '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+  owners:
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  posts:
+    '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  fees: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
+};
+const iconAction = (label, action, icon, kind = "btn-info") =>
+  `<button type="button" class="icon-action-btn ${kind} btn-lg" data-dashboard-action="${action}" aria-label="${h(label)}" title="${h(label)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[icon]}</svg></button>`;
 function metric(label, value, description, action, enabled = true) {
   return `<article class="dashboard-metric"><span>${h(label)}</span><strong>${h(typeof value === "number" ? number(value) : value)}</strong><p>${h(description)}</p>${action && enabled ? `<button type="button" data-dashboard-action="${action}">Ver detalle <span aria-hidden="true">→</span></button>` : ""}</article>`;
 }
@@ -122,7 +135,7 @@ function feeSection(personal) {
   return `<section class="dashboard-panel dashboard-finance" id="dashboard-finance" data-personal="${personal}">
     <div class="dashboard-panel-heading dashboard-finance-heading">
       <div><h2>${personal ? "Mis cuotas" : "Situación de cuotas"}</h2><p>${personal ? "Recibos, vencimientos y pagos de tus inmuebles." : "Emitido, cobrado y pendiente en el ámbito seleccionado."}</p></div>
-      <button type="button" class="secondary-button" data-dashboard-action="fees">${personal ? "Ver mis cuotas" : "Abrir Cuotas"}</button>
+      ${iconAction(personal ? "Ver mis cuotas" : "Abrir cuotas", "fees", "fees")}
     </div>
     <div id="dashboard-finance-body">${feeSummaryBody(personal)}</div>
   </section>`;
@@ -250,9 +263,10 @@ export function renderHomeDashboard() {
   ];
   const actions = [];
   if (hasPermission("community:create"))
-    actions.push(button("Nueva comunidad", "new-community", "", true));
-  if (hasPermission("owner:create")) actions.push(button("Nuevo propietario", "new-owner"));
-  if (canManage) actions.push(button("Nueva publicación", "new-post"));
+    actions.push(iconAction("Nueva comunidad", "new-community", "communities", "btn-add"));
+  if (hasPermission("owner:create"))
+    actions.push(iconAction("Nuevo propietario", "new-owner", "owners", "btn-add"));
+  if (canManage) actions.push(iconAction("Nueva publicación", "new-post", "posts", "btn-add"));
   if (d.personal) {
     if (d.communities.length)
       actions.push(
@@ -272,8 +286,8 @@ export function renderHomeDashboard() {
     ? hasPermission("owner_notification:read")
     : hasPermission("admin_notification:read");
   const inboxCount = d.personal ? d.ownerUnread : d.adminUnread;
-  root.innerHTML = `<div class="dashboard-heading"><div><p class="eyebrow">${h(d.personal ? "MI ÁREA PERSONAL" : "PANEL DE GESTIÓN")}</p><h1 id="home-greeting-title">${h(`Hola, ${d.user?.nombre || d.user?.usuario || "vecino"}`)}</h1><p>${h(brand.nombre)} · ${h(d.personal ? "Tus perfiles, documentación y novedades de comunidad." : "Registros y gestiones dentro de tu ámbito de acceso.")}</p></div><div class="dashboard-date"><strong>${now.getDate()}</strong><span>${h(now.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</span></div></div>
-    <div class="dashboard-toolbar"><label>Ámbito del panel<select id="dashboard-community"><option value="">${d.personal ? "Todas mis comunidades" : "Todas las comunidades visibles"}</option>${d.availableCommunities.map((c) => `<option value="${h(c.id)}" ${selectedCommunity === c.id ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select></label><div><p>Datos del servidor${state.loadedAt ? ` · ${h(date(state.loadedAt))}` : ""}</p>${button(refreshing ? "Actualizando…" : "Actualizar datos", "refresh")}</div></div>
+  root.innerHTML = `<div class="dashboard-heading"><div><p class="eyebrow">${h(d.personal ? "MI ÁREA PERSONAL" : "PANEL DE GESTIÓN")}</p><div class="page-title-row"><span class="page-title-icon" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path><path d="M9 22V12h6v10"></path></svg></span><h1 id="home-greeting-title">${h(`Hola, ${d.user?.nombre || d.user?.usuario || "vecino"}`)}</h1></div><p>${h(brand.nombre)} · ${h(d.personal ? "Tus perfiles, documentación y novedades de comunidad." : "Registros y gestiones dentro de tu ámbito de acceso.")}</p></div><div class="dashboard-date"><strong>${now.getDate()}</strong><span>${h(now.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</span></div></div>
+    <div class="dashboard-toolbar"><label>Ámbito del panel<select id="dashboard-community"><option value="">${d.personal ? "Todas mis comunidades" : "Todas las comunidades visibles"}</option>${d.availableCommunities.map((c) => `<option value="${h(c.id)}" ${selectedCommunity === c.id ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select></label><div><p>Datos del servidor${state.loadedAt ? ` · ${h(date(state.loadedAt))}` : ""}</p>${iconAction(refreshing ? "Actualizando…" : "Actualizar datos", "refresh", "refresh")}</div></div>
     <div class="dashboard-actions">${actions.join("")}</div>
     ${d.personal && !d.ownOwners.length && !d.ownTenants.length ? '<div class="dashboard-callout"><strong>Tu perfil todavía está pendiente de vinculación</strong><p>Un administrador debe asociar tu cuenta con tu perfil de propietario o inquilino. Las métricas aparecerán cuando existan registros vinculados.</p></div>' : ""}
     <div class="dashboard-metrics">${metrics.join("")}</div>

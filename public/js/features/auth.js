@@ -172,7 +172,6 @@ function loggedOut() {
   document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
   document.querySelectorAll(".login-view form").forEach((form) => form.reset());
   showLoginView("signin");
-  window.location.reload();
 }
 window.addEventListener("auth:expired", loggedOut);
 document.querySelector("#user-logout-btn")?.addEventListener("click", async () => {
