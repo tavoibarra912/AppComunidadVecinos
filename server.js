@@ -79,7 +79,10 @@ const MIME_ESTATICOS = {
 };
 function staticHeaders(res, filePath) {
   if (/\.(?:m?js|css)$/i.test(filePath))
-    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    // no-cache obliga al navegador a revalidar en cada visita; combinado con
+    // el cache-busting por URL de injectAssetVersions, el usuario siempre recibe
+    // la versión nueva sin necesidad de Ctrl+F5.
+    res.setHeader("Cache-Control", "no-cache");
 }
 async function archivoComprimido(filePath, brotli, version) {
   const key = brotli ? filePath + ".br" : filePath + ".gz";
