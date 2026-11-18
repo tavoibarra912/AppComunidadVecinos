@@ -28,6 +28,7 @@ import {
 import { createDocumentLibrary } from "../document-library.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { createRichText } from "../rich-text.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
@@ -992,6 +993,17 @@ export function renderProperties() {
     });
   } else {
     propertyTable.refresh();
+  }
+  document.querySelector('[data-export-table="properties"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "properties",
+    getView: () => propertyTable?.getExportState(),
+    getFilters: () => ({ query: propertySearch?.value || "" }),
+  });
+  if (exportWrap) {
+    const toolbar =
+      propertySearch?.closest(".toolbar") || propertySearch?.parentElement?.parentElement;
+    toolbar?.appendChild(exportWrap);
   }
 }
 

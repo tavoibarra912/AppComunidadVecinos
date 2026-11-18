@@ -1,6 +1,7 @@
 import { renderCascadeArchiveHistory } from "./cascade-wizard.js";
 import { api } from "../api.js";
 import { hasPermission } from "../state.js";
+import { createExportDropdown } from "../export-client.js";
 
 const form = document.querySelector("#audit-filter");
 const results = document.querySelector("#audit-results");
@@ -41,6 +42,16 @@ export async function renderAudit() {
     status.textContent = "No tienes permiso para consultar la auditoría.";
     return;
   }
+
+  // Botón de exportar (se monta una sola vez junto al formulario de filtros)
+  if (form && !form.querySelector(".table-export-wrap")) {
+    const exportWrap = createExportDropdown({
+      tableId: "audit",
+      getFilters: () => ({ action: form.elements.action?.value || "" }),
+    });
+    if (exportWrap) form.appendChild(exportWrap);
+  }
+
   status.textContent = "Cargando auditoría…";
   try {
     const page = await api.listAudit({ limit, offset, action: form.elements.action.value });

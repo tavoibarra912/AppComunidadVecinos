@@ -1,3 +1,4 @@
+import { refreshExportControls } from "../export-client.js";
 import { state, ROLE_LABELS, getCurrentUser, hasPermission } from "../state.js";
 
 import { accountView } from "../account-view.js";
@@ -9,6 +10,7 @@ import { renderHomeDashboard } from "./home.js";
 import { puedeAdministrar, renderAdministracion } from "./administracion.js";
 import { renderCommunication } from "./communication.js";
 import { feeNavigation, renderFeesPage } from "./fees.js";
+import { renderInformesPage } from "./informes.js";
 import "./auth.js";
 import { updateOwnerInboxBadge } from "./notificaciones.js";
 import { effectiveBrand, readInjectedBrand } from "../brand.js";
@@ -44,6 +46,9 @@ const mobileNavAdministracion = document.querySelector("#mobile-nav-administraci
 const navCuotas = document.querySelector("#nav-cuotas");
 const mobileNavCuotas = document.querySelector("#mobile-nav-cuotas");
 const secCuotas = document.querySelector("#cuotas");
+const navInformes = document.querySelector("#nav-informes");
+const mobileNavInformes = document.querySelector("#mobile-nav-informes");
+const secInformes = document.querySelector("#informes");
 const mobileNavInquilinos = document.querySelector("#mobile-nav-inquilinos");
 const secComunidades = document.querySelector("#comunidades");
 const secPropietarios = document.querySelector("#propietarios");
@@ -65,6 +70,7 @@ const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
 // === Elementos de navegación: declarados arriba (bloque consolidado) ===
 
 export function applyRoleUI() {
+  refreshExportControls();
   const isOwner = state.activeRole === "owner";
   const user = getCurrentUser();
   const feeAccess = feeNavigation();
@@ -117,6 +123,8 @@ export function applyRoleUI() {
     if (link) link.hidden = !hasPermission("owner:read");
   for (const link of [navInquilinos, mobileNavInquilinos])
     if (link) link.hidden = !hasPermission("tenant:read");
+  const canReadReports = hasPermission("reports:read");
+  for (const link of [navInformes, mobileNavInformes]) if (link) link.hidden = !canReadReports;
   // 4. Sección Comunidades
   if (comHeadingEyebrow)
     comHeadingEyebrow.textContent = isOwner
@@ -214,6 +222,10 @@ export function handleRouting() {
     secAdministracion.hidden = true;
     secAdministracion.style.display = "none";
   }
+  if (secInformes) {
+    secInformes.hidden = true;
+    secInformes.style.display = "none";
+  }
 
   [
     navHome,
@@ -228,6 +240,8 @@ export function handleRouting() {
     mobileNavInquilinos,
     navAdministracion,
     mobileNavAdministracion,
+    navInformes,
+    mobileNavInformes,
   ].forEach((el) => {
     if (el) el.classList.remove("active");
   });
@@ -298,6 +312,19 @@ export function handleRouting() {
     if (mobileNavInmuebles) mobileNavInmuebles.classList.add("active");
     document.title = brandTitle();
     renderProperties();
+  } else if (hash === "#informes") {
+    if (!hasPermission("reports:read")) {
+      window.location.hash = "#home";
+      return;
+    }
+    if (secInformes) {
+      secInformes.hidden = false;
+      secInformes.style.display = "block";
+    }
+    if (navInformes) navInformes.classList.add("active");
+    if (mobileNavInformes) mobileNavInformes.classList.add("active");
+    document.title = brandTitle();
+    renderInformesPage();
   } else if (hash === "#comunidades") {
     if (secComunidades) {
       secComunidades.hidden = false;
@@ -376,6 +403,11 @@ for (const link of [navCuotas, mobileNavCuotas])
   link?.addEventListener("click", (event) => {
     event.preventDefault();
     navigateToSection("#cuotas");
+  });
+for (const link of [navInformes, mobileNavInformes])
+  link?.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigateToSection("#informes");
   });
 
 // Login simulado: selector de usuario en el topbar

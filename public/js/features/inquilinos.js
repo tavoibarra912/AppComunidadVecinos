@@ -30,6 +30,7 @@ import {
   setFormReadonly,
 } from "../utils.js";
 import { createDataTable } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { createRichText } from "../rich-text.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
@@ -377,6 +378,16 @@ export function renderTenants() {
     });
   } else {
     tenantTable.refresh();
+  }
+  document.querySelector('[data-export-table="tenants"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "tenants",
+    getView: () => tenantTable?.getExportState(),
+    getFilters: () => ({ query: tenantSearch?.value || "" }),
+  });
+  if (exportWrap) {
+    const toolbar = tenantSearch?.closest(".toolbar") || tenantSearch?.parentElement?.parentElement;
+    toolbar?.appendChild(exportWrap);
   }
 }
 

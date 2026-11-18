@@ -67,6 +67,7 @@ function crearInstancia(options) {
   const visible = new Map(
     columns.map((col) => [col.key, col.hideable === false ? true : col.defaultVisible === true]),
   );
+  let pageSize = defaultPageSize;
   const storageKey = options.storageKey ? `table-engine:${options.storageKey}` : null;
   if (storageKey) {
     try {
@@ -126,7 +127,6 @@ function crearInstancia(options) {
   let sortDir = "asc";
   let groupKey = "";
   let page = 1;
-  let pageSize = defaultPageSize;
   if (
     state.settings?.filasPorPagina &&
     pageSizeOptions.includes(Number(state.settings.filasPorPagina)) &&
@@ -495,6 +495,43 @@ function crearInstancia(options) {
 
   const tabla = {
     refresh,
+    getExportState() {
+      const query = currentQuery();
+      let rows = (getRows() || []).filter(
+        (row) => !query || columns.some((col) => columnValue(col, row).includes(query)),
+      );
+      if (sortKey) {
+        const col = byKey.get(sortKey);
+        rows = rows
+          .slice()
+          .sort(
+            (a, b) =>
+              (sortDir === "desc" ? -1 : 1) *
+              COLLATOR.compare(String(col.value?.(a) ?? ""), String(col.value?.(b) ?? "")),
+          );
+      }
+      if (groupKey) {
+        const col = byKey.get(groupKey);
+        rows = rows.flatMap((_, index) =>
+          index % pageSize
+            ? []
+            : rows
+                .slice(index, index + pageSize)
+                .slice()
+                .sort((a, b) =>
+                  COLLATOR.compare(String(col.value?.(a) || "—"), String(col.value?.(b) || "—")),
+                ),
+        );
+      }
+      return {
+        itemIds: rows.map((row) => String(row.id ?? row.tenant?.id)),
+        columns: orderedColumns()
+          .filter((col) => visible.get(col.key) && col.key !== "actions")
+          .map((col) => col.key),
+        sort: sortKey ? { key: sortKey, dir: sortDir } : null,
+        filters: { query },
+      };
+    },
     setPageSize(size) {
       if (!pageSizeOptions.includes(Number(size))) return;
       pageSize = Number(size);

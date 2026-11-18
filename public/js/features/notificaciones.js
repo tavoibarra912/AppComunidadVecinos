@@ -1,3 +1,4 @@
+import { createExportDropdown } from "../export-client.js";
 import { escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, getCurrentOwnerProfileId, hasPermission, requirePermission } from "../state.js";
@@ -317,6 +318,13 @@ export function renderOwnerInbox() {
   ownerInboxList.setAttribute("aria-busy", String(ownerBulkBusy || ownerReadPending.size > 0));
   const visible = visibleInbox("owner", notifications, (n) => `${n.title} ${n.message}`);
   inboxResults("owner", visible.length, notifications.length);
+  ownerInboxList.parentElement?.querySelector(".table-export-wrap")?.remove();
+  const exportControl = createExportDropdown({
+    tableId: "owner_notifications",
+    permission: "owner:export",
+    getView: () => ({ itemIds: visible.map((n) => n.id), columns: null, filters: {} }),
+  });
+  if (exportControl) ownerInboxList.parentElement?.insertBefore(exportControl, ownerInboxList);
   if (!visible.length) {
     inboxEmpty(ownerInboxList, "owner", notifications.length);
     return;
@@ -460,6 +468,13 @@ export function renderAdminInbox() {
     (n) => `${n.subject} ${n.ownerName} ${n.ownerCommunity} ${n.ownerPlot}`,
   );
   inboxResults("admin", visible.length, state.adminEmails.length);
+  adminInboxList.parentElement?.querySelector(".table-export-wrap")?.remove();
+  const exportControl = createExportDropdown({
+    tableId: "admin_notifications",
+    permission: "owner:export",
+    getView: () => ({ itemIds: visible.map((n) => n.id), columns: null, filters: {} }),
+  });
+  if (exportControl) adminInboxList.parentElement?.insertBefore(exportControl, adminInboxList);
   if (!visible.length) {
     inboxEmpty(adminInboxList, "admin", state.adminEmails.length);
     return;

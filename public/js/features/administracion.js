@@ -17,6 +17,7 @@ import {
   makeSelectSearchable,
 } from "../utils.js";
 import { createDataTable, aplicarFilasPorPagina } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
@@ -535,6 +536,16 @@ function renderUsers() {
   } else {
     userTable.refresh();
   }
+  document.querySelector('[data-export-table="users"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "users",
+    getView: () => userTable?.getExportState(),
+    getFilters: () => ({}),
+  });
+  if (exportWrap) {
+    const usersTable = document.querySelector("#usuarios-table");
+    usersTable?.parentElement?.insertBefore(exportWrap, usersTable);
+  }
 }
 
 function iconBtn(className, title, ariaLabel, svg) {
@@ -843,6 +854,16 @@ function renderRoles() {
     });
   } else {
     rolesTable.refresh();
+  }
+  document.querySelector('[data-export-table="roles"]')?.remove?.();
+  const rolesExportWrap = createExportDropdown({
+    tableId: "roles",
+    getView: () => rolesTable?.getExportState(),
+    getFilters: () => ({}),
+  });
+  if (rolesExportWrap) {
+    const rolesTableEl = document.querySelector("#roles-table");
+    rolesTableEl?.parentElement?.insertBefore(rolesExportWrap, rolesTableEl);
   }
 }
 

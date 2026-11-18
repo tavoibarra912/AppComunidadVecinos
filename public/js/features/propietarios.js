@@ -36,6 +36,7 @@ import {
 } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { createRichText } from "../rich-text.js";
 import {
   editingDocs,
@@ -400,6 +401,16 @@ export function renderOwners() {
     });
   } else {
     ownerTable.refresh();
+  }
+  document.querySelector('[data-export-table="owners"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "owners",
+    getView: () => ownerTable?.getExportState(),
+    getFilters: () => ({ query: ownerSearch?.value || "" }),
+  });
+  if (exportWrap) {
+    const toolbar = ownerSearch?.closest(".toolbar") || ownerSearch?.parentElement?.parentElement;
+    toolbar?.appendChild(exportWrap);
   }
 }
 

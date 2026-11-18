@@ -1,3 +1,4 @@
+import { createExportDropdown } from "../export-client.js";
 import { api } from "../api.js";
 import { state, getCurrentUser, hasPermission, refreshState } from "../state.js";
 import { escapeHtml as esc, richTextHtml, htmlToText } from "../html.js";
@@ -589,6 +590,14 @@ function panelTitle(kind, id) {
         ? "Mis cuotas"
         : "Cuotas del propietario";
 }
+function exportList(parent, tableId, rows, columns = null, filters = {}) {
+  const control = createExportDropdown({
+    tableId,
+    permission: "fee:export",
+    getView: () => ({ itemIds: rows.map((r) => String(r.id)), columns, filters }),
+  });
+  if (control) parent.append(control);
+}
 function table(headers, rows) {
   const wrap = el("div", undefined, "fee-table-scroll"),
     table = document.createElement("table");
@@ -766,7 +775,7 @@ function renderPanel(root, ctx) {
     assessmentSection(root, ctx);
   if (serviceTab && ctx.kind === "community" && data.canManage && canConfigure && !ctx.readonly)
     serviceSection(root, ctx);
-  if (serviceTab && !manage) informativeServiceSection(root, data);
+  if (serviceTab && !manage) informativeServiceSection(root, data, ctx);
   if (assessmentTab && manage && !receipts.length) {
     info(root, "Los recibos de derramas aparecerán aquí cuando emitas el primer plazo.");
     return;
@@ -863,6 +872,13 @@ function renderPanel(root, ctx) {
       };
     summary.replaceChildren();
     results.replaceChildren();
+    exportList(
+      results,
+      "receipts",
+      rows,
+      ["location", "concept", "dueDate", "amount", "outstanding", "status"],
+      { query: ctx.search || "", period: ctx.period || "" },
+    );
     for (const [key, name] of [
       ["issued", "Emitido"],
       ["paid", "Cobrado"],
@@ -955,6 +971,7 @@ function renderPanel(root, ctx) {
   );
   if (credits.length) {
     root.append(el("h4", "Saldos a favor"));
+    exportList(root, "payments", credits, ["owner", "paidOn", "credit"]);
     root.append(
       table(
         ["Pagador / comunidad", "Fecha", "Disponible", "Acción"],
@@ -973,6 +990,14 @@ function renderPanel(root, ctx) {
   if (manage && data.payments.length) {
     const history = document.createElement("details");
     history.append(el("summary", "Historial de cobros y devoluciones"));
+    exportList(history, "payments", data.payments, [
+      "paidOn",
+      "owner",
+      "amount",
+      "method",
+      "reference",
+      "status",
+    ]);
     history.append(
       table(
         ["Fecha / pagador", "Importe", "Forma / referencia", "Estado", "Acción"],
@@ -1062,6 +1087,7 @@ function assessmentSection(root, ctx) {
   create.disabled = !(data.properties || []).length;
   heading.append(create);
   section.append(heading);
+  exportList(section, "assessments", list);
   if (!list.length)
     info(
       section,
@@ -1192,6 +1218,11 @@ async function showAssessment(id) {
         }),
       );
     schedule.append(el("h3", "Plazos"));
+    exportList(
+      schedule,
+      "assessment_installments",
+      a.installments.map((i) => ({ id: `${a.id}:${i.number}` })),
+    );
     schedule.append(
       table(
         ["Plazo", "Vencimiento", "Importe", "Emitido", "Cobrado", "Pendiente", "Estado", "Acción"],
@@ -1236,6 +1267,14 @@ async function showAssessment(id) {
     );
     if (a.receipts.length) {
       receipts.append(el("h3", "Recibos generados"));
+      exportList(receipts, "receipts", a.receipts, [
+        "property",
+        "owners",
+        "amount",
+        "paid",
+        "outstanding",
+        "status",
+      ]);
       receipts.append(
         table(
           ["Inmueble", "Titulares", "Importe", "Cobrado", "Pendiente", "Estado", "Acción"],
@@ -1360,6 +1399,7 @@ function serviceSection(root, ctx) {
   create.disabled = !(data.properties || []).length;
   heading.append(create);
   section.append(heading);
+  exportList(section, "services", list);
   if (!list.length)
     info(
       section,
@@ -1406,13 +1446,19 @@ function serviceForm(ctx, service = null) {
     showService,
   });
 }
-function serviceRowsTable(items, method) {
+function serviceRowsTable(
+  items,
+  method,
+  serviceId = "",
+  dataset = "service_breakdown",
+  exportFilters = {},
+) {
   const reading = method === "reading" || method === "mixed";
   const headers = ["Inmueble", "Coeficiente"];
   if (reading) headers.push("Lectura anterior", "Lectura actual", "Consumo");
   if (method === "mixed") headers.push("Parte fija", "Parte variable");
   headers.push("Importe");
-  return table(
+  const result = table(
     headers,
     items.map((item) => {
       const previous = item.previous ?? item.reading?.previous,
@@ -1438,8 +1484,24 @@ function serviceRowsTable(items, method) {
       return row;
     }),
   );
+  if (serviceId)
+    exportList(
+      result,
+      dataset,
+      items.map((i) => ({ id: `${serviceId}:${i.propertyId}` })),
+      [
+        "plot",
+        "coefficient",
+        ...(reading ? ["previous", "current", "consumption"] : []),
+        ...(method === "mixed" ? ["fixed", "variable"] : []),
+        "amount",
+      ],
+      exportFilters,
+    );
+  return result;
 }
-function informativeServiceSection(root, data) {
+function informativeServiceSection(root, data, ctx) {
+  const exportFilters = { ownerId: ctx.kind === "owner" ? ctx.id : "" };
   const list = data.informativeServices || [];
   if (!list.length) return;
   const section = el("section", undefined, "fee-services fee-informative-services");
@@ -1455,6 +1517,7 @@ function informativeServiceSection(root, data) {
   );
   heading.append(copy);
   section.append(heading);
+  exportList(section, "informative_services", list, null, exportFilters);
   section.append(
     table(
       ["Servicio", "Periodo", "Total factura", "Tu parte", "Adjuntos", "Acción"],
@@ -1468,14 +1531,14 @@ function informativeServiceSection(root, data) {
             (service.properties || []).map((property) => property.plot).join(", "),
           )}</small>`,
           String((service.attachments || []).length || "—"),
-          button("Ver reparto", () => showInformativeService(service)),
+          button("Ver reparto", () => showInformativeService(service, exportFilters)),
         ];
       }),
     ),
   );
   root.append(section);
 }
-function showInformativeService(service) {
+function showInformativeService(service, exportFilters = {}) {
   const body = open("Reparto informativo");
   dialog.querySelector("h2").textContent =
     `Servicio de ${service.serviceLabel} · ${service.period}`;
@@ -1500,7 +1563,9 @@ function showInformativeService(service) {
   if (service.legalBasis) info(body, `Base legal o acuerdo: ${service.legalBasis}`);
   if (service.notes) richInfo(body, service.notes);
   body.append(el("h3", "Tu reparto"));
-  body.append(serviceRowsTable(mine, service.method));
+  body.append(
+    serviceRowsTable(mine, service.method, service.id, "informative_breakdown", exportFilters),
+  );
   for (const warning of service.warnings || []) info(body, warning, true);
   if ((service.attachments || []).length) {
     body.append(el("h3", "Factura adjunta"));
@@ -1655,7 +1720,7 @@ async function showService(id) {
       overview.append(cancel);
     }
     split.append(el("h3", "Reparto congelado"));
-    split.append(serviceRowsTable(service.breakdown || [], service.method));
+    split.append(serviceRowsTable(service.breakdown || [], service.method, service.id));
     if (service.subset)
       info(
         split,
@@ -1689,6 +1754,14 @@ async function showService(id) {
     }
     if (service.receipts.length) {
       receipts.append(el("h3", "Recibos generados"));
+      exportList(receipts, "receipts", service.receipts, [
+        "property",
+        "owners",
+        "amount",
+        "paid",
+        "outstanding",
+        "status",
+      ]);
       receipts.append(
         table(
           ["Inmueble", "Titulares", "Importe", "Cobrado", "Pendiente", "Estado", "Acción"],
@@ -1834,6 +1907,7 @@ function configuration(ctx) {
     manage = data.canManage && !ctx.readonly;
   if (data.plans.length) {
     body.append(el("h3", "Acuerdos guardados"));
+    exportList(body, "plans", data.plans);
     body.append(
       table(
         ["Desde", "Recaudación anual", "Periodicidad", "Acuerdo"],
@@ -2291,6 +2365,12 @@ export async function showReceipt(id) {
     info(body, `Acuerdo: ${r.snapshot.agreement}. Identificador: ${r.id}`);
     if (r.cancelledAt)
       info(body, `Anulado el ${date(r.cancelledAt)}. Motivo: ${r.cancellationReason}`, true);
+    if (r.payments.length)
+      exportList(
+        body,
+        "receipt_payments",
+        r.payments.map((p) => ({ id: `${r.id}:${p.id}` })),
+      );
     if (r.payments.length)
       body.append(
         table(

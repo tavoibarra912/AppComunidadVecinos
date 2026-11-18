@@ -51,6 +51,7 @@ function fixture(t) {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/"/g, "&quot;");
+  w.createExportDropdown = () => null;
   w.toast = () => {};
   w.fieldLabel = () => "";
   w.mensajeDeValidez = () => "";

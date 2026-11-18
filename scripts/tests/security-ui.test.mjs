@@ -22,6 +22,9 @@ function element(id = "") {
     addEventListener(name, handler) {
       this.handlers[name] = handler;
     },
+    querySelector() {
+      return null;
+    },
     reset() {
       for (const field of Object.values(this.elements)) field.value = "";
     },
@@ -138,6 +141,7 @@ test("UI auditoría: filtra y pagina por API, trata contenido como texto y recha
   let allowed = true;
   const ui = fixture("audit", ["renderAudit"], {
     renderCascadeArchiveHistory: () => {},
+    createExportDropdown: () => null,
     hasPermission: () => allowed,
     api: {
       listAudit: async (params) => {

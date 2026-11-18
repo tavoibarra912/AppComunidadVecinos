@@ -1,3 +1,4 @@
+import { createExportDropdown } from "../export-client.js";
 import { api } from "../api.js";
 import { state, hasPermission } from "../state.js";
 import { escapeHtml as h } from "../html.js";
@@ -234,6 +235,17 @@ function card(p) {
 function draw() {
   if (!metadata) return;
   const list = filtered();
+  const exportHost = $("#comm-status");
+  exportHost?.parentElement?.querySelector(".table-export-wrap")?.remove();
+  const exportControl = createExportDropdown({
+    tableId: "communications",
+    getView: () => ({
+      itemIds: filtered().map((p) => p.id),
+      columns: null,
+      filters: { query: $("#comm-search").value },
+    }),
+  });
+  if (exportControl) exportHost?.parentElement?.insertBefore(exportControl, exportHost);
   $("#comm-status").textContent =
     `${list.length} ${list.length === 1 ? "publicación" : "publicaciones"} · Los horarios se muestran en tu zona local.`;
   $("#comm-content").innerHTML =
@@ -307,6 +319,11 @@ function showInbox() {
       }, button),
     ),
   );
+  const inboxExport = createExportDropdown({
+    tableId: "communications",
+    getView: () => ({ itemIds: notifications.map((p) => p.id), columns: null, filters: {} }),
+  });
+  if (inboxExport) dialog.querySelector(".comm-inbox-actions").append(inboxExport);
   $("#comm-inbox-refresh").addEventListener("click", (e) =>
     action(async () => {
       await refreshCommunication();
@@ -664,6 +681,28 @@ async function openPost(id, tab = "publication") {
     <div data-detail-panel="participation" ${detailTab !== "participation" ? "hidden" : ""}>${participationView(p)}</div>
     ${p.canManage ? `<div data-detail-panel="tracking" ${detailTab !== "tracking" ? "hidden" : ""}>${trackingView(p)}</div>` : ""}`,
   );
+  if (p.canManage) {
+    const panel = dialog.querySelector('[data-detail-panel="tracking"]');
+    for (const [tableId, label, ids] of [
+      [
+        "communication_receipts",
+        "Exportar lecturas",
+        p.recipients.map((r) => `${p.id}:${r.userId}`),
+      ],
+      ["communication_deliveries", "Exportar envíos", p.deliveries.map((r) => r.id)],
+      ["communication_history", "Exportar historial", p.history.map((r, i) => `${p.id}:${i}`)],
+    ]) {
+      const control = createExportDropdown({
+        tableId,
+        permission: "comm:export",
+        getView: () => ({ itemIds: ids, columns: null, filters: {} }),
+      });
+      if (control) {
+        control.querySelector("button").setAttribute("aria-label", label);
+        panel.append(control);
+      }
+    }
+  }
   $("#comm-detail-tabs").addEventListener("click", (e) => {
     const b = e.target.closest("[data-detail-tab]");
     if (!b) return;

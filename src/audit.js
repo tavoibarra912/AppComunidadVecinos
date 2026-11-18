@@ -63,6 +63,7 @@ export function auditRequests(req, res, next) {
     "communications",
     "notifications",
     "bootstrap",
+    "export",
     "link-owner",
     "link-tenant",
   ]);

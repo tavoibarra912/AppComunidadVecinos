@@ -12,6 +12,7 @@ import authRouter from "./auth.js";
 import communicationsRouter from "./communications.js";
 import feesRouter from "./fees.js";
 import issuesRouter from "./issues.js";
+import exportRouter from "./export.js";
 import { auditRequests, listAudit } from "../audit.js";
 import {
   requireSession,
@@ -154,6 +155,7 @@ router.use("/documents", documentsRouter);
 router.use("/notifications", notificationAccess, notificationsRouter);
 router.use("/communications", communicationsRouter);
 router.use("/fees", feesRouter);
+router.use("/export", exportRouter);
 router.use("/owners/contact", verificationRouter);
 router.use(
   "/admin",

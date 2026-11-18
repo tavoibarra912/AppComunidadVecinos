@@ -28,6 +28,7 @@ import {
 } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
 import { createRichText } from "../rich-text.js";
@@ -367,6 +368,16 @@ export function renderCommunities() {
     });
   } else {
     communityTable.refresh();
+  }
+  document.querySelector('[data-export-table="communities"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "communities",
+    getView: () => communityTable?.getExportState(),
+    getFilters: () => ({ query: communitySearch?.value || "" }),
+  });
+  if (exportWrap) {
+    const toolbar = document.querySelector("#comunidades-toolbar");
+    toolbar?.appendChild(exportWrap);
   }
 }
 

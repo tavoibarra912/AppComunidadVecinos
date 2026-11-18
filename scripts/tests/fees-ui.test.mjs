@@ -85,6 +85,7 @@ function fixture(manage = true) {
     properties: [{ id: "p1", plot: "Parcela 1", coefficient: "100" }],
   };
   Object.assign(w, {
+    createExportDropdown: () => null,
     state: {
       roles: [
         { id: "admin-role", nombre: "administrator" },

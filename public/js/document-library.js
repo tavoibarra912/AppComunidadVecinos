@@ -1,3 +1,4 @@
+import { createExportDropdown } from "./export-client.js";
 import { api } from "./api.js";
 import { escapeHtml as h } from "./html.js";
 import { toast, validateDocumentFiles } from "./utils.js";
@@ -699,6 +700,25 @@ export function createDocumentLibrary(options) {
 
   const render = () => {
     updateChrome();
+    toolbar.querySelector(".table-export-wrap")?.remove();
+    const exportControl = createExportDropdown({
+      tableId: "documents",
+      getView: () => ({
+        itemIds: [
+          ...sortItems(filteredFolders(), "folder"),
+          ...sortItems(filteredDocuments(), "document"),
+        ].map((r) => r.id),
+        columns: ["fileName", "kind", "fileSize", "uploadedAt", "uploadedByName"],
+        filters: {
+          entityType: option("entityType", ""),
+          entityId: entityId(),
+          category,
+          folderId: view.currentFolderId,
+          query: view.search,
+        },
+      }),
+    });
+    if (exportControl) toolbar.append(exportControl);
     renderBreadcrumbs();
     content.replaceChildren();
     const folders = sortItems(filteredFolders(), "folder");
