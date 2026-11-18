@@ -55,13 +55,19 @@ test("exportación: CSV, XLSX y PDF reales con las mismas filas y columnas elegi
     .map((r) => r.id);
   for (const format of ["csv", "xlsx", "pdf"]) {
     const result = await exportDataset(
-      input("communities", { format, itemIds: ids, columns: ["nif", "name"] }),
+      input("communities", {
+        format,
+        itemIds: ids,
+        columns: ["nif", "name"],
+        filters: { view: "Filtro de prueba" },
+      }),
     );
     assert.equal(result.rowCount, 2);
     if (format === "csv") {
       const text = result.buffer.toString("utf8");
       assert.ok(text.indexOf(rows[1].name) < text.indexOf(rows[0].name));
       assert.match(text, /"NIF";"Comunidad"/);
+      assert.ok(text.includes("Filtro de prueba"));
     }
     if (format === "xlsx") {
       const wb = new ExcelJS.Workbook();

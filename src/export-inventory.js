@@ -343,6 +343,7 @@ for (const entry of Object.values(EXPORT_INVENTORY)) {
   };
   entry.filters = [
     "query",
+    "view",
     "communityId",
     "entityType",
     "entityId",

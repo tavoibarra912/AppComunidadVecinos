@@ -322,7 +322,11 @@ export function renderOwnerInbox() {
   const exportControl = createExportDropdown({
     tableId: "owner_notifications",
     permission: "owner:export",
-    getView: () => ({ itemIds: visible.map((n) => n.id), columns: null, filters: {} }),
+    getView: () => ({
+      itemIds: visible.map((n) => n.id),
+      columns: null,
+      filters: { query: inboxViews.owner.search, view: inboxViews.owner.filter },
+    }),
   });
   if (exportControl) ownerInboxList.parentElement?.insertBefore(exportControl, ownerInboxList);
   if (!visible.length) {
@@ -472,7 +476,11 @@ export function renderAdminInbox() {
   const exportControl = createExportDropdown({
     tableId: "admin_notifications",
     permission: "owner:export",
-    getView: () => ({ itemIds: visible.map((n) => n.id), columns: null, filters: {} }),
+    getView: () => ({
+      itemIds: visible.map((n) => n.id),
+      columns: null,
+      filters: { query: inboxViews.admin.search, view: inboxViews.admin.filter },
+    }),
   });
   if (exportControl) adminInboxList.parentElement?.insertBefore(exportControl, adminInboxList);
   if (!visible.length) {

@@ -242,7 +242,15 @@ function draw() {
     getView: () => ({
       itemIds: filtered().map((p) => p.id),
       columns: null,
-      filters: { query: $("#comm-search").value },
+      filters: {
+        query: $("#comm-search").value,
+        view: JSON.stringify({
+          comunidad: $("#comm-community").value,
+          tipo: $("#comm-type").value,
+          estado: $("#comm-filter").value,
+          vista: view,
+        }),
+      },
     }),
   });
   if (exportControl) exportHost?.parentElement?.insertBefore(exportControl, exportHost);

@@ -715,6 +715,7 @@ export function createDocumentLibrary(options) {
           category,
           folderId: view.currentFolderId,
           query: view.search,
+          view: `Orden: ${view.sort} (${view.direction > 0 ? "asc" : "desc"})`,
         },
       }),
     });

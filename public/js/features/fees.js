@@ -877,7 +877,15 @@ function renderPanel(root, ctx) {
       "receipts",
       rows,
       ["location", "concept", "dueDate", "amount", "outstanding", "status"],
-      { query: ctx.search || "", period: ctx.period || "" },
+      {
+        query: ctx.search || "",
+        period: ctx.period || "",
+        view: JSON.stringify({
+          estado: ctx.status || "todos",
+          comunidad: ctx.community || ctx.id || "",
+          inmueble: ctx.property || "",
+        }),
+      },
     );
     for (const [key, name] of [
       ["issued", "Emitido"],
