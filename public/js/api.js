@@ -171,6 +171,11 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ read }),
     }),
+  markAllAdminEmailsRead: (read = true) =>
+    request("/notifications/admin-emails", {
+      method: "PATCH",
+      body: JSON.stringify({ read }),
+    }),
   deleteAdminEmail: (id) => request(`/notifications/admin-emails/${id}`, { method: "DELETE" }),
   createOwnerNotification: (payload) =>
     request("/notifications/owner-notifications", {

@@ -237,6 +237,11 @@ body {
   grid-template-columns: 76px 1fr;
 }
 
+.layout > main,
+.layout > .content {
+  min-width: 0;
+}
+
 .sidebar {
   background: var(--nav);
   padding: 30px 16px;
@@ -564,13 +569,27 @@ td {
   align-items: center;
 }
 
+/* Las acciones de fila usan el mismo tamaño que los botones de alta (#new-community). */
+.row-actions > .icon-action-btn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.row-actions > .icon-action-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
 /* Botones de acción con iconos estándar */
 .icon-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
   border-radius: 6px;
   border: 1px solid var(--line);
   background: white;
@@ -4010,8 +4029,8 @@ select {
 
 /* Botones de acción con iconos estándar extendidos */
 .icon-action-btn.btn-lg {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
 }
 
@@ -5516,8 +5535,8 @@ dialog {
 
 /* Botones densos y variantes de la biblioteca */
 .icon-action-btn.btn-sm {
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 20px;
   border-radius: 7px;
 }
 
@@ -5567,15 +5586,16 @@ dialog {
 .doc-library-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   padding: 9px 10px;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: #fbfcfd;
 }
 
+/* Buscar, orden y vista a la izquierda; exportar y acciones al extremo derecho. */
 .doc-library-toolbar-main,
 .doc-library-toolbar-tools {
   display: flex;
@@ -5584,8 +5604,20 @@ dialog {
   flex-wrap: wrap;
 }
 
+.doc-library-toolbar-tools {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
 .doc-library-toolbar-main {
   gap: 6px;
+  flex: 0 0 auto;
+}
+
+.doc-library-toolbar > .table-export-wrap {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .doc-library-toolbar .icon-action-btn[hidden] {
@@ -5596,6 +5628,8 @@ dialog {
   position: relative;
   display: inline-flex;
   align-items: center;
+  flex: 1 1 auto;
+  min-width: 70px;
 }
 
 .doc-library-search-icon {
@@ -5607,8 +5641,11 @@ dialog {
 }
 
 .doc-library-search {
-  min-width: 200px;
-  padding: 8px 10px 8px 31px;
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 6px 10px 6px 29px;
   border: 1px solid var(--line);
   border-radius: 8px;
   font: inherit;
@@ -5668,7 +5705,8 @@ dialog {
 
 .doc-library-view {
   display: inline-flex;
-  height: 34px;
+  flex: 0 0 auto;
+  height: 30px;
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -5679,7 +5717,7 @@ dialog {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
+  width: 24px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -6102,16 +6140,11 @@ dialog {
 
 @media (max-width: 720px) {
   .doc-library-toolbar {
-    align-items: stretch;
+    align-items: center;
   }
 
   .doc-library-toolbar-tools {
-    width: 100%;
     gap: 6px;
-  }
-
-  .doc-library-search-field {
-    flex: 1 1 100%;
   }
 
   .doc-library-search {
@@ -6120,11 +6153,11 @@ dialog {
   }
 
   .doc-library-sort-group {
-    flex: 1;
+    flex: 0 1 170px;
   }
 
   .doc-library-sort {
-    flex: 1;
+    flex: 1 1 auto;
   }
 
   .doc-library-pathbar {
@@ -6169,6 +6202,26 @@ dialog {
   .docs-summary-icon {
     width: 32px;
     height: 32px;
+  }
+}
+
+/* En pantallas muy estrechas los controles vuelven a envolverse para no cortarse. */
+@media (max-width: 560px) {
+  .doc-library-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .doc-library-toolbar-tools {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .doc-library-search-field {
+    flex: 1 1 100%;
+  }
+
+  .doc-library-sort-group {
+    flex: 0 1 180px;
   }
 }
 
@@ -6314,49 +6367,87 @@ dialog {
   gap: 12px;
   flex-wrap: wrap;
 }
-#audit-filter.audit-filter-toolbar > label {
-  width: min(360px, calc(100% - 54px));
+#audit-filter.audit-filter-toolbar > .audit-search-field {
+  display: block;
+  flex: 1 1 220px;
+  max-width: 340px;
+  margin: 0;
+}
+#audit-filter.audit-filter-toolbar > .audit-search-field input {
+  width: 100%;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+}
+#audit-filter.audit-filter-toolbar > label:not(.audit-search-field) {
+  flex: 0 1 300px;
+  width: min(360px, 100%);
   margin: 0;
 }
 #audit-filter.audit-filter-toolbar > button {
-  flex: 0 0 42px;
-  width: 42px;
-  height: 42px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  margin: 0 0 0 auto;
+}
+#audit-filter.audit-filter-toolbar > .table-export-wrap {
+  flex: 0 0 32px;
   margin: 0;
 }
 #audit-filter.audit-filter-toolbar .combo-box-input,
 #audit-filter.audit-filter-toolbar select {
-  height: 42px;
+  height: 32px;
   box-sizing: border-box;
+}
+#audit-filter.audit-filter-toolbar .combo-box-input {
+  padding: 6px 10px;
+}
+@media (max-width: 700px) {
+  #audit-filter.audit-filter-toolbar > .audit-search-field {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  #audit-filter.audit-filter-toolbar > label:not(.audit-search-field) {
+    flex: 1 1 180px;
+    width: auto;
+  }
+  #audit-filter.audit-filter-toolbar > button {
+    margin-left: 0;
+  }
+  #audit-filter.audit-filter-toolbar > .table-export-wrap {
+    margin-left: auto;
+  }
 }
 .doc-library-sort-group {
   gap: 12px;
   align-items: center;
-  flex: 0 1 auto;
+  flex: 0 1 170px;
+  min-width: 0;
 }
 .doc-library-sort-group .combo-box {
-  flex: 0 1 180px;
-  width: 180px;
+  flex: 1 1 auto;
+  width: auto;
   min-width: 0;
 }
 .doc-library-sort-group .combo-box-input {
-  height: 40px;
+  height: 30px;
   min-width: 0;
-  padding: 8px 30px 8px 12px;
+  padding: 5px 28px 5px 10px;
   box-sizing: border-box;
   font-size: 13px;
 }
 .doc-library-sort {
-  flex: none;
-  width: 180px;
-  height: 40px;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: 30px;
   border-right: 1px solid var(--line);
   border-radius: 8px;
 }
 .doc-library-sort-dir {
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
@@ -6528,7 +6619,8 @@ dialog {
 }
 .table-engine-search input {
   width: 100%;
-  height: 40px;
+  height: 30px;
+  padding: 6px 10px;
   box-sizing: border-box;
   margin: 0;
 }
@@ -6537,11 +6629,28 @@ dialog {
 }
 .table-engine-controls .combo-box-input,
 .table-engine-controls select {
-  height: 40px;
+  height: 30px;
   box-sizing: border-box;
 }
+.table-engine-controls .combo-box-input {
+  height: 30px;
+  min-height: 0;
+  padding: 5px 10px;
+  box-sizing: border-box;
+}
+
+/* El combo de agrupación se ajusta a su contenido en vez de ocupar todo el ancho. */
+.table-engine-controls .table-engine-group > .combo-box {
+  width: 150px;
+  flex: 0 0 150px;
+}
+
+.table-engine-controls .table-engine-group > .combo-box .combo-box-input {
+  width: 100%;
+}
 .table-engine-controls .table-columns-btn {
-  height: 40px;
+  height: 30px;
+  padding: 5px 10px;
   box-sizing: border-box;
 }
 .table-engine-actions,
@@ -6555,11 +6664,11 @@ dialog {
   display: none;
 }
 .table-export-btn {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   justify-content: center;
-  flex: 0 0 40px;
+  flex: 0 0 30px;
 }
 .table-export-btn svg {
   width: 20px;
@@ -6569,9 +6678,9 @@ dialog {
   animation: export-loading 1s linear infinite;
 }
 .table-engine-actions > .icon-action-btn {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
   padding: 0;
 }
 .table-engine-actions > .icon-action-btn svg {
@@ -6605,28 +6714,31 @@ dialog {
 }
 
 .table-list-actions > button {
-  height: 40px;
+  height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
   box-sizing: border-box;
 }
 #audit-filter .table-export-btn {
-  width: 42px;
-  height: 42px;
+  width: 32px;
+  height: 32px;
 }
 .doc-library-toolbar .table-export-btn {
-  width: 44px;
-  height: 44px;
+  width: 30px;
+  height: 30px;
 }
 
 input.table-engine-search {
-  height: 40px;
+  height: 30px;
+  padding: 6px 10px;
   box-sizing: border-box;
 }
 
 .fee-toolbar > .icon-action-btn,
 .table-list-actions > .icon-action-btn {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
   padding: 0;
   box-sizing: border-box;
 }
@@ -6634,4 +6746,92 @@ input.table-engine-search {
 .table-list-actions > .icon-action-btn svg {
   width: 20px;
   height: 20px;
+}
+
+/* ==========================================================================
+   AJUSTE MÓVIL GLOBAL (al 100 %)
+   ========================================================================== */
+@media (max-width: 760px) {
+  html,
+  body {
+    max-width: 100%;
+  }
+  body {
+    overflow-x: clip;
+  }
+  .topbar {
+    height: 60px;
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .topbar .brand {
+    min-width: 0;
+    font-size: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-actions {
+    flex: 0 0 auto;
+  }
+  .content {
+    padding: 28px 16px 44px;
+  }
+  .page-title-row {
+    gap: 10px;
+  }
+  .page-title-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .page-heading h1 {
+    font-size: 27px;
+  }
+  .table-engine-controls {
+    gap: 10px;
+  }
+  .dialog-actions {
+    flex-wrap: wrap;
+  }
+  .toast {
+    inset: auto 12px 12px 12px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .topbar .account-toggle #user-role-label {
+    display: none;
+  }
+  .topbar .account-toggle {
+    gap: 0;
+    padding: 4px;
+  }
+  .topbar .account-toggle > svg {
+    display: none;
+  }
+  .topbar-actions {
+    gap: 6px;
+  }
+  .topbar-btn-inbox {
+    padding: 7px;
+  }
+  .content {
+    padding: 24px 14px 40px;
+  }
+  .page-heading h1,
+  .comm-heading h1 {
+    font-size: 25px;
+  }
+  .page-title-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .toolbar {
+    margin-top: 22px;
+  }
+  .table-engine-controls {
+    padding: 10px;
+  }
 }

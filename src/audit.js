@@ -148,6 +148,9 @@ export function listAudit(query = {}) {
   const limit = Number(query.limit ?? 25),
     offset = Number(query.offset ?? 0);
   const action = query.action ?? "";
+  const search = String(query.q ?? "")
+    .trim()
+    .slice(0, 120);
   if (
     !Number.isInteger(limit) ||
     limit < 1 ||
@@ -161,11 +164,22 @@ export function listAudit(query = {}) {
     error.status = 400;
     throw error;
   }
-  const where = action ? " WHERE action=?" : "";
-  const params = action ? [action] : [];
-  const total = db.prepare(`SELECT COUNT(*) AS n FROM access_audit${where}`).get(...params).n;
+  const where = [];
+  const params = [];
+  if (action) {
+    where.push("action=?");
+    params.push(action);
+  }
+  if (search) {
+    where.push(
+      `instr(lower(coalesce(actorId,'') || ' ' || coalesce(actorName,'') || ' ' || action || ' ' || outcome || ' ' || coalesce(resourceType,'') || ' ' || coalesce(resourceId,'') || ' ' || coalesce(ip,'') || ' ' || details), lower(?))>0`,
+    );
+    params.push(search);
+  }
+  const clause = where.length ? ` WHERE ${where.join(" AND ")}` : "";
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM access_audit${clause}`).get(...params).n;
   const items = db
-    .prepare(`SELECT * FROM access_audit${where} ORDER BY id DESC LIMIT ? OFFSET ?`)
+    .prepare(`SELECT * FROM access_audit${clause} ORDER BY id DESC LIMIT ? OFFSET ?`)
     .all(...params, limit, offset)
     .map((row) => ({ ...row, details: JSON.parse(row.details) }));
   return { items, total, limit, offset };

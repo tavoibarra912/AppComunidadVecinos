@@ -69,6 +69,7 @@ const icons = {
   remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   save: '<path d="m5 12 4 4L19 6"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   // Iconos de cada pantalla (los mismos del menú lateral) para el acceso a Cuotas.
   communities:
     '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
@@ -86,6 +87,11 @@ function iconButton(label, action, kind = "add", icon = kind) {
   node.setAttribute("aria-label", label);
   node.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[icon]}</svg>`;
   return node;
+}
+// Mismo paginador con chevrones que usan las tablas del resto de la app.
+function pagerIcon(name) {
+  const points = name === "previous" ? "15 18 9 12 15 6" : "9 18 15 12 9 6";
+  return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="${points}"></polyline></svg>`;
 }
 function tabBar(parent, items, active, select, label) {
   const nav = el("nav", undefined, "community-editor-tabs fee-tabs");
@@ -606,7 +612,25 @@ function exportList(parent, tableId, rows, columns = null, filters = {}) {
       const actions = el("div", undefined, "table-list-actions");
       actions.append(control, add);
       heading.append(actions);
-    } else parent.append(control);
+    } else if (heading) {
+      heading.append(control);
+    } else if (parent.matches("details")) {
+      // Dentro de un <details> el exportar acompaña al resumen, a su misma altura.
+      const summary = parent.querySelector(":scope > summary");
+      if (summary) {
+        summary.classList.add("fee-details-summary");
+        summary.append(control);
+        control.addEventListener("click", (event) => event.stopPropagation());
+      } else parent.append(control);
+    } else {
+      // Sin cabecera propia: el botón va a la derecha del último título (h3/h4).
+      const previous = parent.lastElementChild;
+      if (previous && /^H[34]$/.test(previous.tagName)) {
+        const row = el("div", undefined, "fee-section-heading fee-subheading");
+        previous.replaceWith(row);
+        row.append(previous, control);
+      } else parent.append(control);
+    }
   }
 }
 function table(headers, rows) {
@@ -740,6 +764,8 @@ function renderPanel(root, ctx) {
       el("h3", serviceTab ? "Servicios" : assessmentTab ? "Derramas" : "Cuotas ordinarias"),
     );
   const tools = el("div", undefined, "fee-toolbar");
+  // En derramas y servicios el registro de cobros vive en la cabecera de la sección.
+  let sectionPayment = null;
   if (!assessmentTab && !serviceTab && ctx.kind === "community" && canConfigure)
     guide(root, data, manage);
   if (ctx.kind === "community" && data.canManage) {
@@ -751,17 +777,18 @@ function renderPanel(root, ctx) {
         emit.disabled = !data.plans.length || !data.properties.length;
         tools.append(emit);
       }
-      tools.append(
-        button(
-          !assessmentTab && !serviceTab
-            ? "3 · Registrar cobro o anticipo"
-            : "Registrar cobro o anticipo",
-          () => paymentForm(ctx),
-        ),
+      const payment = button(
+        !assessmentTab && !serviceTab
+          ? "3 · Registrar cobro o anticipo"
+          : "Registrar cobro o anticipo",
+        () => paymentForm(ctx),
       );
+      tools.append(payment);
+      if (assessmentTab || serviceTab) sectionPayment = payment;
     }
   }
-  tools.append(iconButton("Actualizar", () => load(root, ctx), "info", "refresh"));
+  const refresh = iconButton("Actualizar", () => load(root, ctx), "info", "refresh");
+  tools.append(refresh);
   root.append(tools);
   if (!assessmentTab && !serviceTab && !manage) informativeServiceNotice(root, ctx, data);
   if (ctx.kind === "community" && data.canManage && !canConfigure)
@@ -787,6 +814,14 @@ function renderPanel(root, ctx) {
   if (serviceTab && ctx.kind === "community" && data.canManage && canConfigure && !ctx.readonly)
     serviceSection(root, ctx);
   if (serviceTab && !manage) informativeServiceSection(root, data, ctx);
+  // En derramas y servicios el refresco y el registro de cobros acompañan a exportar en la
+  // cabecera de la sección, pegados a la derecha y a la misma altura.
+  const sectionTools = root.querySelector(".fee-section-heading .table-list-actions");
+  if (sectionTools) {
+    sectionTools.prepend(refresh);
+    if (sectionPayment) sectionTools.prepend(sectionPayment);
+  }
+  if (!tools.childElementCount) tools.remove();
   if (assessmentTab && manage && !receipts.length) {
     info(root, "Los recibos de derramas aparecerán aquí cuando emitas el primer plazo.");
     return;
@@ -945,20 +980,28 @@ function renderPanel(root, ctx) {
               money(r.amount),
               money(r.outstanding),
               status(r),
-              button("Ver recibo", () => showReceipt(r.id)),
+              iconButton("Ver recibo", () => showReceipt(r.id), "info", "eye"),
             ]),
         ),
       );
       const pager = el("div", undefined, "fee-pagination");
-      const previous = button("Anterior", () => {
+      const previous = button("", () => {
         ctx.page--;
         updateReceipts();
       });
+      previous.className = "pager-btn";
+      previous.innerHTML = pagerIcon("previous");
+      previous.title = "Página anterior";
+      previous.setAttribute("aria-label", "Página anterior");
       previous.disabled = ctx.page === 1;
-      const next = button("Siguiente", () => {
+      const next = button("", () => {
         ctx.page++;
         updateReceipts();
       });
+      next.className = "pager-btn";
+      next.innerHTML = pagerIcon("next");
+      next.title = "Página siguiente";
+      next.setAttribute("aria-label", "Página siguiente");
       next.disabled = ctx.page === pages;
       const count = el(
         "span",
@@ -1122,7 +1165,7 @@ function assessmentSection(root, ctx) {
           `${a.installments.length} ${a.installments.length === 1 ? "plazo" : "plazos"}`,
           `${money(a.totals.issued)}<small>Cobrado ${money(a.totals.paid)}</small>`,
           assessmentStatus(a),
-          button("Abrir derrama", () => showAssessment(a.id)),
+          iconButton("Abrir derrama", () => showAssessment(a.id), "info", "eye"),
         ]),
       ),
     );
@@ -1435,7 +1478,7 @@ function serviceSection(root, ctx) {
           `${esc(serviceMethods[service.method] || service.method)}<small>${esc(serviceBillings[service.billing] || service.billing)}</small>`,
           service.billing === "informative" ? "Solo reparto" : String(service.receiptCount),
           serviceStatus(service),
-          button("Abrir servicio", () => showService(service.id)),
+          iconButton("Abrir servicio", () => showService(service.id), "info", "eye"),
         ]),
       ),
     );

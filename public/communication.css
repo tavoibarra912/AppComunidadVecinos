@@ -83,6 +83,17 @@
 .comm-filters label {
   margin: 0;
 }
+/* Todos los controles de la barra comparten altura con los botones (30 px). */
+.comm-filters input,
+.comm-filters select,
+.comm-filters .combo-box-input {
+  height: 30px;
+  padding: 4px 10px;
+  box-sizing: border-box;
+}
+.comm-filters .combo-box-input {
+  padding-right: 30px;
+}
 .comm-filters input,
 .comm-filters select,
 .comm-dialog input:not([type="checkbox"]):not([type="radio"]),
@@ -221,11 +232,10 @@
 .comm-inbox-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   flex-wrap: wrap;
   gap: 14px;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
+  margin: 0 0 16px;
 }
 .comm-empty p {
   color: var(--muted);
@@ -464,6 +474,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  margin-bottom: 12px;
 }
 .comm-month-nav h2 {
   text-transform: capitalize;
@@ -653,15 +664,26 @@
 .comm-toolbar-actions > .icon-action-btn,
 .comm-toolbar-actions .table-export-btn,
 .comm-month-nav > .icon-action-btn {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
   padding: 0;
   box-sizing: border-box;
 }
 .comm-toolbar-actions svg {
   width: 20px;
   height: 20px;
+}
+/* «Mis canales» vive en la barra de filtros y mide lo mismo que los iconos. */
+.comm-toolbar-actions .comm-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  margin: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 @media (max-width: 650px) {
   .comm-toolbar-actions {

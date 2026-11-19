@@ -385,7 +385,9 @@ test("cuotas UI: filtros y paginación no pierden el foco del buscador", async (
     const root = f.w.document.querySelector("#fees-page"),
       search = control(f.w, "Buscar recibos");
     assert.equal(root.querySelectorAll(".fee-receipts-results tbody tr").length, 10);
-    click(f.w, "Siguiente", root);
+    const next = click(f.w, "Página siguiente", root);
+    assert.equal(next.textContent, "", "el paginador usa iconos, no texto");
+    assert.ok(next.classList.contains("pager-btn"));
     await flush();
     assert.match(root.textContent, /11–20 de 23/);
     search.focus();

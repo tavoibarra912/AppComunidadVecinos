@@ -463,15 +463,10 @@ export function createDocumentLibrary(options) {
   root.classList.add("doc-library");
   root.dataset.category = category;
   root.innerHTML = `<div class="doc-library-toolbar">
-      <div class="doc-library-toolbar-main">
-        ${foldersEnabled ? `<button type="button" class="icon-action-btn btn-folder btn-lg doc-library-new-folder" aria-label="Nueva carpeta" title="Nueva carpeta">${ICONS.folderAdd}</button>` : ""}
-        <button type="button" class="icon-action-btn btn-add btn-lg doc-library-upload" aria-label="Subir archivos" title="Subir archivos">${ICONS.uploadLg}</button>
-        <input type="file" class="doc-library-upload-input" multiple hidden />
-      </div>
       <div class="doc-library-toolbar-tools">
         <label class="doc-library-search-field">
           <span class="doc-library-search-icon" aria-hidden="true">${ICONS.search}</span>
-          <input type="search" class="doc-library-search" placeholder="Buscar archivos y carpetas…" aria-label="Buscar por nombre" />
+          <input type="search" class="doc-library-search" placeholder="Buscar…" aria-label="Buscar por nombre" />
         </label>
         <div class="doc-library-sort-group">
           <select class="doc-library-sort" aria-label="Ordenar por">
@@ -486,6 +481,11 @@ export function createDocumentLibrary(options) {
           <button type="button" data-library-view="grid" aria-label="Vista de cuadrícula" title="Vista de cuadrícula">${ICONS.grid}</button>
         </div>
       </div>
+      <div class="doc-library-toolbar-main">
+        ${foldersEnabled ? `<button type="button" class="icon-action-btn btn-folder btn-lg doc-library-new-folder" aria-label="Nueva carpeta" title="Nueva carpeta">${ICONS.folderAdd}</button>` : ""}
+        <button type="button" class="icon-action-btn btn-add btn-lg doc-library-upload" aria-label="Subir archivos" title="Subir archivos">${ICONS.uploadLg}</button>
+        <input type="file" class="doc-library-upload-input" multiple hidden />
+      </div>
     </div>
     <div class="doc-library-pathbar">
       <div class="doc-library-location-label"><span>Ubicación actual</span><nav class="doc-library-breadcrumbs" aria-label="Ruta de carpetas"></nav></div>
@@ -496,6 +496,7 @@ export function createDocumentLibrary(options) {
     <p class="doc-library-status" aria-live="polite"></p>`;
 
   const toolbar = root.querySelector(".doc-library-toolbar");
+  const toolbarMain = root.querySelector(".doc-library-toolbar-main");
   const uploadButton = root.querySelector(".doc-library-upload");
   const uploadInput = root.querySelector(".doc-library-upload-input");
   const newFolderButton = root.querySelector(".doc-library-new-folder");
@@ -719,7 +720,7 @@ export function createDocumentLibrary(options) {
         },
       }),
     });
-    if (exportControl) toolbar.append(exportControl);
+    if (exportControl) toolbar.insertBefore(exportControl, toolbarMain);
     renderBreadcrumbs();
     content.replaceChildren();
     const folders = sortItems(filteredFolders(), "folder");

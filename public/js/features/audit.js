@@ -4,6 +4,7 @@ import { hasPermission } from "../state.js";
 import { createExportDropdown } from "../export-client.js";
 
 const form = document.querySelector("#audit-filter");
+const search = document.querySelector("#audit-search");
 const results = document.querySelector("#audit-results");
 const status = document.querySelector("#audit-status");
 const previous = document.querySelector("#audit-prev");
@@ -47,14 +48,22 @@ export async function renderAudit() {
   if (form && !form.querySelector(".table-export-wrap")) {
     const exportWrap = createExportDropdown({
       tableId: "audit",
-      getFilters: () => ({ action: form.elements.action?.value || "" }),
+      getFilters: () => ({
+        action: form.elements.action?.value || "",
+        query: String(search?.value || "").trim(),
+      }),
     });
     if (exportWrap) form.appendChild(exportWrap);
   }
 
   status.textContent = "Cargando auditoría…";
   try {
-    const page = await api.listAudit({ limit, offset, action: form.elements.action.value });
+    const page = await api.listAudit({
+      limit,
+      offset,
+      action: form.elements.action.value,
+      q: String(search?.value || "").trim(),
+    });
     if (id !== requestId || !hasPermission("audit:read")) return;
     const table = document.createElement("table");
     const caption = document.createElement("caption");
@@ -111,6 +120,14 @@ form?.addEventListener("submit", (event) => {
   event.preventDefault();
   offset = 0;
   renderAudit();
+});
+let searchTimer = 0;
+search?.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    offset = 0;
+    renderAudit();
+  }, 300);
 });
 previous?.addEventListener("click", () => {
   offset = Math.max(0, offset - limit);

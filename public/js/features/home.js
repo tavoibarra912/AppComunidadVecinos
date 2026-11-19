@@ -52,11 +52,12 @@ const ICONS = {
   posts:
     '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   fees: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
 };
 const iconAction = (label, action, icon, kind = "btn-info") =>
   `<button type="button" class="icon-action-btn ${kind} btn-lg" data-dashboard-action="${action}" aria-label="${h(label)}" title="${h(label)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[icon]}</svg></button>`;
 function metric(label, value, description, action, enabled = true) {
-  return `<article class="dashboard-metric"><span>${h(label)}</span><strong>${h(typeof value === "number" ? number(value) : value)}</strong><p>${h(description)}</p>${action && enabled ? `<button type="button" data-dashboard-action="${action}">Ver detalle <span aria-hidden="true">→</span></button>` : ""}</article>`;
+  return `<article class="dashboard-metric"><span>${h(label)}</span><strong>${h(typeof value === "number" ? number(value) : value)}</strong><div class="dashboard-metric-footer"><p>${h(description)}</p>${action && enabled ? iconAction("Ver detalle", action, "eye", "btn-info") : ""}</div></article>`;
 }
 function documentChart(d) {
   const total = d.documentChart.reduce((n, row) => n + row.value, 0);
@@ -287,8 +288,7 @@ export function renderHomeDashboard() {
     : hasPermission("admin_notification:read");
   const inboxCount = d.personal ? d.ownerUnread : d.adminUnread;
   root.innerHTML = `<div class="dashboard-heading"><div><p class="eyebrow">${h(d.personal ? "MI ÁREA PERSONAL" : "PANEL DE GESTIÓN")}</p><div class="page-title-row"><span class="page-title-icon" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path><path d="M9 22V12h6v10"></path></svg></span><h1 id="home-greeting-title">${h(`Hola, ${d.user?.nombre || d.user?.usuario || "vecino"}`)}</h1></div><p>${h(brand.nombre)} · ${h(d.personal ? "Tus perfiles, documentación y novedades de comunidad." : "Registros y gestiones dentro de tu ámbito de acceso.")}</p></div><div class="dashboard-date"><strong>${now.getDate()}</strong><span>${h(now.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</span></div></div>
-    <div class="dashboard-toolbar"><label>Ámbito del panel<select id="dashboard-community"><option value="">${d.personal ? "Todas mis comunidades" : "Todas las comunidades visibles"}</option>${d.availableCommunities.map((c) => `<option value="${h(c.id)}" ${selectedCommunity === c.id ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select></label><div><p>Datos del servidor${state.loadedAt ? ` · ${h(date(state.loadedAt))}` : ""}</p>${iconAction(refreshing ? "Actualizando…" : "Actualizar datos", "refresh", "refresh")}</div></div>
-    <div class="dashboard-actions">${actions.join("")}</div>
+    <div class="dashboard-toolbar"><label>Ámbito del panel<select id="dashboard-community"><option value="">${d.personal ? "Todas mis comunidades" : "Todas las comunidades visibles"}</option>${d.availableCommunities.map((c) => `<option value="${h(c.id)}" ${selectedCommunity === c.id ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select></label><div class="dashboard-toolbar-actions"><p>Datos del servidor${state.loadedAt ? ` · ${h(date(state.loadedAt))}` : ""}</p><div class="dashboard-actions">${actions.join("")}</div>${iconAction(refreshing ? "Actualizando…" : "Actualizar datos", "refresh", "refresh")}</div></div>
     ${d.personal && !d.ownOwners.length && !d.ownTenants.length ? '<div class="dashboard-callout"><strong>Tu perfil todavía está pendiente de vinculación</strong><p>Un administrador debe asociar tu cuenta con tu perfil de propietario o inquilino. Las métricas aparecerán cuando existan registros vinculados.</p></div>' : ""}
     <div class="dashboard-metrics">${metrics.join("")}</div>
     ${feeAccess() ? feeSection(d.personal) : ""}
