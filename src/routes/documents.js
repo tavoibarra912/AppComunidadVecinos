@@ -128,7 +128,10 @@ function canRead(user, entityType, entityId) {
   );
 }
 function canWrite(user, entityType, entityId) {
-  return !!tables[entityType] && allowed(user, `${entityType}:manage`, entityId);
+  if (!tables[entityType]) return false;
+  if (allowed(user, `${entityType}:manage`, entityId)) return true;
+  // El propietario puede adjuntar archivos a su propio expediente.
+  return entityType === "owner" && allowed(user, "owner:documents:submit", entityId);
 }
 function permissionFor(action) {
   return action === "delete" ? "document:delete" : "document:upload";

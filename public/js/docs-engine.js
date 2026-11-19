@@ -515,20 +515,18 @@ export function renderOwnerDialogDocs() {
           </div>
         </div>
         <div class="doc-file-actions">
-          <button class="btn-doc-action" type="button" data-action="view" data-doc="${key}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button class="icon-action-btn btn-sm btn-info" type="button" data-action="view" data-doc="${key}" title="Ver documento" aria-label="Ver documento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
               <circle cx="12" cy="12" r="3"></circle>
             </svg>
-            Ver
           </button>
-          <button class="btn-doc-action danger" type="button" data-action="remove" data-doc="${key}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button class="icon-action-btn btn-sm btn-delete" type="button" data-action="remove" data-doc="${key}" title="Quitar documento" aria-label="Quitar documento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 6h18"></path>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
               <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
             </svg>
-            Quitar
           </button>
         </div>
       `);

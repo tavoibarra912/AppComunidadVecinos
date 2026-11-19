@@ -37,6 +37,7 @@ import {
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
 import { createExportDropdown } from "../export-client.js";
+import { createDocumentLibrary } from "../document-library.js";
 import { createRichText } from "../rich-text.js";
 import {
   editingDocs,
@@ -129,6 +130,43 @@ const ownerDetailTenantEmpty = document.querySelector("#owner-detail-tenant-empt
 
 // El diálogo de edición se reutiliza en modo lectura para «Ver» propietario.
 let ownerDialogReadOnly = false;
+
+// Biblioteca documental con carpetas, igual que la ficha de inquilinos.
+const ownerDocumentLibraryHost = document.querySelector("#owner-document-library");
+
+function ownerLibraryData(ownerId) {
+  const owner = state.owners.find((item) => item.id === ownerId);
+  return {
+    documents: owner?.libraryDocuments || [],
+    folders: owner?.documentFolders || [],
+  };
+}
+
+async function refreshOwnerLibraries() {
+  await refreshState();
+  ownerDocumentsLibrary?.refresh();
+}
+
+const ownerDocumentsLibrary = ownerDocumentLibraryHost
+  ? createDocumentLibrary({
+      container: ownerDocumentLibraryHost,
+      entityType: "owner",
+      category: "document",
+      getEntityId: () => state.ui.editingOwnerId,
+      getData: () => ownerLibraryData(state.ui.editingOwnerId),
+      settings: () => state.settings,
+      countEl: "#owner-doc-count",
+      canWrite: () =>
+        !ownerDialogReadOnly &&
+        !!state.ui.editingOwnerId &&
+        (hasPermission("owner:manage", state.ui.editingOwnerId) ||
+          hasPermission("owner:edit", state.ui.editingOwnerId) ||
+          hasPermission("owner:documents:submit", state.ui.editingOwnerId)) &&
+        hasPermission("document:upload", state.ui.editingOwnerId),
+      onChange: refreshOwnerLibraries,
+      emptyText: "Subí documentación adicional del propietario y organizala en carpetas.",
+    })
+  : null;
 
 // Pestañas del Formulario de Propietario (5 tabs)
 const ownerTabsRoot = document.querySelectorAll(".community-editor-tab[data-owner-tab]");
@@ -680,6 +718,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   if (!requirePermission(permission, id || "")) return;
   ownerDialogReadOnly = readOnly;
   state.ui.editingOwnerId = id;
+  ownerDocumentsLibrary?.setEntity(id || "");
   editingOwnerPropertyVersions = new Map(
     state.properties.map((property) => [property.id, property.version]),
   );
@@ -1086,21 +1125,19 @@ export function renderDetailDocsGrid(o) {
           <strong>Revisión:</strong> ${reviewNote} · Subido el ${escapeHtml(doc.uploadedAt)}
         </div>
         <div class="detail-doc-actions">
-          <button class="btn-doc-action" type="button" data-action="view-doc" data-key="${key}" title="Ver documento">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button class="icon-action-btn btn-sm btn-info" type="button" data-action="view-doc" data-key="${key}" title="Ver documento" aria-label="Ver documento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
               <circle cx="12" cy="12" r="3"></circle>
             </svg>
-            Ver documento
           </button>
-          <button class="btn-doc-action" type="button" data-action="replace-doc" data-key="${key}" title="Cambiar documento">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button class="icon-action-btn btn-sm btn-edit" type="button" data-action="replace-doc" data-key="${key}" title="Cambiar documento" aria-label="Cambiar documento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <polyline points="17 1 21 5 17 9"></polyline>
               <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
               <polyline points="7 23 3 19 7 15"></polyline>
               <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
             </svg>
-            Cambiar
           </button>
         </div>
       `);
@@ -1125,13 +1162,12 @@ export function renderDetailDocsGrid(o) {
           El asociado todavía no ha subido este documento a la plataforma.
         </div>
         <div class="detail-doc-actions">
-          <button class="btn-doc-action primary" type="button" data-action="upload-doc" data-key="${key}" title="Subir documento">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button class="icon-action-btn btn-sm btn-add" type="button" data-action="upload-doc" data-key="${key}" title="Subir documento" aria-label="Subir documento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            Subir documento
           </button>
         </div>
       `);

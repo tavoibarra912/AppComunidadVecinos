@@ -442,6 +442,7 @@ function renderUsers() {
     userTable = createDataTable({
       addButton: document.querySelector("#new-user"),
       mount: document.querySelector("#usuarios-table"),
+      searchInput: document.querySelector("#search-users"),
       entitySingular: "usuario",
       entityPlural: "usuarios",
       emptyTitle: "No hay usuarios",
@@ -771,6 +772,7 @@ function renderRoles() {
     rolesTable = createDataTable({
       addButton: document.querySelector("#new-role"),
       mount: document.querySelector("#roles-table"),
+      searchInput: document.querySelector("#search-roles"),
       entitySingular: "rol",
       entityPlural: "roles",
       emptyTitle: "No hay roles",

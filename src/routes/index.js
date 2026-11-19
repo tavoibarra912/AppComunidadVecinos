@@ -114,6 +114,9 @@ router.get("/bootstrap", (req, res) => {
   const propertyFolders = groupByEntity(listDocumentFoldersForEntities("property", propertyIds));
   const tenantDocuments = groupByEntity(listDocumentsForEntities("tenant", tenantIds));
   const tenantFolders = groupByEntity(listDocumentFoldersForEntities("tenant", tenantIds));
+  const ownerIds = readableIds(visible.owners);
+  const ownerDocuments = groupByEntity(listDocumentsForEntities("owner", ownerIds));
+  const ownerFolders = groupByEntity(listDocumentFoldersForEntities("owner", ownerIds));
   res.json({
     communities: visible.communities.map((community) => ({
       ...community,
@@ -121,7 +124,13 @@ router.get("/bootstrap", (req, res) => {
       statutes: communityStatutes.get(community.id) || [],
       documentFolders: communityFolders.get(community.id) || [],
     })),
-    owners: visible.owners,
+    owners: visible.owners.map((owner) => ({
+      ...owner,
+      // `documents` contiene el expediente fijo (DNI, recibo, escritura); la
+      // biblioteca genérica con carpetas se expone aparte, igual que en inquilinos.
+      libraryDocuments: ownerDocuments.get(owner.id) || [],
+      documentFolders: ownerFolders.get(owner.id) || [],
+    })),
     properties: visible.properties.map((property) => ({
       ...property,
       documents: propertyDocuments.get(property.id) || [],

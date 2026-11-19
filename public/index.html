@@ -19,10 +19,10 @@
     />
     <title>__BRAND_TITLE__</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="styles.css?v=16" />
+    <link rel="stylesheet" href="styles.css?v=17" />
     <link rel="stylesheet" href="communication.css?v=6" />
     <link rel="stylesheet" href="notifications.css?v=6" />
-    <link rel="stylesheet" href="fees.css?v=5" />
+    <link rel="stylesheet" href="fees.css?v=6" />
     <link rel="stylesheet" href="dashboard.css?v=6" />
     <link rel="stylesheet" href="issue-reporter.css?v=2" />
   </head>
@@ -917,6 +917,12 @@
               </button>
             </div>
           </div>
+          <div class="toolbar">
+            <label class="search-field" for="search-users">
+              <span class="sr-only">Buscar usuarios</span>
+              <input id="search-users" type="search" placeholder="Buscar…" autocomplete="off" />
+            </label>
+          </div>
           <div id="usuarios-table"></div>
         </section>
 
@@ -952,6 +958,12 @@
                 </svg>
               </button>
             </div>
+          </div>
+          <div class="toolbar">
+            <label class="search-field" for="search-roles">
+              <span class="sr-only">Buscar roles</span>
+              <input id="search-roles" type="search" placeholder="Buscar…" autocomplete="off" />
+            </label>
           </div>
           <div id="roles-table"></div>
         </section>
@@ -3840,6 +3852,39 @@
                 >Sube los tres documentos requeridos para completar el expediente.</span
               >
             </div>
+          </div>
+          <div class="docs-library-section">
+            <div class="detail-section-heading doc-pane-heading">
+              <div class="doc-pane-title">
+                <span class="doc-pane-icon" aria-hidden="true">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                    ></path>
+                  </svg>
+                </span>
+                <div>
+                  <h3>
+                    Archivos y carpetas
+                    <span class="doc-pane-count" id="owner-doc-count">0</span>
+                  </h3>
+                  <p class="detail-section-subtitle">
+                    Documentación adicional del propietario, organizada en carpetas. Los cambios se
+                    guardan al instante.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="doc-library-host" id="owner-document-library"></div>
           </div>
         </section>
 

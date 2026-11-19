@@ -547,6 +547,7 @@ export const TABLE_VIEWS = {
       for (const [kind, entities] of [
         ["community", visible.communities],
         ["property", visible.properties],
+        ["owner", visible.owners],
         ["tenant", visible.tenants],
       ]) {
         const ids = entities.filter((e) => permits("document:read", e.id)).map((e) => e.id);

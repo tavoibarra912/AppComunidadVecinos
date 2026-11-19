@@ -910,20 +910,299 @@ td {
   color: var(--ink);
 }
 
-.reports-meta-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 12px 16px;
+.reports-guide {
+  background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 60%);
+  border: 1px solid #d7e5e3;
+  border-radius: 12px;
+  padding: 16px 18px;
   margin-bottom: 18px;
-  font-size: 12.5px;
+}
+
+.reports-guide h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.reports-guide-lead {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
   color: #334155;
 }
 
-.reports-meta-grid {
+.reports-guide-tips {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px 16px;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.reports-guide-more {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #475569;
+}
+
+.reports-guide-more summary {
+  color: #1e3a8a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reports-guide-more summary:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.reports-guide-more p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
+.reports-guide-more strong {
+  color: #334155;
+}
+
+.reports-status {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.reports-insights-status {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.reports-insights-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.reports-insights-error p {
+  margin: 0;
+}
+
+.reports-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.reports-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid var(--brand);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px #0e24380a;
+}
+
+.reports-kpi-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.reports-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.reports-kpi-hint {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.reports-chart {
+  margin: 0 0 22px;
+  padding: 16px 18px 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.reports-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.reports-chart-head h3 {
+  margin: 0 0 3px;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.reports-chart-head p {
+  margin: 0;
+  max-width: 620px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.reports-chart-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #475569;
+}
+
+.reports-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.reports-legend-dot {
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.reports-legend-dot--paid,
+.reports-bar-fill--paid {
+  background: #16a34a;
+}
+
+.reports-legend-dot--pending,
+.reports-bar-fill--pending {
+  background: #f59e0b;
+}
+
+.reports-legend-dot--debt,
+.reports-bar-fill--debt {
+  background: #dc2626;
+}
+
+.reports-legend-dot--info,
+.reports-bar-fill--info {
+  background: #2563eb;
+}
+
+.reports-legend-dot--rate,
+.reports-bar-fill--rate {
+  background: var(--brand);
+}
+
+.reports-bars {
+  display: grid;
+  gap: 9px;
+}
+
+.reports-bar-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 168px) minmax(80px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.reports-bar-name {
+  font-size: 12.5px;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports-bar-track {
+  height: 14px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.reports-bar-stack {
+  display: flex;
+  height: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.reports-bar-fill {
+  display: block;
+  height: 100%;
+}
+
+.reports-bar-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reports-bar-value small {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.reports-chart-empty {
+  margin: 0;
+  padding: 12px 0 4px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.reports-table-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+
+.reports-table-heading h2 {
+  margin: 0 0 3px;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.reports-table-heading p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .reports-bar-row {
+    grid-template-columns: minmax(80px, 110px) minmax(60px, 1fr) auto;
+    gap: 8px;
+  }
 }
 
 .table-engine-footer {
@@ -5019,7 +5298,9 @@ dialog.is-readonly .community-property-actions .btn-delete,
 form.is-readonly .doc-sample-bar,
 dialog.is-readonly .doc-sample-bar,
 form.is-readonly .doc-file-actions .btn-doc-action.danger,
-dialog.is-readonly .doc-file-actions .btn-doc-action.danger {
+dialog.is-readonly .doc-file-actions .btn-doc-action.danger,
+form.is-readonly .doc-file-actions .btn-delete,
+dialog.is-readonly .doc-file-actions .btn-delete {
   display: none !important;
 }
 
@@ -6639,14 +6920,33 @@ dialog {
   box-sizing: border-box;
 }
 
-/* El combo de agrupación se ajusta a su contenido en vez de ocupar todo el ancho. */
-.table-engine-controls .table-engine-group > .combo-box {
-  width: 150px;
-  flex: 0 0 150px;
+/* Los combos de la barra y del paginador se ajustan a su contenido y comparten
+   la altura de los controles de búsqueda (#search-properties). */
+.table-engine-controls .table-engine-group > .combo-box,
+.table-engine-footer .combo-box {
+  width: auto;
+  flex: 0 0 auto;
 }
 
-.table-engine-controls .table-engine-group > .combo-box .combo-box-input {
-  width: 100%;
+.table-engine-controls .table-engine-group > .combo-box .combo-box-input,
+.table-engine-footer .combo-box-input {
+  width: auto;
+  min-width: 56px;
+  height: 30px;
+  min-height: 0;
+  padding: 4px 26px 4px 9px;
+  box-sizing: border-box;
+  field-sizing: content;
+}
+
+/* Navegadores sin ajuste automático al contenido: anchos compactos equivalentes. */
+@supports not (field-sizing: content) {
+  .table-engine-footer .combo-box-input {
+    width: 58px;
+  }
+  .table-engine-controls .table-engine-group > .combo-box .combo-box-input {
+    width: 150px;
+  }
 }
 .table-engine-controls .table-columns-btn {
   height: 30px;

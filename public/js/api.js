@@ -108,7 +108,7 @@ export const api = {
     request(`/tenants/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteTenant: (id) => request(`/tenants/${id}`, { method: "DELETE" }),
 
-  // --- Documentos genéricos (comunidades, inmuebles e inquilinos) ---
+  // --- Documentos genéricos (comunidades, inmuebles, propietarios e inquilinos) ---
   uploadDocuments: (files, entityType, entityId, options = {}) => {
     const formData = new FormData();
     formData.append("entityType", entityType);

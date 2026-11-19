@@ -12,9 +12,19 @@
 .fee-shortcut {
   margin: 20px 0;
 }
+.fee-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fee-shortcut-row .form-intro {
+  margin: 0;
+}
 .fee-shortcut a {
   display: inline-flex;
   text-decoration: none;
+  flex: 0 0 auto;
 }
 .fee-scope {
   display: flex;
