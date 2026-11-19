@@ -1,6 +1,7 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, adminEmailFromRow, ownerNotificationFromRow } from "../db.js";
+import { allowed, policyData } from "../security.js";
 
 const router = Router();
 
@@ -35,6 +36,22 @@ router.post("/admin-emails", (req, res) => {
   );
   const row = db.prepare("SELECT * FROM admin_emails WHERE id = ?").get(id);
   res.status(201).json(adminEmailFromRow(row));
+});
+
+router.patch("/admin-emails", (req, res) => {
+  // Marca como leídas las notificaciones visibles para el usuario, sin tocar
+  // las de expedientes sobre los que no tiene permiso.
+  const read = req.body?.read !== false;
+  const data = policyData();
+  const rows = db.prepare("SELECT * FROM admin_emails WHERE read = ?").all(read ? 0 : 1);
+  const update = db.prepare("UPDATE admin_emails SET read = ? WHERE id = ?");
+  let updated = 0;
+  for (const row of rows) {
+    if (!allowed(req.user, "owner:read", row.ownerId, data)) continue;
+    update.run(read ? 1 : 0, row.id);
+    updated += 1;
+  }
+  res.json({ ok: true, updated });
 });
 
 router.patch("/admin-emails/:id", (req, res) => {

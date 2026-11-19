@@ -1,3 +1,4 @@
+import { createExportDropdown } from "../export-client.js";
 import { escapeHtml } from "../html.js";
 import { api } from "../api.js";
 import { state, getCurrentOwnerProfileId, hasPermission, requirePermission } from "../state.js";
@@ -19,12 +20,14 @@ const emailMailtoLink = document.querySelector("#email-mailto-link");
 const ownerInboxList = document.querySelector("#owner-inbox-list");
 const closeNotificationsDialog = document.querySelector("#close-notifications-dialog");
 const markAllOwnerNotifsReadBtn = document.querySelector("#mark-all-owner-notifs-read-btn");
+const markAllAdminNotifsReadBtn = document.querySelector("#mark-all-admin-notifs-read-btn");
 let activeInboxTab = "admin";
 const inboxViews = {
   admin: { filter: "all", search: "" },
   owner: { filter: "all", search: "" },
 };
 let ownerBulkBusy = false;
+let adminBulkBusy = false;
 const ownerReadPending = new Set();
 const ownerDeletePending = new Set();
 const mailIcon =
@@ -111,6 +114,26 @@ function setOwnerFeedback(message, error = false) {
   const el = document.querySelector("#owner-inbox-feedback");
   el.textContent = message;
   el.classList.toggle("is-error", error);
+}
+// Ambos buzones comparten el mismo botón de «marcar todo como leído».
+function syncBulkButton(node, unread, busy, pending) {
+  if (!node) return;
+  node.disabled = busy || pending > 0 || unread === 0;
+  node.setAttribute(
+    "aria-label",
+    busy
+      ? "Marcando los avisos como leídos…"
+      : unread
+        ? `Marcar ${unread} ${unread === 1 ? "aviso como leído" : "avisos como leídos"}`
+        : "Todo está leído",
+  );
+  node.title = busy
+    ? "Marcando los avisos como leídos…"
+    : unread === 1
+      ? "Marca como leído el aviso pendiente, incluso con filtros activos."
+      : unread
+        ? `Marca como leídos los ${unread} avisos pendientes, incluso con filtros activos.`
+        : "No tienes avisos pendientes de lectura.";
 }
 
 export function getOwnerOverallDocStatus(owner) {
@@ -298,25 +321,24 @@ export function renderOwnerInbox() {
   if (!hasPermission("owner_notification:read")) return;
   const notifications = ownerVisibleNotifications();
   const unread = inboxSummary("owner", notifications);
-  markAllOwnerNotifsReadBtn.disabled = ownerBulkBusy || ownerReadPending.size > 0 || unread === 0;
-  markAllOwnerNotifsReadBtn.setAttribute(
-    "aria-label",
-    ownerBulkBusy
-      ? "Marcando los avisos como leídos…"
-      : unread
-        ? `Marcar ${unread} ${unread === 1 ? "aviso como leído" : "avisos como leídos"}`
-        : "Todo está leído",
-  );
-  markAllOwnerNotifsReadBtn.title = ownerBulkBusy
-    ? "Marcando los avisos como leídos…"
-    : unread === 1
-      ? "Marca como leído el aviso pendiente, incluso con filtros activos."
-      : unread
-        ? `Marca como leídos los ${unread} avisos pendientes, incluso con filtros activos.`
-        : "No tienes avisos pendientes de lectura.";
+  syncBulkButton(markAllOwnerNotifsReadBtn, unread, ownerBulkBusy, ownerReadPending.size);
   ownerInboxList.setAttribute("aria-busy", String(ownerBulkBusy || ownerReadPending.size > 0));
   const visible = visibleInbox("owner", notifications, (n) => `${n.title} ${n.message}`);
   inboxResults("owner", visible.length, notifications.length);
+  ownerInboxList.parentElement?.querySelector(".table-export-wrap")?.remove();
+  const exportControl = createExportDropdown({
+    tableId: "owner_notifications",
+    permission: "owner:export",
+    getView: () => ({
+      itemIds: visible.map((n) => n.id),
+      columns: null,
+      filters: { query: inboxViews.owner.search, view: inboxViews.owner.filter },
+    }),
+  });
+  if (exportControl) {
+    const toolbar = ownerInboxList.parentElement?.querySelector(".notification-inbox-toolbar");
+    (toolbar || ownerInboxList.parentElement)?.append(exportControl);
+  }
   if (!visible.length) {
     inboxEmpty(ownerInboxList, "owner", notifications.length);
     return;
@@ -453,13 +475,28 @@ export function openAdminInbox() {
 export function renderAdminInbox() {
   if (!hasPermission("admin_notification:read")) return;
   adminInboxList.replaceChildren();
-  inboxSummary("admin", state.adminEmails);
+  const unread = inboxSummary("admin", state.adminEmails);
+  syncBulkButton(markAllAdminNotifsReadBtn, unread, adminBulkBusy, 0);
   const visible = visibleInbox(
     "admin",
     state.adminEmails,
     (n) => `${n.subject} ${n.ownerName} ${n.ownerCommunity} ${n.ownerPlot}`,
   );
   inboxResults("admin", visible.length, state.adminEmails.length);
+  adminInboxList.parentElement?.querySelector(".table-export-wrap")?.remove();
+  const exportControl = createExportDropdown({
+    tableId: "admin_notifications",
+    permission: "owner:export",
+    getView: () => ({
+      itemIds: visible.map((n) => n.id),
+      columns: null,
+      filters: { query: inboxViews.admin.search, view: inboxViews.admin.filter },
+    }),
+  });
+  if (exportControl) {
+    const toolbar = adminInboxList.parentElement?.querySelector(".notification-inbox-toolbar");
+    (toolbar || adminInboxList.parentElement)?.append(exportControl);
+  }
   if (!visible.length) {
     inboxEmpty(adminInboxList, "admin", state.adminEmails.length);
     return;
@@ -627,5 +664,31 @@ markAllOwnerNotifsReadBtn?.addEventListener("click", async () => {
       markAllOwnerNotifsReadBtn.disabled
     )
       document.querySelector('[data-owner-inbox-filter][aria-pressed="true"]').focus();
+  }
+});
+markAllAdminNotifsReadBtn?.addEventListener("click", async () => {
+  if (adminBulkBusy) return;
+  if (!requirePermission("admin_notification:read")) return;
+  const pending = state.adminEmails.filter((n) => !n.read);
+  if (!pending.length) return;
+  adminBulkBusy = true;
+  renderAdminInbox();
+  try {
+    await api.markAllAdminEmailsRead();
+    for (const notification of pending) notification.read = true;
+    toast(
+      `${pending.length} ${pending.length === 1 ? "aviso marcado como leído" : "avisos marcados como leídos"}.`,
+    );
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    adminBulkBusy = false;
+    updateInboxBadge();
+    if (
+      notificationsDialog?.open &&
+      activeInboxTab === "admin" &&
+      markAllAdminNotifsReadBtn.disabled
+    )
+      document.querySelector('[data-admin-inbox-filter][aria-pressed="true"]').focus();
   }
 });

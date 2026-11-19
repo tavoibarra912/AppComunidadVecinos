@@ -12,6 +12,7 @@ import authRouter from "./auth.js";
 import communicationsRouter from "./communications.js";
 import feesRouter from "./fees.js";
 import issuesRouter from "./issues.js";
+import exportRouter from "./export.js";
 import { auditRequests, listAudit } from "../audit.js";
 import {
   requireSession,
@@ -113,6 +114,9 @@ router.get("/bootstrap", (req, res) => {
   const propertyFolders = groupByEntity(listDocumentFoldersForEntities("property", propertyIds));
   const tenantDocuments = groupByEntity(listDocumentsForEntities("tenant", tenantIds));
   const tenantFolders = groupByEntity(listDocumentFoldersForEntities("tenant", tenantIds));
+  const ownerIds = readableIds(visible.owners);
+  const ownerDocuments = groupByEntity(listDocumentsForEntities("owner", ownerIds));
+  const ownerFolders = groupByEntity(listDocumentFoldersForEntities("owner", ownerIds));
   res.json({
     communities: visible.communities.map((community) => ({
       ...community,
@@ -120,7 +124,13 @@ router.get("/bootstrap", (req, res) => {
       statutes: communityStatutes.get(community.id) || [],
       documentFolders: communityFolders.get(community.id) || [],
     })),
-    owners: visible.owners,
+    owners: visible.owners.map((owner) => ({
+      ...owner,
+      // `documents` contiene el expediente fijo (DNI, recibo, escritura); la
+      // biblioteca genérica con carpetas se expone aparte, igual que en inquilinos.
+      libraryDocuments: ownerDocuments.get(owner.id) || [],
+      documentFolders: ownerFolders.get(owner.id) || [],
+    })),
     properties: visible.properties.map((property) => ({
       ...property,
       documents: propertyDocuments.get(property.id) || [],
@@ -154,6 +164,7 @@ router.use("/documents", documentsRouter);
 router.use("/notifications", notificationAccess, notificationsRouter);
 router.use("/communications", communicationsRouter);
 router.use("/fees", feesRouter);
+router.use("/export", exportRouter);
 router.use("/owners/contact", verificationRouter);
 router.use(
   "/admin",

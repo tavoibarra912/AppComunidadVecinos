@@ -1,3 +1,4 @@
+import { createExportDropdown } from "../export-client.js";
 import { api } from "../api.js";
 import { state, getCurrentUser, hasPermission, refreshState } from "../state.js";
 import { escapeHtml as esc, richTextHtml, htmlToText } from "../html.js";
@@ -62,20 +63,15 @@ const methods = {
 };
 const contexts = new Map();
 const icons = {
+  refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
   close: '<path d="m18 6-12 12M6 6l12 12"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
   remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   save: '<path d="m5 12 4 4L19 6"/>',
-  // Iconos de cada pantalla (los mismos del menú lateral) para el acceso a Cuotas.
-  communities:
-    '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
-  properties:
-    '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M12 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/>',
-  owners:
-    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  tenants:
-    '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  // Icono de Cuotas (el mismo del menú lateral) para el acceso a esa pantalla.
+  fees: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
 };
 function iconButton(label, action, kind = "add", icon = kind) {
   const node = button("", action);
@@ -84,6 +80,11 @@ function iconButton(label, action, kind = "add", icon = kind) {
   node.setAttribute("aria-label", label);
   node.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[icon]}</svg>`;
   return node;
+}
+// Mismo paginador con chevrones que usan las tablas del resto de la app.
+function pagerIcon(name) {
+  const points = name === "previous" ? "15 18 9 12 15 6" : "9 18 15 12 9 6";
+  return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="${points}"></polyline></svg>`;
 }
 function tabBar(parent, items, active, select, label) {
   const nav = el("nav", undefined, "community-editor-tabs fee-tabs");
@@ -139,7 +140,9 @@ export function mountFeeShortcut(root, kind, id) {
   root.replaceChildren();
   root.className = "fee-shortcut";
   if (!id || !feeNavigation().visible) return;
-  info(root, "Los recibos, cobros y pendientes se consultan en la pantalla de Cuotas.");
+  // Texto y botón en la misma línea, alineados verticalmente.
+  const row = el("div", undefined, "fee-shortcut-row");
+  info(row, "Los recibos, cobros y pendientes se consultan en la pantalla de Cuotas.");
   const label =
     kind === "community"
       ? "Abrir cuotas de esta comunidad"
@@ -148,18 +151,10 @@ export function mountFeeShortcut(root, kind, id) {
         : kind === "property"
           ? "Abrir cuotas del inmueble"
           : "Abrir cuotas del inquilino";
-  const shortcutIcon =
-    kind === "community"
-      ? "communities"
-      : kind === "owner"
-        ? "owners"
-        : kind === "property"
-          ? "properties"
-          : "tenants";
   const link = el("a", "", "icon-action-btn btn-info btn-lg");
   link.title = label;
   link.setAttribute("aria-label", label);
-  link.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[shortcutIcon]}</svg>`;
+  link.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons.fees}</svg>`;
   const params = new URLSearchParams({
     [kind === "community" ? "comunidad" : "propietario"]: id,
   });
@@ -175,7 +170,8 @@ export function mountFeeShortcut(root, kind, id) {
     parent?.close();
     window.location.hash = link.hash;
   });
-  root.append(link);
+  row.append(link);
+  root.append(row);
 }
 export function renderFeesPage() {
   const root = document.querySelector("#fees-page");
@@ -589,6 +585,42 @@ function panelTitle(kind, id) {
         ? "Mis cuotas"
         : "Cuotas del propietario";
 }
+function exportList(parent, tableId, rows, columns = null, filters = {}) {
+  const control = createExportDropdown({
+    tableId,
+    permission: "fee:export",
+    getView: () => ({ itemIds: rows.map((r) => String(r.id)), columns, filters }),
+  });
+  if (control) {
+    const heading = [...parent.children].find((node) =>
+      node.classList.contains("fee-section-heading"),
+    );
+    const add = heading?.querySelector(":scope > button");
+    if (add) {
+      const actions = el("div", undefined, "table-list-actions");
+      actions.append(control, add);
+      heading.append(actions);
+    } else if (heading) {
+      heading.append(control);
+    } else if (parent.matches("details")) {
+      // Dentro de un <details> el exportar acompaña al resumen, a su misma altura.
+      const summary = parent.querySelector(":scope > summary");
+      if (summary) {
+        summary.classList.add("fee-details-summary");
+        summary.append(control);
+        control.addEventListener("click", (event) => event.stopPropagation());
+      } else parent.append(control);
+    } else {
+      // Sin cabecera propia: el botón va a la derecha del último título (h3/h4).
+      const previous = parent.lastElementChild;
+      if (previous && /^H[34]$/.test(previous.tagName)) {
+        const row = el("div", undefined, "fee-section-heading fee-subheading");
+        previous.replaceWith(row);
+        row.append(previous, control);
+      } else parent.append(control);
+    }
+  }
+}
 function table(headers, rows) {
   const wrap = el("div", undefined, "fee-table-scroll"),
     table = document.createElement("table");
@@ -720,6 +752,8 @@ function renderPanel(root, ctx) {
       el("h3", serviceTab ? "Servicios" : assessmentTab ? "Derramas" : "Cuotas ordinarias"),
     );
   const tools = el("div", undefined, "fee-toolbar");
+  // En derramas y servicios el registro de cobros vive en la cabecera de la sección.
+  let sectionPayment = null;
   if (!assessmentTab && !serviceTab && ctx.kind === "community" && canConfigure)
     guide(root, data, manage);
   if (ctx.kind === "community" && data.canManage) {
@@ -731,17 +765,18 @@ function renderPanel(root, ctx) {
         emit.disabled = !data.plans.length || !data.properties.length;
         tools.append(emit);
       }
-      tools.append(
-        button(
-          !assessmentTab && !serviceTab
-            ? "3 · Registrar cobro o anticipo"
-            : "Registrar cobro o anticipo",
-          () => paymentForm(ctx),
-        ),
+      const payment = button(
+        !assessmentTab && !serviceTab
+          ? "3 · Registrar cobro o anticipo"
+          : "Registrar cobro o anticipo",
+        () => paymentForm(ctx),
       );
+      tools.append(payment);
+      if (assessmentTab || serviceTab) sectionPayment = payment;
     }
   }
-  tools.append(button("Actualizar", () => load(root, ctx)));
+  const refresh = iconButton("Actualizar", () => load(root, ctx), "info", "refresh");
+  tools.append(refresh);
   root.append(tools);
   if (!assessmentTab && !serviceTab && !manage) informativeServiceNotice(root, ctx, data);
   if (ctx.kind === "community" && data.canManage && !canConfigure)
@@ -766,7 +801,15 @@ function renderPanel(root, ctx) {
     assessmentSection(root, ctx);
   if (serviceTab && ctx.kind === "community" && data.canManage && canConfigure && !ctx.readonly)
     serviceSection(root, ctx);
-  if (serviceTab && !manage) informativeServiceSection(root, data);
+  if (serviceTab && !manage) informativeServiceSection(root, data, ctx);
+  // En derramas y servicios el refresco y el registro de cobros acompañan a exportar en la
+  // cabecera de la sección, pegados a la derecha y a la misma altura.
+  const sectionTools = root.querySelector(".fee-section-heading .table-list-actions");
+  if (sectionTools) {
+    sectionTools.prepend(refresh);
+    if (sectionPayment) sectionTools.prepend(sectionPayment);
+  }
+  if (!tools.childElementCount) tools.remove();
   if (assessmentTab && manage && !receipts.length) {
     info(root, "Los recibos de derramas aparecerán aquí cuando emitas el primer plazo.");
     return;
@@ -863,6 +906,21 @@ function renderPanel(root, ctx) {
       };
     summary.replaceChildren();
     results.replaceChildren();
+    exportList(
+      results,
+      "receipts",
+      rows,
+      ["location", "concept", "dueDate", "amount", "outstanding", "status"],
+      {
+        query: ctx.search || "",
+        period: ctx.period || "",
+        view: JSON.stringify({
+          estado: ctx.status || "todos",
+          comunidad: ctx.community || ctx.id || "",
+          inmueble: ctx.property || "",
+        }),
+      },
+    );
     for (const [key, name] of [
       ["issued", "Emitido"],
       ["paid", "Cobrado"],
@@ -910,20 +968,28 @@ function renderPanel(root, ctx) {
               money(r.amount),
               money(r.outstanding),
               status(r),
-              button("Ver recibo", () => showReceipt(r.id)),
+              iconButton("Ver recibo", () => showReceipt(r.id), "info", "eye"),
             ]),
         ),
       );
       const pager = el("div", undefined, "fee-pagination");
-      const previous = button("Anterior", () => {
+      const previous = button("", () => {
         ctx.page--;
         updateReceipts();
       });
+      previous.className = "pager-btn";
+      previous.innerHTML = pagerIcon("previous");
+      previous.title = "Página anterior";
+      previous.setAttribute("aria-label", "Página anterior");
       previous.disabled = ctx.page === 1;
-      const next = button("Siguiente", () => {
+      const next = button("", () => {
         ctx.page++;
         updateReceipts();
       });
+      next.className = "pager-btn";
+      next.innerHTML = pagerIcon("next");
+      next.title = "Página siguiente";
+      next.setAttribute("aria-label", "Página siguiente");
       next.disabled = ctx.page === pages;
       const count = el(
         "span",
@@ -955,6 +1021,7 @@ function renderPanel(root, ctx) {
   );
   if (credits.length) {
     root.append(el("h4", "Saldos a favor"));
+    exportList(root, "payments", credits, ["owner", "paidOn", "credit"]);
     root.append(
       table(
         ["Pagador / comunidad", "Fecha", "Disponible", "Acción"],
@@ -973,6 +1040,14 @@ function renderPanel(root, ctx) {
   if (manage && data.payments.length) {
     const history = document.createElement("details");
     history.append(el("summary", "Historial de cobros y devoluciones"));
+    exportList(history, "payments", data.payments, [
+      "paidOn",
+      "owner",
+      "amount",
+      "method",
+      "reference",
+      "status",
+    ]);
     history.append(
       table(
         ["Fecha / pagador", "Importe", "Forma / referencia", "Estado", "Acción"],
@@ -1058,10 +1133,11 @@ function assessmentSection(root, ctx) {
   );
   copy.querySelector("h3").id = "fee-assessments-title";
   heading.append(copy);
-  const create = button("Nueva derrama", () => assessmentForm(ctx), true);
+  const create = iconButton("Nueva derrama", () => assessmentForm(ctx));
   create.disabled = !(data.properties || []).length;
   heading.append(create);
   section.append(heading);
+  exportList(section, "assessments", list);
   if (!list.length)
     info(
       section,
@@ -1077,7 +1153,7 @@ function assessmentSection(root, ctx) {
           `${a.installments.length} ${a.installments.length === 1 ? "plazo" : "plazos"}`,
           `${money(a.totals.issued)}<small>Cobrado ${money(a.totals.paid)}</small>`,
           assessmentStatus(a),
-          button("Abrir derrama", () => showAssessment(a.id)),
+          iconButton("Abrir derrama", () => showAssessment(a.id), "info", "eye"),
         ]),
       ),
     );
@@ -1192,6 +1268,11 @@ async function showAssessment(id) {
         }),
       );
     schedule.append(el("h3", "Plazos"));
+    exportList(
+      schedule,
+      "assessment_installments",
+      a.installments.map((i) => ({ id: `${a.id}:${i.number}` })),
+    );
     schedule.append(
       table(
         ["Plazo", "Vencimiento", "Importe", "Emitido", "Cobrado", "Pendiente", "Estado", "Acción"],
@@ -1236,6 +1317,14 @@ async function showAssessment(id) {
     );
     if (a.receipts.length) {
       receipts.append(el("h3", "Recibos generados"));
+      exportList(receipts, "receipts", a.receipts, [
+        "property",
+        "owners",
+        "amount",
+        "paid",
+        "outstanding",
+        "status",
+      ]);
       receipts.append(
         table(
           ["Inmueble", "Titulares", "Importe", "Cobrado", "Pendiente", "Estado", "Acción"],
@@ -1356,10 +1445,11 @@ function serviceSection(root, ctx) {
   );
   copy.querySelector("h3").id = "fee-services-title";
   heading.append(copy);
-  const create = button("Nuevo servicio", () => serviceForm(ctx), true);
+  const create = iconButton("Nuevo servicio", () => serviceForm(ctx));
   create.disabled = !(data.properties || []).length;
   heading.append(create);
   section.append(heading);
+  exportList(section, "services", list);
   if (!list.length)
     info(
       section,
@@ -1376,7 +1466,7 @@ function serviceSection(root, ctx) {
           `${esc(serviceMethods[service.method] || service.method)}<small>${esc(serviceBillings[service.billing] || service.billing)}</small>`,
           service.billing === "informative" ? "Solo reparto" : String(service.receiptCount),
           serviceStatus(service),
-          button("Abrir servicio", () => showService(service.id)),
+          iconButton("Abrir servicio", () => showService(service.id), "info", "eye"),
         ]),
       ),
     );
@@ -1406,13 +1496,19 @@ function serviceForm(ctx, service = null) {
     showService,
   });
 }
-function serviceRowsTable(items, method) {
+function serviceRowsTable(
+  items,
+  method,
+  serviceId = "",
+  dataset = "service_breakdown",
+  exportFilters = {},
+) {
   const reading = method === "reading" || method === "mixed";
   const headers = ["Inmueble", "Coeficiente"];
   if (reading) headers.push("Lectura anterior", "Lectura actual", "Consumo");
   if (method === "mixed") headers.push("Parte fija", "Parte variable");
   headers.push("Importe");
-  return table(
+  const result = table(
     headers,
     items.map((item) => {
       const previous = item.previous ?? item.reading?.previous,
@@ -1438,8 +1534,24 @@ function serviceRowsTable(items, method) {
       return row;
     }),
   );
+  if (serviceId)
+    exportList(
+      result,
+      dataset,
+      items.map((i) => ({ id: `${serviceId}:${i.propertyId}` })),
+      [
+        "plot",
+        "coefficient",
+        ...(reading ? ["previous", "current", "consumption"] : []),
+        ...(method === "mixed" ? ["fixed", "variable"] : []),
+        "amount",
+      ],
+      exportFilters,
+    );
+  return result;
 }
-function informativeServiceSection(root, data) {
+function informativeServiceSection(root, data, ctx) {
+  const exportFilters = { ownerId: ctx.kind === "owner" ? ctx.id : "" };
   const list = data.informativeServices || [];
   if (!list.length) return;
   const section = el("section", undefined, "fee-services fee-informative-services");
@@ -1455,6 +1567,7 @@ function informativeServiceSection(root, data) {
   );
   heading.append(copy);
   section.append(heading);
+  exportList(section, "informative_services", list, null, exportFilters);
   section.append(
     table(
       ["Servicio", "Periodo", "Total factura", "Tu parte", "Adjuntos", "Acción"],
@@ -1468,14 +1581,14 @@ function informativeServiceSection(root, data) {
             (service.properties || []).map((property) => property.plot).join(", "),
           )}</small>`,
           String((service.attachments || []).length || "—"),
-          button("Ver reparto", () => showInformativeService(service)),
+          button("Ver reparto", () => showInformativeService(service, exportFilters)),
         ];
       }),
     ),
   );
   root.append(section);
 }
-function showInformativeService(service) {
+function showInformativeService(service, exportFilters = {}) {
   const body = open("Reparto informativo");
   dialog.querySelector("h2").textContent =
     `Servicio de ${service.serviceLabel} · ${service.period}`;
@@ -1500,7 +1613,9 @@ function showInformativeService(service) {
   if (service.legalBasis) info(body, `Base legal o acuerdo: ${service.legalBasis}`);
   if (service.notes) richInfo(body, service.notes);
   body.append(el("h3", "Tu reparto"));
-  body.append(serviceRowsTable(mine, service.method));
+  body.append(
+    serviceRowsTable(mine, service.method, service.id, "informative_breakdown", exportFilters),
+  );
   for (const warning of service.warnings || []) info(body, warning, true);
   if ((service.attachments || []).length) {
     body.append(el("h3", "Factura adjunta"));
@@ -1655,7 +1770,7 @@ async function showService(id) {
       overview.append(cancel);
     }
     split.append(el("h3", "Reparto congelado"));
-    split.append(serviceRowsTable(service.breakdown || [], service.method));
+    split.append(serviceRowsTable(service.breakdown || [], service.method, service.id));
     if (service.subset)
       info(
         split,
@@ -1689,6 +1804,14 @@ async function showService(id) {
     }
     if (service.receipts.length) {
       receipts.append(el("h3", "Recibos generados"));
+      exportList(receipts, "receipts", service.receipts, [
+        "property",
+        "owners",
+        "amount",
+        "paid",
+        "outstanding",
+        "status",
+      ]);
       receipts.append(
         table(
           ["Inmueble", "Titulares", "Importe", "Cobrado", "Pendiente", "Estado", "Acción"],
@@ -1834,6 +1957,7 @@ function configuration(ctx) {
     manage = data.canManage && !ctx.readonly;
   if (data.plans.length) {
     body.append(el("h3", "Acuerdos guardados"));
+    exportList(body, "plans", data.plans);
     body.append(
       table(
         ["Desde", "Recaudación anual", "Periodicidad", "Acuerdo"],
@@ -2291,6 +2415,12 @@ export async function showReceipt(id) {
     info(body, `Acuerdo: ${r.snapshot.agreement}. Identificador: ${r.id}`);
     if (r.cancelledAt)
       info(body, `Anulado el ${date(r.cancelledAt)}. Motivo: ${r.cancellationReason}`, true);
+    if (r.payments.length)
+      exportList(
+        body,
+        "receipt_payments",
+        r.payments.map((p) => ({ id: `${r.id}:${p.id}` })),
+      );
     if (r.payments.length)
       body.append(
         table(

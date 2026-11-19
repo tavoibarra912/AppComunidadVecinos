@@ -428,6 +428,9 @@ export function notificationAccess(req, res, next) {
         )
         .get(id);
       if (row && !canSee(row)) return deny(res);
+    } else if (adminInbox) {
+      // Marcado masivo del buzón de administración: basta con poder leerlo.
+      if (!permit("admin_notification:read")) return deny(res);
     } else if (!req.body?.ownerId || !permit("owner_notification:read", req.body.ownerId))
       return deny(res);
   } else if (req.method === "DELETE") {

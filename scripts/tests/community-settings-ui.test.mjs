@@ -97,6 +97,8 @@ function fixture(t, role = "super_admin") {
     hayCambiosSinGuardar: (form) => guardSnapshot !== undefined && guardSnapshot !== snapshot(form),
     intentarCerrar: noop,
     makeSelectSearchable: noop,
+    refreshExportControls: () => {},
+    createExportDropdown: () => null,
     createDataTable: () => ({ refresh: noop }),
     aplicarFilasPorPagina: noop,
     textosDe: () => ({}),

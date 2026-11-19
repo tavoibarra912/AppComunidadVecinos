@@ -806,3 +806,34 @@ respuesta, disponibilidad y aislamiento entre roles en un servidor separado.
 Los archivos se guardan en disco y necesitan copias de seguridad junto con SQLite.
 La revisión documental es humana: el sistema no realiza OCR ni certifica la
 identidad, titularidad o validez legal a partir del nombre de archivo.
+
+### Exportación de tablas e informes (issue #128)
+
+La acción **Exportar** ofrece PDF, Excel (.xlsx) y CSV. En las tablas del motor común conserva el conjunto completo filtrado (antes de paginar), el orden, las agrupaciones con sus encabezados y las columnas visibles, excluyendo los botones de acción. Una selección vacía nunca se interpreta como «todos». Si una fila deja de estar autorizada o desaparece, la descarga falla y pide actualizar la vista.
+
+El inventario ejecutable es `src/export-inventory.js`, con las proyecciones autorizadas en `src/export-views.js`. `GET /api/export/inventory` publica las definiciones disponibles para la cuenta: pantalla, lectura, exportación, ámbito, columnas, formatos, fuente y límites. `POST /api/export/:tableId` recibe `format`, `filters`, `sort`, `columns` e `itemIds`; únicamente admite claves declaradas. `GET /api/export/:tableId/preview` ofrece la misma proyección de lectura a Informes. Los nombres de permisos usan la convención real de la aplicación (`community:read`, etc.).
+
+Inventario de vistas habilitadas:
+
+- Comunidades, inmuebles, propietarios e inquilinos: permiso de lectura y `<entidad>:export`, con comprobación por recurso. En propietarios se mantienen solo los vínculos visibles para la cuenta.
+- Administración de usuarios y roles: `admin:users` / `admin:roles` y `admin:export`; se excluyen contraseñas, sesiones, tokens e identificadores de proveedores de acceso.
+- Auditoría: `audit:read` y `audit:export`, restringidos a roles autorizados; conserva el filtro de evento y el orden de más reciente a más antiguo.
+- Recibos, saldos a favor y cobros/devoluciones: `fee:read` y `fee:export`, con las reglas de lectura del recibo y del pagador.
+- Acuerdos de cuotas, derramas, sus plazos, servicios y reparto por inmueble: `fee:manage` y `fee:export`, limitados a comunidades gestionadas.
+- Repartos informativos propios: `fee:read` y `fee:export`, limitados a los inmuebles del propietario consultado autorizado.
+- Comunicación, buzón de comunicaciones y seguimiento de lecturas/envíos/historial: `comm:participacion` o permiso de publicación para seguimiento, más `comm:export`. La audiencia y las publicaciones privadas se comprueban con las mismas reglas del tablón.
+- Bibliotecas de documentación y estatutos, incluidas carpetas: `document:read` y `document:export`, por entidad, categoría, carpeta y búsqueda; se exportan metadatos, nunca el contenido ni las rutas físicas de los archivos.
+- Mis notificaciones y buzón de administración: su permiso de lectura y `owner:export`, manteniendo los filtros activos y la visibilidad del propietario.
+- Informes financiero, deuda vencida, suministros y comparativa: `reports:read` y `reports:export`, junto con la autorización de sus fuentes. Los importes se convierten de céntimos a euros; los cobros proceden de aplicaciones vigentes y se excluyen recibos cancelados del consolidado. Las columnas configurables de la tabla también se respetan al descargar. Nuevos informes de #124 deben registrarse en este mismo contrato; esto no implementa por sí solo el resto de aquella épica.
+
+Todos necesitan además el permiso general `export:read` para descargar. La lectura por sí sola no concede exportación. Los roles del sistema de administración reciben los permisos declarados; los roles personalizados se configuran desde Administración. Los residentes no reciben exportación automáticamente. El servicio reconstruye los datos desde la base, revalida el ámbito y acepta únicamente columnas de su lista autorizada. La privacidad sigue la lectura de la vista: perfiles propios, comunidades asignadas o el alcance explícito del rol; no amplía datos personales por disponer de exportación.
+
+Límites por formato: PDF hasta **500 filas**, XLSX y CSV hasta **5.000 filas**; máximo **10 MiB** por archivo y **15 segundos** de generación (CSV: 10 segundos), con tres generaciones simultáneas como máximo. Se configuran en el inventario. La generación se ejecuta en un worker terminable y el archivo completo se valida antes de enviarlo. Los errores, límites y estados vacíos no generan una descarga parcial. Cada intento registra usuario, rol, listado, formato, cantidad, orden, columnas y resultado; los filtros de texto libre se registran por sus claves para no duplicar datos personales en auditoría.
+
+Los archivos se generan en memoria, se entregan con sesión y `Cache-Control: no-store` y se descartan al terminar: retención de servidor **cero**, sin URL pública ni carpeta temporal de descargas. XLSX mantiene números y fechas nativos y añade una hoja de metadatos. CSV usa UTF-8 con BOM, punto y coma y metadatos iniciales de dos columnas entrecomilladas; neutraliza fórmulas de hojas de cálculo y no conserva estilos. PDF incluye metadatos y numeración; las vistas anchas o registros largos usan campos etiquetados para conservar el contenido sin recortarlo.
+
+Exclusiones del inventario: campos de formularios y selectores de configuración, editores sin guardar y vistas previas efímeras de emisión/reparto (son preparación de una operación, no listados persistidos); paneles gráficos de Inicio; expedientes históricos de borrado, que mantienen su descarga original con adjuntos desde Auditoría. Las fichas individuales mantienen sus descargas de documentos originales. Incidencias, tareas, mantenimiento y reservas todavía no tienen listados funcionales en esta versión: al implementarlos deberán declarar su adaptador e incorporar el control común. No se crean datos o cálculos ficticios para esas pantallas.
+
+Validación: `scripts/tests/export.test.mjs` prueba los tres formatos, datos financieros reales, separación de lectura/exportación, ámbitos, audiencia, revocación, estados vacíos, entrada inválida, límites, errores, auditoría y ausencia de archivos temporales; `scripts/tests/export-ui.test.mjs` verifica filtros antes de paginar, columnas, orden, teclado y permisos en la interfaz.
+
+Las tablas comunes reúnen búsqueda, agrupación, selector de columnas, exportar (icono) y alta en una sola barra; el recuento se muestra en el pie. La agrupación se aplica al conjunto filtrado antes de paginar y se conserva en PDF, XLSX (filas de grupo con esquema) y CSV (separadores de grupo), incluso cuando la columna de agrupación está oculta.

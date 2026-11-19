@@ -29,6 +29,7 @@ function fixture(t, folders = []) {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/"/g, "&quot;");
+  w.createExportDropdown = () => null;
   w.toast = () => {};
   w.validateDocumentFiles = () => null;
   w.api = {

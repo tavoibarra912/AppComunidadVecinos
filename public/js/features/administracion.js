@@ -17,6 +17,7 @@ import {
   makeSelectSearchable,
 } from "../utils.js";
 import { createDataTable, aplicarFilasPorPagina } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
@@ -439,7 +440,9 @@ function renderUsers() {
   if (!puedeAdministrar()) return;
   if (!userTable) {
     userTable = createDataTable({
+      addButton: document.querySelector("#new-user"),
       mount: document.querySelector("#usuarios-table"),
+      searchInput: document.querySelector("#search-users"),
       entitySingular: "usuario",
       entityPlural: "usuarios",
       emptyTitle: "No hay usuarios",
@@ -535,6 +538,13 @@ function renderUsers() {
   } else {
     userTable.refresh();
   }
+  document.querySelector('[data-export-table="users"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "users",
+    getView: () => userTable?.getExportState(),
+    getFilters: () => ({}),
+  });
+  userTable.setExportControl?.(exportWrap);
 }
 
 function iconBtn(className, title, ariaLabel, svg) {
@@ -760,7 +770,9 @@ function renderRoles() {
   if (!puedeAdministrar()) return;
   if (!rolesTable) {
     rolesTable = createDataTable({
+      addButton: document.querySelector("#new-role"),
       mount: document.querySelector("#roles-table"),
+      searchInput: document.querySelector("#search-roles"),
       entitySingular: "rol",
       entityPlural: "roles",
       emptyTitle: "No hay roles",
@@ -844,6 +856,13 @@ function renderRoles() {
   } else {
     rolesTable.refresh();
   }
+  document.querySelector('[data-export-table="roles"]')?.remove?.();
+  const rolesExportWrap = createExportDropdown({
+    tableId: "roles",
+    getView: () => rolesTable?.getExportState(),
+    getFilters: () => ({}),
+  });
+  rolesTable.setExportControl?.(rolesExportWrap);
 }
 
 const roleDialog = document.querySelector("#role-dialog");

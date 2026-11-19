@@ -1,3 +1,4 @@
+import { createExportDropdown } from "../export-client.js";
 import { api } from "../api.js";
 import { state, hasPermission } from "../state.js";
 import { escapeHtml as h } from "../html.js";
@@ -234,6 +235,25 @@ function card(p) {
 function draw() {
   if (!metadata) return;
   const list = filtered();
+  const exportHost = $("#comm-toolbar-actions");
+  exportHost?.querySelector(".table-export-wrap")?.remove();
+  const exportControl = createExportDropdown({
+    tableId: "communications",
+    getView: () => ({
+      itemIds: filtered().map((p) => p.id),
+      columns: null,
+      filters: {
+        query: $("#comm-search").value,
+        view: JSON.stringify({
+          comunidad: $("#comm-community").value,
+          tipo: $("#comm-type").value,
+          estado: $("#comm-filter").value,
+          vista: view,
+        }),
+      },
+    }),
+  });
+  if (exportControl) exportHost?.insertBefore(exportControl, $("#comm-new"));
   $("#comm-status").textContent =
     `${list.length} ${list.length === 1 ? "publicación" : "publicaciones"} · Los horarios se muestran en tu zona local.`;
   $("#comm-content").innerHTML =
@@ -263,7 +283,7 @@ function calendar(list) {
         new Date(p.startsAt).getFullYear() === month.getFullYear(),
     )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  return `<div class="comm-month-nav"><button class="secondary-button" type="button" data-month="-1" aria-label="Mes anterior">Anterior</button><h2>${h(month.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</h2><button class="secondary-button" type="button" data-month="1" aria-label="Mes siguiente">Siguiente</button></div><div class="comm-calendar">${["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => `<strong>${d}</strong>`).join("")}${cells.join("")}</div><h3>Agenda del mes</h3>${agenda.length ? agenda.map((p) => `<p><button class="comm-title-button" type="button" data-open-post="${h(p.id)}">${h(date(p.startsAt))} · ${h(p.title)}</button></p>`).join("") : '<p class="comm-muted">No hay eventos o reuniones en este mes con los filtros elegidos.</p>'}`;
+  return `<div class="comm-month-nav"><button class="icon-action-btn btn-info" type="button" data-month="-1" aria-label="Mes anterior" title="Mes anterior"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg></button><h2>${h(month.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</h2><button class="icon-action-btn btn-info" type="button" data-month="1" aria-label="Mes siguiente" title="Mes siguiente"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></button></div><div class="comm-calendar">${["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => `<strong>${d}</strong>`).join("")}${cells.join("")}</div><h3>Agenda del mes</h3>${agenda.length ? agenda.map((p) => `<p><button class="comm-title-button" type="button" data-open-post="${h(p.id)}">${h(date(p.startsAt))} · ${h(p.title)}</button></p>`).join("") : '<p class="comm-muted">No hay eventos o reuniones en este mes con los filtros elegidos.</p>'}`;
 }
 for (const id of ["comm-community", "comm-type", "comm-filter", "comm-search"])
   $(`#${id}`).addEventListener("input", draw);
@@ -297,7 +317,7 @@ function showInbox() {
     );
   showDialog(
     "Comunicaciones de la comunidad",
-    `<p class="comm-muted">Avisos generales, eventos y reuniones dirigidos a tu cuenta. Los avisos sobre documentación y cuotas están en Mis notificaciones. Las publicaciones sin leer aparecen primero.</p>${notifications.length ? `<div class="comm-inbox-list">${notifications.map((p) => `<button type="button" data-inbox-post="${h(p.id)}"><strong>${h(p.title)}</strong><span>${h(p.communityName)} · ${h(date(p.updatedAt))}${!p.recipient.readAt ? " · Sin leer" : ""}</span></button>`).join("")}</div>` : "<p>No tienes comunicaciones recibidas todavía.</p>"}<div class="comm-inbox-actions"><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-refresh" aria-label="Actualizar comunicaciones" title="Actualizar comunicaciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button><button type="button" class="icon-action-btn btn-save btn-lg" id="comm-inbox-read-all" aria-label="Marcar todas las comunicaciones como leídas" title="Marcar todas las comunicaciones como leídas" ${notifications.some((p) => !p.recipient.readAt) ? "" : "disabled"}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12 4 4L20 4"/><path d="m4 19 4 3L20 10"/></svg></button><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-board" aria-label="Abrir tablón de la comunidad" title="Abrir tablón de la comunidad">${COMM_ICON}</button></div>`,
+    `<p class="comm-muted">Avisos generales, eventos y reuniones dirigidos a tu cuenta. Los avisos sobre documentación y cuotas están en Mis notificaciones. Las publicaciones sin leer aparecen primero.</p><div class="comm-inbox-actions"><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-refresh" aria-label="Actualizar comunicaciones" title="Actualizar comunicaciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button><button type="button" class="icon-action-btn btn-save btn-lg" id="comm-inbox-read-all" aria-label="Marcar todas las comunicaciones como leídas" title="Marcar todas las comunicaciones como leídas" ${notifications.some((p) => !p.recipient.readAt) ? "" : "disabled"}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12 4 4L20 4"/><path d="m4 19 4 3L20 10"/></svg></button><button type="button" class="icon-action-btn btn-info btn-lg" id="comm-inbox-board" aria-label="Abrir tablón de la comunidad" title="Abrir tablón de la comunidad">${COMM_ICON}</button></div>${notifications.length ? `<div class="comm-inbox-list">${notifications.map((p) => `<button type="button" data-inbox-post="${h(p.id)}"><strong>${h(p.title)}</strong><span>${h(p.communityName)} · ${h(date(p.updatedAt))}${!p.recipient.readAt ? " · Sin leer" : ""}</span></button>`).join("")}</div>` : "<p>No tienes comunicaciones recibidas todavía.</p>"}`,
   );
   dialog.querySelectorAll("[data-inbox-post]").forEach((button) =>
     button.addEventListener("click", () =>
@@ -307,6 +327,11 @@ function showInbox() {
       }, button),
     ),
   );
+  const inboxExport = createExportDropdown({
+    tableId: "communications",
+    getView: () => ({ itemIds: notifications.map((p) => p.id), columns: null, filters: {} }),
+  });
+  if (inboxExport) dialog.querySelector(".comm-inbox-actions").append(inboxExport);
   $("#comm-inbox-refresh").addEventListener("click", (e) =>
     action(async () => {
       await refreshCommunication();
@@ -664,6 +689,28 @@ async function openPost(id, tab = "publication") {
     <div data-detail-panel="participation" ${detailTab !== "participation" ? "hidden" : ""}>${participationView(p)}</div>
     ${p.canManage ? `<div data-detail-panel="tracking" ${detailTab !== "tracking" ? "hidden" : ""}>${trackingView(p)}</div>` : ""}`,
   );
+  if (p.canManage) {
+    const panel = dialog.querySelector('[data-detail-panel="tracking"]');
+    for (const [tableId, label, ids] of [
+      [
+        "communication_receipts",
+        "Exportar lecturas",
+        p.recipients.map((r) => `${p.id}:${r.userId}`),
+      ],
+      ["communication_deliveries", "Exportar envíos", p.deliveries.map((r) => r.id)],
+      ["communication_history", "Exportar historial", p.history.map((r, i) => `${p.id}:${i}`)],
+    ]) {
+      const control = createExportDropdown({
+        tableId,
+        permission: "comm:export",
+        getView: () => ({ itemIds: ids, columns: null, filters: {} }),
+      });
+      if (control) {
+        control.querySelector("button").setAttribute("aria-label", label);
+        panel.append(control);
+      }
+    }
+  }
   $("#comm-detail-tabs").addEventListener("click", (e) => {
     const b = e.target.closest("[data-detail-tab]");
     if (!b) return;

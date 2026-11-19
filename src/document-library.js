@@ -6,6 +6,7 @@ export const DOCUMENT_CATEGORIES = Object.freeze(["document", "statutes"]);
 export const DOCUMENT_ENTITY_TABLES = Object.freeze({
   community: "communities",
   property: "properties",
+  owner: "owners",
   tenant: "tenants",
 });
 export const MAX_FOLDER_DEPTH = 5;

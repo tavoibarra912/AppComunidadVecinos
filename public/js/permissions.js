@@ -44,6 +44,17 @@ export const PERMISSIONS = [
   "owner_notification:read",
   "owner_notification:send",
   "owner_notification:delete",
+  "export:read",
+  "community:export",
+  "property:export",
+  "owner:export",
+  "tenant:export",
+  "fee:export",
+  "document:export",
+  "comm:export",
+  "audit:export",
+  "reports:export",
+  "admin:export",
 ];
 
 /** Fecha local en formato ISO (YYYY-MM-DD), sin conversiones UTC. */
@@ -122,7 +133,12 @@ export function createPermissionChecker(user, data) {
     }
   return (permission, resourceId = "") => {
     if (!PERMISSIONS.includes(permission) || !permissions.has(permission)) return false;
-    if (permission === "audit:read" || permission === "admin:providers")
+    if (
+      permission === "audit:read" ||
+      permission === "audit:export" ||
+      permission === "admin:providers" ||
+      permission === "admin:export"
+    )
       return !["user", "community_admin"].includes(role.nombre);
     const owner = ownersById.get(resourceId);
     const tenant = tenantsById.get(resourceId);
@@ -170,6 +186,38 @@ export function createPermissionChecker(user, data) {
             : ownOwners.size > 0 || activeTenantIds.size > 0 || formerTenantIds.size > 0;
         case "document:upload":
           return ownOwners.size > 0 || activeTenantIds.size > 0;
+        case "export:read":
+          return permissions.has("export:read");
+        case "reports:read":
+          return resourceId ? ownedCommunityIds.has(resourceId) : ownedCommunityIds.size > 0;
+        case "reports:export":
+          return resourceId ? ownedCommunityIds.has(resourceId) : ownedCommunityIds.size > 0;
+        case "community:export":
+          return resourceId ? ownCommunities.has(resourceId) : ownCommunities.size > 0;
+        case "property:export":
+          return resourceId ? readablePropertyIds.has(resourceId) : readablePropertyIds.size > 0;
+        case "owner:export":
+          return resourceId ? ownOwners.has(resourceId) : ownOwners.size > 0;
+        case "tenant:export":
+          return resourceId
+            ? !!tenant &&
+                (ownOwners.has(tenant.ownerId) ||
+                  activeTenantIds.has(tenant.id) ||
+                  formerTenantIds.has(tenant.id))
+            : ownOwners.size > 0 || activeTenantIds.size > 0 || formerTenantIds.size > 0;
+        case "fee:export":
+          return resourceId
+            ? ownOwners.has(resourceId) || ownedCommunityIds.has(resourceId)
+            : ownOwners.size > 0;
+        case "document:export":
+          return resourceId
+            ? ownOwners.has(resourceId) ||
+                ownCommunities.has(resourceId) ||
+                readablePropertyIds.has(resourceId) ||
+                readableTenantIds.has(resourceId)
+            : ownOwners.size > 0 || activeTenantIds.size > 0 || formerTenantIds.size > 0;
+        case "comm:export":
+          return resourceId ? ownCommunities.has(resourceId) : ownCommunities.size > 0;
         default:
           return false;
       }
@@ -231,6 +279,17 @@ const ETIQUETAS_PERMISO = {
   "owner_notification:read": "ver el buzón de avisos",
   "owner_notification:send": "enviar avisos a propietarios",
   "owner_notification:delete": "eliminar avisos del buzón",
+  "export:read": "exportar tablas e informes",
+  "community:export": "exportar comunidades",
+  "property:export": "exportar inmuebles",
+  "owner:export": "exportar propietarios",
+  "tenant:export": "exportar inquilinos",
+  "fee:export": "exportar cuotas y recibos",
+  "document:export": "exportar documentación",
+  "comm:export": "exportar avisos de comunicación",
+  "audit:export": "exportar el registro de auditoría",
+  "reports:export": "exportar informes",
+  "admin:export": "exportar usuarios y roles de administración",
 };
 
 export function etiquetaPermiso(permission) {

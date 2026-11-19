@@ -12,6 +12,7 @@ import { contactError, bankAccountError, identityDocumentError } from "../valida
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { avisarCambioOwner } from "../avisos-cambios.js";
 import { registerCascadeRoutes } from "../cascade-delete.js";
+import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
 registerCascadeRoutes(router, "owners");
@@ -275,6 +276,7 @@ function deleteOwnerNormal(req, res) {
     rebuildOwnersPropertyIds();
     db.prepare("DELETE FROM owner_notifications WHERE ownerId = ?").run(existing.id);
     db.prepare("DELETE FROM admin_emails WHERE ownerId = ?").run(existing.id);
+    removeEntityFiles("owner", existing.id);
     db.prepare("DELETE FROM owners WHERE id = ?").run(existing.id);
     db.exec("COMMIT");
   } catch (error) {

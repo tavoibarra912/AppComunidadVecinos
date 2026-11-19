@@ -30,6 +30,7 @@ import {
   setFormReadonly,
 } from "../utils.js";
 import { createDataTable } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { createRichText } from "../rich-text.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
@@ -234,6 +235,7 @@ export function renderTenants() {
   }
   if (!tenantTable) {
     tenantTable = createDataTable({
+      addButton: document.querySelector("#new-tenant"),
       mount: document.querySelector("#inquilinos-table"),
       storageKey: "inquilinos",
       searchInput: tenantSearch,
@@ -378,6 +380,13 @@ export function renderTenants() {
   } else {
     tenantTable.refresh();
   }
+  document.querySelector('[data-export-table="tenants"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "tenants",
+    getView: () => tenantTable?.getExportState(),
+    getFilters: () => ({ query: tenantSearch?.value || "" }),
+  });
+  tenantTable.setExportControl?.(exportWrap);
 }
 
 function tenantCommunityId() {
@@ -704,20 +713,18 @@ function renderTenantDocCard(key, ids) {
           </div>
         </div>
         <div class="doc-file-actions">
-          <button class="btn-doc-action" type="button" data-action="view">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button class="icon-action-btn btn-sm btn-info" type="button" data-action="view" title="Ver documento" aria-label="Ver documento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
               <circle cx="12" cy="12" r="3"></circle>
             </svg>
-            Ver
           </button>
-          <button class="btn-doc-action danger" type="button" data-action="remove">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <button class="icon-action-btn btn-sm btn-delete" type="button" data-action="remove" title="Quitar documento" aria-label="Quitar documento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 6h18"></path>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
               <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
             </svg>
-            Quitar
           </button>
         </div>
       `);
@@ -1362,15 +1369,15 @@ export function openTenantDetail(ownerId, tenantId) {
         actions.className = "doc-file-actions";
         actions.style.marginTop = "10px";
         const viewBtn = document.createElement("button");
-        viewBtn.className = "btn-doc-action";
+        viewBtn.className = "icon-action-btn btn-sm btn-info";
         viewBtn.type = "button";
         viewBtn.title = `Ver ${label}`;
+        viewBtn.setAttribute("aria-label", `Ver ${label}`);
         viewBtn.innerHTML = sanitizeHtml(`
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
-          Ver
         `);
         viewBtn.onclick = () => {
           openDocViewer(tenant, key, doc);

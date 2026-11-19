@@ -28,6 +28,7 @@ import {
 } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { openPropertyDetail, openPropertyEditor } from "./inmuebles.js";
 import { crearVerificadorContacto } from "../verificacion-contacto.js";
 import { createRichText } from "../rich-text.js";
@@ -206,6 +207,7 @@ export function renderCommunities() {
   if (newCommunityBtn) newCommunityBtn.hidden = !hasPermission("community:create");
   if (!communityTable) {
     communityTable = createDataTable({
+      addButton: document.querySelector("#new-community"),
       mount: document.querySelector("#comunidades-table"),
       storageKey: "comunidades",
       searchInput: communitySearch,
@@ -368,6 +370,13 @@ export function renderCommunities() {
   } else {
     communityTable.refresh();
   }
+  document.querySelector('[data-export-table="communities"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "communities",
+    getView: () => communityTable?.getExportState(),
+    getFilters: () => ({ query: communitySearch?.value || "" }),
+  });
+  communityTable.setExportControl?.(exportWrap);
 }
 
 export function openCommunityEditor(id = null, defaultTab = "details", readonly = false) {

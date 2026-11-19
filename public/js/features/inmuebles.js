@@ -28,6 +28,7 @@ import {
 import { createDocumentLibrary } from "../document-library.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
 import { createDataTable } from "../table.js";
+import { createExportDropdown } from "../export-client.js";
 import { createRichText } from "../rich-text.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
@@ -778,6 +779,7 @@ export function renderProperties() {
   if (newPropertyBtn) newPropertyBtn.hidden = !hasPermission("property:create");
   if (!propertyTable) {
     propertyTable = createDataTable({
+      addButton: document.querySelector("#new-property"),
       mount: document.querySelector("#inmuebles-table"),
       storageKey: "inmuebles",
       searchInput: propertySearch,
@@ -993,6 +995,13 @@ export function renderProperties() {
   } else {
     propertyTable.refresh();
   }
+  document.querySelector('[data-export-table="properties"]')?.remove?.();
+  const exportWrap = createExportDropdown({
+    tableId: "properties",
+    getView: () => propertyTable?.getExportState(),
+    getFilters: () => ({ query: propertySearch?.value || "" }),
+  });
+  propertyTable.setExportControl?.(exportWrap);
 }
 
 export function openPropertyDetail(id) {

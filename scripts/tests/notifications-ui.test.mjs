@@ -54,6 +54,7 @@ test("avisos: el propietario ve y marca todo lo de todos sus perfiles", async ()
       },
     ];
   Object.assign(w, {
+    createExportDropdown: () => null,
     state: {
       owners: [
         { id: "o1", userId: "u1" },
@@ -154,6 +155,7 @@ test("avisos: el propietario puede eliminar sus avisos y se actualiza el badge",
       },
     ];
   Object.assign(w, {
+    createExportDropdown: () => null,
     state: {
       owners: [{ id: "o1", userId: "u1" }],
       ownerNotifications: notifications,
