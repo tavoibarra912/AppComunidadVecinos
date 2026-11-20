@@ -353,6 +353,19 @@ function clearActiveNav() {
     .forEach((el) => el.classList.remove("active"));
 }
 
+// En la barra móvil solo caben unos pocos ítems: al activar uno hay que
+// asegurarse de que quede a la vista (también al entrar por una URL directa).
+function revealMobileNavLink(link) {
+  if (!link?.classList?.contains("mobile-nav-item") || !link.offsetParent) return;
+  const nav = link.parentElement;
+  if (!nav) return;
+  const left = link.offsetLeft;
+  const right = left + link.offsetWidth;
+  if (left < nav.scrollLeft || right > nav.scrollLeft + nav.clientWidth) {
+    nav.scrollLeft = Math.max(0, left - (nav.clientWidth - link.offsetWidth) / 2);
+  }
+}
+
 function showSection(section, navLinks) {
   if (section) {
     section.hidden = false;
@@ -362,6 +375,7 @@ function showSection(section, navLinks) {
     if (link) {
       link.classList.add("active");
       link.setAttribute("aria-current", "page");
+      revealMobileNavLink(link);
     }
   }
 }
@@ -391,13 +405,6 @@ export async function handleRouting() {
         return;
       }
       showSection(getSec("cuotas"), [navCuotas, mobileNavCuotas]);
-      if (mobileNavCuotas?.offsetParent) {
-        const nav = mobileNavCuotas.parentElement;
-        nav.scrollLeft = Math.max(
-          0,
-          mobileNavCuotas.offsetLeft - nav.clientWidth + mobileNavCuotas.offsetWidth + 12,
-        );
-      }
       document.title = brandTitle();
       const renderFees = await getRenderFeesPage();
       renderFees();

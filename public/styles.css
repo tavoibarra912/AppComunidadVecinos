@@ -7264,3 +7264,160 @@ input.table-engine-search {
     padding: 10px;
   }
 }
+
+/* ==========================================================================
+   MÓVIL — cabecera fija y navegación usable
+   Las vistas miden varios miles de píxeles: si la barra superior y la
+   navegación se van con el scroll, en el teléfono no queda forma de cambiar
+   de sección (el menú lateral está oculto).
+   ========================================================================== */
+@media (max-width: 760px) {
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .mobile-nav {
+    position: sticky;
+    top: 60px;
+    z-index: 39;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+  }
+
+  /* Cabecera y navegación ocupan ~110 px: al saltar a una sección por ancla
+     no deben tapar su título. */
+  html {
+    scroll-padding-top: 118px;
+  }
+
+  /* En táctil la barra de scroll sobra: los ítems se deslizan y el activo
+     queda centrado por el router. */
+  .mobile-nav::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  /* La marca completa cabe sin quedar en «Gestión Comunida…». */
+  .topbar {
+    gap: 8px;
+  }
+
+  .topbar .brand {
+    font-size: 15px;
+    letter-spacing: -0.6px;
+    white-space: nowrap;
+  }
+
+  /* El punto decorativo solo estorba cuando el ancho es escaso. */
+  .topbar .brand span {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   MÓVIL — tablas en tarjetas
+   Una tabla de 10 columnas a 400 px solo deja ver dos y el resto queda fuera,
+   sin pista de que se puede deslizar. Cada fila pasa a tarjeta con sus campos
+   etiquetados (la etiqueta sale de data-label, que pone table.js).
+   ========================================================================== */
+@media (max-width: 620px) {
+  .layout .table-engine .table-wrap {
+    overflow-x: visible;
+    overscroll-behavior-x: auto;
+  }
+
+  .layout .table-engine .data-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .layout .table-engine .data-table thead {
+    display: none;
+  }
+
+  .layout .table-engine .data-table tbody {
+    display: block;
+  }
+
+  .layout .table-engine .data-table tr {
+    display: block;
+    margin: 0 0 12px;
+    padding: 4px 14px 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .layout .table-engine .data-table td {
+    display: grid;
+    grid-template-columns: minmax(88px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 7px 0;
+    border: 0;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .layout .table-engine .data-table td::before {
+    content: attr(data-label);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* El primer campo hace de título de la tarjeta. */
+  .layout .table-engine .data-table td:first-child {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    margin-bottom: 4px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-weight: 700;
+  }
+
+  .layout .table-engine .data-table td:first-child::before {
+    content: none;
+  }
+
+  /* Acciones: fila propia al pie de la tarjeta. */
+  .layout .table-engine .data-table td.cell-actions {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 4px;
+    padding-top: 9px;
+    border-top: 1px solid var(--line);
+    justify-items: end;
+  }
+
+  .layout .table-engine .data-table td.cell-actions::before {
+    content: none;
+  }
+
+  /* Filas de agrupación: sin tarjeta ni etiquetas. */
+  .layout .table-engine .data-table tr.table-group-row {
+    margin: 0 0 8px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .layout .table-engine .data-table tr.table-group-row td {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+
+  .layout .table-engine .data-table tr.table-group-row td::before {
+    content: none;
+  }
+}
