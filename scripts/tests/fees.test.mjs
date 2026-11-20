@@ -709,3 +709,163 @@ test("Mis cuotas: consolida perfiles, deduplica copropiedad y revoca perfiles de
     false,
   );
 });
+
+test("cuotas: purga recibos anulados (borrado físico GDPR) solo para fee:purge", async () => {
+  // Cancel a receipt first (use receipt2 which has no payments)
+  const cancelResult = await ok(staff, `/fees/receipts/${receipt2}/cancel`, "POST", {
+    reason: "Error en emisión",
+  });
+  assert.equal(cancelResult.ok, true);
+
+  // Owner cannot purge (no fee:purge permission)
+  assert.equal(
+    (await owner(`/fees/receipts/${receipt2}/purge`, "POST", {})).status,
+    403,
+  );
+
+  // Staff (community_admin) cannot purge by default
+  assert.equal(
+    (await staff(`/fees/receipts/${receipt2}/purge`, "POST", {})).status,
+    403,
+  );
+
+  // Admin (super_admin) can purge
+  const purgeResult = await ok(admin, `/fees/receipts/${receipt2}/purge`, "POST", {}, 200);
+  assert.equal(purgeResult.ok, true);
+
+  // Receipt should be hard deleted
+  const deleted = db
+    .prepare("SELECT * FROM fee_receipts WHERE id=?")
+    .get(receipt2);
+  assert.equal(deleted, undefined);
+
+  // Related allocations, proofs, payments should also be deleted
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS n FROM fee_allocations WHERE receiptId=?").get(receipt2).n,
+    0,
+  );
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS n FROM fee_proofs WHERE receiptId=?").get(receipt2).n,
+    0,
+  );
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS n FROM fee_payments WHERE id IN (SELECT paymentId FROM fee_allocations WHERE receiptId=?)").get(receipt2).n,
+    0,
+  );
+
+  // Audit log should record the purge
+  const audit = db
+    .prepare("SELECT * FROM access_audit WHERE action='fee.purge' AND resourceId=?")
+    .get(receipt2);
+  assert.ok(audit);
+  assert.equal(audit.actorId, db.prepare("SELECT id FROM users WHERE usuario='super_admin'").get().id);
+});
+
+test("cuotas: purga derramas anuladas (borrado físico GDPR) solo para fee:purge", async () => {
+  // First create and issue an assessment (derrama)
+  const assessmentPlan = {
+    name: "Derrama fachada",
+    totalAmount: "5000",
+    effectiveFrom: "2026-01-01",
+    dueDay: 10,
+    mode: "coefficient",
+    agreement: "Junta extraordinaria",
+    reminders: { beforeDays: 3, afterDays: 7, repeatDays: 0, internal: true, email: false },
+    installments: [{ amount: "5000", dueDate: "2026-02-10" }],
+  };
+  await ok(staff, `/fees/communities/${c1}/assessments`, "POST", assessmentPlan, 201);
+
+  const assessments = await ok(staff, `/fees/communities/${c1}`);
+  const assessment = assessments.assessments[0];
+  const assessmentId = assessment.id;
+
+  // Cancel the assessment
+  const cancelResult = await ok(staff, `/fees/assessments/${assessmentId}/cancel`, "POST", {
+    reason: "Acuerdo revocado",
+  });
+  assert.ok(cancelResult.cancelledAt);
+
+  // Owner cannot purge
+  assert.equal(
+    (await owner(`/fees/assessments/${assessmentId}/purge`, "POST", {})).status,
+    403,
+  );
+
+  // Staff cannot purge
+  assert.equal(
+    (await staff(`/fees/assessments/${assessmentId}/purge`, "POST", {})).status,
+    403,
+  );
+
+  // Admin can purge
+  const purgeResult = await ok(admin, `/fees/assessments/${assessmentId}/purge`, "POST", {}, 200);
+  assert.equal(purgeResult.ok, true);
+
+  // Assessment should be hard deleted
+  const deleted = db
+    .prepare("SELECT * FROM fee_assessments WHERE id=?")
+    .get(assessmentId);
+  assert.equal(deleted, undefined);
+
+  // Related receipts, allocations, proofs, payments should also be deleted
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS n FROM fee_receipts WHERE assessmentId=?").get(assessmentId).n,
+    0,
+  );
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS n FROM fee_allocations WHERE receiptId IN (SELECT id FROM fee_receipts WHERE assessmentId=?)").get(assessmentId).n,
+    0,
+  );
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS n FROM fee_proofs WHERE receiptId IN (SELECT id FROM fee_receipts WHERE assessmentId=?)").get(assessmentId).n,
+    0,
+  );
+
+  // Audit log should record the purge
+  const audit = db
+    .prepare("SELECT * FROM access_audit WHERE action='fee.purge_assessment' AND resourceId=?")
+    .get(assessmentId);
+  assert.ok(audit);
+});
+
+test("cuotas: modo mixto para derramas (coeficiente + importe fijo)", async () => {
+  const mixedPlan = {
+    name: "Derrama mixta",
+    totalAmount: "10000",
+    effectiveFrom: "2026-01-01",
+    dueDay: 15,
+    mode: "mixed",
+    agreement: "Junta mixta",
+    manual: { "fee-property-1": "3000" }, // fixed amount for property 1
+    reminders: { beforeDays: 3, afterDays: 7, repeatDays: 0, internal: true, email: false },
+    installments: [{ amount: "10000", dueDate: "2026-02-15" }],
+  };
+
+  // Valid mixed plan should be accepted
+  await ok(staff, `/fees/communities/${c1}/assessments`, "POST", mixedPlan, 201);
+
+  const assessments = await ok(staff, `/fees/communities/${c1}`);
+  const assessment = assessments.assessments.find((a) => a.mode === "mixed");
+  assert.ok(assessment);
+  assert.equal(assessment.mode, "mixed");
+  assert.ok(assessment.allocations);
+  assert.equal(assessment.allocations["fee-property-1"], 300000); // stored in cents
+
+  // Preview should work with mixed mode
+  const preview = await ok(staff, `/fees/assessments/${assessment.id}/preview`, "POST", { installment: 1 });
+  assert.equal(preview.total, 1000000); // total in cents
+  const property1Row = preview.rows.find((r) => r.propertyId === "fee-property-1");
+  const property2Row = preview.rows.find((r) => r.propertyId === "fee-property-2");
+  assert.equal(property1Row.amount, 300000); // fixed amount in cents
+  assert.equal(property2Row.amount, 700000); // remainder by coefficient in cents
+
+  // Issue the assessment
+  const issued = await ok(
+    staff,
+    `/fees/assessments/${assessment.id}/issue`,
+    "POST",
+    { token: preview.token, installment: 1 },
+    201,
+  );
+  assert.equal(issued.ids.length, 2);
+});

@@ -69,12 +69,14 @@ const icons = {
   remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   save: '<path d="m5 12 4 4L19 6"/>',
+  // El disquete es el icono de guardado del resto de la app.
+  disk: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   // Icono de Cuotas (el mismo del menú lateral) para el acceso a esa pantalla.
   fees: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
 };
-function iconButton(label, action, kind = "add", icon = kind) {
-  const node = button("", action);
+function iconButton(label, action, kind = "add", icon = kind, primary = false) {
+  const node = button("", action, primary);
   node.className = `icon-action-btn btn-${kind}`;
   node.title = label;
   node.setAttribute("aria-label", label);
@@ -906,21 +908,24 @@ function renderPanel(root, ctx) {
       };
     summary.replaceChildren();
     results.replaceChildren();
-    exportList(
-      results,
-      "receipts",
-      rows,
-      ["location", "concept", "dueDate", "amount", "outstanding", "status"],
-      {
-        query: ctx.search || "",
-        period: ctx.period || "",
-        view: JSON.stringify({
-          estado: ctx.status || "todos",
-          comunidad: ctx.community || ctx.id || "",
-          inmueble: ctx.property || "",
-        }),
-      },
-    );
+    // Sin filas no hay nada que exportar: el botón solo quedaba suelto encima
+    // del aviso de «todavía no hay recibos».
+    if (rows.length)
+      exportList(
+        results,
+        "receipts",
+        rows,
+        ["location", "concept", "dueDate", "amount", "outstanding", "status"],
+        {
+          query: ctx.search || "",
+          period: ctx.period || "",
+          view: JSON.stringify({
+            estado: ctx.status || "todos",
+            comunidad: ctx.community || ctx.id || "",
+            inmueble: ctx.property || "",
+          }),
+        },
+      );
     for (const [key, name] of [
       ["issued", "Emitido"],
       ["paid", "Cobrado"],
@@ -1951,79 +1956,162 @@ function ownerName(id, data) {
     ? `${owner.name} ${owner.surname}`
     : data.receipts.flatMap((r) => r.snapshot.owners).find((o) => o.id === id)?.name || id;
 }
+function periodicityLabel(months) {
+  return (
+    { 1: "Mensual", 3: "Trimestral", 6: "Semestral", 12: "Anual" }[Number(months)] ||
+    `Cada ${months} meses`
+  );
+}
+function modeLabel(mode) {
+  return mode === "manual" ? "Importes por inmueble" : "Por coeficiente";
+}
+/** Resumen del acuerdo que se va a aplicar, para no tener que leer la tabla. */
+function planSummary(plan) {
+  const months = Math.max(1, Number(plan.months) || 1);
+  const perPeriod = Math.round((plan.annualAmount * months) / 12);
+  const box = el("div", undefined, "fee-plan-summary");
+  const title = el("p", undefined, "fee-plan-summary-title");
+  title.textContent = `Acuerdo aplicable desde ${date(plan.effectiveFrom)}`;
+  const list = el("dl");
+  for (const [label, value] of [
+    ["Recaudación anual", money(plan.annualAmount)],
+    ["Total por periodo", money(perPeriod)],
+    ["Periodicidad", periodicityLabel(months)],
+    ["Vencimiento", `Día ${plan.dueDay} de cada mes`],
+    ["Reparto", modeLabel(plan.mode)],
+  ]) {
+    const item = el("div");
+    item.append(el("dt", label), el("dd", value));
+    list.append(item);
+  }
+  box.append(title, list);
+  return box;
+}
 function configuration(ctx) {
-  const body = open("Configuración de cuotas ordinarias"),
+  const body = open("Acuerdos de cuotas ordinarias"),
     data = ctx.data,
     manage = data.canManage && !ctx.readonly;
+  info(
+    body,
+    manage
+      ? "Aquí se define cuánto se cobra al año, cada cuánto se emite un recibo y cómo se reparte entre los inmuebles. Cada acuerdo es una versión con su fecha de aplicación: puedes corregirlo o quitarlo sin alterar los recibos ya emitidos."
+      : "Cuotas acordadas por la comunidad: importe anual, periodicidad, reparto y día de vencimiento.",
+  );
   if (data.plans.length) {
     body.append(el("h3", "Acuerdos guardados"));
     exportList(body, "plans", data.plans);
     body.append(
       table(
-        ["Desde", "Recaudación anual", "Periodicidad", "Acuerdo"],
-        data.plans.map((p) => [
-          date(p.effectiveFrom),
-          money(p.annualAmount),
-          { 1: "Mensual", 3: "Trimestral", 6: "Semestral", 12: "Anual" }[Number(p.months)] ||
-            `Cada ${p.months} meses`,
-          esc(p.agreement),
-        ]),
+        ["Desde", "Recaudación anual", "Periodicidad", "Vence", "Acuerdo", manage ? "Acciones" : ""],
+        data.plans.map((plan) => {
+          const cells = [
+            `<strong>${esc(date(plan.effectiveFrom))}</strong><small>Rige desde ese mes</small>`,
+            money(plan.annualAmount),
+            esc(periodicityLabel(plan.months)),
+            `Día ${esc(String(plan.dueDay))}`,
+            esc(plan.agreement),
+          ];
+          if (manage) {
+            const actions = el("div", undefined, "fee-row-actions");
+            actions.append(
+              button("Editar", () => planDialog(ctx, plan)),
+              button("Quitar", () => removePlan(ctx, plan)),
+            );
+            cells.push(actions);
+          }
+          return cells;
+        }),
       ),
     );
+  } else {
+    info(body, "Todavía no hay acuerdos guardados. Crea el primero para poder emitir recibos.");
   }
   if (!manage) return;
-  body.append(el("h3", "Nuevo acuerdo"));
+  const actions = el("div", undefined, "dialog-actions");
+  actions.append(button("Nuevo acuerdo", () => planDialog(ctx, null), true));
+  body.append(actions);
+}
+function planDialog(ctx, plan = null) {
+  const data = ctx.data,
+    latest = data.plans[0],
+    body = open(plan ? "Corregir acuerdo de cuotas" : "Nuevo acuerdo de cuotas");
   info(
     body,
-    "Cada acuerdo queda guardado como una versión. La fecha debe ser posterior a los periodos ya emitidos. Los cambios generales no modifican estos acuerdos.",
+    plan
+      ? "Cambia los importes, la periodicidad o el reparto de este acuerdo. Los recibos ya emitidos conservan los importes con los que se generaron."
+      : "El acuerdo fija el importe anual, cada cuánto se emite el recibo, qué día vence y cómo se reparte. Guardarlo no emite ningún recibo: después eliges el periodo.",
   );
-  const last = data.plans[0],
-    grid = el("div", undefined, "fee-form-grid");
+  // 1. Importe y periodicidad
+  body.append(el("h3", "1 · Importe y periodicidad", "fee-form-section"));
+  const grid = el("div", undefined, "fee-form-grid");
   body.append(grid);
-  const annual = euroField(grid, "Importe anual a recaudar (€)", last?.annualAmount ?? "");
+  const total = el("p", undefined, "fee-plan-total");
+  body.append(total);
+  const annual = euroField(
+    grid,
+    "Importe anual a recaudar (€)",
+    plan?.annualAmount ?? latest?.annualAmount ?? "",
+  );
   hint(annual, "Total anual aprobado en Junta para toda la comunidad.");
-  const months = field(grid, "Periodicidad", "select", last?.months || "1", [
-    ["1", "Mensual"],
-    ["3", "Trimestral"],
-    ["6", "Semestral"],
-    ["12", "Anual"],
+  const months = field(grid, "Periodicidad", "select", plan?.months || latest?.months || "1", [
+    ["1", "Mensual (12 recibos al año)"],
+    ["3", "Trimestral (4 recibos al año)"],
+    ["6", "Semestral (2 recibos al año)"],
+    ["12", "Anual (1 recibo al año)"],
   ]);
-  hint(months, "Cada cuánto se emite un recibo con la parte proporcional.");
-  const from = field(grid, "Aplicar desde (primer día de mes)", "date", "");
-  from.type = "month";
-  from.closest(".fee-field").querySelector(".fee-field-label").textContent = "Aplicar desde (mes)";
-  from.required = true;
-  hint(from, "Rige desde este mes; no modifica los recibos ya emitidos.");
-  const day = field(grid, "Día de vencimiento (1–28)", "number", last?.dueDay || 5);
+  hint(months, "Cada cuánto se emite un recibo con la parte proporcional del año.");
+  const day = field(grid, "Día de vencimiento (1–28)", "number", plan?.dueDay || latest?.dueDay || 5);
   day.min = "1";
   day.max = "28";
   day.required = true;
   hint(day, "Día del mes en que vence cada recibo.");
-  const mode = field(grid, "Reparto", "select", last?.mode || "coefficient", [
+  // 2. Cuándo se aplica
+  body.append(el("h3", "2 · Cuándo se aplica", "fee-form-section"));
+  const when = el("div", undefined, "fee-form-grid");
+  body.append(when);
+  const hasReceipts = !!plan && data.receipts.some(
+    (r) =>
+      !r.cancelledAt &&
+      (r.kind || "ordinary") === "ordinary" &&
+      (r.periodEnd || `${r.period}-28`) >= plan.effectiveFrom,
+  );
+  // El tipo debe ser «month» antes de asignar el valor: un input de fecha
+  // descarta un valor AAAA-MM y el formulario de edición quedaría vacío.
+  const from = field(when, "Aplicar desde (mes)", "month", plan ? plan.effectiveFrom.slice(0, 7) : "");
+  from.required = true;
+  if (hasReceipts) {
+    from.disabled = true;
+    hint(
+      from,
+      "No se puede cambiar: ya hay recibos emitidos desde este mes. Crea un acuerdo nuevo para otra fecha.",
+    );
+  } else {
+    hint(from, "Rige desde este mes; no modifica los recibos ya emitidos.");
+  }
+  const agreement = field(when, "Referencia del acuerdo de Junta", "text", plan?.agreement || "");
+  agreement.maxLength = 300;
+  agreement.required = true;
+  hint(agreement, "Número de acta o fecha del acuerdo que respalda estos importes.");
+  // 3. Reparto
+  body.append(el("h3", "3 · Cómo se reparte", "fee-form-section"));
+  const split = el("div", undefined, "fee-form-grid");
+  body.append(split);
+  const mode = field(split, "Reparto", "select", plan?.mode || latest?.mode || "coefficient", [
     ["coefficient", "Por coeficiente de participación"],
     ["manual", "Importes anuales aprobados por inmueble"],
   ]);
   hint(
     mode,
-    "Coeficiente: reparte el importe anual según la participación de cada inmueble. Manual: fijas el importe anual de cada inmueble.",
+    "Coeficiente: reparte el importe anual según la participación de cada inmueble. Manual: fijas el importe anual de cada inmueble y debe sumar el total.",
   );
-  const agreement = field(grid, "Referencia del acuerdo de Junta", "text", "");
-  agreement.maxLength = 300;
-  agreement.required = true;
-  hint(agreement, "Número de acta o fecha del acuerdo que respalda estos importes.");
   const computeAmount = () => {
-    const total = Number(annual.value.replace(",", "."));
-    const count = Number(months.value);
-    const parts = total > 0 && count > 0 ? total / count : 0;
-    hintLine.textContent = parts
-      ? `Cada periodo se emitirá por ${money(Math.round(parts * 100))} en total (importe anual dividido en ${count} ${count === 1 ? "periodo" : "periodos"}).`
-      : "Completa el importe anual para ver cuánto se emitirá en cada periodo.";
+    const entered = Number(annual.value.replace(",", "."));
+    const count = Math.max(1, Number(months.value) || 1);
+    total.textContent =
+      entered > 0 && Number.isFinite(entered)
+        ? `Cada ${count === 1 ? "mes" : `${count} meses`} se emitirá un recibo por ${money(Math.round((entered * count * 100) / 12))} en total, repartido ${mode.value === "manual" ? "con los importes por inmueble que indiques" : "según el coeficiente de cada inmueble"}.`
+        : "Completa el importe anual para ver cuánto se emitirá en cada periodo.";
   };
-  const hintLine = el("p", undefined, "form-intro full");
-  body.append(hintLine);
-  annual.addEventListener("input", computeAmount);
-  months.addEventListener("change", computeAmount);
-  computeAmount();
   const manual = el("div", undefined, "fee-form-grid");
   body.append(manual);
   const manualInputs = {};
@@ -2031,30 +2119,37 @@ function configuration(ctx) {
     manualInputs[p.id] = euroField(
       manual,
       `${p.plot} · importe anual (€)`,
-      last?.manual?.[p.id] ?? "",
+      plan?.manual?.[p.id] ?? latest?.manual?.[p.id] ?? "",
     );
   const toggle = () => {
     manual.hidden = mode.value !== "manual";
+    computeAmount();
   };
   mode.addEventListener("change", toggle);
+  annual.addEventListener("input", computeAmount);
+  months.addEventListener("change", computeAmount);
   toggle();
-  if (data.receipts.length) {
-    const latest = data.receipts
+  if (!plan && data.receipts.length) {
+    const previous = data.receipts
       .filter((r) => !r.cancelledAt && (r.kind || "ordinary") === "ordinary")
       .map((r) => r.periodEnd || `${r.period}-28`)
       .sort()
       .at(-1);
-    if (latest) {
-      const end = new Date(`${latest}T12:00:00Z`);
+    if (previous) {
+      const end = new Date(`${previous}T12:00:00Z`);
       end.setUTCMonth(end.getUTCMonth() + 1, 1);
       from.min = end.toISOString().slice(0, 7);
     }
   }
-  body.append(
-    button(
-      "Guardar nuevo acuerdo",
-      async () => {
-        await api.fees(`/communities/${ctx.id}/plans`, "POST", {
+  const save = iconButton(
+    plan ? "Guardar cambios del acuerdo" : "Guardar acuerdo",
+    async () => {
+      await api.fees(
+        plan
+          ? `/communities/${ctx.id}/plans/${plan.id}`
+          : `/communities/${ctx.id}/plans`,
+        plan ? "PUT" : "POST",
+        {
           annualAmount: annual.value,
           months: Number(months.value),
           effectiveFrom: `${from.value}-01`,
@@ -2064,27 +2159,97 @@ function configuration(ctx) {
           manual: Object.fromEntries(
             Object.entries(manualInputs).map(([id, input]) => [id, input.value]),
           ),
-        });
+        },
+      );
+      dialog.close();
+      await reloadAll();
+      toast(plan ? "Acuerdo de cuotas actualizado." : "Acuerdo de cuotas guardado.");
+      configuration(ctx);
+    },
+    "save",
+    "disk",
+    true,
+  );
+  save.classList.add("btn-lg");
+  save.dataset.feeDefaultAction = "";
+  const actions = el("div", undefined, "dialog-actions fee-dialog-actions");
+  actions.append(save);
+  body.append(actions);
+}
+function removePlan(ctx, plan) {
+  const body = open("Quitar acuerdo de cuotas");
+  info(
+    body,
+    `Se quitará el acuerdo que rige desde ${date(plan.effectiveFrom)} (${money(plan.annualAmount)} al año en ${periodicityLabel(plan.months).toLowerCase()}). Los recibos ya emitidos no se modifican.`,
+    true,
+  );
+  const actions = el("div", undefined, "dialog-actions");
+  actions.append(
+    button("Cancelar", () => dialog.close()),
+    button(
+      "Quitar acuerdo",
+      async () => {
+        await api.fees(`/communities/${ctx.id}/plans/${plan.id}`, "DELETE");
         dialog.close();
         await reloadAll();
-        toast("Acuerdo de cuotas guardado.");
+        toast("Acuerdo de cuotas quitado.");
+        configuration(ctx);
       },
       true,
     ),
   );
+  body.append(actions);
 }
 function emission(ctx) {
+  const data = ctx.data;
   const body = open("Emitir cuotas de la comunidad");
-  if (!ctx.data.plans.length) {
-    info(body, "Guarda primero la configuración de cuotas de esta comunidad.");
+  if (!data.plans.length) {
+    info(
+      body,
+      "Guarda primero el acuerdo de cuotas: sin importe anual, reparto y periodicidad no se pueden emitir recibos.",
+      true,
+    );
     return;
   }
-  const month = field(body, "Mes de inicio del periodo", "month", madridDate().slice(0, 7));
+  info(
+    body,
+    "Se crea un recibo por cada inmueble para un periodo completo. Primero ves los importes y el vencimiento; después confirmas. La emisión no realiza ningún cargo bancario.",
+  );
+  body.append(el("h3", "1 · Elige el periodo", "fee-form-section"));
+  // Por defecto el mes en curso; si el primer acuerdo rige más adelante, ese mes.
+  const firstMonth = data.plans.at(-1)?.effectiveFrom.slice(0, 7) || madridDate().slice(0, 7),
+    currentMonth = madridDate().slice(0, 7),
+    month = field(
+      body,
+      "Mes de inicio del periodo",
+      "month",
+      currentMonth < firstMonth ? firstMonth : currentMonth,
+    );
   month.required = true;
   hint(
     month,
-    "Primer mes del periodo a emitir. La vista previa no crea recibos hasta que confirmes.",
+    "Solo vale un mes que inicie un periodo del acuerdo aplicable: su mes de entrada en vigor y luego cada 1, 3, 6 o 12 meses. La vista previa todavía no crea recibos.",
   );
+  // El acuerdo aplicable depende del mes elegido (los acuerdos son versiones).
+  const summary = el("div");
+  body.append(summary);
+  const applicable = (period) => data.plans.find((plan) => plan.effectiveFrom <= `${period}-01`);
+  const renderSummary = () => {
+    summary.replaceChildren();
+    const plan = applicable(month.value || madridDate().slice(0, 7));
+    if (!plan) {
+      info(
+        summary,
+        "Ningún acuerdo rige en ese mes. Elige un mes igual o posterior a la fecha de aplicación del acuerdo.",
+        true,
+      );
+      return;
+    }
+    summary.append(planSummary(plan));
+  };
+  month.addEventListener("input", renderSummary);
+  month.addEventListener("change", renderSummary);
+  renderSummary();
   const output = el("div");
   let previewRequest = 0;
   const invalidate = () => {
@@ -2093,6 +2258,7 @@ function emission(ctx) {
   };
   month.addEventListener("input", invalidate);
   month.addEventListener("change", invalidate);
+  body.append(el("h3", "2 · Revisa los importes", "fee-form-section"));
   const calculate = button("Calcular vista previa", async () => {
     if (!month.checkValidity() || !month.value) {
       month.reportValidity();
@@ -2112,9 +2278,12 @@ function emission(ctx) {
     )
       return;
     output.replaceChildren(
-      el("h3", `Vista previa · ${batch.period} · Total ${money(batch.total)}`),
+      el("h3", `Vista previa · ${batch.period} · Total ${money(batch.total)}`, "fee-form-section"),
     );
-    info(output, `Vencimiento: ${date(batch.dueDate)}. Se crearán ${batch.rows.length} recibos.`);
+    info(
+      output,
+      `Se crearán ${batch.rows.length} ${batch.rows.length === 1 ? "recibo" : "recibos"} con vencimiento el ${date(batch.dueDate)}. Revisa el importe de cada inmueble antes de confirmar.`,
+    );
     batch.warnings.forEach((w) => info(output, w, true));
     output.append(
       table(
@@ -2127,7 +2296,9 @@ function emission(ctx) {
         ]),
       ),
     );
-    output.append(
+    output.append(el("h3", "3 · Confirma la emisión", "fee-form-section"));
+    const actions = el("div", undefined, "dialog-actions fee-dialog-actions");
+    actions.append(
       button(
         "Confirmar emisión de estos recibos",
         async () => {
@@ -2146,6 +2317,7 @@ function emission(ctx) {
         true,
       ),
     );
+    output.append(actions);
   });
   calculate.dataset.feeDefaultAction = "";
   body.append(calculate);
@@ -2174,6 +2346,11 @@ function paymentForm(ctx, receipt = null) {
   const data = ctx.data,
     body = open("Registrar cobro o anticipo"),
     grid = el("div", undefined, "fee-form-grid");
+  info(
+    body,
+    "Registra un dinero que ya has recibido (transferencia, ingreso o efectivo). Se aplica a los recibos pendientes del pagador y, si sobra, queda como saldo a favor para recibos futuros.",
+  );
+  body.append(el("h3", "1 · Quién paga y cuánto", "fee-form-section"));
   body.append(grid);
   const owners = new Map();
   for (const r of data.receipts) for (const o of r.snapshot.owners) owners.set(o.id, o.name);
@@ -2204,9 +2381,13 @@ function paymentForm(ctx, receipt = null) {
     false,
   );
   duplicate.closest("label").hidden = true;
+  const debt = el("p", undefined, "fee-debt");
+  debt.setAttribute("aria-live", "polite");
+  body.append(debt);
+  body.append(el("h3", "2 · A qué recibos se aplica", "fee-form-section"));
   info(
     body,
-    "Selecciona los recibos a los que aplicar el cobro. Se cubren primero los más antiguos; cualquier sobrante queda a favor del pagador en esta comunidad.",
+    "Se cubren primero los recibos más antiguos del pagador. Desmarca los que no quieras cobrar ahora; lo que sobre queda como saldo a favor suyo.",
   );
   const selection = el("div", undefined, "fee-receipt-selection");
   body.append(selection);
@@ -2236,45 +2417,76 @@ function paymentForm(ctx, receipt = null) {
     );
     if (receipt && payer.value === receipt.snapshot.owners[0]?.id)
       for (const item of ids.inputs) item.input.checked = item.id === receipt.id;
-    if (!ids.inputs.length)
+    const pending = ids.inputs.reduce((sum, item) => sum + item.outstanding, 0);
+    const payerName = owners.get(payer.value) || "";
+    debt.textContent = ids.inputs.length
+      ? `${payerName} debe ${money(pending)} en ${ids.inputs.length} ${ids.inputs.length === 1 ? "recibo pendiente" : "recibos pendientes"}.`
+      : `${payerName} no tiene recibos pendientes: el importe se guardará como saldo a favor.`;
+    if (ids.inputs.length) {
+      const bulk = field(
+        selection,
+        "Seleccionar todos los recibos pendientes",
+        "checkbox",
+        ids.inputs.every((item) => item.input.checked),
+      );
+      bulk.closest("label").classList.add("fee-check-all");
+      selection.prepend(bulk.closest("label"));
+      bulk.addEventListener("change", () => {
+        for (const item of ids.inputs) item.input.checked = bulk.checked;
+        updateDistribution();
+      });
+      for (const item of ids.inputs)
+        item.input.addEventListener("change", () => {
+          bulk.checked = ids.inputs.every((x) => x.input.checked);
+          updateDistribution();
+        });
+    } else {
       info(
         selection,
         "Este pagador no tiene recibos pendientes. El cobro se guardará como saldo a favor.",
       );
-    for (const item of ids.inputs) item.input.addEventListener("change", updateDistribution);
+    }
     updateDistribution();
   }
   payer.addEventListener("change", update);
   value.addEventListener("input", updateDistribution);
   update();
   const requestId = crypto.randomUUID();
-  body.append(
-    button(
-      "Guardar cobro",
-      async () => {
-        try {
-          await api.fees(`/communities/${ctx.id}/payments`, "POST", {
-            ownerId: payer.value,
-            amount: value.value,
-            paidOn: paidOn.value,
-            method: method.value,
-            reference: reference.value,
-            receiptIds: ids(),
-            requestId,
-            confirmDuplicate: duplicate.checked,
-          });
-        } catch (error) {
-          if (error.status === 409 && error.message.includes("Posible cobro duplicado"))
-            duplicate.closest("label").hidden = false;
-          throw error;
-        }
-        dialog.close();
-        await reloadAll();
-        toast("Cobro registrado.");
-      },
-      true,
-    ),
+  // Mismo guardado que el resto de la app: icono de disquete, sin texto y
+  // alineado a la derecha.
+  const save = iconButton(
+    "Guardar cobro",
+    async () => {
+      try {
+        await api.fees(`/communities/${ctx.id}/payments`, "POST", {
+          ownerId: payer.value,
+          amount: value.value,
+          paidOn: paidOn.value,
+          method: method.value,
+          reference: reference.value,
+          receiptIds: ids(),
+          requestId,
+          confirmDuplicate: duplicate.checked,
+        });
+      } catch (error) {
+        if (error.status === 409 && error.message.includes("Posible cobro duplicado"))
+          duplicate.closest("label").hidden = false;
+        throw error;
+      }
+      dialog.close();
+      await reloadAll();
+      toast("Cobro registrado.");
+    },
+    "save",
+    "disk",
+    true,
   );
+  save.classList.add("btn-lg");
+  // Enter en cualquier campo guarda, como en el resto de formularios de la app.
+  save.dataset.feeDefaultAction = "";
+  const actions = el("div", undefined, "dialog-actions fee-dialog-actions");
+  actions.append(save);
+  body.append(actions);
 }
 function creditForm(ctx, payment) {
   const body = open(`Aplicar saldo a favor · ${money(payment.credit)}`);

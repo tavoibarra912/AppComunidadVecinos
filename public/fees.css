@@ -112,6 +112,71 @@
   background: var(--canvas);
   font-variant-numeric: tabular-nums;
 }
+/* Título de bloque dentro de los diálogos largos (cobro, acuerdo, emisión). */
+.fee-form-section {
+  margin: 24px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* Resumen del acuerdo que se aplica, para no tener que leer toda la tabla. */
+.fee-plan-summary {
+  margin: 18px 0 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--canvas);
+}
+.fee-plan-summary-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.fee-plan-summary dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px 18px;
+  margin: 12px 0 0;
+}
+.fee-plan-summary dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.fee-plan-summary dd {
+  margin: 3px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.fee-plan-total {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 5px;
+  background: var(--canvas);
+  font-size: 13px;
+}
+.fee-debt {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--brand);
+  border-radius: 4px;
+  background: var(--canvas);
+  font-size: 13px;
+}
+.fee-check-all {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.fee-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fee-row-actions button {
+  margin: 0;
+}
 .fee-error {
   padding: 12px 14px;
   margin: 18px 0;
@@ -165,6 +230,10 @@
   gap: 10px;
   margin-bottom: 16px;
 }
+/* Actualizar es un icono: va al extremo derecho de la barra, separado de las acciones. */
+.fee-toolbar > .icon-action-btn:last-child {
+  margin-left: auto;
+}
 .fee-filters label {
   min-width: 190px;
 }
@@ -173,6 +242,13 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 16px 0;
+}
+
+/* El botón de refrescar comparte alto con los botones de acción. */
+.fee-toolbar > .icon-action-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
 }
 .fee-summary > div {
   border: 1px solid var(--line);
@@ -413,15 +489,67 @@
   .fee-summary strong {
     font-size: 17px;
   }
+  /* Los tres pasos (configurar → emitir → cobrar) se apilan a ancho completo:
+     en fila se partían en dos líneas desiguales y el refresco quedaba suelto. */
+  .fee-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
   .fee-toolbar > * {
     max-width: 100%;
   }
   .fee-toolbar > button {
-    flex: 1 1 auto;
+    width: 100%;
+    min-height: 44px;
   }
+  /* El refresco solo con icono quedaba suelto en su fila: en el teléfono lleva
+     etiqueta y ocupa el ancho, como el resto de acciones. */
+  .fee-toolbar > .icon-action-btn {
+    justify-self: stretch;
+    width: 100%;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .fee-toolbar > .icon-action-btn::after {
+    content: "Actualizar";
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  /* Con importes largos, tres columnas fijas no caben: dos y el pendiente a lo
+     ancho, que es el dato que se mira. */
+  .fee-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fee-summary > div:last-child {
+    grid-column: 1 / -1;
+  }
+  .fee-summary strong {
+    font-size: 18px;
+  }
+  /* Acciones de la sección (derramas y servicios): mismos altos y el botón de
+     texto con su propia fila, que en 400 px se partía en dos líneas. */
   .fee-section-heading .table-list-actions {
     width: 100%;
     justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+  }
+  .fee-section-heading .table-list-actions > button:not(.icon-action-btn) {
+    flex: 1 1 100%;
+    min-height: 40px;
+    padding: 8px 12px;
+    order: -1;
+  }
+  .fee-section-heading .table-list-actions > .icon-action-btn,
+  .fee-section-heading .table-list-actions .table-export-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
   }
 }
 

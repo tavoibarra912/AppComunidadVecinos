@@ -19,6 +19,7 @@ import {
   feeDefaults,
   plans,
   savePlan,
+  deletePlan,
   preview,
   issue,
   assessmentById,
@@ -33,6 +34,9 @@ import {
   reversePayment,
   allocateCredit,
   cancelReceipt,
+  purgeReceipt,
+  purgeAssessment,
+  generateDebtCertificate,
   adminNotice,
   notify,
 } from "../fees.js";
@@ -278,6 +282,22 @@ router.post(
     const id = community(req);
     manage(req, id);
     res.status(201).json(savePlan(id, req.body || {}, req.user));
+  }),
+);
+router.put(
+  "/communities/:communityId/plans/:planId",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json(savePlan(id, req.body || {}, req.user, req.params.planId));
+  }),
+);
+router.delete(
+  "/communities/:communityId/plans/:planId",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json(deletePlan(id, req.params.planId, req.user));
   }),
 );
 router.post(
@@ -671,6 +691,46 @@ router.post(
     manage(req, row.communityId);
     cancelReceipt(row.id, req.body || {}, req.user);
     res.json({ ok: true });
+  }),
+);
+router.post(
+  "/receipts/:receiptId/purge",
+  wrap((req, res) => {
+    const row = authorizedReceipt(req);
+    if (!allowed(req.user, "fee:purge", row.communityId))
+      throw problem("No tienes permiso para purgar recibos.", 403);
+    purgeReceipt(row.id, req.user);
+    res.json({ ok: true });
+  }),
+);
+router.post(
+  "/assessments/:assessmentId/purge",
+  wrap((req, res) => {
+    const row = assessment(req);
+    if (!allowed(req.user, "fee:purge", row.communityId))
+      throw problem("No tienes permiso para purgar derramas.", 403);
+    purgeAssessment(row.id, req.user);
+    res.json({ ok: true });
+  }),
+);
+router.get(
+  "/communities/:communityId/debt-certificate",
+  wrap(async (req, res) => {
+    const id = community(req);
+    if (!canManage(req.user, id))
+      throw problem("No tienes permiso para generar certificados de deuda.", 403);
+    const { ownerId, propertyId } = req.query;
+    if (!ownerId && !propertyId)
+      throw problem("Debe indicar ownerId o propertyId.", 400);
+    const pdfBuffer = await generateDebtCertificate({
+      communityId: id,
+      ownerId: ownerId || undefined,
+      propertyId: propertyId || undefined,
+      actor: req.user,
+    });
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="certificado-deuda-${ownerId || propertyId}.pdf"`);
+    res.send(pdfBuffer);
   }),
 );
 router.post("/receipts/:receiptId/proofs", (req, res, next) => {

@@ -2,25 +2,146 @@ import { refreshExportControls } from "../export-client.js";
 import { state, ROLE_LABELS, getCurrentUser, hasPermission } from "../state.js";
 
 import { accountView } from "../account-view.js";
-import { renderCommunities } from "./comunidades.js";
-import { renderOwners } from "./propietarios.js";
-import { renderTenants } from "./inquilinos.js";
-import { renderProperties } from "./inmuebles.js";
 import { renderHomeDashboard } from "./home.js";
 import { puedeAdministrar, renderAdministracion } from "./administracion.js";
-import { renderCommunication } from "./communication.js";
-import { feeNavigation, renderFeesPage } from "./fees.js";
-import { renderInformesPage } from "./informes.js";
-import "./auth.js";
+import { feeNavigation } from "./fees.js";
 import { updateOwnerInboxBadge } from "./notificaciones.js";
+import "./auth.js";
 import { effectiveBrand, readInjectedBrand } from "../brand.js";
 
-/** Título de la pestaña: siempre el Nombre visible configurado en la plataforma. */
+// ==========================================
+// CODE-SPLITTING — lazy load por ruta
+// ==========================================
+const lazyNavModules = new Map();
+
+async function loadNavModule(name) {
+  if (lazyNavModules.has(name)) return lazyNavModules.get(name);
+  let mod;
+  switch (name) {
+    case "comunidades":
+      mod = await import("./comunidades.js");
+      break;
+    case "propietarios":
+      mod = await import("./propietarios.js");
+      break;
+    case "inquilinos":
+      mod = await import("./inquilinos.js");
+      break;
+    case "inmuebles":
+      mod = await import("./inmuebles.js");
+      break;
+    case "communication":
+      mod = await import("./communication.js");
+      break;
+    case "fees":
+      mod = await import("./fees.js");
+      break;
+    case "informes":
+      mod = await import("./informes.js");
+      break;
+    case "notificaciones":
+      mod = await import("./notificaciones.js");
+      break;
+    default:
+      throw new Error(`Módulo de navegación desconocido: ${name}`);
+  }
+  lazyNavModules.set(name, mod);
+  return mod;
+}
+
+async function getRenderCommunities() {
+  const mod = await loadNavModule("comunidades");
+  return mod.renderCommunities;
+}
+async function getRenderOwners() {
+  const mod = await loadNavModule("propietarios");
+  return mod.renderOwners;
+}
+async function getRenderTenants() {
+  const mod = await loadNavModule("inquilinos");
+  return mod.renderTenants;
+}
+async function getRenderProperties() {
+  const mod = await loadNavModule("inmuebles");
+  return mod.renderProperties;
+}
+async function getRenderCommunication() {
+  const mod = await loadNavModule("communication");
+  return mod.renderCommunication;
+}
+async function getRenderFeesPage() {
+  const mod = await loadNavModule("fees");
+  return mod.renderFeesPage;
+}
+async function getRenderInformesPage() {
+  const mod = await loadNavModule("informes");
+  return mod.renderInformesPage;
+}
+async function getUpdateOwnerInboxBadge() {
+  const mod = await loadNavModule("notificaciones");
+  return mod.updateOwnerInboxBadge;
+}
+async function getFeeNavigation() {
+  const mod = await loadNavModule("fees");
+  return mod.feeNavigation();
+}
+
+// Backward compatibility: allow tests to mock render functions on global scope
+const getRenderAdministracion = () =>
+  (typeof globalThis !== "undefined" && globalThis.renderAdministracion) ||
+  (typeof window !== "undefined" && window.renderAdministracion) ||
+  renderAdministracion;
+function getPuedeAdministrar() {
+  if (typeof globalThis !== "undefined" && globalThis.puedeAdministrar)
+    return globalThis.puedeAdministrar();
+  if (typeof window !== "undefined" && window.puedeAdministrar)
+    return window.puedeAdministrar();
+  return puedeAdministrar();
+}
+
+const ROUTES = {
+  home: "/",
+  comunidades: "/comunidades",
+  propietarios: "/propietarios",
+  inmuebles: "/inmuebles",
+  inquilinos: "/inquilinos",
+  administracion: "/administracion",
+  cuotas: "/cuotas",
+  informes: "/informes",
+  comunicacion: "/comunicacion",
+};
+
+function getPathname() {
+  // Support both History API (pathname) and hash-based (for tests/backward compat)
+  if (window.location.hash) {
+    return window.location.hash.slice(1) || "/";
+  }
+  return window.location.pathname || "/";
+}
+
+function getRouteFromPath(path) {
+  const cleanPath = path.split("?")[0].toLowerCase();
+  // Handle both path-based ("/administracion") and hash-based ("#administracion") routes
+  const normalizedPath = cleanPath.startsWith("#") ? cleanPath.slice(1) : cleanPath;
+  // Ensure leading slash for consistent comparison with ROUTES values
+  const pathWithSlash = normalizedPath.startsWith("/") ? normalizedPath : "/" + normalizedPath;
+  for (const [key, routePath] of Object.entries(ROUTES)) {
+    const normalizedRoute = routePath === "/" ? "" : routePath;
+    if (pathWithSlash === normalizedRoute || (normalizedRoute && pathWithSlash.startsWith(normalizedRoute + "/"))) {
+      return key;
+    }
+  }
+  return "home";
+}
+
+function getRoutePath(route) {
+  return ROUTES[route] || "/";
+}
+
 function brandTitle() {
   return effectiveBrand(state.settings?.marca || readInjectedBrand(), state).nombre || "Peñarrubia";
 }
 
-// El texto del menú vive en su propio span para no borrar el icono de la sección.
 function setNavLabel(link, text) {
   const label = link?.querySelector(".nav-item-label");
   if (label) label.textContent = text;
@@ -33,7 +154,6 @@ const newOwnerBtn = document.querySelector("#new-owner");
 const newTenantBtn = document.querySelector("#new-tenant");
 const navHome = document.querySelector("#nav-home");
 const mobileNavHome = document.querySelector("#mobile-nav-home");
-const secHome = document.querySelector("#home");
 const navComunidades = document.querySelector("#nav-comunidades");
 const mobileNavComunidades = document.querySelector("#mobile-nav-comunidades");
 const navPropietarios = document.querySelector("#nav-propietarios");
@@ -45,16 +165,9 @@ const navAdministracion = document.querySelector("#nav-administracion");
 const mobileNavAdministracion = document.querySelector("#mobile-nav-administracion");
 const navCuotas = document.querySelector("#nav-cuotas");
 const mobileNavCuotas = document.querySelector("#mobile-nav-cuotas");
-const secCuotas = document.querySelector("#cuotas");
 const navInformes = document.querySelector("#nav-informes");
 const mobileNavInformes = document.querySelector("#mobile-nav-informes");
-const secInformes = document.querySelector("#informes");
 const mobileNavInquilinos = document.querySelector("#mobile-nav-inquilinos");
-const secComunidades = document.querySelector("#comunidades");
-const secPropietarios = document.querySelector("#propietarios");
-const secInmuebles = document.querySelector("#inmuebles");
-const secTenants = document.querySelector("#inquilinos");
-const secAdministracion = document.querySelector("#administracion");
 const sidebarLabel = document.querySelector("#sidebar-label");
 const comHeadingEyebrow = document.querySelector("#comunidades-heading-eyebrow");
 const comHeadingTitle = document.querySelector("#comunidades-heading-title");
@@ -67,7 +180,26 @@ const ownersHeadingSubtitle = document.querySelector("#owners-heading-subtitle")
 const ownersToolbar = document.querySelector("#owners-toolbar");
 const topbarInboxBtn = document.querySelector("#topbar-inbox-btn");
 
-// === Elementos de navegación: declarados arriba (bloque consolidado) ===
+function getSection(id) {
+  return document.querySelector(id);
+}
+
+const SECTION_IDS = {
+  home: "#home",
+  comunidades: "#comunidades",
+  propietarios: "#propietarios",
+  inmuebles: "#inmuebles",
+  inquilinos: "#inquilinos",
+  administracion: "#administracion",
+  cuotas: "#cuotas",
+  informes: "#informes",
+};
+
+function getSec(route) {
+  return getSection(SECTION_IDS[route]);
+}
+
+const communicationSection = () => document.querySelector("#comunicacion");
 
 export function applyRoleUI() {
   refreshExportControls();
@@ -85,13 +217,11 @@ export function applyRoleUI() {
   const account = accountView(state, ROLE_LABELS);
   const roleLabel = ROLE_LABELS[user?.rol] || user?.rol || "";
 
-  // 1. Selector y perfil en topbar (login simulado)
   const displayName =
     `${user?.nombre || ""} ${user?.apellido || ""}`.trim() || user?.usuario || "?";
   if (userAvatar) userAvatar.textContent = displayName.charAt(0).toUpperCase();
   if (userRoleLabel) userRoleLabel.textContent = `${displayName} · ${roleLabel}`;
 
-  // 2. Buzón unificado en topbar: visible con cualquiera de los dos permisos.
   const canReadAdminInbox = hasPermission("admin_notification:read");
   const canReadOwnerInbox = hasPermission("owner_notification:read");
   if (topbarInboxBtn) {
@@ -99,7 +229,6 @@ export function applyRoleUI() {
   }
   updateOwnerInboxBadge();
 
-  // 3. Etiqueta y opciones en Sidebar / Navegación
   if (sidebarLabel) {
     sidebarLabel.textContent = isOwner ? "MI ÁREA PERSONAL" : "GESTIÓN ADMINISTRADOR";
   }
@@ -111,7 +240,7 @@ export function applyRoleUI() {
     mobileNavPropietarios.textContent = isOwner ? "Mi Perfil" : "Propietarios";
   if (navInmuebles) navInmuebles.hidden = !hasPermission("property:read");
   if (mobileNavInmuebles) mobileNavInmuebles.hidden = !hasPermission("property:read");
-  const canAccessAdministration = puedeAdministrar();
+  const canAccessAdministration = getPuedeAdministrar();
   for (const link of [navAdministracion, mobileNavAdministracion])
     if (link) link.hidden = !canAccessAdministration;
   document.querySelectorAll('.entity-subnav-link[href="#inquilinos"]').forEach((link) => {
@@ -125,7 +254,6 @@ export function applyRoleUI() {
     if (link) link.hidden = !hasPermission("tenant:read");
   const canReadReports = hasPermission("reports:read");
   for (const link of [navInformes, mobileNavInformes]) if (link) link.hidden = !canReadReports;
-  // 4. Sección Comunidades
   if (comHeadingEyebrow)
     comHeadingEyebrow.textContent = isOwner
       ? account.communities.length
@@ -146,7 +274,6 @@ export function applyRoleUI() {
     newCommunityBtn.style.display = isOwner || !hasPermission("community:create") ? "none" : "";
   if (comToolbar) comToolbar.style.display = isOwner ? "none" : "";
 
-  // 5. Sección Propietarios
   if (ownersHeadingEyebrow)
     ownersHeadingEyebrow.textContent = isOwner
       ? "MI CUENTA Y DOCUMENTACIÓN"
@@ -161,7 +288,6 @@ export function applyRoleUI() {
     newOwnerBtn.style.display = isOwner || !hasPermission("owner:create") ? "none" : "";
   if (ownersToolbar) ownersToolbar.style.display = isOwner ? "none" : "";
 
-  // 6. Banners informativos de modo propietario
   const bannerCom = document.querySelector("#owner-view-banner-com");
   if (bannerCom) {
     bannerCom.style.display = isOwner ? "flex" : "none";
@@ -173,61 +299,32 @@ export function applyRoleUI() {
   if (bannerOwn) bannerOwn.style.display = isOwner && account.owners.length > 0 ? "flex" : "none";
 }
 
-export function handleRouting() {
-  const hash = (window.location.hash || "#home").split("?")[0].toLowerCase();
-  const isOwner = state.activeRole === "owner";
-  const communicationSection = document.querySelector("#comunicacion");
-  if (secCuotas) {
-    secCuotas.hidden = true;
-    secCuotas.style.display = "none";
+function hideAllSections() {
+  const sections = [
+    getSec("home"),
+    getSec("comunidades"),
+    getSec("propietarios"),
+    getSec("inmuebles"),
+    getSec("inquilinos"),
+    getSec("administracion"),
+    getSec("cuotas"),
+    getSec("informes"),
+  ];
+  const commSection = communicationSection();
+  for (const section of sections) {
+    if (section) {
+      section.hidden = true;
+      section.style.display = "none";
+    }
   }
-  for (const link of [navCuotas, mobileNavCuotas]) {
-    link?.classList.remove("active");
-    link?.removeAttribute("aria-current");
+  if (commSection) {
+    commSection.hidden = true;
+    commSection.style.display = "none";
   }
-  communicationSection.hidden = true;
-  communicationSection.style.display = "none";
-  document
-    .querySelectorAll('[href="#comunicacion"]')
-    .forEach((el) => el.classList.remove("active"));
-  if (
-    (hash === "#inmuebles" && !hasPermission("property:read")) ||
-    (hash === "#inquilinos" && !hasPermission("tenant:read"))
-  ) {
-    window.location.hash = "#home";
-    return;
-  }
+}
 
-  if (secHome) {
-    secHome.hidden = true;
-    secHome.style.display = "none";
-  }
-  if (secComunidades) {
-    secComunidades.hidden = true;
-    secComunidades.style.display = "none";
-  }
-  if (secPropietarios) {
-    secPropietarios.hidden = true;
-    secPropietarios.style.display = "none";
-  }
-  if (secInmuebles) {
-    secInmuebles.hidden = true;
-    secInmuebles.style.display = "none";
-  }
-  if (secTenants) {
-    secTenants.hidden = true;
-    secTenants.style.display = "none";
-  }
-  if (secAdministracion) {
-    secAdministracion.hidden = true;
-    secAdministracion.style.display = "none";
-  }
-  if (secInformes) {
-    secInformes.hidden = true;
-    secInformes.style.display = "none";
-  }
-
-  [
+function clearActiveNav() {
+  const navLinks = [
     navHome,
     mobileNavHome,
     navComunidades,
@@ -240,175 +337,238 @@ export function handleRouting() {
     mobileNavInquilinos,
     navAdministracion,
     mobileNavAdministracion,
+    navCuotas,
+    mobileNavCuotas,
     navInformes,
     mobileNavInformes,
-  ].forEach((el) => {
-    if (el) el.classList.remove("active");
-  });
+  ];
+  for (const el of navLinks) {
+    if (el) {
+      el.classList.remove("active");
+      el.removeAttribute("aria-current");
+    }
+  }
+  document
+    .querySelectorAll('[href="#comunicacion"]')
+    .forEach((el) => el.classList.remove("active"));
+}
 
-  if (hash === "#cuotas") {
-    if (!feeNavigation().visible) {
-      window.location.hash = "#home";
-      return;
+const mobileNavTrigger = document.querySelector("#mobile-nav-trigger");
+const mobileNavPanel = document.querySelector("#mobile-nav-panel");
+const mobileNavCurrent = document.querySelector("#mobile-nav-current");
+
+function setMobileMenuOpen(open) {
+  if (!mobileNavTrigger || !mobileNavPanel) return;
+  mobileNavTrigger.setAttribute("aria-expanded", String(open));
+  mobileNavTrigger.classList.toggle("is-open", open);
+  mobileNavPanel.hidden = !open;
+}
+
+// En el teléfono la navegación es un solo botón con la sección actual: el panel
+// despliega la lista completa. Se cierra al elegir destino, con Escape o al
+// tocar fuera del menú.
+mobileNavTrigger?.addEventListener("click", () => {
+  setMobileMenuOpen(Boolean(mobileNavPanel?.hidden));
+});
+
+mobileNavPanel?.addEventListener("click", (event) => {
+  if (event.target.closest?.(".mobile-nav-item")) setMobileMenuOpen(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && mobileNavPanel && !mobileNavPanel.hidden) setMobileMenuOpen(false);
+});
+
+document.addEventListener("click", (event) => {
+  if (!mobileNavPanel || mobileNavPanel.hidden) return;
+  if (!event.target.closest?.(".mobile-nav")) setMobileMenuOpen(false);
+});
+
+let mobileMenuSection = "";
+
+// Se llama en cada repintado (también en los refrescos de datos), así que solo
+// cierra el panel cuando de verdad se cambia de sección; si no, abrirlo y que
+// llegue un refresco lo cerraría solo.
+function syncMobileMenu(activeLink) {
+  const label = activeLink?.textContent?.trim() || "";
+  if (mobileNavCurrent && label) mobileNavCurrent.textContent = label;
+  if (!label || label === mobileMenuSection) return;
+  mobileMenuSection = label;
+  setMobileMenuOpen(false);
+}
+
+function showSection(section, navLinks) {
+  if (section) {
+    section.hidden = false;
+    section.style.display = "block";
+  }
+  let mobileActive = null;
+  for (const link of navLinks) {
+    if (link) {
+      link.classList.add("active");
+      link.setAttribute("aria-current", "page");
+      if (link.classList.contains("mobile-nav-item")) mobileActive = link;
     }
-    secCuotas.hidden = false;
-    secCuotas.style.display = "block";
-    for (const link of [navCuotas, mobileNavCuotas]) {
-      link?.classList.add("active");
-      link?.setAttribute("aria-current", "page");
+  }
+  syncMobileMenu(mobileActive);
+}
+
+export async function handleRouting() {
+  const path = getPathname();
+  const route = getRouteFromPath(path);
+  const isOwner = state.activeRole === "owner";
+  const commSection = communicationSection();
+
+  hideAllSections();
+  clearActiveNav();
+
+  if (
+    (route === "inmuebles" && !hasPermission("property:read")) ||
+    (route === "inquilinos" && !hasPermission("tenant:read"))
+  ) {
+    navigateToRoute("home", true);
+    return;
+  }
+
+  switch (route) {
+    case "cuotas": {
+      const feeNav = await getFeeNavigation();
+      if (!feeNav?.visible) {
+        navigateToRoute("home", true);
+        return;
+      }
+      showSection(getSec("cuotas"), [navCuotas, mobileNavCuotas]);
+      document.title = brandTitle();
+      const renderFees = await getRenderFeesPage();
+      renderFees();
+      break;
     }
-    if (mobileNavCuotas?.offsetParent) {
-      const nav = mobileNavCuotas.parentElement;
-      nav.scrollLeft = Math.max(
-        0,
-        mobileNavCuotas.offsetLeft - nav.clientWidth + mobileNavCuotas.offsetWidth + 12,
-      );
+    case "comunicacion": {
+      showSection(commSection, [document.querySelector("#mobile-nav-comunicacion")]);
+      document.querySelectorAll('[href="#comunicacion"]').forEach((el) => el.classList.add("active"));
+      document.title = brandTitle();
+      const renderComm = await getRenderCommunication();
+      renderComm();
+      break;
     }
-    document.title = brandTitle();
-    renderFeesPage();
-  } else if (hash === "#comunicacion") {
-    communicationSection.hidden = false;
-    communicationSection.style.display = "block";
-    document.querySelectorAll('[href="#comunicacion"]').forEach((el) => el.classList.add("active"));
-    document.title = brandTitle();
-    renderCommunication();
-  } else if (hash === "#administracion") {
-    if (!puedeAdministrar()) {
-      window.location.hash = "#home";
-      return;
+    case "administracion": {
+      if (!getPuedeAdministrar()) {
+        navigateToRoute("home", true);
+        return;
+      }
+      showSection(getSec("administracion"), [navAdministracion, mobileNavAdministracion]);
+      document.title = brandTitle();
+      getRenderAdministracion()();
+      break;
     }
-    if (secAdministracion) {
-      secAdministracion.hidden = false;
-      secAdministracion.style.display = "block";
+    case "inquilinos": {
+      showSection(getSec("inquilinos"), [navInquilinos, mobileNavInquilinos]);
+      document.title = brandTitle();
+      const renderTenantsFn = await getRenderTenants();
+      renderTenantsFn();
+      break;
     }
-    for (const link of [navAdministracion, mobileNavAdministracion])
-      if (link) link.classList.add("active");
-    document.title = brandTitle();
-    renderAdministracion();
-  } else if (hash === "#inquilinos") {
-    if (secTenants) {
-      secTenants.hidden = false;
-      secTenants.style.display = "block";
+    case "propietarios": {
+      showSection(getSec("propietarios"), [navPropietarios, mobileNavPropietarios]);
+      document.title = brandTitle();
+      const renderOwnersFn = await getRenderOwners();
+      renderOwnersFn();
+      break;
     }
-    if (navInquilinos) navInquilinos.classList.add("active");
-    if (mobileNavInquilinos) mobileNavInquilinos.classList.add("active");
-    document.title = brandTitle();
-    renderTenants();
-  } else if (hash === "#propietarios") {
-    if (secPropietarios) {
-      secPropietarios.hidden = false;
-      secPropietarios.style.display = "block";
+    case "inmuebles": {
+      showSection(getSec("inmuebles"), [navInmuebles, mobileNavInmuebles]);
+      document.title = brandTitle();
+      const renderPropertiesFn = await getRenderProperties();
+      renderPropertiesFn();
+      break;
     }
-    if (navPropietarios) navPropietarios.classList.add("active");
-    if (mobileNavPropietarios) mobileNavPropietarios.classList.add("active");
-    document.title = brandTitle();
-    renderOwners();
-  } else if (hash === "#inmuebles") {
-    if (secInmuebles) {
-      secInmuebles.hidden = false;
-      secInmuebles.style.display = "block";
+    case "informes": {
+      if (!hasPermission("reports:read")) {
+        navigateToRoute("home", true);
+        return;
+      }
+      showSection(getSec("informes"), [navInformes, mobileNavInformes]);
+      document.title = brandTitle();
+      const renderInformes = await getRenderInformesPage();
+      renderInformes();
+      break;
     }
-    if (navInmuebles) navInmuebles.classList.add("active");
-    if (mobileNavInmuebles) mobileNavInmuebles.classList.add("active");
-    document.title = brandTitle();
-    renderProperties();
-  } else if (hash === "#informes") {
-    if (!hasPermission("reports:read")) {
-      window.location.hash = "#home";
-      return;
+    case "comunidades": {
+      showSection(getSec("comunidades"), [navComunidades, mobileNavComunidades]);
+      document.title = brandTitle();
+      const renderCommunitiesFn = await getRenderCommunities();
+      renderCommunitiesFn();
+      break;
     }
-    if (secInformes) {
-      secInformes.hidden = false;
-      secInformes.style.display = "block";
+    default: {
+      showSection(getSec("home"), [navHome, mobileNavHome]);
+      document.title = brandTitle();
+      renderHomeDashboard();
+      break;
     }
-    if (navInformes) navInformes.classList.add("active");
-    if (mobileNavInformes) mobileNavInformes.classList.add("active");
-    document.title = brandTitle();
-    renderInformesPage();
-  } else if (hash === "#comunidades") {
-    if (secComunidades) {
-      secComunidades.hidden = false;
-      secComunidades.style.display = "block";
-    }
-    if (navComunidades) navComunidades.classList.add("active");
-    if (mobileNavComunidades) mobileNavComunidades.classList.add("active");
-    document.title = brandTitle();
-    renderCommunities();
-  } else {
-    if (secHome) {
-      secHome.hidden = false;
-      secHome.style.display = "block";
-    }
-    if (navHome) navHome.classList.add("active");
-    if (mobileNavHome) mobileNavHome.classList.add("active");
-    document.title = brandTitle();
-    renderHomeDashboard();
   }
 }
 
-export function navigateToSection(targetHash) {
-  if (window.location.hash !== targetHash) {
-    window.location.hash = targetHash;
+export async function navigateToRoute(route, replace = false) {
+  const targetPath = getRoutePath(route);
+  const currentPath = getPathname();
+  if (currentPath !== targetPath) {
+    if (replace) {
+      history.replaceState({ route }, "", targetPath);
+    } else {
+      history.pushState({ route }, "", targetPath);
+    }
   }
-  handleRouting();
+  await handleRouting();
+}
+
+function handleNavClick(route) {
+  return (event) => {
+    event.preventDefault();
+    navigateToRoute(route);
+  };
 }
 
 [navHome, mobileNavHome].forEach((el) => {
-  if (el) {
-    el.addEventListener("click", (e) => {
-      e.preventDefault();
-      navigateToSection("#home");
-    });
-  }
+  if (el) el.addEventListener("click", handleNavClick("home"));
 });
 
 [navComunidades, mobileNavComunidades].forEach((el) => {
-  if (el) {
-    el.addEventListener("click", (e) => {
-      e.preventDefault();
-      navigateToSection("#comunidades");
-    });
-  }
+  if (el) el.addEventListener("click", handleNavClick("comunidades"));
 });
 
 [navPropietarios, mobileNavPropietarios].forEach((el) => {
-  if (el) {
-    el.addEventListener("click", (e) => {
-      e.preventDefault();
-      navigateToSection("#propietarios");
-    });
-  }
+  if (el) el.addEventListener("click", handleNavClick("propietarios"));
 });
 
 [navInmuebles, mobileNavInmuebles].forEach((el) => {
-  if (el) {
-    el.addEventListener("click", (event) => {
-      event.preventDefault();
-      navigateToSection("#inmuebles");
-    });
-  }
+  if (el) el.addEventListener("click", handleNavClick("inmuebles"));
 });
 
-[navInquilinos, mobileNavInquilinos].forEach((el) => {
-  if (el) {
-    el.addEventListener("click", (event) => {
-      event.preventDefault();
-      navigateToSection("#inquilinos");
-    });
-  }
+for (const link of [navInquilinos, mobileNavInquilinos]) {
+  if (link) link.addEventListener("click", handleNavClick("inquilinos"));
+}
+
+for (const link of [navCuotas, mobileNavCuotas])
+  link?.addEventListener("click", handleNavClick("cuotas"));
+
+for (const link of [navAdministracion, mobileNavAdministracion])
+  link?.addEventListener("click", handleNavClick("administracion"));
+
+window.addEventListener("popstate", handleRouting);
+
+[navInformes, mobileNavInformes].forEach((el) => {
+  if (el) el.addEventListener("click", handleNavClick("informes"));
 });
+
+for (const link of document.querySelectorAll('[href="#comunicacion"]')) {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigateToRoute("comunicacion");
+  });
+}
 
 window.addEventListener("hashchange", handleRouting);
-for (const link of [navCuotas, mobileNavCuotas])
-  link?.addEventListener("click", (event) => {
-    event.preventDefault();
-    navigateToSection("#cuotas");
-  });
-for (const link of [navInformes, mobileNavInformes])
-  link?.addEventListener("click", (event) => {
-    event.preventDefault();
-    navigateToSection("#informes");
-  });
 
 // Login simulado: selector de usuario en el topbar
 const activeRoleSelect = document.querySelector("#active-role-select");
@@ -420,4 +580,19 @@ export function renderUserSelector() {
   if (user) activeRoleSelect.add(new Option(user.nombre || user.usuario, user.id));
   activeRoleSelect.disabled = true;
   activeRoleSelect.title = "Usuario conectado";
+}
+
+// Backward compatibility: redirect hash-based URLs to path-based
+if (window.location.hash) {
+  const hash = window.location.hash.slice(1).toLowerCase();
+  const route = ROUTES[hash] ? hash : "home";
+  history.replaceState({ route }, "", getRoutePath(route));
+}
+
+// Backward compatibility export for old hash-based navigation
+export async function navigateToSection(targetHash) {
+  const hash = targetHash.startsWith("#") ? targetHash.slice(1) : targetHash;
+  const [route] = hash.split("?");
+  const mappedRoute = ROUTES[route.toLowerCase()] ? route.toLowerCase() : "home";
+  await navigateToRoute(mappedRoute);
 }

@@ -712,6 +712,7 @@ if (superRole) {
     "audit:export",
     "reports:export",
     "admin:export",
+    "fee:purge",
   ].filter((p) => !lista.includes(p));
   if (faltantes.length) {
     db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(
@@ -741,6 +742,7 @@ const backfillPermisos = {
     "comm:export",
     "audit:export",
     "reports:export",
+    "fee:purge",
   ],
   community_admin: [
     "comm:participacion",

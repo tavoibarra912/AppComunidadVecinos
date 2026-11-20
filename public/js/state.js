@@ -175,6 +175,15 @@ export const state = {
   roles: [],
   settings: {},
   loadedAt: null,
+  loading: {
+    bootstrap: false,
+    communities: false,
+    owners: false,
+    properties: false,
+    tenants: false,
+    fees: false,
+    documents: false,
+  },
   currentUserId: null,
   activeRole: "admin",
   // Estado de sesión compartido entre módulos (diálogos en edición/visualización)
@@ -209,13 +218,75 @@ export const state = {
 let refreshing = null;
 const dataListeners = new Set();
 
-/** Suscribe una función que se ejecuta cada vez que el estado se recarga desde el servidor. */
+// Topic-based subscription system for granular re-renders
+const topicSubscribers = new Map();
+
+/**
+ * Suscribe una función a un tema específico del estado.
+ * @param {string} topic - Tema al que suscribirse (ej: "communities", "owners", "properties", "tenants", "settings", "users", "roles", "all")
+ * @param {Function} fn - Función a ejecutar cuando cambie el tema
+ * @returns {Function} Función para cancelar la suscripción
+ */
+export function subscribe(topic, fn) {
+  if (!topicSubscribers.has(topic)) {
+    topicSubscribers.set(topic, new Set());
+  }
+  topicSubscribers.get(topic).add(fn);
+  return () => unsubscribe(topic, fn);
+}
+
+/** Cancela una suscripción a un tema. */
+export function unsubscribe(topic, fn) {
+  const subscribers = topicSubscribers.get(topic);
+  if (subscribers) {
+    subscribers.delete(fn);
+    if (subscribers.size === 0) topicSubscribers.delete(topic);
+  }
+}
+
+/** Notifica a los suscriptores de un tema específico. */
+function notifyTopic(topic) {
+  const subscribers = topicSubscribers.get(topic);
+  if (subscribers) {
+    subscribers.forEach(safeNotify);
+  }
+  // El tema "all" ya se notificó arriba: volver a recorrerlo lo dispararía dos veces.
+  if (topic === "all") return;
+  // También notificar a suscriptores de "all"
+  const allSubscribers = topicSubscribers.get("all");
+  if (allSubscribers) {
+    allSubscribers.forEach(safeNotify);
+  }
+}
+
+/**
+ * Ejecuta un suscriptor sin dejar escapar errores. Varios suscriptores son
+ * async (repintado de vistas): un rechazo suelto acabaría como «unhandled
+ * rejection» global y se enviaría como incidencia.
+ */
+function safeNotify(fn) {
+  try {
+    const result = fn();
+    if (result && typeof result.catch === "function") {
+      result.catch((error) =>
+        console.error("[state] Error en un suscriptor:", error?.message || error),
+      );
+    }
+  } catch (error) {
+    console.error("[state] Error en un suscriptor:", error?.message || error);
+  }
+}
+
+/** Suscribe una función que se ejecuta cada vez que el estado se recarga desde el servidor (compatibilidad). */
 export function onDataChanged(fn) {
   dataListeners.add(fn);
+  return () => dataListeners.delete(fn);
 }
 
 function notifyDataChanged() {
-  dataListeners.forEach((fn) => fn());
+  dataListeners.forEach(safeNotify);
+  // Notificar todos los temas
+  notifyTopic("all");
 }
 
 /**
@@ -225,28 +296,110 @@ function notifyDataChanged() {
 export async function refreshState() {
   if (!refreshing) {
     refreshing = (async () => {
-      const bootstrap = await api.getBootstrap();
-      state.communities = bootstrap.communities;
-      state.owners = bootstrap.owners;
-      state.properties = bootstrap.properties;
-      state.tenants = bootstrap.tenants;
-      state.adminEmails = bootstrap.adminEmails;
-      state.ownerNotifications = bootstrap.ownerNotifications;
-      state.users = bootstrap.users || [];
-      state.roles = bootstrap.roles || [];
-      state.settings = bootstrap.settings || {};
-      state.loadedAt = new Date().toISOString();
-      if (bootstrap.currentUser) {
-        if (!state.users.some((u) => u.id === bootstrap.currentUser.id))
-          state.users.push(bootstrap.currentUser);
-        setActiveUser(bootstrap.currentUser.id);
+      state.loading.bootstrap = true;
+      notifyTopic("loading");
+      try {
+        const bootstrap = await api.getBootstrap();
+        state.communities = bootstrap.communities;
+        state.owners = bootstrap.owners;
+        state.properties = bootstrap.properties;
+        state.tenants = bootstrap.tenants;
+        state.adminEmails = bootstrap.adminEmails;
+        state.ownerNotifications = bootstrap.ownerNotifications;
+        state.users = bootstrap.users || [];
+        state.roles = bootstrap.roles || [];
+        state.settings = bootstrap.settings || {};
+        state.loadedAt = new Date().toISOString();
+        if (bootstrap.currentUser) {
+          if (!state.users.some((u) => u.id === bootstrap.currentUser.id))
+            state.users.push(bootstrap.currentUser);
+          setActiveUser(bootstrap.currentUser.id);
+        }
+        notifyDataChanged();
+      } finally {
+        state.loading.bootstrap = false;
+        notifyTopic("loading");
       }
-      notifyDataChanged();
     })().finally(() => {
       refreshing = null;
     });
   }
   return refreshing;
+}
+
+/**
+ * Actualiza una porción específica del estado y notifica solo a los suscriptores relevantes.
+ * @param {string} key - Clave del estado a actualizar (ej: "communities", "owners", "properties", etc.)
+ * @param {any} value - Nuevo valor
+ */
+export function setState(key, value) {
+  if (key in state) {
+    state[key] = value;
+    notifyTopic(key);
+  }
+}
+
+/**
+ * Actualiza múltiples claves del estado de forma atómica y notifica a los suscriptores.
+ * @param {Object} updates - Objeto con las claves y valores a actualizar
+ */
+export function setStateBatch(updates) {
+  const changedTopics = new Set();
+  for (const [key, value] of Object.entries(updates)) {
+    if (key in state) {
+      state[key] = value;
+      changedTopics.add(key);
+    }
+  }
+  for (const topic of changedTopics) {
+    notifyTopic(topic);
+  }
+}
+
+/**
+ * Añade un elemento a un array del estado y notifica.
+ * @param {string} key - Clave del array (ej: "communities", "owners", etc.)
+ * @param {any} item - Elemento a añadir
+ */
+export function pushState(key, item) {
+  if (Array.isArray(state[key])) {
+    state[key].push(item);
+    notifyTopic(key);
+  }
+}
+
+/**
+ * Elimina un elemento de un array del estado por ID y notifica.
+ * @param {string} key - Clave del array
+ * @param {string} id - ID del elemento a eliminar
+ */
+export function removeState(key, id) {
+  if (Array.isArray(state[key])) {
+    const index = state[key].findIndex((item) => item.id === id);
+    if (index >= 0) {
+      state[key].splice(index, 1);
+      notifyTopic(key);
+    }
+  }
+}
+
+/**
+ * Actualiza un elemento en un array del estado por ID y notifica.
+ * @param {string} key - Clave del array
+ * @param {string} id - ID del elemento a actualizar
+ * @param {Object} updates - Propiedades a actualizar
+ * @returns {boolean} True si se encontró y actualizó el elemento
+ */
+export function updateState(key, id, updates) {
+  if (Array.isArray(state[key])) {
+    const index = state[key].findIndex((item) => item.id === id);
+    if (index >= 0) {
+      state[key][index] = { ...state[key][index], ...updates };
+      notifyTopic(key);
+      return true;
+    }
+  }
+  return false;
 }
 
 // ==========================================

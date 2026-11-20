@@ -19,9 +19,6 @@
   .topbar-btn-inbox {
     padding: 7px;
   }
-  .topbar .brand {
-    font-size: 20px;
-  }
   .topbar .account-toggle #user-role-label {
     max-width: 22vw;
   }
@@ -542,11 +539,14 @@
   .comm-detail-dates {
     grid-template-columns: 1fr;
   }
+  /* Una sola columna: a este ancho los desplegables no caben lado a lado y
+     el nombre de la comunidad queda recortado. */
   .comm-filters {
+    grid-template-columns: minmax(0, 1fr);
     padding: 12px;
   }
   .comm-filters label:last-of-type {
-    grid-column: 1/-1;
+    grid-column: auto;
   }
   .comm-dialog-header,
   .comm-dialog-body {

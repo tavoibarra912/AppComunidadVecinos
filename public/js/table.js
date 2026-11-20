@@ -499,6 +499,10 @@ function crearInstancia(options) {
     const tr = el("tr");
     visibleCols.forEach((col) => {
       const td = el("td");
+      // En móvil la tabla se muestra como tarjetas: cada celda necesita su
+      // etiqueta impresa para no perder el contexto de la columna.
+      if (col.label && !col.srOnlyLabel) td.dataset.label = col.label;
+      if (col.key === "actions") td.classList.add("cell-actions");
       const rendered = col.render ? col.render(row) : null;
       if (rendered instanceof Node) {
         td.append(rendered);

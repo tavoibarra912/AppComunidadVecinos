@@ -342,6 +342,9 @@ function buildInsights(report, rows) {
     const groups = byCommunity(rows).map((group) => ({
       name: group.name,
       amount: total(group.rows, "billAmount"),
+      // El número de facturas se usa al dibujar cada barra: sin este dato el
+      // gráfico lanzaba «group.rows is undefined».
+      count: group.rows.length,
     }));
     const amount = total(rows, "billAmount");
     const consumption = total(rows, "totalConsumption");
@@ -376,7 +379,7 @@ function buildInsights(report, rows) {
             total: group.amount,
             parts: [{ tone: "info", value: group.amount }],
             valueLabel: money(group.amount),
-            metaLabel: `${group.rows.length} ${group.rows.length === 1 ? "factura" : "facturas"}`,
+            metaLabel: `${group.count} ${group.count === 1 ? "factura" : "facturas"}`,
           })),
       },
     };

@@ -163,17 +163,56 @@
       </div>
     </header>
     <nav class="mobile-nav" aria-label="Navegación móvil">
-      <a class="mobile-nav-item active" href="#home" id="mobile-nav-home">Inicio</a>
-      <a class="mobile-nav-item" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
-      <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
-      <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
-      <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
-      <a class="mobile-nav-item" href="#cuotas" id="mobile-nav-cuotas" hidden>Cuotas</a>
-      <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion">Comunicación</a>
-      <a class="mobile-nav-item" href="#administracion" id="mobile-nav-administracion" hidden
-        >Administración</a
+      <button
+        class="mobile-nav-trigger"
+        id="mobile-nav-trigger"
+        type="button"
+        aria-expanded="false"
+        aria-controls="mobile-nav-panel"
       >
-      <a class="mobile-nav-item" href="#informes" id="mobile-nav-informes" hidden>Informes</a>
+        <svg
+          class="mobile-nav-trigger-icon"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <span class="mobile-nav-trigger-label">Menú</span>
+        <span class="mobile-nav-current" id="mobile-nav-current">Inicio</span>
+        <svg
+          class="mobile-nav-trigger-chevron"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      <div class="mobile-nav-panel" id="mobile-nav-panel" hidden>
+        <a class="mobile-nav-item active" href="#home" id="mobile-nav-home">Inicio</a>
+        <a class="mobile-nav-item" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
+        <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
+        <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
+        <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
+        <a class="mobile-nav-item" href="#cuotas" id="mobile-nav-cuotas" hidden>Cuotas</a>
+        <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion">Comunicación</a>
+        <a class="mobile-nav-item" href="#administracion" id="mobile-nav-administracion" hidden
+          >Administración</a
+        >
+        <a class="mobile-nav-item" href="#informes" id="mobile-nav-informes" hidden>Informes</a>
+      </div>
     </nav>
     <!-- PANTALLA DE LOGIN SIMULADO -->
     <div id="login-screen" class="login-screen" hidden>
@@ -554,7 +593,15 @@
       <section class="content" id="home">
         <div id="home-dashboard">
           <h1 id="home-greeting-title">Inicio</h1>
-          <p>Cargando tus datos…</p>
+          <div class="home-loading-skeleton skeleton-row">
+            <div class="skeleton-col w-25"></div>
+            <div class="skeleton-col w-50"></div>
+            <div class="skeleton-col w-25"></div>
+          </div>
+          <div class="home-loading-skeleton skeleton-row">
+            <div class="skeleton-col w-75"></div>
+            <div class="skeleton-col w-100"></div>
+          </div>
         </div>
       </section>
 

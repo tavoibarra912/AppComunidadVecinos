@@ -9,6 +9,7 @@ export const PERMISSIONS = [
   "cascade-delete",
   "fee:read",
   "fee:manage",
+  "fee:purge",
   "owner:read",
   "owner:create",
   "owner:manage",
@@ -237,6 +238,7 @@ export function createPermissionChecker(user, data) {
 const ETIQUETAS_PERMISO = {
   "fee:read": "consultar cuotas propias o de comunidades asignadas",
   "fee:manage": "gestionar cuotas de comunidades asignadas",
+  "fee:purge": "purgar recibos anulados permanentemente (borrado físico GDPR)",
   "community:read": "ver comunidades",
   "community:create": "crear comunidades",
   "community:edit": "editar comunidades",
