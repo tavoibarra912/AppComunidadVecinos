@@ -906,21 +906,24 @@ function renderPanel(root, ctx) {
       };
     summary.replaceChildren();
     results.replaceChildren();
-    exportList(
-      results,
-      "receipts",
-      rows,
-      ["location", "concept", "dueDate", "amount", "outstanding", "status"],
-      {
-        query: ctx.search || "",
-        period: ctx.period || "",
-        view: JSON.stringify({
-          estado: ctx.status || "todos",
-          comunidad: ctx.community || ctx.id || "",
-          inmueble: ctx.property || "",
-        }),
-      },
-    );
+    // Sin filas no hay nada que exportar: el botón solo quedaba suelto encima
+    // del aviso de «todavía no hay recibos».
+    if (rows.length)
+      exportList(
+        results,
+        "receipts",
+        rows,
+        ["location", "concept", "dueDate", "amount", "outstanding", "status"],
+        {
+          query: ctx.search || "",
+          period: ctx.period || "",
+          view: JSON.stringify({
+            estado: ctx.status || "todos",
+            comunidad: ctx.community || ctx.id || "",
+            inmueble: ctx.property || "",
+          }),
+        },
+      );
     for (const [key, name] of [
       ["issued", "Emitido"],
       ["paid", "Cobrado"],
