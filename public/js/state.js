@@ -248,12 +248,32 @@ export function unsubscribe(topic, fn) {
 function notifyTopic(topic) {
   const subscribers = topicSubscribers.get(topic);
   if (subscribers) {
-    subscribers.forEach((fn) => fn());
+    subscribers.forEach(safeNotify);
   }
+  // El tema "all" ya se notificó arriba: volver a recorrerlo lo dispararía dos veces.
+  if (topic === "all") return;
   // También notificar a suscriptores de "all"
   const allSubscribers = topicSubscribers.get("all");
   if (allSubscribers) {
-    allSubscribers.forEach((fn) => fn());
+    allSubscribers.forEach(safeNotify);
+  }
+}
+
+/**
+ * Ejecuta un suscriptor sin dejar escapar errores. Varios suscriptores son
+ * async (repintado de vistas): un rechazo suelto acabaría como «unhandled
+ * rejection» global y se enviaría como incidencia.
+ */
+function safeNotify(fn) {
+  try {
+    const result = fn();
+    if (result && typeof result.catch === "function") {
+      result.catch((error) =>
+        console.error("[state] Error en un suscriptor:", error?.message || error),
+      );
+    }
+  } catch (error) {
+    console.error("[state] Error en un suscriptor:", error?.message || error);
   }
 }
 
@@ -264,7 +284,7 @@ export function onDataChanged(fn) {
 }
 
 function notifyDataChanged() {
-  dataListeners.forEach((fn) => fn());
+  dataListeners.forEach(safeNotify);
   // Notificar todos los temas
   notifyTopic("all");
 }

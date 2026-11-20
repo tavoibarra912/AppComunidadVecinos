@@ -11,7 +11,7 @@ import { renderHomeDashboard } from "./features/home.js";
 import { applyBrand, applyPublicSettings, effectiveBrand, readInjectedBrand } from "./brand.js";
 import { installTooltips } from "./tooltip.js";
 import { installSidebarCollapse } from "./sidebar.js";
-import { state } from "./state.js";
+import { state, getCurrentUser } from "./state.js";
 
 // ==========================================
 // CODE-SPLITTING — lazy load por feature
@@ -51,11 +51,6 @@ async function loadFeature(name) {
   }
   lazyFeatures.set(name, mod);
   return mod;
-}
-
-async function getRender(name) {
-  const mod = await loadFeature(name);
-  return mod[`render${name.charAt(0).toUpperCase() + name.slice(1)}`];
 }
 
 async function getBadge(name) {
@@ -169,6 +164,41 @@ document.querySelectorAll("dialog").forEach((dialog) => {
 // ==========================================
 // GLOBAL ERROR BOUNDARY — captura errores no controlados
 // ==========================================
+// Un error inesperado siempre queda en consola. Enviarlo a /issues (que abre
+// una incidencia real en GitHub) se limita a: sesión iniciada, un envío por
+// error distinto y un máximo por carga, para que un fallo en bucle no llene el
+// buzón de incidencias.
+const MAX_AUTO_REPORTS = 5;
+const reportedFingerprints = new Set();
+let autoReports = 0;
+
+// Ruido que no aporta nada al buzón: extensiones, cancelaciones y fallos de red.
+const IGNORED_ERROR_PATTERNS = [
+  /ResizeObserver loop/i,
+  /^Script error\.?$/i,
+  /Failed to fetch/i,
+  /NetworkError/i,
+  /Load failed/i,
+  /aborted/i,
+];
+
+function shouldAutoReport(message, source) {
+  const text = String(message || "").trim();
+  if (!text) return false;
+  // Sin sesión no hay endpoint al que reportar (el router exige sesión).
+  if (!getCurrentUser()) return false;
+  if (IGNORED_ERROR_PATTERNS.some((pattern) => pattern.test(text))) return false;
+  const fingerprint = `${source}|${text}`;
+  if (reportedFingerprints.has(fingerprint)) return false;
+  if (autoReports >= MAX_AUTO_REPORTS) {
+    console.warn("[error-boundary] Límite de reportes automáticos alcanzado; no se envían más.");
+    return false;
+  }
+  reportedFingerprints.add(fingerprint);
+  autoReports += 1;
+  return true;
+}
+
 async function reportIssue(message, source, error) {
   try {
     const formData = new FormData();
@@ -192,16 +222,15 @@ async function reportIssue(message, source, error) {
 
 window.addEventListener("error", (event) => {
   console.error("[error-boundary] Error no controlado:", event.error);
-  reportIssue(event.message, event.filename || "unknown", event.error);
+  const source = event.filename || "unknown";
+  if (shouldAutoReport(event.message, source)) reportIssue(event.message, source, event.error);
 });
 
 window.addEventListener("unhandledrejection", (event) => {
   console.error("[error-boundary] Promesa rechazada no controlada:", event.reason);
-  reportIssue(
-    event.reason?.message || String(event.reason),
-    "unhandledrejection",
-    event.reason,
-  );
+  const message = event.reason?.message || String(event.reason);
+  if (shouldAutoReport(message, "unhandledrejection"))
+    reportIssue(message, "unhandledrejection", event.reason);
 });
 
 boot().catch((error) => {
@@ -209,5 +238,5 @@ boot().catch((error) => {
   showLoginView("signin");
   document.querySelector("#login-signin-error").textContent =
     `No se pudo iniciar la aplicación: ${error.message}. Recarga la página para volver a intentarlo.`;
-  reportIssue(error.message, "main.boot", error);
+  if (shouldAutoReport(error.message, "main.boot")) reportIssue(error.message, "main.boot", error);
 });
