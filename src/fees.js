@@ -439,7 +439,7 @@ export function feeCommunity(communityId) {
     );
   return community;
 }
-export function savePlan(communityId, input, actor) {
+export function savePlan(communityId, input, actor, id = "") {
   feeCommunity(communityId);
   const annualAmount = money(input.annualAmount, "El importe anual");
   if (![1, 3, 6, 12].includes(input.months)) throw problem("Periodicidad no válida.");
@@ -487,39 +487,101 @@ export function savePlan(communityId, input, actor) {
     reminders,
   };
   return transaction(() => {
+    let existing = null;
+    if (id) {
+      existing = db.prepare("SELECT * FROM fee_plans WHERE id=?").get(id);
+      if (!existing) throw problem("Acuerdo de cuotas no encontrado.", 404);
+      if (existing.communityId !== communityId)
+        throw problem("El acuerdo pertenece a otra comunidad.", 403);
+      // La fecha de aplicación no puede moverse si ya hay recibos emitidos
+      // desde ella: cambiaría el periodo de recibos ya existentes.
+      if (
+        existing.effectiveFrom !== input.effectiveFrom &&
+        db
+          .prepare(
+            "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND serviceBillId='' AND periodEnd>=?",
+          )
+          .get(communityId, existing.effectiveFrom)
+      )
+        throw problem(
+          "Ya hay recibos emitidos desde ese mes: corrige los importes sin cambiar la fecha de aplicación o crea un acuerdo nuevo.",
+          409,
+        );
+    }
     const same = db
-      .prepare("SELECT * FROM fee_plans WHERE communityId=? AND effectiveFrom=?")
-      .get(communityId, input.effectiveFrom);
+      .prepare("SELECT * FROM fee_plans WHERE communityId=? AND effectiveFrom=? AND id<>?")
+      .get(communityId, input.effectiveFrom, id || "");
     if (same)
       throw problem(
         "Ya existe un acuerdo con esa fecha. Crea una nueva versión con otra fecha de aplicación.",
         409,
       );
-    const conflict = db
-      .prepare(
-        "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND serviceBillId='' AND periodEnd>=?",
-      )
-      .get(communityId, input.effectiveFrom);
-    if (conflict)
-      throw problem(
-        "La nueva configuración se solapa con recibos emitidos. Elige una fecha posterior al último periodo emitido.",
-        409,
+    if (!existing || existing.effectiveFrom !== input.effectiveFrom) {
+      const conflict = db
+        .prepare(
+          "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND serviceBillId='' AND periodEnd>=?",
+        )
+        .get(communityId, input.effectiveFrom);
+      if (conflict)
+        throw problem(
+          "La nueva configuración se solapa con recibos emitidos. Elige una fecha posterior al último periodo emitido.",
+          409,
+        );
+    }
+    if (id) {
+      db.prepare("UPDATE fee_plans SET effectiveFrom=?, data=? WHERE id=?").run(
+        input.effectiveFrom,
+        JSON.stringify(data),
+        id,
       );
-    const id = crypto.randomUUID();
+      audit(actor, "plan.update", id, {
+        communityId,
+        effectiveFrom: input.effectiveFrom,
+        annualAmount,
+      });
+      return { id, ...data };
+    }
+    const planId = crypto.randomUUID();
     db.prepare("INSERT INTO fee_plans VALUES(?,?,?,?,?,?)").run(
-      id,
+      planId,
       communityId,
       input.effectiveFrom,
       JSON.stringify(data),
       now(),
       actor.id,
     );
-    audit(actor, "plan", id, {
+    audit(actor, "plan", planId, {
       communityId,
       effectiveFrom: input.effectiveFrom,
       annualAmount,
     });
-    return { id, ...data };
+    return { id: planId, ...data };
+  });
+}
+export function deletePlan(communityId, id, actor) {
+  feeCommunity(communityId);
+  const row = db.prepare("SELECT * FROM fee_plans WHERE id=?").get(id);
+  if (!row) throw problem("Acuerdo de cuotas no encontrado.", 404);
+  if (row.communityId !== communityId)
+    throw problem("El acuerdo pertenece a otra comunidad.", 403);
+  return transaction(() => {
+    if (
+      db
+        .prepare(
+          "SELECT 1 FROM fee_receipts WHERE communityId=? AND cancelledAt='' AND assessmentId='' AND serviceBillId='' AND periodEnd>=?",
+        )
+        .get(communityId, row.effectiveFrom)
+    )
+      throw problem(
+        "No puedes quitar un acuerdo con recibos emitidos. Corrige sus importes o crea uno nuevo con la fecha correcta.",
+        409,
+      );
+    db.prepare("DELETE FROM fee_plans WHERE id=?").run(id);
+    audit(actor, "plan.delete", id, {
+      communityId,
+      effectiveFrom: row.effectiveFrom,
+    });
+    return { id };
   });
 }
 function monthIndex(value) {

@@ -19,6 +19,7 @@ import {
   feeDefaults,
   plans,
   savePlan,
+  deletePlan,
   preview,
   issue,
   assessmentById,
@@ -281,6 +282,22 @@ router.post(
     const id = community(req);
     manage(req, id);
     res.status(201).json(savePlan(id, req.body || {}, req.user));
+  }),
+);
+router.put(
+  "/communities/:communityId/plans/:planId",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json(savePlan(id, req.body || {}, req.user, req.params.planId));
+  }),
+);
+router.delete(
+  "/communities/:communityId/plans/:planId",
+  wrap((req, res) => {
+    const id = community(req);
+    manage(req, id);
+    res.json(deletePlan(id, req.params.planId, req.user));
   }),
 );
 router.post(

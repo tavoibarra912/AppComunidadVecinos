@@ -112,6 +112,71 @@
   background: var(--canvas);
   font-variant-numeric: tabular-nums;
 }
+/* Título de bloque dentro de los diálogos largos (cobro, acuerdo, emisión). */
+.fee-form-section {
+  margin: 24px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* Resumen del acuerdo que se aplica, para no tener que leer toda la tabla. */
+.fee-plan-summary {
+  margin: 18px 0 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--canvas);
+}
+.fee-plan-summary-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.fee-plan-summary dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px 18px;
+  margin: 12px 0 0;
+}
+.fee-plan-summary dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.fee-plan-summary dd {
+  margin: 3px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.fee-plan-total {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 5px;
+  background: var(--canvas);
+  font-size: 13px;
+}
+.fee-debt {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--brand);
+  border-radius: 4px;
+  background: var(--canvas);
+  font-size: 13px;
+}
+.fee-check-all {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.fee-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fee-row-actions button {
+  margin: 0;
+}
 .fee-error {
   padding: 12px 14px;
   margin: 18px 0;
@@ -164,6 +229,10 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
+}
+/* Actualizar es un icono: va al extremo derecho de la barra, separado de las acciones. */
+.fee-toolbar > .icon-action-btn:last-child {
+  margin-left: auto;
 }
 .fee-filters label {
   min-width: 190px;
