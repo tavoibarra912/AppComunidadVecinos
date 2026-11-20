@@ -353,17 +353,48 @@ function clearActiveNav() {
     .forEach((el) => el.classList.remove("active"));
 }
 
-// En la barra móvil solo caben unos pocos ítems: al activar uno hay que
-// asegurarse de que quede a la vista (también al entrar por una URL directa).
-function revealMobileNavLink(link) {
-  if (!link?.classList?.contains("mobile-nav-item") || !link.offsetParent) return;
-  const nav = link.parentElement;
-  if (!nav) return;
-  const left = link.offsetLeft;
-  const right = left + link.offsetWidth;
-  if (left < nav.scrollLeft || right > nav.scrollLeft + nav.clientWidth) {
-    nav.scrollLeft = Math.max(0, left - (nav.clientWidth - link.offsetWidth) / 2);
-  }
+const mobileNavTrigger = document.querySelector("#mobile-nav-trigger");
+const mobileNavPanel = document.querySelector("#mobile-nav-panel");
+const mobileNavCurrent = document.querySelector("#mobile-nav-current");
+
+function setMobileMenuOpen(open) {
+  if (!mobileNavTrigger || !mobileNavPanel) return;
+  mobileNavTrigger.setAttribute("aria-expanded", String(open));
+  mobileNavTrigger.classList.toggle("is-open", open);
+  mobileNavPanel.hidden = !open;
+}
+
+// En el teléfono la navegación es un solo botón con la sección actual: el panel
+// despliega la lista completa. Se cierra al elegir destino, con Escape o al
+// tocar fuera del menú.
+mobileNavTrigger?.addEventListener("click", () => {
+  setMobileMenuOpen(Boolean(mobileNavPanel?.hidden));
+});
+
+mobileNavPanel?.addEventListener("click", (event) => {
+  if (event.target.closest?.(".mobile-nav-item")) setMobileMenuOpen(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && mobileNavPanel && !mobileNavPanel.hidden) setMobileMenuOpen(false);
+});
+
+document.addEventListener("click", (event) => {
+  if (!mobileNavPanel || mobileNavPanel.hidden) return;
+  if (!event.target.closest?.(".mobile-nav")) setMobileMenuOpen(false);
+});
+
+let mobileMenuSection = "";
+
+// Se llama en cada repintado (también en los refrescos de datos), así que solo
+// cierra el panel cuando de verdad se cambia de sección; si no, abrirlo y que
+// llegue un refresco lo cerraría solo.
+function syncMobileMenu(activeLink) {
+  const label = activeLink?.textContent?.trim() || "";
+  if (mobileNavCurrent && label) mobileNavCurrent.textContent = label;
+  if (!label || label === mobileMenuSection) return;
+  mobileMenuSection = label;
+  setMobileMenuOpen(false);
 }
 
 function showSection(section, navLinks) {
@@ -371,13 +402,15 @@ function showSection(section, navLinks) {
     section.hidden = false;
     section.style.display = "block";
   }
+  let mobileActive = null;
   for (const link of navLinks) {
     if (link) {
       link.classList.add("active");
       link.setAttribute("aria-current", "page");
-      revealMobileNavLink(link);
+      if (link.classList.contains("mobile-nav-item")) mobileActive = link;
     }
   }
+  syncMobileMenu(mobileActive);
 }
 
 export async function handleRouting() {
@@ -411,7 +444,7 @@ export async function handleRouting() {
       break;
     }
     case "comunicacion": {
-      showSection(commSection, []);
+      showSection(commSection, [document.querySelector("#mobile-nav-comunicacion")]);
       document.querySelectorAll('[href="#comunicacion"]').forEach((el) => el.classList.add("active"));
       document.title = brandTitle();
       const renderComm = await getRenderCommunication();
