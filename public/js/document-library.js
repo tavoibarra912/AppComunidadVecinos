@@ -202,13 +202,22 @@ function openTextDialog({
   const dialog = makeDialog(
     title,
     eyebrow,
-    `<label class="full">${h(label)}<input name="library-name" maxlength="180" value="${h(value)}" autocomplete="off" /></label>
-     <p class="form-error" role="alert"></p>`,
+    `<label class="full" id="text-dialog-label">${h(label)}<input name="library-name" maxlength="180" value="${h(value)}" autocomplete="off" aria-labelledby="text-dialog-label" /></label>
+     <p class="form-error" role="alert" id="text-dialog-error"></p>`,
     `<button class="secondary-button" type="button" data-library-dialog-close>Cancelar</button>
      <button class="primary-button" type="button" data-library-dialog-submit>${h(submitLabel)}</button>`,
   );
   const input = dialog.querySelector("[name=library-name]");
-  const error = dialog.querySelector(".form-error");
+  const error = dialog.querySelector("#text-dialog-error");
+  let previouslyFocused = document.activeElement;
+
+  dialog.addEventListener("show", () => {
+    previouslyFocused = document.activeElement;
+    input.focus();
+    input.select();
+    trapFocus(dialog, input);
+  }, { once: true });
+
   const submit = async () => {
     const name = input.value.trim();
     if (!name) {
@@ -236,8 +245,46 @@ function openTextDialog({
       submit();
     }
   });
-  input.focus();
-  input.select();
+
+  function trapFocus(dialog, initialFocus) {
+    const focusableElements = dialog.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    function handleTab(event) {
+      if (event.key !== "Tab") return;
+
+      if (event.shiftKey) {
+        if (document.activeElement === firstFocusable) {
+          event.preventDefault();
+          lastFocusable.focus();
+        }
+      } else {
+        if (document.activeElement === lastFocusable) {
+          event.preventDefault();
+          firstFocusable.focus();
+        }
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        dialog.close();
+      }
+    }
+
+    dialog.addEventListener("keydown", handleTab);
+    dialog.addEventListener("keydown", handleEscape);
+    dialog.addEventListener("close", () => {
+      dialog.removeEventListener("keydown", handleTab);
+      dialog.removeEventListener("keydown", handleEscape);
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    }, { once: true });
+  }
 }
 
 function openFolderDialog({ folder = null, onSubmit }) {
@@ -246,22 +293,31 @@ function openFolderDialog({ folder = null, onSubmit }) {
   const dialog = makeDialog(
     folder ? "Renombrar carpeta" : "Nueva carpeta",
     "BIBLIOTECA DOCUMENTAL",
-    `<label class="full">Nombre de la carpeta<input name="library-name" maxlength="180" value="${h(folder?.name || "")}" autocomplete="off" /></label>
+    `<label class="full" id="folder-dialog-name-label">Nombre de la carpeta<input name="library-name" maxlength="180" value="${h(folder?.name || "")}" autocomplete="off" aria-labelledby="folder-dialog-name-label" /></label>
      <div class="doc-library-icon-field"><span class="doc-library-icon-field-label">Icono</span><div class="doc-library-icon-picker" role="radiogroup" aria-label="Icono de la carpeta">${FOLDER_ICON_OPTIONS.map(
-       ([key, label]) =>
-         `<button type="button" class="doc-library-icon-option${key === current ? " is-selected" : ""}" data-folder-icon="${key}" role="radio" aria-checked="${key === current}" aria-label="${label}" title="${label}">${folderIcon(key)}</button>`,
-     ).join("")}</div></div>
+        ([key, label]) =>
+          `<button type="button" class="doc-library-icon-option${key === current ? " is-selected" : ""}" data-folder-icon="${key}" role="radio" aria-checked="${key === current}" aria-label="${label}" title="${label}">${folderIcon(key)}</button>`,
+      ).join("")}</div></div>
      <div class="doc-library-color-field"><span class="doc-library-icon-field-label">Color</span><div class="doc-library-color-picker" role="radiogroup" aria-label="Color de la carpeta">${FOLDER_COLOR_OPTIONS.map(([key, label]) => `<button type="button" class="doc-library-color-option${key === currentColor ? " is-selected" : ""}" data-folder-color="${key}" role="radio" aria-checked="${key === currentColor}" aria-label="${label}" title="${label}"><span class="doc-library-color-swatch" aria-hidden="true"></span></button>`).join("")}</div></div>
      <div class="doc-library-folder-preview" aria-label="Vista previa de la carpeta"><span data-folder-preview-icon>${folderIcon(current)}</span><span data-folder-preview-name>${h(folder?.name || "Nueva carpeta")}</span></div>
-     <p class="form-error" role="alert"></p>`,
+     <p class="form-error" role="alert" id="folder-dialog-error"></p>`,
     `<button class="icon-action-btn btn-cancel btn-lg" type="button" data-library-dialog-close aria-label="Cancelar" title="Cancelar">${ICONS.close}</button>
      <button class="icon-action-btn btn-save btn-lg" type="button" data-library-dialog-submit aria-label="${folder ? "Guardar cambios" : "Crear carpeta"}" title="${folder ? "Guardar cambios" : "Crear carpeta"}">${ICONS.save}</button>`,
   );
   dialog.dataset.folderColor = currentColor;
   const input = dialog.querySelector("[name=library-name]");
-  const error = dialog.querySelector(".form-error");
+  const error = dialog.querySelector("#folder-dialog-error");
   let icon = current;
   let color = currentColor;
+  let previouslyFocused = document.activeElement;
+
+  dialog.addEventListener("show", () => {
+    previouslyFocused = document.activeElement;
+    input.focus();
+    input.select();
+    trapFocus(dialog, input);
+  }, { once: true });
+
   dialog.querySelectorAll("[data-folder-icon]").forEach((button) =>
     button.addEventListener("click", () => {
       icon = button.dataset.folderIcon;
@@ -339,8 +395,46 @@ function openFolderDialog({ folder = null, onSubmit }) {
       submit();
     }
   });
-  input.focus();
-  input.select();
+
+  function trapFocus(dialog, initialFocus) {
+    const focusableElements = dialog.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    function handleTab(event) {
+      if (event.key !== "Tab") return;
+
+      if (event.shiftKey) {
+        if (document.activeElement === firstFocusable) {
+          event.preventDefault();
+          lastFocusable.focus();
+        }
+      } else {
+        if (document.activeElement === lastFocusable) {
+          event.preventDefault();
+          firstFocusable.focus();
+        }
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        dialog.close();
+      }
+    }
+
+    dialog.addEventListener("keydown", handleTab);
+    dialog.addEventListener("keydown", handleEscape);
+    dialog.addEventListener("close", () => {
+      dialog.removeEventListener("keydown", handleTab);
+      dialog.removeEventListener("keydown", handleEscape);
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    }, { once: true });
+  }
 }
 
 function openConfirmDialog({
@@ -358,6 +452,15 @@ function openConfirmDialog({
       `<button class="secondary-button" type="button" data-library-dialog-close>Cancelar</button>
        <button class="primary-button doc-library-danger-button" type="button" data-library-dialog-confirm>${h(confirmLabel)}</button>`,
     );
+    let previouslyFocused = document.activeElement;
+    const confirmButton = dialog.querySelector("[data-library-dialog-confirm]");
+
+    dialog.addEventListener("show", () => {
+      previouslyFocused = document.activeElement;
+      confirmButton.focus();
+      trapFocus(dialog, confirmButton);
+    }, { once: true });
+
     dialog
       .querySelectorAll("[data-library-dialog-close]")
       .forEach((button) => button.addEventListener("click", () => dialog.close()));
@@ -366,6 +469,46 @@ function openConfirmDialog({
       dialog.close();
     });
     dialog.addEventListener("close", () => resolve(confirmed), { once: true });
+
+    function trapFocus(dialog, initialFocus) {
+      const focusableElements = dialog.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstFocusable = focusableElements[0];
+      const lastFocusable = focusableElements[focusableElements.length - 1];
+
+      function handleTab(event) {
+        if (event.key !== "Tab") return;
+
+        if (event.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            event.preventDefault();
+            lastFocusable.focus();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            event.preventDefault();
+            firstFocusable.focus();
+          }
+        }
+      }
+
+      function handleEscape(event) {
+        if (event.key === "Escape") {
+          dialog.close();
+        }
+      }
+
+      dialog.addEventListener("keydown", handleTab);
+      dialog.addEventListener("keydown", handleEscape);
+      dialog.addEventListener("close", () => {
+        dialog.removeEventListener("keydown", handleTab);
+        dialog.removeEventListener("keydown", handleEscape);
+        if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+          previouslyFocused.focus();
+        }
+      }, { once: true });
+    }
   });
 }
 
@@ -384,14 +527,22 @@ function openMoveDialog({ itemLabel, folders, currentFolderId, excludeIds, onSub
     "Mover a…",
     "BIBLIOTECA DOCUMENTAL",
     `<p class="form-intro">Elige la carpeta de destino para <strong>${h(itemLabel)}</strong>.</p>
-     <label class="full">Carpeta de destino<select name="library-target">${options}</select></label>
-     <p class="form-error" role="alert"></p>`,
+     <label class="full" id="move-dialog-label">Carpeta de destino<select name="library-target" aria-labelledby="move-dialog-label">${options}</select></label>
+     <p class="form-error" role="alert" id="move-dialog-error"></p>`,
     `<button class="secondary-button" type="button" data-library-dialog-close>Cancelar</button>
      <button class="primary-button" type="button" data-library-dialog-submit>Mover</button>`,
   );
   const select = dialog.querySelector("[name=library-target]");
   select.value = currentFolderId || "";
-  const error = dialog.querySelector(".form-error");
+  const error = dialog.querySelector("#move-dialog-error");
+  let previouslyFocused = document.activeElement;
+
+  dialog.addEventListener("show", () => {
+    previouslyFocused = document.activeElement;
+    select.focus();
+    trapFocus(dialog, select);
+  }, { once: true });
+
   dialog
     .querySelectorAll("[data-library-dialog-close]")
     .forEach((button) => button.addEventListener("click", () => dialog.close()));
@@ -406,7 +557,46 @@ function openMoveDialog({ itemLabel, folders, currentFolderId, excludeIds, onSub
       button.disabled = false;
     }
   });
-  select.focus();
+
+  function trapFocus(dialog, initialFocus) {
+    const focusableElements = dialog.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    function handleTab(event) {
+      if (event.key !== "Tab") return;
+
+      if (event.shiftKey) {
+        if (document.activeElement === firstFocusable) {
+          event.preventDefault();
+          lastFocusable.focus();
+        }
+      } else {
+        if (document.activeElement === lastFocusable) {
+          event.preventDefault();
+          firstFocusable.focus();
+        }
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        dialog.close();
+      }
+    }
+
+    dialog.addEventListener("keydown", handleTab);
+    dialog.addEventListener("keydown", handleEscape);
+    dialog.addEventListener("close", () => {
+      dialog.removeEventListener("keydown", handleTab);
+      dialog.removeEventListener("keydown", handleEscape);
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    }, { once: true });
+  }
 }
 
 function openPreviewDialog(doc) {
@@ -673,6 +863,8 @@ export function createDocumentLibrary(options) {
     element.dataset.libraryDropFolder = folder.id;
     element.draggable = canWrite();
     element.tabIndex = 0;
+    element.setAttribute("aria-grabbed", "false");
+    element.setAttribute("aria-label", `Mover carpeta "${h(folder.name)}" (usa Enter para seleccionar, flechas para destino)`);
     const count = descendants(view.folders, folder.id).size;
     const docs = view.documents.filter((doc) => doc.folderId === folder.id).length;
     const summary = `${docs} ${docs === 1 ? "documento" : "documentos"}${count ? ` · ${count} ${count === 1 ? "subcarpeta" : "subcarpetas"}` : ""}`;
@@ -689,6 +881,9 @@ export function createDocumentLibrary(options) {
     element.className = "doc-library-item doc-library-document";
     element.dataset.documentId = doc.id;
     element.draggable = canWrite() && foldersEnabled;
+    element.tabIndex = 0;
+    element.setAttribute("aria-grabbed", "false");
+    element.setAttribute("aria-label", `Mover documento "${h(doc.fileName)}" (usa Enter para seleccionar, flechas para destino)`);
     const location = view.search
       ? `<span class="doc-library-location">${h(pathLabel(view.folders, doc.folderId))}</span>`
       : "";
@@ -1050,14 +1245,98 @@ export function createDocumentLibrary(options) {
 
   // Drag & drop: mover carpetas/documentos o subir archivos a una carpeta.
   let draggedItem = null;
+  let keyboardSelectedItem = null; // ítem seleccionado por teclado para mover
   const clearDropTargets = () =>
     root
       .querySelectorAll(".is-drop-target")
       .forEach((element) => element.classList.remove("is-drop-target"));
+  const clearKeyboardSelection = () => {
+    root.querySelectorAll("[aria-grabbed='true']").forEach((el) => {
+      el.setAttribute("aria-grabbed", "false");
+      el.classList.remove("is-drop-source");
+    });
+    keyboardSelectedItem = null;
+  };
+
+  async function moveItem(kind, id, folderId) {
+    try {
+      if (kind === "folder") {
+        const updated = await api.updateDocumentFolder(id, { parentId: folderId });
+        const index = view.folders.findIndex((entry) => entry.id === id);
+        if (index >= 0 && updated) view.folders[index] = updated;
+      } else {
+        const updated = await api.updateDocument(id, { folderId });
+        const index = view.documents.findIndex((entry) => entry.id === id);
+        if (index >= 0 && updated) view.documents[index] = updated;
+      }
+      await options.onChange?.();
+      render();
+      toast(kind === "folder" ? "Carpeta movida." : "Documento movido.");
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      clearKeyboardSelection();
+    }
+  }
+
   const dropTargetFolder = (target) => {
     const element = target.closest("[data-library-drop-folder]");
     return element ? element.dataset.libraryDropFolder || "" : null;
   };
+  // Selección por teclado (Enter/Space) para mover sin ratón
+  content.addEventListener("keydown", async (event) => {
+    if (!canWrite()) return;
+    if (event.key === "Enter" || event.key === " ") {
+      const item = event.target.closest("[data-folder-id],[data-document-id]");
+      if (!item) return;
+      event.preventDefault();
+      if (keyboardSelectedItem === item) {
+        // Deseleccionar
+        clearKeyboardSelection();
+        return;
+      }
+      clearKeyboardSelection();
+      item.setAttribute("aria-grabbed", "true");
+      item.classList.add("is-drop-source");
+      keyboardSelectedItem = item;
+      toast("Ítem seleccionado. Navega a una carpeta y presiona Enter para soltar.", "info");
+      return;
+    }
+    if (event.key === "Escape") {
+      clearKeyboardSelection();
+      return;
+    }
+    // Mover ítem seleccionado por teclado al destino con Enter sobre una carpeta
+    if (event.key === "Enter" && keyboardSelectedItem) {
+      const folderEl = event.target.closest("[data-library-drop-folder]");
+      if (!folderEl) return;
+      event.preventDefault();
+      const folderId = folderEl.dataset.libraryDropFolder || view.currentFolderId;
+      const kind = keyboardSelectedItem.dataset.folderId ? "folder" : "document";
+      const id = keyboardSelectedItem.dataset.folderId || keyboardSelectedItem.dataset.documentId;
+      if (kind === "folder") {
+        const folder = view.folders.find((entry) => entry.id === id);
+        if (!folder || folder.parentId === folderId) {
+          clearKeyboardSelection();
+          toast("No puedes mover una carpeta dentro de sí misma.");
+          return;
+        }
+        if (folderId === folder.id || descendants(view.folders, folder.id).has(folderId)) {
+          clearKeyboardSelection();
+          toast("No puedes mover una carpeta dentro de sí misma.");
+          return;
+        }
+        await moveItem(kind, id, folderId);
+      } else {
+        const doc = view.documents.find((entry) => entry.id === id);
+        if (!doc || (doc.folderId || "") === folderId) {
+          clearKeyboardSelection();
+          return;
+        }
+        await moveItem(kind, id, folderId);
+      }
+    }
+  });
   content.addEventListener("dragstart", (event) => {
     if (!canWrite()) return;
     const folderElement = event.target.closest("[data-folder-id]");
@@ -1105,30 +1384,12 @@ export function createDocumentLibrary(options) {
         toast("No puedes mover una carpeta dentro de sí misma.");
         return;
       }
-      try {
-        const updated = await api.updateDocumentFolder(folder.id, { parentId: folderId });
-        const index = view.folders.findIndex((entry) => entry.id === folder.id);
-        if (index >= 0 && updated) view.folders[index] = updated;
-        await options.onChange?.();
-        render();
-        toast("Carpeta movida.");
-      } catch (error) {
-        toast(error.message);
-      }
+      await moveItem("folder", folder.id, folderId);
       return;
     }
     const doc = view.documents.find((entry) => entry.id === item.id);
     if (!doc || (doc.folderId || "") === folderId) return;
-    try {
-      const updated = await api.updateDocument(doc.id, { folderId });
-      const index = view.documents.findIndex((entry) => entry.id === doc.id);
-      if (index >= 0 && updated) view.documents[index] = updated;
-      await options.onChange?.();
-      render();
-      toast("Documento movido.");
-    } catch (error) {
-      toast(error.message);
-    }
+    await moveItem("document", doc.id, folderId);
   });
 
   const setEntity = (id) => {

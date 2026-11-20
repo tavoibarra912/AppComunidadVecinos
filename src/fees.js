@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import PDFDocument from "pdfkit";
 import { db, getSettings, listProperties, listOwners } from "./db.js";
 import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
@@ -824,7 +825,7 @@ export function saveAssessment(communityId, input, actor, id = "") {
   if (!agreement || agreement.length > 300)
     throw problem("Indica el acuerdo de Junta (máximo 300 caracteres).");
   const totalAmount = money(input.totalAmount, "El importe total");
-  if (!["coefficient", "manual"].includes(input.mode))
+  if (!["coefficient", "manual", "mixed"].includes(input.mode))
     throw problem("Criterio de reparto no válido.");
   const { all, selected, entries } = selectedChargeProperties(communityId, input);
   const allocations = {};
@@ -848,6 +849,49 @@ export function saveAssessment(communityId, input, actor, id = "") {
         );
       allocations[entry.property.id] = entry.amount;
     }
+  } else if (input.mode === "mixed") {
+    // Mixed mode: some properties have fixed amounts, others use coefficient
+    const manual = input.manual || {};
+    let manualSum = 0;
+    const manualProperties = new Set();
+    for (const property of selected) {
+      if (manual[property.id] !== undefined) {
+        const amount = money(manual[property.id], `Importe fijo de ${property.plot}`);
+        allocations[property.id] = amount;
+        manualSum += amount;
+        manualProperties.add(property.id);
+      }
+    }
+    if (manualSum > totalAmount)
+      throw problem("La suma de importes fijos supera el total de la derrama.");
+    const remainingAmount = totalAmount - manualSum;
+    if (remainingAmount < 0)
+      throw problem("La suma de importes fijos supera el total de la derrama.");
+    // Distribute remaining by coefficient among non-manual properties
+    const coefficientEntries = entries.filter((entry) => !manualProperties.has(entry.property.id));
+    if (coefficientEntries.length > 0) {
+      let weightSum = 0;
+      for (const entry of coefficientEntries) {
+        const text = String(entry.property.participationCoef).replace(",", ".");
+        if (!/^\d{1,3}(\.\d{1,4})?$/.test(text) || Number(text) <= 0 || Number(text) > 100)
+          throw problem(`${entry.property.plot}: coeficiente no válido (hasta cuatro decimales).`);
+        entry.weight = Math.round(Number(text) * 10000);
+        weightSum += entry.weight;
+      }
+      if (weightSum === 0)
+        throw problem("No hay coeficientes válidos para el reparto variable.");
+      for (const entry of distribute(remainingAmount, coefficientEntries)) {
+        if (entry.amount <= 0)
+          throw problem(
+            `${entry.property.plot}: el reparto variable le asigna cero euros. Ajusta los importes fijos o los coeficientes.`,
+          );
+        allocations[entry.property.id] = entry.amount;
+      }
+    }
+    // Verify total matches
+    const totalAllocated = Object.values(allocations).reduce((sum, v) => sum + v, 0);
+    if (totalAllocated !== totalAmount)
+      throw problem("El reparto mixto no cuadra con el total de la derrama.");
   } else {
     let sum = 0;
     for (const property of selected) {
@@ -1331,6 +1375,161 @@ function allocate(payment, ids) {
     }
   }
 }
+export function generateDebtCertificate({ communityId, ownerId, propertyId, actor }) {
+  const community = db.prepare("SELECT * FROM communities WHERE id=?").get(communityId);
+  if (!community) throw problem("Comunidad no encontrada.", 404);
+
+  let owner = null;
+  let property = null;
+  let receipts = [];
+
+  if (ownerId) {
+    owner = db.prepare("SELECT * FROM owners WHERE id=? AND communityId=?").get(ownerId, communityId);
+    if (!owner) throw problem("Propietario no encontrado.", 404);
+    property = db.prepare("SELECT * FROM properties WHERE ownerIds LIKE ? AND communityId=?").get(
+      `%"${ownerId}"%`,
+      communityId,
+    );
+    receipts = db
+      .prepare(
+        `SELECT * FROM fee_receipts WHERE communityId=? AND JSON_EXTRACT(snapshot, '$.owners') LIKE ? AND cancelledAt='' ORDER BY period DESC`,
+      )
+      .all(communityId, `%"${ownerId}"%`);
+  } else if (propertyId) {
+    property = db.prepare("SELECT * FROM properties WHERE id=? AND communityId=?").get(propertyId, communityId);
+    if (!property) throw problem("Inmueble no encontrado.", 404);
+    owner = db.prepare("SELECT * FROM owners WHERE id IN (?)").get(property.ownerIds);
+    receipts = db
+      .prepare("SELECT * FROM fee_receipts WHERE communityId=? AND propertyId=? AND cancelledAt='' ORDER BY period DESC")
+      .all(communityId, propertyId);
+  } else {
+    throw problem("Debe indicar propietario o inmueble.", 400);
+  }
+
+  const payments = db
+    .prepare("SELECT * FROM fee_payments WHERE communityId=? AND ownerId=? ORDER BY createdAt DESC")
+    .all(communityId, owner?.id || "");
+
+  const outstandingReceipts = receipts.filter((r) => {
+    const view = receiptView(r);
+    return view.outstanding > 0;
+  });
+
+  const totalOutstanding = outstandingReceipts.reduce((sum, r) => sum + receiptView(r).outstanding, 0);
+  const totalPaid = payments.filter((p) => !p.reversedAt).reduce((sum, p) => sum + p.amount, 0);
+
+  // Generate PDF using pdfkit
+  const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
+  const chunks = [];
+
+  return new Promise((resolve, reject) => {
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("error", reject);
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+
+    // Header
+    doc.font("Helvetica-Bold").fontSize(18).fillColor("#17413f").text("CERTIFICADO DE DEUDA", { align: "center" });
+    doc.moveDown(0.5);
+    doc.font("Helvetica").fontSize(10).fillColor("#444444").text(`Comunidad: ${community.name}`, { align: "center" });
+    if (community.address) doc.text(`${community.address}, ${community.postalCode} ${community.city}`, { align: "center" });
+    if (community.nif) doc.text(`NIF: ${community.nif}`, { align: "center" });
+    doc.moveDown(1);
+
+    // Certificate info
+    const issueDate = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+    doc.font("Helvetica").fontSize(10).text(`Fecha de emisión: ${issueDate}`);
+    doc.text(`Expedido a solicitud de: ${actor?.nombre || "Administración"}`);
+    doc.moveDown(1);
+
+    // Owner/Property info
+    doc.font("Helvetica-Bold").fontSize(12).fillColor("#17413f").text("DATOS DEL TITULAR / INMUEBLE");
+    doc.moveDown(0.3);
+    doc.font("Helvetica").fontSize(10).fillColor("#000000");
+    if (owner) {
+      doc.text(`Nombre: ${owner.name} ${owner.surname || ""}`.trim());
+      if (owner.dni) doc.text(`DNI/NIF: ${owner.dni}`);
+      if (owner.email) doc.text(`Email: ${owner.email}`);
+    }
+    if (property) {
+      doc.text(`Inmueble: ${property.plot}`);
+      if (property.staircase) doc.text(`Escalera: ${property.staircase}`);
+      if (property.floor) doc.text(`Planta: ${property.floor}`);
+      if (property.door) doc.text(`Puerta: ${property.door}`);
+      if (property.participationCoef) doc.text(`Coeficiente: ${property.participationCoef}%`);
+    }
+    doc.moveDown(1);
+
+    // Outstanding receipts table
+    doc.font("Helvetica-Bold").fontSize(12).fillColor("#17413f").text("RECIBOS PENDIENTES DE PAGO");
+    doc.moveDown(0.3);
+
+    if (outstandingReceipts.length === 0) {
+      doc.font("Helvetica").fontSize(10).fillColor("#000000").text("No hay recibos pendientes de pago.");
+    } else {
+      // Table header
+      const colWidths = { period: 80, concept: 150, dueDate: 80, amount: 70, outstanding: 70 };
+      const startX = 50;
+      let y = doc.y;
+
+      doc.font("Helvetica-Bold").fontSize(8);
+      doc.rect(startX, y, 450, 20).fill("#17413f");
+      doc.fillColor("white");
+      doc.text("Periodo", startX + 5, y + 5, { width: colWidths.period - 10 });
+      doc.text("Concepto", startX + colWidths.period + 5, y + 5, { width: colWidths.concept - 10 });
+      doc.text("Vencimiento", startX + colWidths.period + colWidths.concept + 5, y + 5, { width: colWidths.dueDate - 10 });
+      doc.text("Importe", startX + colWidths.period + colWidths.concept + colWidths.dueDate + 5, y + 5, { width: colWidths.amount - 10 });
+      doc.text("Pendiente", startX + colWidths.period + colWidths.concept + colWidths.dueDate + colWidths.amount + 5, y + 5, { width: colWidths.outstanding - 10 });
+      y += 20;
+
+      doc.font("Helvetica").fontSize(8).fillColor("#000000");
+      for (const receipt of outstandingReceipts) {
+        const view = receiptView(receipt);
+        const snapshot = JSON.parse(receipt.snapshot);
+        const concept = receiptConcept(receipt, snapshot);
+        const kind = receipt.serviceBillId ? "Servicio" : receipt.assessmentId ? "Derrama" : "Cuota";
+
+        if (y > 700) {
+          doc.addPage();
+          y = 50;
+        }
+
+        const rowHeight = 18;
+        if (Math.floor(outstandingReceipts.indexOf(receipt) / 2) * 2 === outstandingReceipts.indexOf(receipt)) {
+          doc.rect(startX, y, 450, rowHeight).fill("#f5f5f5");
+        }
+        doc.text(receipt.period, startX + 5, y + 3, { width: colWidths.period - 10 });
+        doc.text(`${kind}: ${concept}`, startX + colWidths.period + 5, y + 3, { width: colWidths.concept - 10 });
+        doc.text(receipt.dueDate, startX + colWidths.period + colWidths.concept + 5, y + 3, { width: colWidths.dueDate - 10 });
+        doc.text(formatMoney(view.amount), startX + colWidths.period + colWidths.concept + colWidths.dueDate + 5, y + 3, { width: colWidths.amount - 10, align: "right" });
+        doc.text(formatMoney(view.outstanding), startX + colWidths.period + colWidths.concept + colWidths.dueDate + colWidths.amount + 5, y + 3, { width: colWidths.outstanding - 10, align: "right" });
+        y += rowHeight;
+      }
+      doc.y = y + 10;
+    }
+
+    doc.moveDown(1);
+
+    // Totals
+    doc.font("Helvetica-Bold").fontSize(12).fillColor("#17413f").text("RESUMEN ECONÓMICO");
+    doc.moveDown(0.3);
+    doc.font("Helvetica").fontSize(10).fillColor("#000000");
+    doc.text(`Total pendiente: ${formatMoney(totalOutstanding)}`);
+    doc.text(`Total pagado (histórico): ${formatMoney(totalPaid)}`);
+    doc.moveDown(1);
+
+// Legal footer
+    doc.font("Helvetica-Oblique").fontSize(8).fillColor("#666666");
+    doc.text(
+      "Este certificado tiene carácter informativo y refleja la situación contable a la fecha de emisión. " +
+        "No constituye título ejecutivo ni documento de cobro. Para cualquier discrepancia, diríjase a la administración de la comunidad.",
+      { align: "justify" }
+    );
+    doc.moveDown(1);
+    doc.font("Helvetica").fontSize(8).text(`Documento generado automáticamente el ${new Date().toISOString().split("T")[0]}`, { align: "center" });
+
+    doc.end();
+  });
+}
 export function recordPayment(communityId, input, actor) {
   if (!validDate(input.paidOn) || input.paidOn > today())
     throw problem("La fecha del cobro debe ser válida y no futura.");
@@ -1502,6 +1701,49 @@ export function adminNotice(row, ownerId, subject) {
     row.id,
   );
 }
+export function purgeReceipt(id, actor) {
+  return transaction(() => {
+    const row = receiptById(id);
+    if (!row.cancelledAt) throw problem("Solo se pueden purgar recibos anulados.", 409);
+    // Delete related data
+    db.prepare("DELETE FROM fee_allocations WHERE receiptId=?").run(id);
+    db.prepare("DELETE FROM fee_proofs WHERE receiptId=?").run(id);
+    // Delete fee_events and fee_mail for this receipt
+    const events = db.prepare("SELECT id FROM fee_events WHERE receiptId=?").all(id);
+    for (const event of events) {
+      db.prepare("DELETE FROM fee_mail WHERE eventId=?").run(event.id);
+    }
+    db.prepare("DELETE FROM fee_events WHERE receiptId=?").run(id);
+    // Finally delete the receipt itself
+    db.prepare("DELETE FROM fee_receipts WHERE id=?").run(id);
+    audit(actor, "purge", id, { communityId: row.communityId });
+  });
+}
+
+export function purgeAssessment(id, actor) {
+  return transaction(() => {
+    const row = assessmentById(id);
+    if (!row.cancelledAt) throw problem("Solo se pueden purgar derramas anuladas.", 409);
+    // Get all receipts for this assessment
+    const receipts = db.prepare("SELECT id FROM fee_receipts WHERE assessmentId=?").all(id);
+    for (const receipt of receipts) {
+      // Delete related data for each receipt
+      db.prepare("DELETE FROM fee_allocations WHERE receiptId=?").run(receipt.id);
+      db.prepare("DELETE FROM fee_proofs WHERE receiptId=?").run(receipt.id);
+      const events = db.prepare("SELECT id FROM fee_events WHERE receiptId=?").all(receipt.id);
+      for (const event of events) {
+        db.prepare("DELETE FROM fee_mail WHERE eventId=?").run(event.id);
+      }
+      db.prepare("DELETE FROM fee_events WHERE receiptId=?").run(receipt.id);
+      // Delete the receipt
+      db.prepare("DELETE FROM fee_receipts WHERE id=?").run(receipt.id);
+    }
+    // Delete the assessment itself
+    db.prepare("DELETE FROM fee_assessments WHERE id=?").run(id);
+    audit(actor, "purge_assessment", id, { communityId: row.communityId });
+  });
+}
+
 export function materializeFeeReminders(date = today()) {
   return transaction(() => {
     for (const row of db

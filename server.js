@@ -137,6 +137,26 @@ app.use(
   }),
 );
 
+// Rutas de la SPA: al recargar o abrir una URL directa debe servirse la misma
+// página con la marca embebida, no el 404 de Express.
+const SPA_ROUTES = [
+  "/home",
+  "/comunidades",
+  "/propietarios",
+  "/inmuebles",
+  "/inquilinos",
+  "/administracion",
+  "/cuotas",
+  "/informes",
+  "/comunicacion",
+];
+app.get(SPA_ROUTES, (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res
+    .type("html")
+    .send(renderIndex(path.join(PUBLIC_DIR, "index.html"), getSettings()));
+});
+
 app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);
   console.error("[server] Error no controlado:", error.message);

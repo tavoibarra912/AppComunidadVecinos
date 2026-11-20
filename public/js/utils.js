@@ -42,6 +42,8 @@ export function toast(message, tipo) {
   if (!toastEl) return;
   const tipoFinal = tipo && TOAST_ICONOS[tipo] ? tipo : detectarTipoToast(message);
   toastEl.dataset.tipo = tipoFinal;
+  // aria-live: assertive para errores/advertencias, polite para info/éxito
+  toastEl.setAttribute("aria-live", tipoFinal === "error" || tipoFinal === "warning" ? "assertive" : "polite");
   toastEl.replaceChildren();
   const icono = document.createElement("span");
   icono.className = "toast-icono";
