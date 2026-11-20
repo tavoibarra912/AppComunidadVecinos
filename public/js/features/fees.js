@@ -69,12 +69,14 @@ const icons = {
   remove: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   save: '<path d="m5 12 4 4L19 6"/>',
+  // El disquete es el icono de guardado del resto de la app.
+  disk: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   // Icono de Cuotas (el mismo del menú lateral) para el acceso a esa pantalla.
   fees: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
 };
-function iconButton(label, action, kind = "add", icon = kind) {
-  const node = button("", action);
+function iconButton(label, action, kind = "add", icon = kind, primary = false) {
+  const node = button("", action, primary);
   node.className = `icon-action-btn btn-${kind}`;
   node.title = label;
   node.setAttribute("aria-label", label);
@@ -2251,33 +2253,39 @@ function paymentForm(ctx, receipt = null) {
   value.addEventListener("input", updateDistribution);
   update();
   const requestId = crypto.randomUUID();
-  body.append(
-    button(
-      "Guardar cobro",
-      async () => {
-        try {
-          await api.fees(`/communities/${ctx.id}/payments`, "POST", {
-            ownerId: payer.value,
-            amount: value.value,
-            paidOn: paidOn.value,
-            method: method.value,
-            reference: reference.value,
-            receiptIds: ids(),
-            requestId,
-            confirmDuplicate: duplicate.checked,
-          });
-        } catch (error) {
-          if (error.status === 409 && error.message.includes("Posible cobro duplicado"))
-            duplicate.closest("label").hidden = false;
-          throw error;
-        }
-        dialog.close();
-        await reloadAll();
-        toast("Cobro registrado.");
-      },
-      true,
-    ),
+  // Mismo guardado que el resto de la app: icono de disquete, sin texto y
+  // alineado a la derecha.
+  const save = iconButton(
+    "Guardar cobro",
+    async () => {
+      try {
+        await api.fees(`/communities/${ctx.id}/payments`, "POST", {
+          ownerId: payer.value,
+          amount: value.value,
+          paidOn: paidOn.value,
+          method: method.value,
+          reference: reference.value,
+          receiptIds: ids(),
+          requestId,
+          confirmDuplicate: duplicate.checked,
+        });
+      } catch (error) {
+        if (error.status === 409 && error.message.includes("Posible cobro duplicado"))
+          duplicate.closest("label").hidden = false;
+        throw error;
+      }
+      dialog.close();
+      await reloadAll();
+      toast("Cobro registrado.");
+    },
+    "save",
+    "disk",
+    true,
   );
+  save.classList.add("btn-lg");
+  const actions = el("div", undefined, "dialog-actions fee-dialog-actions");
+  actions.append(save);
+  body.append(actions);
 }
 function creditForm(ctx, payment) {
   const body = open(`Aplicar saldo a favor · ${money(payment.credit)}`);
