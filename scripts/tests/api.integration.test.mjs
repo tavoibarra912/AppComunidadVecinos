@@ -223,7 +223,7 @@ test("inmuebles: coeficiente obligatorio y referencia catastral única", async (
   assert.equal(duplicate.status, 400);
   assert.match(duplicate.data.error, /referencia catastral/i);
 });
-test("inmuebles: propietarios e inquilinos deben pertenecer a la comunidad", async () => {
+test("inmuebles: titularidad N:M y contratos dentro de su comunidad", async () => {
   const property = (await admin("/properties/prop-seed-3")).data;
   const crossOwner = await admin("/properties/prop-seed-3", "PUT", {
     ...property,
@@ -233,9 +233,13 @@ test("inmuebles: propietarios e inquilinos deben pertenecer a la comunidad", asy
     participationCoef: "1.0000",
     cadastralRef: "",
   });
-  assert.equal(crossOwner.status, 400);
-  assert.match(crossOwner.data.error, /comunidad del inmueble/i);
-
+  assert.equal(crossOwner.status, 200);
+  assert.deepEqual(crossOwner.data.ownerIds, ["own-seed-3"]);
+  assert.ok(
+    JSON.parse(
+      db.prepare("SELECT propertyIds FROM owners WHERE id=?").get("own-seed-3").propertyIds,
+    ).includes(property.id),
+  );
   db.prepare(
     "INSERT INTO tenants (id, ownerId, propertyId, name, surname) VALUES (?, ?, ?, ?, ?)",
   ).run("tenant-cross-community", "own-seed-1", "prop-seed-4", "Inquilino", "Otra comunidad");

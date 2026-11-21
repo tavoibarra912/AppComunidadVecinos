@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS fee_plans (
   CREATE INDEX IF NOT EXISTS fee_proofs_receipt ON fee_proofs(receiptId);
   CREATE INDEX IF NOT EXISTS fee_proofs_disk ON fee_proofs(diskName);
   CREATE TABLE IF NOT EXISTS fee_proof_cleanup (
-    diskName TEXT PRIMARY KEY, createdAt TEXT NOT NULL,
+    diskName TEXT PRIMARY KEY, createdAt TEXT NOT NULL, relativePath TEXT NOT NULL DEFAULT '',
     attempts INTEGER NOT NULL DEFAULT 0, nextAttemptAt INTEGER NOT NULL DEFAULT 0,
     lastAttemptAt TEXT NOT NULL DEFAULT '', lastError TEXT NOT NULL DEFAULT ''
   );
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS fee_plans (
   CREATE TABLE IF NOT EXISTS fee_assessments (
     id TEXT PRIMARY KEY, communityId TEXT NOT NULL, name TEXT NOT NULL,
     totalAmount INTEGER NOT NULL CHECK(totalAmount>0), data TEXT NOT NULL,
-    createdAt TEXT NOT NULL, actorId TEXT NOT NULL,
+    createdAt TEXT NOT NULL, actorId TEXT NOT NULL, issuedAt TEXT NOT NULL DEFAULT '',
     cancelledAt TEXT NOT NULL DEFAULT '', cancellationReason TEXT NOT NULL DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS fee_assessments_community ON fee_assessments(communityId,createdAt);

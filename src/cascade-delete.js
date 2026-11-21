@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
 import { db, UPLOADS_DIR } from "./db.js";
 import { allowed, policyData } from "./security.js";
@@ -7,6 +6,8 @@ import { recordAudit } from "./audit.js";
 import { communityNifError } from "./validation.js";
 import { isTenantContractActive } from "../public/js/permissions.js";
 import { CREDIT_DESTINATIONS, legalConfigOf } from "./legal-config.js";
+import { formatMoney } from "./fees.js";
+import { queueUploadCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
 
 const TYPES = {
   owners: "owner",
@@ -357,9 +358,7 @@ function ownerCommunities(g, ownerId) {
     ...g.payments.filter((p) => p.ownerId === ownerId).map((p) => p.communityId),
     // La comunidad de censo del socio también cuenta si tiene inmuebles en
     // otra comunidad; no se usa el communityId de fichas que no son socias.
-    ...g.owners
-      .filter((o) => o.id === ownerId && o.isMember)
-      .map((o) => o.communityId),
+    ...g.owners.filter((o) => o.id === ownerId && o.isMember).map((o) => o.communityId),
   ]);
 }
 function primaryFinance(g, deletedOwners = [], deletedProperties = []) {
@@ -444,9 +443,7 @@ function preview(g, user) {
         ...(g.relationships.some((p) => p.communityId === c.id)
           ? ["Inmuebles vinculados a los propietarios evaluados"]
           : []),
-        ...(g.owners.some((o) => o.isMember && o.communityId === c.id)
-          ? ["Censo de socios"]
-          : []),
+        ...(g.owners.some((o) => o.isMember && o.communityId === c.id) ? ["Censo de socios"] : []),
         ...([...g.receipts, ...g.payments].some((row) => row.communityId === c.id)
           ? ["Historial financiero relacionado"]
           : []),
@@ -702,8 +699,7 @@ function plan(g, body, user, options = {}) {
     g.root.currency ||
     "EUR";
   const addCredit = (amount, currency) => {
-    if (amount > 0)
-      creditByCurrency.set(currency, (creditByCurrency.get(currency) || 0) + amount);
+    if (amount > 0) creditByCurrency.set(currency, (creditByCurrency.get(currency) || 0) + amount);
   };
   // Al borrar un titular solo cuenta su propio saldo. En un recibo compartido,
   // el cobro de un cotitular sigue siendo crédito de ese cotitular y no del
@@ -771,11 +767,7 @@ function plan(g, body, user, options = {}) {
     .slice(0, 300);
   p.credit = {
     amount: creditAmount,
-    currency:
-      creditCurrencies[0] ||
-      creditEntry.community.currency ||
-      g.root.currency ||
-      "EUR",
+    currency: creditCurrencies[0] || creditEntry.community.currency || g.root.currency || "EUR",
     policy: creditPolicy,
     destination: creditDestination,
     reference: creditReference,
@@ -784,12 +776,12 @@ function plan(g, body, user, options = {}) {
   if (creditAmount > 0 && creditPolicy === "bloquear") {
     if (p.finance === "delete")
       fail(
-        `La operación eliminaría ${creditAmount.toFixed(2)} ${p.credit.currency} de saldo a favor sin conciliar. Concilia o devuelve ese saldo antes de borrar el historial financiero, o cambia la política jurídica de la comunidad.`,
+        `La operación eliminaría ${formatMoney(creditAmount, p.credit.currency)} de saldo a favor sin conciliar. Concilia o devuelve ese saldo antes de borrar el historial financiero, o cambia la política jurídica de la comunidad.`,
         409,
       );
     if (body.confirmCreditSettlement !== true)
       fail(
-        `La operación deja ${creditAmount.toFixed(2)} ${p.credit.currency} de saldo a favor sin conciliar. Documenta su destino (${CREDIT_DESTINATIONS[creditDestination]}) y confirma la conciliación antes de borrar el historial.`,
+        `La operación deja ${formatMoney(creditAmount, p.credit.currency)} de saldo a favor sin conciliar. Documenta su destino (${CREDIT_DESTINATIONS[creditDestination]}) y confirma la conciliación antes de borrar el historial.`,
         409,
       );
     // La vista previa no exige todavía la referencia; se valida al ejecutar.
@@ -881,9 +873,7 @@ function plan(g, body, user, options = {}) {
       ...(originCommunities.length ? originCommunities : [g.root]),
       ...(destinationCommunity ? [destinationCommunity] : []),
     ].map(legalConfigOf);
-    const requiresDocument = transferConfigs.some(
-      (config) => config.traslados.exigirDocumento,
-    );
+    const requiresDocument = transferConfigs.some((config) => config.traslados.exigirDocumento);
     const debtPolicy = transferConfigs.some(
       (config) => config.traslados.deuda === "conservar_origen",
     )
@@ -1012,9 +1002,7 @@ function syncCascadeLinks(changedProperties, changedOwners, tenantProperties) {
     const primary = properties.find((p) => p.id === owner.propertyId) || properties[0];
     // La pertenencia del socio es independiente de su inmueble principal.
     // Solo se limpia si su comunidad de censo ya no existe.
-    const propertyFields = fields.filter(
-      (key) => key !== "communityId" && key !== "communityName",
-    );
+    const propertyFields = fields.filter((key) => key !== "communityId" && key !== "communityName");
     const membership =
       owner.isMember &&
       owner.communityId &&
@@ -1027,9 +1015,17 @@ function syncCascadeLinks(changedProperties, changedOwners, tenantProperties) {
       primary?.id || "",
       ...updateFields.map((key) => {
         if (key === "communityId")
-          return owner.isMember ? (membership ? owner.communityId : "") : primary?.communityId || "";
+          return owner.isMember
+            ? membership
+              ? owner.communityId
+              : ""
+            : primary?.communityId || "";
         if (key === "communityName")
-          return owner.isMember ? (membership ? owner.communityName : "") : primary?.communityName || "";
+          return owner.isMember
+            ? membership
+              ? owner.communityName
+              : ""
+            : primary?.communityName || "";
         return primary?.[key] || "";
       }),
       id,
@@ -1435,24 +1431,8 @@ function apply(g, plan, req) {
       closedDistributions: plan.closedDistributions,
     },
   });
-  return {
-    result: { ok: true, archiveId, temporaryCommunityId: temporaryId, settlement },
-    fileRemovals,
-  };
-}
-
-function removeCommittedFiles(names) {
-  for (const name of unique(names)) {
-    const target = path.resolve(UPLOADS_DIR, name),
-      root = path.resolve(UPLOADS_DIR) + path.sep;
-    if (!target.startsWith(root)) continue;
-    try {
-      fs.unlinkSync(target);
-    } catch (error) {
-      if (error.code !== "ENOENT")
-        console.error("[cascade] No se pudo retirar un adjunto:", error.code);
-    }
-  }
+  for (const name of unique(fileRemovals)) queueUploadCleanup(name);
+  return { result: { ok: true, archiveId, temporaryCommunityId: temporaryId, settlement } };
 }
 export function registerCascadeRoutes(router, collection) {
   router.get("/:id/cascade-preview", (req, res, next) => {
@@ -1532,11 +1512,11 @@ export function registerCascadeRoutes(router, collection) {
       if (!req.body.executionToken)
         fail("Revisa el resumen final antes de ejecutar la operación.", 428);
       if (req.body.executionToken !== executionToken(g, p, req.user)) stale();
-      const { result, fileRemovals } = apply(g, p, req);
+      const { result } = apply(g, p, req);
       db.exec("COMMIT");
       started = false;
-      removeCommittedFiles(fileRemovals);
-      res.json(result);
+      const cleanup = processFeeProofCleanup();
+      res.json({ ...result, cleanup });
     } catch (error) {
       if (started) db.exec("ROLLBACK");
       if (error.status)

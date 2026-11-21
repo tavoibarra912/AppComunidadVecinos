@@ -33,6 +33,40 @@ for (const [name, ddl] of [
 db.exec(
   "CREATE UNIQUE INDEX IF NOT EXISTS fee_receipts_rectification ON fee_receipts(rectifiesReceiptId) WHERE rectifiesReceiptId<>''",
 );
+if (
+  !db
+    .prepare("PRAGMA table_info(fee_assessments)")
+    .all()
+    .some((column) => column.name === "issuedAt")
+)
+  db.exec("ALTER TABLE fee_assessments ADD COLUMN issuedAt TEXT NOT NULL DEFAULT ''");
+if (
+  !db.prepare("SELECT 1 FROM schema_migrations WHERE id='assessment-issuance-history-v1'").get()
+) {
+  transaction(() => {
+    // La auditoría permite recuperar la emisión incluso si ya se purgaron sus recibos.
+    for (const row of db.prepare("SELECT * FROM fee_assessments").all()) {
+      const receipts = db
+        .prepare("SELECT installment,createdAt FROM fee_receipts WHERE assessmentId=?")
+        .all(row.id);
+      const events = db
+        .prepare(
+          "SELECT details,createdAt FROM access_audit WHERE resourceId=? AND action='fee.assessment.issue'",
+        )
+        .all(row.id);
+      const issued = [
+        ...receipts,
+        ...events.map((event) => ({
+          installment: JSON.parse(event.details || "{}").installment,
+          createdAt: event.createdAt,
+        })),
+      ].filter((item) => Number.isInteger(item.installment) && item.installment > 0);
+      for (const item of issued)
+        markAssessmentIssued(row.id, item.installment, item.createdAt || row.createdAt);
+    }
+    db.prepare("INSERT INTO schema_migrations(id) VALUES('assessment-issuance-history-v1')").run();
+  });
+}
 if (!db.prepare("SELECT 1 FROM schema_migrations WHERE id='extraordinary-fees-v1'").get()) {
   transaction(() => {
     // El índice anterior impedía que un inmueble tuviera una cuota ordinaria
@@ -835,6 +869,22 @@ export function assessmentById(id) {
 function assessmentPayload(row) {
   return JSON.parse(row.data);
 }
+
+function markAssessmentIssued(id, number, issuedAt) {
+  const row = assessmentById(id),
+    data = assessmentPayload(row);
+  const installment = data.installments.find((item) => item.number === number);
+  if (installment)
+    installment.issuedAt = installment.issuedAt
+      ? [installment.issuedAt, issuedAt].sort()[0]
+      : issuedAt;
+  const first = row.issuedAt ? [row.issuedAt, issuedAt].sort()[0] : issuedAt;
+  db.prepare("UPDATE fee_assessments SET issuedAt=?,data=? WHERE id=?").run(
+    first,
+    JSON.stringify(data),
+    id,
+  );
+}
 export function selectedChargeProperties(communityId, input) {
   const all = listProperties()
     .filter((property) => property.communityId === communityId)
@@ -1037,7 +1087,10 @@ export function saveAssessment(communityId, input, actor, id = "") {
       if (row.communityId !== communityId)
         throw problem("La derrama pertenece a otra comunidad.", 403);
       if (row.cancelledAt) throw problem("La derrama está anulada.", 409);
-      if (db.prepare("SELECT 1 FROM fee_receipts WHERE assessmentId=? LIMIT 1").get(id))
+      if (
+        row.issuedAt ||
+        db.prepare("SELECT 1 FROM fee_receipts WHERE assessmentId=? LIMIT 1").get(id)
+      )
         throw problem(
           "La derrama ya tiene recibos emitidos. Para cambiarla, anúlala y crea una nueva.",
           409,
@@ -1098,7 +1151,9 @@ export function assessmentView(row, date = today()) {
     return {
       ...installment,
       issued,
-      issuedAt: active.length ? active.map((receipt) => receipt.createdAt).sort()[0] : "",
+      issuedAt:
+        installment.issuedAt ||
+        (rows.length ? rows.map((receipt) => receipt.createdAt).sort()[0] : ""),
       receiptCount: rows.length,
       paid,
       outstanding,
@@ -1108,7 +1163,9 @@ export function assessmentView(row, date = today()) {
         row.cancelledAt || installment.cancelledAt
           ? "cancelled"
           : !rows.length
-            ? "pending"
+            ? installment.issuedAt
+              ? "purged"
+              : "pending"
             : !active.length
               ? "rectification"
               : needsRectification
@@ -1131,14 +1188,14 @@ export function assessmentView(row, date = today()) {
     cancelledCount = installments.filter(
       (installment) => installment.status === "cancelled",
     ).length;
-  const canEdit = !row.cancelledAt && !receipts.length && !cancelledCount;
+  const canEdit = !row.cancelledAt && !row.issuedAt && !receipts.length && !cancelledCount;
   let status = "draft";
   if (row.cancelledAt) status = "cancelled";
   else if (installments.length && cancelledCount === installments.length) status = "cancelled";
   else if (canEdit) status = "draft";
   else if (installments.some((item) => item.needsRectification)) status = "rectification";
-  else if (installments.every((item) => ["paid", "cancelled"].includes(item.status)))
-    status = "collected";
+  else if (installments.every((item) => ["paid", "cancelled", "purged"].includes(item.status)))
+    status = installments.some((item) => item.status === "purged") ? "purged" : "collected";
   else status = "active";
   return {
     id: row.id,
@@ -1150,6 +1207,7 @@ export function assessmentView(row, date = today()) {
     cancelledAt: row.cancelledAt,
     cancellationReason: row.cancellationReason,
     canEdit,
+    issuedAt: row.issuedAt || "",
     purpose: data.purpose,
     agreement: data.agreement,
     mode: data.mode,
@@ -1204,6 +1262,7 @@ export function previewAssessment(id, number) {
   const { data, installment } = assessmentInstallment(row, number);
   if (installment.cancelledAt) throw problem("Este plazo está anulado.", 409);
   if (
+    installment.issuedAt ||
     db
       .prepare("SELECT 1 FROM fee_receipts WHERE assessmentId=? AND installment=? LIMIT 1")
       .get(row.id, number)
@@ -1330,6 +1389,7 @@ export function issueAssessment(id, input, actor) {
         }`,
       );
     }
+    markAssessmentIssued(row.id, batch.installment, now());
     audit(actor, "assessment.issue", row.id, {
       communityId: row.communityId,
       installment: batch.installment,
@@ -1812,25 +1872,46 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
             .fillColor("#000000")
             .text("Reparto interno de la titularidad (informativo)");
           doc.font("Helvetica").fontSize(9);
-          for (const owner of owners) {
-            const percentage = ownerPercentage(property, owner.id);
+          const holders = [
+            ...owners.map((owner) => ({
+              id: owner.id,
+              name: `${owner.name} ${owner.surname || ""}`.trim(),
+            })),
+            ...[...historicalOwners.values()].map((entry) => ({ ...entry, historical: true })),
+          ];
+          for (const holder of holders) {
+            const attributed = group.receipts.filter((receipt) =>
+              receipt.snapshot.owners.some((entry) => entry.id === holder.id),
+            );
+            const shares = attributed.map((receipt) => ({
+              receipt,
+              share: receiptShare(receipt, holder.id, property, debtRule.porcentajesHistoricos),
+            }));
+            const known = shares.filter(({ share }) => share.percentage);
+            const percentages = [
+              ...new Set(known.map(({ share }) => Number(share.percentage.toFixed(2)))),
+            ];
+            const amount = known.reduce(
+              (sum, { receipt, share }) => sum + shareAmount(receipt.outstanding, share.percentage),
+              0,
+            );
+            const label = `${holder.name}${holder.historical ? " (histórico)" : ""}`;
             doc.text(
-              `${`${owner.name} ${owner.surname || ""}`.trim()}: ${
-                percentage
-                  ? `${percentage} % · ${money(shareAmount(totalOutstanding, percentage))}`
-                  : "porcentaje no consta"
+              `${label}: ${
+                !attributed.length
+                  ? "sin recibos pendientes a su nombre"
+                  : percentages.length
+                    ? `${percentages.length === 1 ? `${percentages[0]} %` : `porcentajes históricos ${percentages.join(" / ")} %`} · ${money(amount)}`
+                    : "porcentaje no consta"
               }`,
             );
-          }
-          for (const entry of historicalOwners.values()) {
-            const percentage = Number(entry.percentage);
-            doc.text(
-              `${entry.name} (histórico): ${
-                Number.isFinite(percentage) && percentage > 0 && percentage <= 100
-                  ? `${percentage} %`
-                  : "porcentaje no consta"
-              }`,
-            );
+            const unknown = shares
+              .filter(({ share }) => !share.percentage)
+              .reduce((sum, { receipt }) => sum + receipt.outstanding, 0);
+            if (unknown && known.length)
+              doc.text(`Sin porcentaje acreditado en algún recibo: ${money(unknown)}`);
+            if (known.some(({ share }) => share.source === "actual"))
+              doc.text("Incluye porcentaje actual, no acreditado al emitir el recibo.");
           }
           doc.text(
             "El reparto interno no limita la responsabilidad del titular frente a la comunidad.",
@@ -2292,6 +2373,9 @@ export function adminNotice(row, ownerId, subject) {
   );
 }
 function purgeReceiptDependencies(id) {
+  const receipt = receiptById(id);
+  if (receipt.assessmentId)
+    markAssessmentIssued(receipt.assessmentId, receipt.installment, receipt.createdAt);
   for (const proof of db.prepare("SELECT diskName FROM fee_proofs WHERE receiptId=?").all(id))
     queueFeeProofCleanup(proof.diskName);
   db.prepare("DELETE FROM fee_allocations WHERE receiptId=?").run(id);
