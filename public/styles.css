@@ -1454,6 +1454,54 @@ dialog .dialog-content {
   grid-column: 1 / -1;
 }
 
+.community-statutes-tabs {
+  margin-top: 0;
+}
+
+.community-statutes-pane h3 {
+  margin-top: 0;
+}
+
+.community-statutes-pane .detail-section-subtitle {
+  max-width: none;
+}
+
+.form-grid label.community-legal-check {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.community-legal-check input[type="checkbox"] {
+  margin-top: 1px;
+}
+
+.community-legal-check-title {
+  display: block;
+  line-height: 20px;
+}
+
+.community-legal-check .field-hint {
+  display: block;
+  margin-top: 6px;
+}
+
+.settings-community-actions {
+  align-items: center;
+}
+
+.settings-community-actions .form-intro {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+
+#settings-community-save {
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+
 /* Editor de observaciones enriquecido */
 .rich-text-field {
   display: grid;

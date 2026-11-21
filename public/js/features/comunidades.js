@@ -292,7 +292,9 @@ function applyCommunityReadonly() {
       const allowed =
         element.closest("#community-editor-fees") ||
         element.closest(".doc-library") ||
-        element.matches("button[data-community-tab],#close-dialog") ||
+        element.matches(
+          "button[data-community-tab],button[data-community-statutes-tab],#close-dialog",
+        ) ||
         (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
       if (!allowed && "disabled" in element && !element.disabled) {
         if (element.matches("button")) element.dataset.communityReadonlyDisabled = "true";
@@ -329,7 +331,7 @@ communityForm.addEventListener(
   (event) => {
     if (!communityReadonly) return;
     const allowed = event.target.closest(
-      'button[data-community-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees,.doc-library',
+      'button[data-community-tab],button[data-community-statutes-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees,.doc-library',
     );
     if (!allowed) {
       event.preventDefault();
@@ -591,6 +593,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
     : "Nueva comunidad";
 
   switchCommunityEditorTab(defaultTab);
+  switchCommunityStatutesTab("regime");
   setFormReadonly(communityForm, readonly);
 
   if (c) {
@@ -756,6 +759,36 @@ function renderCommunityEditorProperties(c) {
 }
 
 // --- Tabs del editor de comunidad ---
+function switchCommunityStatutesTab(tab) {
+  document.querySelectorAll("[data-community-statutes-tab]").forEach((button) => {
+    const active = button.dataset.communityStatutesTab === tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+  document.querySelectorAll("[data-community-statutes-pane]").forEach((pane) => {
+    pane.hidden = pane.dataset.communityStatutesPane !== tab;
+  });
+}
+const communityStatutesTabs = [...document.querySelectorAll("[data-community-statutes-tab]")];
+communityStatutesTabs.forEach((button, index) => {
+  button.addEventListener("click", () =>
+    switchCommunityStatutesTab(button.dataset.communityStatutesTab),
+  );
+  button.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? communityStatutesTabs.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + communityStatutesTabs.length) %
+            communityStatutesTabs.length;
+    communityStatutesTabs[next].click();
+    communityStatutesTabs[next].focus();
+  });
+});
 document.querySelectorAll(".community-editor-tab[data-community-tab]").forEach((btn) => {
   btn.addEventListener("click", () => switchCommunityEditorTab(btn.dataset.communityTab));
 });
