@@ -1636,8 +1636,6 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
   const receiptShares = new Map();
   let imputableOutstanding = 0;
   let unattributedOutstanding = 0;
-  let imputablePaid = 0;
-  let paidWithoutShare = 0;
   if (ownerId) {
     for (const receipt of receiptViews) {
       const share = receiptShare(
@@ -1652,11 +1650,6 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
           imputableOutstanding += shareAmount(receipt.outstanding, share.percentage);
         else unattributedOutstanding += receipt.outstanding;
       }
-      const paid = receipt.payments
-        .filter((payment) => !payment.reversedAt && paymentIds.has(payment.id))
-        .reduce((sum, payment) => sum + payment.amount, 0);
-      if (share.percentage) imputablePaid += shareAmount(paid, share.percentage);
-      else paidWithoutShare += paid;
     }
   }
   const individualExpression = !!ownerId && debtRule.expresion === "cuota";
@@ -1666,7 +1659,6 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
     debtRule.mostrarRepartoInterno && debtRule.porcentajesHistoricos !== "omitir";
   const money = (cents) => formatMoney(cents, community.currency || "EUR");
   const certificateOutstanding = individualExpression ? imputableOutstanding : totalOutstanding;
-  const certificatePaid = individualExpression ? imputablePaid : totalPaid;
 
   // Generate PDF using pdfkit
   const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
@@ -1776,7 +1768,9 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
             .filter((share) => share?.percentage);
           const groupImputable = group.receipts.reduce((sum, receipt) => {
             const share = receiptShares.get(receipt.id);
-            return sum + (share?.percentage ? shareAmount(receipt.outstanding, share.percentage) : 0);
+            return (
+              sum + (share?.percentage ? shareAmount(receipt.outstanding, share.percentage) : 0)
+            );
           }, 0);
           const percentages = [
             ...new Set(known.map((share) => Number(share.percentage.toFixed(2)))),
@@ -1800,12 +1794,13 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
                   } · ${money(groupImputable)}`
                 : "Reparto interno del titular: porcentaje no consta",
             );
-            if (groupOutstanding - groupImputable > 0 && percentages.length)
-              doc.text(
-                `Sin porcentaje acreditado en algún recibo: ${money(
-                  groupOutstanding - groupImputable,
-                )}`,
-              );
+            const groupUnattributed = group.receipts.reduce(
+              (sum, receipt) =>
+                sum + (receiptShares.get(receipt.id)?.percentage ? 0 : receipt.outstanding),
+              0,
+            );
+            if (groupUnattributed > 0 && percentages.length)
+              doc.text(`Sin porcentaje acreditado en algún recibo: ${money(groupUnattributed)}`);
           }
           if (known.some((share) => share.source === "actual"))
             doc.text("Incluye porcentaje actual, no acreditado al emitir el recibo.");
@@ -1947,9 +1942,7 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
             unattributedOutstanding,
           )}`,
         );
-      doc.text(`Total pagado imputable (histórico): ${money(certificatePaid)}`);
-      if (paidWithoutShare > 0)
-        doc.text(`Pagado sin porcentaje acreditado: ${money(paidWithoutShare)}`);
+      doc.text(`Total pagado por el titular (histórico): ${money(totalPaid)}`);
     } else {
       doc.text(`Total pendiente: ${money(totalOutstanding)}`);
       doc.text(`Total pagado (histórico): ${money(totalPaid)}`);
@@ -1962,7 +1955,7 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
         "El total pagado corresponde a cobros aplicados a los recibos de este ámbito, excluidos los anulados. " +
           (property
             ? "El saldo a favor sin asignar pertenece al pagador y no se atribuye al inmueble."
-            : "El saldo a favor sin asignar se muestra por separado."),
+            : "Los cobros del titular reflejan su aportación real, sin aplicar de nuevo su porcentaje de titularidad. El saldo a favor sin asignar se muestra por separado."),
       );
     doc.moveDown(1);
 

@@ -669,6 +669,19 @@ test("inmueble: borrar el último inmueble de un socio conserva su comunidad de 
   assert.equal(get("owners", member).isMember, 1);
 });
 
+test("inmueble: la cascada conserva el censo del socio con otro inmueble en otra comunidad", async () => {
+  const f = fixture();
+  db.prepare("UPDATE owners SET isMember=1,communityId=?,communityName=? WHERE id=?")
+    .run(f.target, "Asociación de pertenencia", f.owner);
+  const p = await plan("properties", f.p2);
+  const r = await execute("properties", f.p2, p);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const owner = get("owners", f.owner);
+  assert.equal(owner.communityId, f.target);
+  assert.equal(owner.communityName, "Asociación de pertenencia");
+  assert.ok(JSON.parse(owner.propertyIds).includes(f.p1));
+});
+
 test("comunidad: mover a otra comunidad sincroniza nombres, propietarios, finanzas y publicaciones", async () => {
   const f = fixture(),
     p = await plan("communities", f.c1);

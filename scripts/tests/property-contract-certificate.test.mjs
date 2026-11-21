@@ -357,6 +357,241 @@ async function certificate(input) {
   }
 }
 
+async function votingFixture(extra = {}) {
+  const f = fixture();
+  const a = account("super_admin"),
+    b = account("super_admin");
+  db.prepare("UPDATE owners SET userId=? WHERE id=?").run(a.id, f.o);
+  db.prepare("UPDATE owners SET userId=? WHERE id=?").run(b.id, f.o2);
+  db.prepare("UPDATE properties SET ownerIds=?,ownerPercentages=? WHERE id=?").run(
+    JSON.stringify([f.o2]),
+    JSON.stringify({ [f.o2]: 100 }),
+    f.p2,
+  );
+  const createPoll = async (pollExtra = {}) => {
+    const result = await request(admin, "/communications/posts", "POST", {
+      communityId: f.c,
+      type: "notice",
+      title: "Consulta",
+      body: "Aprobación de la propuesta",
+      status: "published",
+      priority: "normal",
+      publishAt: new Date().toISOString(),
+      audience: { mode: "owners", ownerIds: [], tenantIds: [], propertyIds: [] },
+      channels: [],
+      poll: {
+        type: "vote",
+        electorate: "owners",
+        question: "¿Se aprueba?",
+        options: ["Sí", "No"],
+        resultsLive: true,
+        closesAt: "2099-01-01T00:00:00.000Z",
+        ...pollExtra,
+      },
+    });
+    assert.equal(result.status, 201, JSON.stringify(result.data));
+    return result.data;
+  };
+  const post = await createPoll(extra);
+  return { ...f, a, b, post, createPoll };
+}
+
+test("revisión P1: cerrar y reabrir consultas antiguas conserva el empate por cuenta", async () => {
+  const f = await votingFixture();
+  db.prepare("UPDATE properties SET participationCoef='30' WHERE id=?").run(f.p);
+  db.prepare("UPDATE properties SET participationCoef='70' WHERE id=?").run(f.p2);
+  const saved = JSON.parse(row("communication_posts", f.post.id).data);
+  delete saved.poll.votingRule;
+  db.prepare("UPDATE communication_posts SET data=? WHERE id=?").run(
+    JSON.stringify(saved),
+    f.post.id,
+  );
+  db.prepare("DELETE FROM communication_voting_census WHERE postId=?").run(f.post.id);
+  for (const [actor, choice] of [
+    [f.a, 0],
+    [f.b, 1],
+  ])
+    insert("communication_ballots", {
+      postId: f.post.id,
+      userId: actor.id,
+      choices: JSON.stringify([choice]),
+      createdAt: "2026-01-01",
+      weight: 0,
+      weightFrozen: 0,
+    });
+  const expected = { total: 2, counts: [1, 1], ballots: 2, weighted: false };
+  let current = (await request(admin, `/communications/posts/${f.post.id}`)).data;
+  assert.deepEqual(current.pollResults, expected);
+  for (const closed of [true, false]) {
+    const result = await request(admin, `/communications/posts/${f.post.id}`, "PUT", {
+      ...current,
+      poll: { ...current.poll, closed },
+    });
+    assert.equal(result.status, 200, JSON.stringify(result.data));
+    assert.equal(result.data.poll.votingRule.unidad, "cuenta");
+    assert.deepEqual(result.data.pollResults, expected);
+    current = result.data;
+  }
+});
+
+test("revisión P1: una transferencia entre respuestas no duplica el coeficiente", async () => {
+  const f = await votingFixture();
+  const route = `/communications/posts/${f.post.id}/ballot`;
+  assert.equal((await request(f.a, route, "POST", { choices: [0] })).status, 201);
+  db.prepare("UPDATE properties SET ownerIds=?,ownerPercentages=? WHERE id=?").run(
+    JSON.stringify([f.o2]),
+    JSON.stringify({ [f.o2]: 100 }),
+    f.p,
+  );
+  assert.equal((await request(f.b, route, "POST", { choices: [1] })).status, 201);
+  const current = (await request(admin, `/communications/posts/${f.post.id}`)).data;
+  assert.deepEqual(current.pollResults, {
+    total: 100,
+    counts: [50, 50],
+    ballots: 2,
+    weighted: true,
+  });
+  assert.equal(JSON.stringify(current).includes("ownerPercentages"), false);
+  assert.equal((await request(admin, `/communications/posts/${f.post.id}`, "DELETE")).status, 200);
+  assert.equal(
+    db.prepare("SELECT 1 FROM communication_voting_census WHERE postId=?").get(f.post.id),
+    undefined,
+  );
+});
+
+test("revisión P1: los coeficientes quedan fijados antes de la primera respuesta", async () => {
+  const f = await votingFixture();
+  db.prepare("UPDATE properties SET participationCoef='99' WHERE communityId=?").run(f.c);
+  for (const actor of [f.a, f.b])
+    assert.equal(
+      (await request(actor, `/communications/posts/${f.post.id}/ballot`, "POST", { choices: [0] }))
+        .status,
+      201,
+    );
+  assert.equal(
+    (await request(admin, `/communications/posts/${f.post.id}`)).data.pollResults.total,
+    100,
+  );
+});
+
+for (const copropiedad of ["todos", "representante"])
+  test(`revisión P1: copropiedad ${copropiedad} conserva un total de 100 sin porcentajes heredados`, async () => {
+    const f = await votingFixture();
+    db.prepare("DELETE FROM properties WHERE id=?").run(f.p2);
+    db.prepare(
+      "UPDATE properties SET ownerIds=?,ownerPercentages='{}',participationCoef='100' WHERE id=?",
+    ).run(JSON.stringify([f.o, f.o2]), f.p);
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+      JSON.stringify({ votaciones: { unidad: "coeficiente", copropiedad } }),
+      f.c,
+    );
+    const post = await f.createPoll();
+    for (const [actor, choice] of [
+      [f.a, 0],
+      [f.b, 1],
+    ])
+      assert.equal(
+        (
+          await request(actor, `/communications/posts/${post.id}/ballot`, "POST", {
+            choices: [choice],
+          })
+        ).status,
+        201,
+      );
+    assert.deepEqual((await request(admin, `/communications/posts/${post.id}`)).data.pollResults, {
+      total: 100,
+      counts: copropiedad === "todos" ? [50, 50] : [100, 0],
+      ballots: 2,
+      weighted: true,
+    });
+  });
+
+test("revisión P1: una votación ponderada anterior con votos no inventa un censo retrospectivo", async () => {
+  const f = await votingFixture();
+  const route = `/communications/posts/${f.post.id}/ballot`;
+  assert.equal((await request(f.a, route, "POST", { choices: [0] })).status, 201);
+  db.prepare("DELETE FROM communication_voting_census WHERE postId=?").run(f.post.id);
+  const result = await request(f.b, route, "POST", { choices: [1] });
+  assert.equal(result.status, 409, JSON.stringify(result.data));
+  assert.match(result.data.error, /censo congelado/i);
+  assert.equal(
+    db.prepare("SELECT COUNT(*) n FROM communication_ballots WHERE postId=?").get(f.post.id).n,
+    1,
+  );
+});
+
+test("revisión P2: pagos reales del titular y recibos sin porcentaje no se vuelven a prorratear", async () => {
+  const f = fixture(),
+    r = `${f.p}-paid`;
+  db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+    JSON.stringify({
+      deudaCopropietarios: {
+        expresion: "cuota",
+        mostrarRepartoInterno: true,
+        porcentajesHistoricos: "no_consta",
+      },
+    }),
+    f.c,
+  );
+  receipt(f, r, f.p, [
+    { id: f.o, name: "Ana Prueba", percentage: 70 },
+    { id: f.o2, name: "Beatriz Prueba", percentage: 30 },
+  ]);
+  payment(f, `${r}-payment`, f.o, 5000, [[r, 3000]]); // 30 aplicados y 20 de crédito.
+  let text = await certificate({ communityId: f.c, ownerId: f.o });
+  assert.match(text, /Total pagado por el titular \(histórico\): 30,00 €/);
+  assert.match(text, /Total pendiente imputable: 49,00 €/);
+  assert.match(text, /Saldo a favor sin asignar: 20,00 €/);
+  assert.doesNotMatch(text, /Sin porcentaje acreditado en algún recibo/);
+  const missing = `${r}-missing`;
+  receipt(f, missing, f.p, [{ id: f.o, name: "Ana Prueba" }], { amount: 5000, period: "2026-02" });
+  payment(f, `${missing}-payment`, f.o, 1000, [[missing, 1000]]);
+  text = await certificate({ communityId: f.c, ownerId: f.o });
+  assert.match(text, /Total pagado por el titular \(histórico\): 40,00 €/);
+  assert.match(text, /Sin porcentaje acreditado en algún recibo: 40,00 €/);
+  assert.match(text, /Pendiente sin porcentaje acreditado \(deuda del inmueble\): 40,00 €/);
+  db.prepare("UPDATE fee_payments SET ownerId=? WHERE id=?").run(f.o2, `${r}-payment`);
+  text = await certificate({ communityId: f.c, ownerId: f.o });
+  assert.match(text, /Total pagado por el titular \(histórico\): 10,00 €/);
+  assert.match(text, /Total pendiente imputable: 49,00 €/);
+});
+
+test("revisión P2: guardar y vincular inmuebles preserva la comunidad del socio", async () => {
+  const f = fixture(),
+    association = fixture();
+  db.prepare("UPDATE communities SET name='Asociación' WHERE id=?").run(association.c);
+  db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+    '{"regimen":"asociacion"}',
+    association.c,
+  );
+  db.prepare("UPDATE owners SET isMember=1,communityId=?,communityName=? WHERE id=?").run(
+    association.c,
+    "Asociación",
+    f.o,
+  );
+  const before = row("owners", f.o);
+  let result = await request(admin, `/owners/${f.o}`, "PUT", {
+    version: before.version,
+    notes: "Cambio de notas",
+    propertyIds: [f.p, f.p2],
+  });
+  assert.equal(result.status, 200, JSON.stringify(result.data));
+  assert.equal(result.data.communityId, association.c);
+  assert.equal(result.data.communityName, "Asociación");
+  const current = await property(f);
+  result = await request(admin, `/properties/${f.p}`, "PUT", {
+    ...current,
+    notes: "Notas del inmueble",
+  });
+  assert.equal(result.status, 200, JSON.stringify(result.data));
+  assert.equal(row("owners", f.o).communityId, association.c);
+  const { applyOwnerPropertyLink } = await import("../../src/domain.js");
+  applyOwnerPropertyLink(f.o, f.p2);
+  assert.equal(row("owners", f.o).communityId, association.c);
+  const { profiles } = await import("../../src/communication-store.js");
+  assert.ok(profiles(association.c).owners.some((owner) => owner.id === f.o));
+});
+
 test("R4: certificado real por inmueble identifica al titular y muestra 30 pagados / 70 pendientes", async () => {
   const f = fixture(),
     r = f.p + "-receipt";
@@ -464,7 +699,11 @@ test("R4: la configuración jurídica decide la expresión de la deuda y el porc
     f.c,
   );
   db.prepare("UPDATE fee_receipts SET snapshot=? WHERE id=?").run(
-    JSON.stringify({ community: "Comunidad de prueba", property: f.p, owners: [{ id: f.o, name: "Ana Prueba" }] }),
+    JSON.stringify({
+      community: "Comunidad de prueba",
+      property: f.p,
+      owners: [{ id: f.o, name: "Ana Prueba" }],
+    }),
     r,
   );
   const current = await certificate({ communityId: f.c, ownerId: f.o });

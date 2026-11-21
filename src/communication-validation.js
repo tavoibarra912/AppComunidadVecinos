@@ -1,4 +1,4 @@
-import { problem, profiles } from "./communication-store.js";
+import { problem, profiles, pollRule } from "./communication-store.js";
 import { votingRuleOf } from "./legal-config.js";
 
 const text = (value, max, label, required = false) => {
@@ -164,9 +164,9 @@ export function validatePost(input, existing, data) {
       closed: v.closed === true,
       // La regla queda congelada al crear la consulta, como el censo y las
       // opciones. Las consultas antiguas sin regla conservan el cómputo por cuenta.
-      votingRule:
-        existing?.poll?.votingRule ||
-        votingRuleOf(data.communities.find((community) => community.id === p.communityId)),
+      votingRule: existing?.poll
+        ? pollRule(existing)
+        : votingRuleOf(data.communities.find((community) => community.id === p.communityId)),
     };
     if (p.poll.closesAt <= p.publishAt)
       throw problem("El cierre de consulta debe ser posterior a su publicación.");
@@ -174,13 +174,8 @@ export function validatePost(input, existing, data) {
       throw problem("La consulta debe cerrar antes de archivar la publicación.");
   }
   if (existing?.distributed) {
-    // Las consultas antiguas no guardaban votingRule: al comparar se les
-    // atribuye la regla vigente para que cerrarlas no se rechace por migración.
-    const ruleFor = (poll) =>
-      poll?.votingRule ||
-      votingRuleOf(data.communities.find((community) => community.id === p.communityId));
     const withoutClosed = (poll) =>
-      poll ? { ...poll, closed: undefined, votingRule: ruleFor(poll) } : null;
+      poll ? { ...poll, closed: undefined, votingRule: pollRule({ ...existing, poll }) } : null;
     if (JSON.stringify(withoutClosed(p.poll)) !== JSON.stringify(withoutClosed(existing.poll)))
       throw problem(
         "La pregunta, las opciones y las reglas quedan fijadas al publicar. Solo puedes cerrar o reabrir la consulta.",

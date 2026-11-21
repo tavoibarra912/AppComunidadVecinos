@@ -141,6 +141,7 @@ function graph(collection, id) {
     "communication_recipients",
     "communication_comments",
     "communication_ballots",
+    "communication_voting_census",
     "communication_files",
     "communication_audit",
     "communication_outbox",
@@ -1009,13 +1010,12 @@ function syncCascadeLinks(changedProperties, changedOwners, tenantProperties) {
       )
       .all(id);
     const primary = properties.find((p) => p.id === owner.propertyId) || properties[0];
-    // Sin inmuebles, un socio mantiene su comunidad de censo salvo que la
-    // comunidad se haya borrado; el resto de campos del inmueble se limpian.
+    // La pertenencia del socio es independiente de su inmueble principal.
+    // Solo se limpia si su comunidad de censo ya no existe.
     const propertyFields = fields.filter(
       (key) => key !== "communityId" && key !== "communityName",
     );
     const membership =
-      !primary &&
       owner.isMember &&
       owner.communityId &&
       db.prepare("SELECT 1 FROM communities WHERE id=?").get(owner.communityId);
@@ -1026,10 +1026,11 @@ function syncCascadeLinks(changedProperties, changedOwners, tenantProperties) {
       JSON.stringify(properties.map((p) => p.id)),
       primary?.id || "",
       ...updateFields.map((key) => {
-        if (primary) return primary[key] || "";
-        if (key === "communityId") return membership ? owner.communityId : "";
-        if (key === "communityName") return membership ? owner.communityName : "";
-        return "";
+        if (key === "communityId")
+          return owner.isMember ? (membership ? owner.communityId : "") : primary?.communityId || "";
+        if (key === "communityName")
+          return owner.isMember ? (membership ? owner.communityName : "") : primary?.communityName || "";
+        return primary?.[key] || "";
       }),
       id,
     );

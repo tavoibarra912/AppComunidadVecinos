@@ -46,7 +46,9 @@ export function applyOwnerPropertyLink(ownerId, linkedPropertyId) {
   const community = db.prepare("SELECT name FROM communities WHERE id = ?").get(linked.communityId);
   db.prepare(
     `UPDATE owners SET
-       communityId = ?, communityName = ?, plot = ?, propertyType = ?,
+       communityId = CASE WHEN isMember=1 AND communityId<>'' THEN communityId ELSE ? END,
+       communityName = CASE WHEN isMember=1 AND communityId<>'' THEN communityName ELSE ? END,
+       plot = ?, propertyType = ?,
        cadastralRef = ?, registryNumber = ?, floor = ?, door = ?,
        areaM2 = ?, participationCoef = ?, propertyUse = ?
      WHERE id = ?`,
@@ -127,7 +129,9 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
       .get(linked.communityId);
     db.prepare(
       `UPDATE owners SET
-         communityId = ?, communityName = ?, plot = ?, propertyType = ?,
+         communityId = CASE WHEN isMember=1 AND communityId<>'' THEN communityId ELSE ? END,
+         communityName = CASE WHEN isMember=1 AND communityId<>'' THEN communityName ELSE ? END,
+         plot = ?, propertyType = ?,
          cadastralRef = ?, registryNumber = ?, floor = ?, door = ?,
          areaM2 = ?, participationCoef = ?, propertyUse = ?
        WHERE id = ?`,

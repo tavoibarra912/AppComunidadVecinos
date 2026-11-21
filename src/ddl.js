@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS communication_ballots (
  weight REAL NOT NULL DEFAULT 0, weightFrozen INTEGER NOT NULL DEFAULT 0,
  PRIMARY KEY(postId,userId)
 );
+CREATE TABLE IF NOT EXISTS communication_voting_census (
+ postId TEXT PRIMARY KEY, data TEXT NOT NULL, createdAt TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS communication_files (
  id TEXT PRIMARY KEY, postId TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL, content BLOB NOT NULL,
  kind TEXT NOT NULL, final INTEGER NOT NULL DEFAULT 0, createdAt TEXT NOT NULL, createdBy TEXT NOT NULL

@@ -23,6 +23,7 @@ import {
   materialize,
   mayVote,
   ballotWeights,
+  ensureVotingCensus,
   pollOpen,
   summary,
   detail,
@@ -333,6 +334,7 @@ router.delete(
       db.prepare("DELETE FROM communication_recipients WHERE postId=?").run(p.id);
       db.prepare("DELETE FROM communication_comments WHERE postId=?").run(p.id);
       db.prepare("DELETE FROM communication_ballots WHERE postId=?").run(p.id);
+      db.prepare("DELETE FROM communication_voting_census WHERE postId=?").run(p.id);
       db.prepare("DELETE FROM communication_files WHERE postId=?").run(p.id);
       db.prepare("DELETE FROM communication_outbox WHERE postId=?").run(p.id);
       db.prepare("DELETE FROM communication_audit WHERE postId=?").run(p.id);
@@ -434,27 +436,29 @@ router.post(
         .get(p.id, req.user.id)
     )
       throw problem("Ya registraste tu respuesta.", 409);
-    // El peso se fija al votar: cambios posteriores de coeficientes o del
-    // censo no reescriben el resultado. Se calcula junto a los votos ya
-    // emitidos para que la copropiedad con representante compute una sola vez.
-    const existing = db
-      .prepare(
-        "SELECT userId,choices,weight,weightFrozen FROM communication_ballots WHERE postId=? ORDER BY createdAt,userId",
-      )
-      .all(p.id);
-    const weight =
-      ballotWeights(p, [...existing, { userId: req.user.id }]).weights.get(req.user.id) || 0;
-    try {
-      db.prepare(
-        "INSERT INTO communication_ballots (postId,userId,choices,createdAt,weight,weightFrozen) VALUES (?,?,?,?,?,1)",
-      ).run(p.id, req.user.id, JSON.stringify(choices), new Date().toISOString(), weight);
-    } catch (error) {
-      // Dos peticiones simultáneas pueden pasar la comprobación anterior; la
-      // clave primaria sigue garantizando una única respuesta por cuenta.
-      if (/UNIQUE constraint/.test(error.message))
-        throw problem("Ya registraste tu respuesta.", 409);
-      throw error;
-    }
+    // Las consultas anteriores sin respuestas fijan aquí su censo; las nuevas
+    // ya lo guardaron al publicarse. Nunca se reparte usando titularidades vivas.
+    transaction(() => {
+      ensureVotingCensus(p);
+      const existing = db
+        .prepare(
+          "SELECT userId,choices,weight,weightFrozen FROM communication_ballots WHERE postId=? ORDER BY createdAt,userId",
+        )
+        .all(p.id);
+      const weight =
+        ballotWeights(p, [...existing, { userId: req.user.id }]).weights.get(req.user.id) || 0;
+      try {
+        db.prepare(
+          "INSERT INTO communication_ballots (postId,userId,choices,createdAt,weight,weightFrozen) VALUES (?,?,?,?,?,1)",
+        ).run(p.id, req.user.id, JSON.stringify(choices), new Date().toISOString(), weight);
+      } catch (error) {
+        // Dos peticiones simultáneas pueden pasar la comprobación anterior; la
+        // clave primaria sigue garantizando una única respuesta por cuenta.
+        if (/UNIQUE constraint/.test(error.message))
+          throw problem("Ya registraste tu respuesta.", 409);
+        throw error;
+      }
+    });
     res.status(201).json({ ok: true });
   }),
 );

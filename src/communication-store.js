@@ -319,6 +319,7 @@ export function materialize(now = Date.now()) {
           db.prepare(
             "INSERT OR IGNORE INTO communication_recipients(postId,userId) VALUES (?,?)",
           ).run(post.id, user.id);
+        ensureVotingCensus(post);
         audit(post.id, post.createdBy, "published");
         queue(post);
       });
@@ -345,6 +346,8 @@ export function mayVote(user, post, data = policyData()) {
   if (!invited) return false;
   if (post.poll.electorate !== "owners") return true;
   const owners = profiles(post.communityId, data).owners.filter((o) => o.userId === user.id);
+  const census = votingCensus(post);
+  if (census && !census.owners.some((owner) => owner.userId === user.id)) return false;
   // Si cualquiera de sus fichas está suspendida, la cuenta no vota: la vista
   // y la ruta deben aplicar el mismo criterio, también con varias fichas.
   return owners.length > 0 && !owners.some((o) => o.votingRights === "suspended");
@@ -357,7 +360,7 @@ export function pollOpen(post, now = Date.now()) {
     !["draft", "scheduled", "cancelled", "archived"].includes(phase(post, now))
   );
 }
-function pollRule(post) {
+export function pollRule(post) {
   const stored = post.poll?.votingRule;
   if (stored?.censo) return stored;
   const association =
@@ -394,6 +397,48 @@ const parseObject = (value) => {
     return {};
   }
 };
+function votingCensus(post) {
+  if (!post.id) return null;
+  const saved = db
+    .prepare("SELECT data FROM communication_voting_census WHERE postId=?")
+    .get(post.id);
+  return saved ? JSON.parse(saved.data) : null;
+}
+
+// Se guarda aparte de la publicación para no exponer el censo en su DTO público.
+export function ensureVotingCensus(post) {
+  const rule = pollRule(post);
+  if (
+    post.poll?.type !== "vote" ||
+    post.poll.electorate !== "owners" ||
+    rule.unidad === "cuenta" ||
+    rule.censo === "socios" ||
+    votingCensus(post)
+  )
+    return;
+  // No es posible reconstruir un censo histórico a partir del peso agregado
+  // de votos anteriores. No se mezclan con un nuevo reparto de titularidad.
+  if (db.prepare("SELECT 1 FROM communication_ballots WHERE postId=?").get(post.id))
+    throw problem(
+      "Esta votación no tiene un censo congelado. Ciérrala y crea otra para admitir nuevas respuestas.",
+      409,
+    );
+  const properties = db
+    .prepare(
+      "SELECT ownerIds,ownerPercentages,participationCoef FROM properties WHERE communityId=?",
+    )
+    .all(post.communityId);
+  const ownerIds = new Set(properties.flatMap((property) => parseList(property.ownerIds)));
+  const owners = db
+    .prepare("SELECT id,userId,communityId FROM owners")
+    .all()
+    .filter((owner) => ownerIds.has(owner.id));
+  db.prepare("INSERT INTO communication_voting_census(postId,data,createdAt) VALUES (?,?,?)").run(
+    post.id,
+    JSON.stringify({ owners, properties }),
+    new Date().toISOString(),
+  );
+}
 /**
  * Peso de cada respuesta según la regla congelada en la consulta. Las
  * encuestas informativas y las consultas antiguas sin regla siguen contando
@@ -423,8 +468,7 @@ export function ballotWeights(post, ballots) {
       weighted: false,
       rule: { ...rule, unidad: "cuenta", censo: undefined },
     };
-  if (rule.unidad === "cuenta")
-    return { weights: withStored(perAccount), weighted: false, rule };
+  if (rule.unidad === "cuenta") return { weights: withStored(perAccount), weighted: false, rule };
   // Sin respuestas todavía se muestra la regla prevista, no una equivalencia.
   if (!ballots.length) return { weights: perAccount, weighted: false, rule };
   if (rule.censo === "socios")
@@ -432,12 +476,15 @@ export function ballotWeights(post, ballots) {
     // varios registros de socio vinculados. No se aplican coeficientes.
     return { weights: withStored(perAccount), weighted: false, rule };
   const weights = new Map(perAccount);
-  const owners = db.prepare("SELECT id,userId,communityId FROM owners").all();
-  const properties = db
-    .prepare(
-      "SELECT ownerIds,ownerPercentages,participationCoef FROM properties WHERE communityId=?",
-    )
-    .all(post.communityId);
+  const census = votingCensus(post);
+  const owners = census?.owners || db.prepare("SELECT id,userId,communityId FROM owners").all();
+  const properties =
+    census?.properties ||
+    db
+      .prepare(
+        "SELECT ownerIds,ownerPercentages,participationCoef FROM properties WHERE communityId=?",
+      )
+      .all(post.communityId);
   const ownerById = new Map(owners.map((owner) => [owner.id, owner]));
   const communityOwnerIds = new Set(properties.flatMap((p) => parseList(p.ownerIds)));
   for (const userId of weights.keys()) weights.set(userId, 0);
@@ -472,7 +519,7 @@ export function ballotWeights(post, ballots) {
       // Cada cotitular computa su cuota; si no consta, se reparte por igual.
       const shares = parseObject(property.ownerPercentages);
       const candidates = [...voters.entries()];
-      const allOwnerIds = candidates.flatMap(([, ownerIds]) => ownerIds);
+      const allOwnerIds = parseList(property.ownerIds);
       const known = allOwnerIds.filter((id) => Number(shares[id]) > 0);
       const totalKnown = known.reduce((sum, id) => sum + Number(shares[id]), 0);
       // Si faltan porcentajes, se reparte el 100 % restante por igual entre
@@ -486,12 +533,12 @@ export function ballotWeights(post, ballots) {
       for (const [userId, ownerIds] of candidates) {
         const share = known.length
           ? totalKnown > 100
-            ? 1 / candidates.length
+            ? ownerIds.length / allOwnerIds.length
             : ownerIds.reduce(
                 (sum, id) => sum + (Number(shares[id]) > 0 ? Number(shares[id]) : missingShare),
                 0,
               ) / 100
-          : 1 / candidates.length;
+          : ownerIds.length / allOwnerIds.length;
         weights.set(userId, weights.get(userId) + value * share);
       }
     } else {
@@ -502,7 +549,7 @@ export function ballotWeights(post, ballots) {
   }
   // Si el censo no aporta ningún peso (por ejemplo, una asociación sin
   // coeficientes), no se anulan los votos: se computan por cuenta.
-  if (![...weights.values()].some((value) => value > 0))
+  if (!census && ![...weights.values()].some((value) => value > 0))
     return { weights: withStored(perAccount), weighted: false, rule };
   return { weights: withStored(weights), weighted: true, rule };
 }
