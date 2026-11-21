@@ -78,6 +78,7 @@ function iconBtn(className, title, ariaLabel, svg) {
 
 // Estado en edición del formulario de inmueble (tabs Propietarios/Inquilinos)
 const editingPropertyPeople = { ownerIds: [], tenantIds: [] };
+let initialPropertyTenantIds = [];
 // % de titularidad por propietario del inmueble en edición
 let editingOwnerPercentages = {};
 // El editor de inmueble se abre en modo lectura desde «Ver inmueble».
@@ -399,13 +400,15 @@ function renderPropertyTenantsTab() {
       ICON_UNLINK_SM,
     );
     unlinkBtn.addEventListener("click", () => {
+      if (!requirePermission("tenant:manage", tenantId)) return;
       editingPropertyPeople.tenantIds = editingPropertyPeople.tenantIds.filter(
         (id) => id !== tenantId,
       );
       renderPropertyTenantsTab();
     });
 
-    actions.append(viewBtn, unlinkBtn);
+    actions.append(viewBtn);
+    if (hasPermission("tenant:manage", tenantId)) actions.append(unlinkBtn);
     card.append(info, actions);
     listEl.append(card);
   });
@@ -478,6 +481,10 @@ function openPropertyTenantLinkPanel() {
       .filter(
         (tenant) =>
           !editingPropertyPeople.tenantIds.includes(tenant.id) &&
+          hasPermission("tenant:manage", tenant.id) &&
+          (!tenant.propertyId ||
+            tenant.propertyId === state.ui.editingPropertyId ||
+            hasPermission("property:manage", tenant.propertyId)) &&
           tenantBelongsToCommunity(tenant, selectedCommunityId),
       );
     if (candidates.length === 0) {
@@ -548,6 +555,7 @@ if (btnConfirmTenant) {
       toast("Selecciona un inquilino.");
       return;
     }
+    if (!requirePermission("tenant:manage", tenantId)) return;
     const owner = state.owners.find((item) =>
       ownerTenants(item).some((tenant) => tenant.id === tenantId),
     );
@@ -711,6 +719,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   populatePropertyCurrencySelect(property?.currency || "EUR");
   const ownerIds = propertyOwnerIds(property);
   const tenantIds = property?.tenantIds || (property?.tenantId ? [property.tenantId] : []);
+  initialPropertyTenantIds = [...tenantIds];
   updatePropertyPeopleSelectors(ownerIds, tenantIds, property?.ownerPercentages || {});
   propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
   propertyForm.elements.receiptStatus.closest("label").hidden = !!property?.hasFeeReceipts;
@@ -1303,7 +1312,8 @@ propertyForm.addEventListener("submit", async (event) => {
     ownerPercentages: Object.fromEntries(
       selectedOwnerIds.map((ownerId) => [ownerId, Number(editingOwnerPercentages[ownerId] ?? 100)]),
     ),
-    tenantIds: selectedTenantIds,
+    linkTenantIds: selectedTenantIds.filter((id) => !initialPropertyTenantIds.includes(id)),
+    unlinkTenantIds: initialPropertyTenantIds.filter((id) => !selectedTenantIds.includes(id)),
     currency: values.currency || "",
     address: values.address.trim(),
     propertyType: values.propertyType,

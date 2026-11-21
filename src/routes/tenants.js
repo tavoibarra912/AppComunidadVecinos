@@ -10,32 +10,29 @@ import { registerCascadeRoutes } from "../cascade-delete.js";
 
 const router = Router();
 registerCascadeRoutes(router, "tenants");
-router.use((req, res, next) => {
-  if (["POST", "PUT"].includes(req.method)) {
-    const data = req.body || {};
-    const error = contactError(data);
-    if (error) return res.status(400).json({ error });
-    if (data.documentType !== undefined) {
-      data.documentType = String(data.documentType || "DNI")
-        .trim()
-        .toUpperCase();
-    }
-    if (data.documentId !== undefined) {
-      data.documentId = String(data.documentId || "")
-        .trim()
-        .toUpperCase();
-      if (data.documentId) {
-        const documentError = identityDocumentError(data.documentId, data.documentType || "DNI");
-        if (documentError) return res.status(400).json({ error: documentError });
-      }
-    }
-    if (dateError(data.contractStart) || (data.contractEnd && dateError(data.contractEnd)))
-      return res.status(400).json({ error: "Las fechas del contrato no son válidas." });
-    if (data.contractEnd && data.contractEnd < data.contractStart)
-      return res.status(400).json({ error: "El fin de contrato no puede ser anterior al inicio." });
+function validateTenantData(data) {
+  const error = contactError(data);
+  if (error) return error;
+  if (data.documentType !== undefined) {
+    data.documentType = String(data.documentType || "DNI")
+      .trim()
+      .toUpperCase();
   }
-  next();
-});
+  if (data.documentId !== undefined) {
+    data.documentId = String(data.documentId || "")
+      .trim()
+      .toUpperCase();
+    if (data.documentId) {
+      const documentError = identityDocumentError(data.documentId, data.documentType || "DNI");
+      if (documentError) return documentError;
+    }
+  }
+  if (dateError(data.contractStart) || (data.contractEnd && dateError(data.contractEnd)))
+    return "Las fechas del contrato no son válidas.";
+  if (data.contractEnd && data.contractEnd < data.contractStart)
+    return "El fin de contrato no puede ser anterior al inicio.";
+  return null;
+}
 
 function findTenant(id) {
   const row = db.prepare("SELECT * FROM tenants WHERE id = ?").get(id);
@@ -65,7 +62,7 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   const data = req.body || {};
   trimEntityFields("tenant", data);
-  const errorObligatorio = entityRequiredError("tenant", data, { exigirAusentes: false });
+  const errorObligatorio = entityRequiredError("tenant", data) || validateTenantData(data);
   if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
   const id = data.id || crypto.randomUUID();
   try {
@@ -84,9 +81,9 @@ router.put(
   versionedUpdate("tenants", (req, res) => {
     const existing = findTenant(req.params.id);
     if (!existing) return res.status(404).json({ error: "Inquilino no encontrado." });
-    const data = req.body || {};
+    const data = { ...existing, ...req.body };
     trimEntityFields("tenant", data);
-    const errorObligatorio = entityRequiredError("tenant", data, { exigirAusentes: false });
+    const errorObligatorio = entityRequiredError("tenant", data) || validateTenantData(data);
     if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
     try {
       db.exec("SAVEPOINT entity_update");

@@ -3,7 +3,13 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { db, propertyFromRow, listProperties, listDocuments } from "../db.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
-import { rebuildOwnersPropertyIds, rebuildPropertyTenantReferences } from "../domain.js";
+import {
+  rebuildOwnersPropertyIds,
+  syncOwnerProperties,
+  syncPropertyTenantReferences,
+} from "../domain.js";
+import { allowed, policyData } from "../security.js";
+import { isTenantContractActive } from "../../public/js/permissions.js";
 import { removeEntityFiles } from "./documents.js";
 import { registerCascadeRoutes } from "../cascade-delete.js";
 
@@ -73,9 +79,12 @@ router.get("/:id", (req, res) => {
   res.json(propertyPayload(property));
 });
 
-function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } = {}) {
+function validatePropertyPayload(
+  data,
+  { requireOwners = true, excludeId = "", existing = null } = {},
+) {
   trimEntityFields("property", data);
-  const errorObligatorio = entityRequiredError("property", data, { exigirAusentes: false });
+  const errorObligatorio = entityRequiredError("property", data);
   if (errorObligatorio) return errorObligatorio;
   let community = null;
   if (data.communityId) {
@@ -83,11 +92,24 @@ function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } 
     if (!community) return "La comunidad indicada no existe.";
   }
   const ownerIds = Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [];
+  if (
+    data.ownerPercentages !== undefined &&
+    (!data.ownerPercentages ||
+      typeof data.ownerPercentages !== "object" ||
+      Array.isArray(data.ownerPercentages))
+  )
+    return "Los porcentajes de titularidad deben ser un objeto válido.";
   // Los inmuebles heredados pueden no tener propietario; al actualizarlos
   // (por ejemplo, para asociarlos a una comunidad) no hay que bloquear el guardado.
   if (requireOwners && ownerIds.length === 0) {
     return "Selecciona al menos un propietario para el inmueble.";
   }
+  if (
+    !ownerIds.length &&
+    (data.linkTenantIds?.length ||
+      (data.tenantIds || []).some((id) => !(existing?.tenantIds || []).includes(id)))
+  )
+    return "No se pueden vincular contratos a un inmueble sin titulares.";
   for (const ownerId of ownerIds) {
     if (!db.prepare("SELECT id FROM owners WHERE id = ?").get(ownerId)) {
       return "Uno de los propietarios seleccionados ya no existe.";
@@ -101,7 +123,7 @@ function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } 
       }
     }
   }
-  for (const tenantId of data.tenantIds || []) {
+  for (const tenantId of [...(data.tenantIds || []), ...(data.linkTenantIds || [])]) {
     const tenant = db
       .prepare(
         `SELECT t.id, t.propertyId, p.communityId AS propertyCommunityId
@@ -149,16 +171,18 @@ function validatePropertyPayload(data, { requireOwners = true, excludeId = "" } 
     return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
   }
 
-  return normalizeOwnerPercentages(data).error || null;
+  const ownershipChanged =
+    !existing ||
+    existing.ownerIds.length !== ownerIds.length ||
+    existing.ownerIds.some((id) => !ownerIds.includes(id));
+  return normalizeOwnerPercentages(data, { requireAll: ownershipChanged }).error || null;
 }
 
 /**
- * Completa los porcentajes de titularidad que falten.
- * Los inmuebles antiguos guardaron `ownerPercentages` vacío aunque tuvieran
- * propietarios; en ese caso se reparte el 100% disponible entre ellos
- * (100% si solo hay uno) en lugar de rechazar cualquier actualización.
+ * Conserva los porcentajes conocidos. Un cambio de titulares requiere todos
+ * sus porcentajes explícitos; una ficha heredada puede repararse por separado.
  */
-function normalizeOwnerPercentages(data) {
+function normalizeOwnerPercentages(data, { requireAll = false } = {}) {
   const ownerIds = Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [];
   const input =
     data.ownerPercentages && typeof data.ownerPercentages === "object" ? data.ownerPercentages : {};
@@ -187,16 +211,11 @@ function normalizeOwnerPercentages(data) {
   }
 
   if (missing.length > 0) {
-    const remaining = 100 - total;
-    const share = Math.round((remaining / missing.length) * 10000) / 10000;
-    if (share <= 0) {
+    if (requireAll)
       return {
-        error: "No queda porcentaje de titularidad disponible para el resto de propietarios.",
+        error:
+          "Indica explícitamente el porcentaje de cada titular antes de cambiar la titularidad.",
       };
-    }
-    missing.forEach((ownerId) => {
-      percentages[ownerId] = share;
-    });
   }
 
   return { percentages };
@@ -206,8 +225,13 @@ function storeProperty(id, data, community) {
   const ownerIds = JSON.stringify(
     Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [],
   );
+  // La ocupación es un índice derivado, nunca una orden de desvincular contratos.
   const tenantIds = JSON.stringify(
-    Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : [],
+    db
+      .prepare("SELECT * FROM tenants WHERE propertyId = ?")
+      .all(id)
+      .filter((tenant) => isTenantContractActive(tenant))
+      .map((tenant) => tenant.id),
   );
   const ownerPercentages = JSON.stringify(normalizeOwnerPercentages(data).percentages || {});
   return db
@@ -270,21 +294,87 @@ function storeProperty(id, data, community) {
     );
 }
 
-/** Sincroniza los inquilinos del inmueble: los tenantIds pasan a apuntar al inmueble. */
-function syncTenantsForProperty(propertyId, tenantIds) {
-  db.prepare(
-    "UPDATE tenants SET propertyId = '' WHERE propertyId = ? AND id NOT IN (SELECT j.value FROM json_each(?) j)",
-  ).run(propertyId, JSON.stringify(tenantIds));
-  const owners = JSON.parse(
-    db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propertyId).ownerIds || "[]",
+function tenantLinkChanges(propertyId, data, existing, actor) {
+  const fail = (message, status = 400) => {
+    throw Object.assign(new Error(message), { status });
+  };
+  const explicit = data.linkTenantIds !== undefined || data.unlinkTenantIds !== undefined;
+  const selected = new Set(data.tenantIds || []);
+  // Compatibilidad con clientes anteriores: solo las diferencias respecto al
+  // índice que leyeron son órdenes. Los contratos fuera del índice se conservan.
+  const previous = new Set(existing?.tenantIds || []);
+  const links = new Set(
+    explicit ? data.linkTenantIds || [] : [...selected].filter((id) => !previous.has(id)),
   );
-  const setTenant = db.prepare(
-    "UPDATE tenants SET propertyId = ?, ownerId = CASE WHEN ownerId IN (SELECT value FROM json_each(?)) THEN ownerId ELSE ? END WHERE id = ?",
+  const unlinks = new Set(
+    explicit
+      ? data.unlinkTenantIds || []
+      : data.tenantIds === undefined
+        ? []
+        : [...previous].filter((id) => !selected.has(id)),
   );
-  for (const tenantId of tenantIds) {
-    setTenant.run(propertyId, JSON.stringify(owners), owners[0] || "", tenantId);
+  const owners = data.ownerIds || [];
+  // Un cambio real de titularidad puede requerir reasignar el arrendador.
+  // No se aprovecha un guardado ordinario para reparar contratos antiguos.
+  const ownershipChanged =
+    existing &&
+    (existing.ownerIds.length !== new Set(owners).size ||
+      existing.ownerIds.some((id) => !owners.includes(id)));
+  const reassignments = ownershipChanged
+    ? db
+        .prepare("SELECT * FROM tenants WHERE propertyId = ?")
+        .all(propertyId)
+        .filter((tenant) => !owners.includes(tenant.ownerId))
+        .map((tenant) => tenant.id)
+    : [];
+  const policy = policyData();
+  const changes = [];
+  for (const id of new Set([...links, ...unlinks, ...reassignments])) {
+    if (links.has(id) && unlinks.has(id))
+      fail("No se puede vincular y desvincular el mismo inquilino.");
+    const tenant = db.prepare("SELECT * FROM tenants WHERE id = ?").get(id);
+    if (!tenant) fail("Uno de los inquilinos seleccionados no existe.");
+    if (unlinks.has(id) && tenant.propertyId !== propertyId)
+      fail("El inquilino que se quiere desvincular no pertenece al inmueble.");
+    const nextPropertyId = unlinks.has(id) ? "" : propertyId;
+    const nextOwnerId =
+      !unlinks.has(id) && !owners.includes(tenant.ownerId) ? owners[0] || "" : tenant.ownerId;
+    if (tenant.propertyId === nextPropertyId && tenant.ownerId === nextOwnerId) continue;
+    if (
+      !allowed(actor, "tenant:manage", id, policy) ||
+      (tenant.propertyId &&
+        tenant.propertyId !== propertyId &&
+        !allowed(actor, "property:manage", tenant.propertyId, policy))
+    )
+      fail(
+        "No tienes permiso para modificar los inquilinos afectados o su inmueble de origen.",
+        403,
+      );
+    changes.push({ id, propertyId: nextPropertyId, ownerId: nextOwnerId });
   }
-  rebuildPropertyTenantReferences();
+  return changes;
+}
+
+function applyTenantLinkChanges(changes) {
+  for (const tenant of changes) {
+    db.prepare("UPDATE tenants SET propertyId = ?, ownerId = ? WHERE id = ?").run(
+      tenant.propertyId,
+      tenant.ownerId,
+      tenant.id,
+    );
+    syncPropertyTenantReferences(tenant.id);
+  }
+}
+
+/** Recalcula la comunidad, planta y coeficiente denormalizados de los titulares. */
+function syncAffectedOwners(ownerIds) {
+  for (const ownerId of new Set(ownerIds)) {
+    const remaining = db
+      .prepare("SELECT id FROM properties WHERE ownerIds LIKE ? ORDER BY id")
+      .all(`%"${ownerId}"%`)
+      .map((row) => row.id);
+    syncOwnerProperties(ownerId, remaining);
+  }
 }
 
 router.post("/", (req, res) => {
@@ -296,14 +386,17 @@ router.post("/", (req, res) => {
     .prepare("SELECT id, name FROM communities WHERE id = ?")
     .get(data.communityId);
 
-  db.exec("BEGIN");
+  db.exec("BEGIN IMMEDIATE");
   try {
+    const changes = tenantLinkChanges(id, data, null, req.user);
     storeProperty(id, data, community);
-    syncTenantsForProperty(id, Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : []);
+    applyTenantLinkChanges(changes);
+    syncAffectedOwners(Array.isArray(data.ownerIds) ? data.ownerIds : []);
     rebuildOwnersPropertyIds();
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
+    if (error.status) return res.status(error.status).json({ error: error.message });
     throw error;
   }
 
@@ -315,13 +408,23 @@ router.put(
   versionedUpdate("properties", (req, res) => {
     const existing = findProperty(req.params.id);
     if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
-    const data = req.body || {};
+    const data = { ...existing, ...req.body };
+    if (
+      req.body.ownerPercentages &&
+      typeof req.body.ownerPercentages === "object" &&
+      !Array.isArray(req.body.ownerPercentages)
+    )
+      data.ownerPercentages = { ...existing.ownerPercentages, ...req.body.ownerPercentages };
     if ((data.communityId || "") !== existing.communityId && hasAssessment(existing.id))
       return res.status(409).json({
         error:
           "No se puede cambiar de comunidad un inmueble incluido en una derrama o servicio vigente. Anulá primero el reparto.",
       });
-    const error = validatePropertyPayload(data, { requireOwners: false, excludeId: existing.id });
+    const error = validatePropertyPayload(data, {
+      requireOwners: existing.ownerIds.length > 0,
+      excludeId: existing.id,
+      existing,
+    });
     if (error) return res.status(400).json({ error });
     const community = db
       .prepare("SELECT id, name FROM communities WHERE id = ?")
@@ -329,11 +432,14 @@ router.put(
 
     db.exec("SAVEPOINT entity_update");
     try {
+      const changes = tenantLinkChanges(existing.id, data, existing, req.user);
       storeProperty(existing.id, data, community);
-      syncTenantsForProperty(
-        existing.id,
-        Array.isArray(data.tenantIds) ? data.tenantIds.filter(Boolean) : [],
-      );
+      applyTenantLinkChanges(changes);
+      const affectedOwners = [
+        ...(Array.isArray(existing.ownerIds) ? existing.ownerIds : []),
+        ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),
+      ];
+      syncAffectedOwners(affectedOwners);
       rebuildOwnersPropertyIds();
       db.exec("RELEASE entity_update");
     } catch (error) {
@@ -369,11 +475,24 @@ function deletePropertyNormal(req, res) {
     return res.status(409).json({
       error: `No se puede eliminar el inmueble: tiene ${inquilinos === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvincula primero al inquilino.`,
     });
+  const affectedOwnerIds = Array.isArray(existing.ownerIds)
+    ? existing.ownerIds
+    : JSON.parse(existing.ownerIds || "[]");
   db.exec("BEGIN");
   try {
     db.prepare("UPDATE tenants SET propertyId = '' WHERE propertyId = ?").run(existing.id);
     removeEntityFiles("property", existing.id);
     db.prepare("DELETE FROM properties WHERE id = ?").run(existing.id);
+    // Tras borrar el inmueble hay que renormalizar los datos del titular: si
+    // era su último inmueble, no debe conservar comunidad, planta o coeficiente
+    // del inmueble desaparecido; si era un socio sin inmueble, conserva su censo.
+    for (const ownerId of affectedOwnerIds) {
+      const remaining = db
+        .prepare("SELECT id FROM properties WHERE ownerIds LIKE ? ORDER BY id")
+        .all(`%"${ownerId}"%`)
+        .map((row) => row.id);
+      syncOwnerProperties(ownerId, remaining);
+    }
     rebuildOwnersPropertyIds();
     db.exec("COMMIT");
   } catch (error) {

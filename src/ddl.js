@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS communication_comments (
 );
 CREATE TABLE IF NOT EXISTS communication_ballots (
  postId TEXT NOT NULL, userId TEXT NOT NULL, choices TEXT NOT NULL, createdAt TEXT NOT NULL,
+ weight REAL NOT NULL DEFAULT 0, weightFrozen INTEGER NOT NULL DEFAULT 0,
  PRIMARY KEY(postId,userId)
 );
 CREATE TABLE IF NOT EXISTS communication_files (
@@ -90,6 +91,13 @@ CREATE TABLE IF NOT EXISTS fee_plans (
   );
   CREATE INDEX IF NOT EXISTS fee_allocations_receipt ON fee_allocations(receiptId);
   CREATE INDEX IF NOT EXISTS fee_proofs_receipt ON fee_proofs(receiptId);
+  CREATE INDEX IF NOT EXISTS fee_proofs_disk ON fee_proofs(diskName);
+  CREATE TABLE IF NOT EXISTS fee_proof_cleanup (
+    diskName TEXT PRIMARY KEY, createdAt TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0, nextAttemptAt INTEGER NOT NULL DEFAULT 0,
+    lastAttemptAt TEXT NOT NULL DEFAULT '', lastError TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS fee_proof_cleanup_due ON fee_proof_cleanup(nextAttemptAt);
   CREATE INDEX IF NOT EXISTS fee_payments_owner ON fee_payments(communityId,ownerId);
   CREATE TABLE IF NOT EXISTS fee_assessments (
     id TEXT PRIMARY KEY, communityId TEXT NOT NULL, name TEXT NOT NULL,

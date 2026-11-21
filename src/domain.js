@@ -84,9 +84,22 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
 
   for (const propId of current) {
     if (desired.includes(propId)) continue;
-    const row = db.prepare("SELECT ownerIds FROM properties WHERE id = ?").get(propId);
+    const row = db
+      .prepare("SELECT ownerIds, ownerPercentages FROM properties WHERE id = ?")
+      .get(propId);
     const ids = JSON.parse(row.ownerIds || "[]").filter((x) => x !== ownerId);
-    db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?").run(JSON.stringify(ids), propId);
+    if (!ids.length && db.prepare("SELECT 1 FROM tenants WHERE propertyId=? LIMIT 1").get(propId))
+      throw Object.assign(
+        new Error("No se puede quitar el último titular de un inmueble con contratos vinculados."),
+        { status: 400 },
+      );
+    const shares = JSON.parse(row.ownerPercentages || "{}");
+    delete shares[ownerId];
+    db.prepare("UPDATE properties SET ownerIds = ?, ownerPercentages = ? WHERE id = ?").run(
+      JSON.stringify(ids),
+      JSON.stringify(shares),
+      propId,
+    );
     // Si el propietario desvinculado era el titular del contrato de algún
     // inquilino, se reasigna a otro copropietario del inmueble (o se deja sin
     // titular si el inmueble queda sin propietarios) para no dejar referencias
@@ -133,13 +146,22 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
       ownerId,
     );
   } else {
+    // Un socio sin inmueble conserva su comunidad de censo. Solo se limpia si
+    // dejó de ser socio, no eligió comunidad o esta ya no existe.
+    const owner = db
+      .prepare("SELECT isMember, communityId, communityName FROM owners WHERE id = ?")
+      .get(ownerId);
+    const membership =
+      owner?.isMember &&
+      owner.communityId &&
+      db.prepare("SELECT 1 FROM communities WHERE id = ?").get(owner.communityId);
     db.prepare(
       `UPDATE owners SET
-         communityId = '', communityName = '', plot = '', propertyType = '',
+         communityId = ?, communityName = ?, plot = '', propertyType = '',
          cadastralRef = '', registryNumber = '', floor = '', door = '',
          areaM2 = '', participationCoef = '', propertyUse = ''
        WHERE id = ?`,
-    ).run(ownerId);
+    ).run(membership ? owner.communityId : "", membership ? owner.communityName : "", ownerId);
   }
 
   rebuildOwnersPropertyIds();
@@ -149,30 +171,32 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
  * Rearma propertyIds de todos los propietarios a partir de los ownerIds
  * de cada inmueble (relación N:M).
  */
-export function rebuildOwnersPropertyIds() {
-  for (const property of db
-    .prepare("SELECT id, ownerIds, ownerPercentages FROM properties")
-    .all()) {
-    const ids = propertyOwnerIds(property);
-    const saved = JSON.parse(property.ownerPercentages || "{}");
-    const valid =
-      ids.every((id) => Number(saved[id]) > 0) &&
-      ids.reduce((sum, id) => sum + Number(saved[id] || 0), 0) <= 100.0001;
-    const percentages = Object.fromEntries(
-      ids.map((id, index) => [
-        id,
-        valid
-          ? Number(saved[id])
-          : index === ids.length - 1
-            ? 100 - (Math.round(10000 / ids.length) / 100) * (ids.length - 1)
-            : Math.round(10000 / ids.length) / 100,
-      ]),
-    );
-    db.prepare("UPDATE properties SET ownerPercentages = ? WHERE id = ?").run(
-      JSON.stringify(percentages),
-      property.id,
-    );
-  }
+export function rebuildOwnersPropertyIds({ repairPercentages = false } = {}) {
+  // La reparación heredada es opt-in; los guardados ordinarios solo reconstruyen referencias.
+  if (repairPercentages)
+    for (const property of db
+      .prepare("SELECT id, ownerIds, ownerPercentages FROM properties")
+      .all()) {
+      const ids = propertyOwnerIds(property);
+      const saved = JSON.parse(property.ownerPercentages || "{}");
+      const valid =
+        ids.every((id) => Number(saved[id]) > 0) &&
+        ids.reduce((sum, id) => sum + Number(saved[id] || 0), 0) <= 100.0001;
+      const percentages = Object.fromEntries(
+        ids.map((id, index) => [
+          id,
+          valid
+            ? Number(saved[id])
+            : index === ids.length - 1
+              ? 100 - (Math.round(10000 / ids.length) / 100) * (ids.length - 1)
+              : Math.round(10000 / ids.length) / 100,
+        ]),
+      );
+      db.prepare("UPDATE properties SET ownerPercentages = ? WHERE id = ?").run(
+        JSON.stringify(percentages),
+        property.id,
+      );
+    }
   const owners = db.prepare("SELECT id, propertyId FROM owners").all();
   const update = db.prepare("UPDATE owners SET propertyIds = ?, propertyId = ? WHERE id = ?");
   for (const owner of owners) {

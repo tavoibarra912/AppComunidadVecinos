@@ -34,6 +34,13 @@ const LABELS = {
   unlink: "Conservar cuenta de acceso",
   delete_user: "Eliminar cuenta si no tiene otros perfiles",
 };
+const CREDIT_DESTINATIONS = [
+  ["devolucion", "Devolución al titular"],
+  ["compensacion", "Compensación con deudas vencidas, líquidas y exigibles"],
+  ["cesion", "Cesión documentada a un tercero"],
+  ["fondo_reserva", "Aportación al fondo de reserva"],
+  ["otro", "Otro destino documentado"],
+];
 const STEPS = ["Selección", "Dependencias", "Opciones", "Resumen", "Resultado"];
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -83,6 +90,18 @@ function textInput(parent, title, value, onChange) {
   label.append(input);
   parent.append(label);
 }
+function referenceInput(parent, title, value, required, onChange) {
+  const label = element("label", undefined, "cascade-field");
+  label.append(element("span", title));
+  const input = element("input");
+  input.value = value;
+  input.maxLength = 300;
+  input.required = required;
+  input.placeholder = "Ej: acta de la junta de 2026-11-01";
+  input.addEventListener("input", () => onChange(input.value));
+  label.append(input);
+  parent.append(label);
+}
 
 export async function openCascadeWizard(collection, id) {
   if (!hasPermission("cascade-delete", id)) {
@@ -123,7 +142,12 @@ export async function openCascadeWizard(collection, id) {
     confirmed = false,
     global = false,
     financial = false,
-    shared = false;
+    shared = false,
+    creditSettlement = false,
+    creditDestination = "",
+    creditReference = "",
+    ledgerTransfer = false,
+    transferDocument = "";
   const body = {
     actions: {
       properties: {},
@@ -161,6 +185,9 @@ export async function openCascadeWizard(collection, id) {
     global = false;
     financial = false;
     shared = false;
+    creditSettlement = false;
+    ledgerTransfer = false;
+    transferDocument = "";
   }
   function choose(row, key, value) {
     row[key] = value;
@@ -547,6 +574,75 @@ export async function openCascadeWizard(collection, id) {
             shared = value;
           },
         );
+      if (review.credit?.amount > 0 && review.credit.policy === "advertir")
+        content.append(
+          element(
+            "p",
+            `Aviso: la operación deja ${Number(review.credit.amount).toFixed(2)} ${
+              review.credit.currency
+            } de saldo a favor sin conciliar. La política permite continuar y deja constancia del destino previsto: ${
+              CREDIT_DESTINATIONS[review.credit.destination] || "pendiente de conciliar"
+            }.`,
+          ),
+        );
+      if (review.requiresCreditSettlement) {
+        content.append(
+          element(
+            "p",
+            `La operación deja ${Number(review.credit.amount).toFixed(2)} ${
+              review.credit.currency
+            } de saldo a favor sin conciliar. Indica su destino documentado antes de borrar; liberar una asignación contable no equivale a devolver dinero.`,
+          ),
+        );
+        select(
+          content,
+          "Destino documentado del saldo a favor",
+          creditDestination || review.credit.destination,
+          CREDIT_DESTINATIONS,
+          (value) => {
+            creditDestination = value;
+          },
+        );
+        referenceInput(
+          content,
+          "Referencia de la conciliación o documento (obligatoria)",
+          creditReference,
+          true,
+          (value) => {
+            creditReference = value;
+          },
+        );
+        checkbox(
+          content,
+          "Confirmo que el saldo a favor queda conciliado o documentado en el destino indicado.",
+          creditSettlement,
+          (value) => {
+            creditSettlement = value;
+          },
+        );
+      }
+      if (review.requiresLedgerTransfer) {
+        if (review.transfer?.requiresDocument)
+          checkbox(
+            content,
+            "Confirmo que el acuerdo o documento indicado autoriza el traslado del libro financiero completo a la comunidad destino.",
+            ledgerTransfer,
+            (value) => {
+              ledgerTransfer = value;
+            },
+          );
+        referenceInput(
+          content,
+          review.transfer?.requiresDocument
+            ? "Referencia del acuerdo o documento (obligatoria)"
+            : "Referencia del acuerdo o documento (opcional)",
+          transferDocument,
+          !!review.transfer?.requiresDocument,
+          (value) => {
+            transferDocument = value;
+          },
+        );
+      }
       checkbox(
         content,
         "He revisado las relaciones y entiendo que esta operación no se puede deshacer.",
@@ -623,6 +719,20 @@ export async function openCascadeWizard(collection, id) {
           throw new Error("Confirma el borrado global en todas las comunidades.");
         if (review.requiresSharedFinancial && !shared)
           throw new Error("Confirma el alcance sobre los recibos compartidos.");
+        if (review.requiresCreditSettlement && !creditSettlement)
+          throw new Error("Documenta y confirma el destino del saldo a favor pendiente.");
+        if (review.requiresCreditSettlement && !creditReference.trim())
+          throw new Error(
+            "Indica la referencia de la conciliación o del documento que acredita el destino del saldo a favor.",
+          );
+        if (review.transfer?.requiresDocument) {
+          if (!ledgerTransfer)
+            throw new Error("Confirma el acuerdo o documento para trasladar el libro financiero.");
+          if (!transferDocument.trim())
+            throw new Error(
+              "Indica la referencia del acuerdo o documento que autoriza el traslado del libro financiero.",
+            );
+        }
         if (actions.finance === "delete" && !financial)
           throw new Error("Confirma el borrado definitivo de los datos financieros.");
         body.executionToken = review.executionToken;
@@ -630,6 +740,11 @@ export async function openCascadeWizard(collection, id) {
         body.confirmGlobalDelete = global;
         body.confirmDeleteFinancial = financial;
         body.confirmSharedFinancial = shared;
+        body.confirmCreditSettlement = creditSettlement;
+        body.creditDestination = creditDestination || review.credit?.destination;
+        body.creditReference = creditReference.trim();
+        body.confirmLedgerTransfer = ledgerTransfer;
+        body.transferDocument = transferDocument.trim();
         result = await api.cascadeDelete(collection, id, body);
         step = 4;
         // Do not report a failed delete when only refreshing the screen fails.
@@ -660,6 +775,7 @@ export async function openCascadeWizard(collection, id) {
 
 function renderArchive(parent, archive, archiveId) {
   const section = element("section");
+  const settlement = archive.settlement || {};
   section.append(
     element("h3", archive.entity.name),
     element("p", `Operación: ${archive.createdAt}`),
@@ -685,11 +801,15 @@ function renderArchive(parent, archive, archiveId) {
       ),
     );
   }
-  if (archive.settlement.cancelledReceipts) {
-    section.append(element("p", `${archive.settlement.cancelledReceipts} recibos anulados.`));
+  if (settlement.creditReference)
+    section.append(element("p", `Conciliación del saldo a favor: ${settlement.creditReference}`));
+  if (settlement.transferDocument)
+    section.append(element("p", `Acuerdo o documento del traslado: ${settlement.transferDocument}`));
+  if (settlement.cancelledReceipts) {
+    section.append(element("p", `${settlement.cancelledReceipts} recibos anulados.`));
     list(
       section,
-      Object.entries(archive.settlement.byCurrency || {}).map(
+      Object.entries(settlement.byCurrency || {}).map(
         ([currency, amounts]) =>
           `${currency} · Pendiente perdonado: ${(amounts.forgiven / 100).toFixed(2)} · Crédito liberado: ${(amounts.releasedCredit / 100).toFixed(2)}`,
       ),

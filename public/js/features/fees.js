@@ -18,12 +18,14 @@ const labels = {
   cancelled: "Anulado",
 };
 const assessmentLabels = {
+  rectification: "Pendiente de rectificación",
   draft: "Borrador",
   active: "En curso",
   collected: "Cobrada",
   cancelled: "Anulada",
 };
 const installmentLabels = {
+  rectification: "Pendiente de rectificación",
   pending: "Sin emitir",
   issued: "Emitido",
   partial: "Pago parcial",
@@ -48,6 +50,7 @@ const serviceBillings = {
   informative: "Solo reparto informativo, sin deuda",
 };
 const serviceStatusLabels = {
+  rectification: "Pendiente de rectificación",
   draft: "Borrador",
   issued: "Emitido",
   informative: "Solo reparto",
@@ -1237,9 +1240,16 @@ async function showAssessment(id) {
     }
     if (a.cancelledAt)
       info(overview, `Anulada el ${date(a.cancelledAt)}. Motivo: ${a.cancellationReason}`, true);
+    if (a.status === "rectification")
+      info(
+        overview,
+        "Abre los recibos anulados para rectificarlos individualmente o anula el plazo si ya no debe emitirse.",
+        true,
+      );
     const totals = el("div", undefined, "fee-summary");
     for (const [label, value] of [
       ["Total", a.totals.total],
+      ...(a.totals.rectification ? [["Por rectificar", a.totals.rectification]] : []),
       ["Emitido", a.totals.issued],
       ["Cobrado", a.totals.paid],
       ["Pendiente", a.totals.outstanding],
@@ -1709,9 +1719,16 @@ async function showService(id) {
         true,
       );
     for (const warning of service.warnings || []) info(overview, warning, true);
+    if (service.needsRectification)
+      info(
+        overview,
+        "Abre los recibos anulados para emitir su rectificación individual. También puedes anular el servicio completo si quedó sin efecto.",
+        true,
+      );
     const totals = el("div", undefined, "fee-summary");
     for (const [label, value] of [
       ["Total", service.totals.total],
+      ...(service.totals.rectification ? [["Por rectificar", service.totals.rectification]] : []),
       ["Emitido", service.totals.issued],
       ["Cobrado", service.totals.paid],
       ["Pendiente", service.totals.outstanding],
@@ -2002,7 +2019,14 @@ function configuration(ctx) {
     exportList(body, "plans", data.plans);
     body.append(
       table(
-        ["Desde", "Recaudación anual", "Periodicidad", "Vence", "Acuerdo", manage ? "Acciones" : ""],
+        [
+          "Desde",
+          "Recaudación anual",
+          "Periodicidad",
+          "Vence",
+          "Acuerdo",
+          manage ? "Acciones" : "",
+        ],
         data.plans.map((plan) => {
           const cells = [
             `<strong>${esc(date(plan.effectiveFrom))}</strong><small>Rige desde ese mes</small>`,
@@ -2060,7 +2084,12 @@ function planDialog(ctx, plan = null) {
     ["12", "Anual (1 recibo al año)"],
   ]);
   hint(months, "Cada cuánto se emite un recibo con la parte proporcional del año.");
-  const day = field(grid, "Día de vencimiento (1–28)", "number", plan?.dueDay || latest?.dueDay || 5);
+  const day = field(
+    grid,
+    "Día de vencimiento (1–28)",
+    "number",
+    plan?.dueDay || latest?.dueDay || 5,
+  );
   day.min = "1";
   day.max = "28";
   day.required = true;
@@ -2069,15 +2098,22 @@ function planDialog(ctx, plan = null) {
   body.append(el("h3", "2 · Cuándo se aplica", "fee-form-section"));
   const when = el("div", undefined, "fee-form-grid");
   body.append(when);
-  const hasReceipts = !!plan && data.receipts.some(
-    (r) =>
-      !r.cancelledAt &&
-      (r.kind || "ordinary") === "ordinary" &&
-      (r.periodEnd || `${r.period}-28`) >= plan.effectiveFrom,
-  );
+  const hasReceipts =
+    !!plan &&
+    data.receipts.some(
+      (r) =>
+        !r.cancelledAt &&
+        (r.kind || "ordinary") === "ordinary" &&
+        (r.periodEnd || `${r.period}-28`) >= plan.effectiveFrom,
+    );
   // El tipo debe ser «month» antes de asignar el valor: un input de fecha
   // descarta un valor AAAA-MM y el formulario de edición quedaría vacío.
-  const from = field(when, "Aplicar desde (mes)", "month", plan ? plan.effectiveFrom.slice(0, 7) : "");
+  const from = field(
+    when,
+    "Aplicar desde (mes)",
+    "month",
+    plan ? plan.effectiveFrom.slice(0, 7) : "",
+  );
   from.required = true;
   if (hasReceipts) {
     from.disabled = true;
@@ -2145,9 +2181,7 @@ function planDialog(ctx, plan = null) {
     plan ? "Guardar cambios del acuerdo" : "Guardar acuerdo",
     async () => {
       await api.fees(
-        plan
-          ? `/communities/${ctx.id}/plans/${plan.id}`
-          : `/communities/${ctx.id}/plans`,
+        plan ? `/communities/${ctx.id}/plans/${plan.id}` : `/communities/${ctx.id}/plans`,
         plan ? "PUT" : "POST",
         {
           annualAmount: annual.value,
@@ -2627,6 +2661,14 @@ export async function showReceipt(id) {
     info(body, `Acuerdo: ${r.snapshot.agreement}. Identificador: ${r.id}`);
     if (r.cancelledAt)
       info(body, `Anulado el ${date(r.cancelledAt)}. Motivo: ${r.cancellationReason}`, true);
+    if (r.rectifiesReceiptId) {
+      info(body, `Rectifica al recibo ${r.rectifiesReceiptId}. Motivo: ${r.rectificationReason}`);
+      body.append(button("Ver recibo original", () => showReceipt(r.rectifiesReceiptId)));
+    }
+    if (r.rectifiedBy)
+      body.append(button("Ver recibo rectificado", () => showReceipt(r.rectifiedBy)));
+    if (r.canManage && r.canRectify)
+      body.append(button("Rectificar recibo anulado", () => receiptRectification(r)));
     if (r.payments.length)
       exportList(
         body,
@@ -2739,6 +2781,62 @@ export async function showReceipt(id) {
       info(body, error.message, true);
     }
   }
+}
+function receiptRectification(receipt) {
+  const body = open("Rectificar recibo anulado"),
+    version = dialogVersion;
+  info(
+    body,
+    `Se emitirá un único recibo para ${receipt.snapshot.property}. El original conservará su historial.`,
+  );
+  const value = euroField(body, "Importe (€)", receipt.amount);
+  value.readOnly = !!(receipt.assessmentId || receipt.serviceBillId);
+  if (value.readOnly) info(body, "El importe está fijado por el reparto aprobado.");
+  const dueDate = field(body, "Vencimiento", "date", receipt.dueDate);
+  const reason = field(body, "Motivo de la rectificación", "textarea");
+  const preview = el("div");
+  const invalidate = () => preview.replaceChildren();
+  for (const input of [value, dueDate, reason]) input.addEventListener("input", invalidate);
+  body.append(
+    button("Revisar rectificación", async () => {
+      const input = { amount: value.value, dueDate: dueDate.value, reason: reason.value };
+      const batch = await api.fees(
+        `/receipts/${encodeURIComponent(receipt.id)}/rectification/preview`,
+        "POST",
+        input,
+      );
+      if (
+        version !== dialogVersion ||
+        !dialog.open ||
+        value.value !== input.amount ||
+        dueDate.value !== input.dueDate ||
+        reason.value !== input.reason
+      )
+        return;
+      preview.replaceChildren();
+      info(
+        preview,
+        `${batch.snapshot.property}: ${money(batch.amount)}. Vencimiento: ${date(batch.dueDate)}. Motivo: ${batch.reason}`,
+      );
+      preview.append(
+        button(
+          "Emitir recibo rectificado",
+          async () => {
+            const replacement = await api.fees(
+              `/receipts/${encodeURIComponent(receipt.id)}/rectify`,
+              "POST",
+              { ...input, token: batch.token },
+            );
+            await reloadAll();
+            await showReceipt(replacement.id);
+            toast("Recibo rectificado emitido.");
+          },
+          true,
+        ),
+      );
+    }),
+  );
+  body.append(preview);
 }
 function downloadReceipt(r) {
   const community = state.communities.find((c) => c.id === r.communityId);

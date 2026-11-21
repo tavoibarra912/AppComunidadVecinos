@@ -3,6 +3,14 @@ import { db, getSettings } from "./db.js";
 import { allowed, policyData, publicUser } from "./security.js";
 import { getLocalDateInputValue } from "./domain.js";
 import { isTenantContractActive } from "../public/js/permissions.js";
+import { MAJORITIES, legalConfigOf, votingRuleLabel } from "./legal-config.js";
+
+const ASSOCIATION_MAJORITIES = {
+  simple: "Mayoría simple de socios",
+  absoluta: "Mayoría absoluta de socios",
+  tres_quintos: "Tres quintos de socios",
+  unanimidad: "Unanimidad de socios",
+};
 
 const spanishDemoCopy = new Map([
   [
@@ -183,7 +191,16 @@ export function allPosts() {
 }
 export function profiles(communityId, data = policyData()) {
   const properties = data.properties.filter((p) => p.communityId === communityId);
-  const owners = data.owners.filter((o) => properties.some((p) => p.ownerIds.includes(o.id)));
+  const association =
+    legalConfigOf(data.communities.find((c) => c.id === communityId)).regimen === "asociacion";
+  // En una asociación el censo son los socios, tengan o no inmueble. En una
+  // comunidad LPH los perfiles de propietario se derivan de sus inmuebles.
+  const owners = data.owners.filter((o) =>
+    association
+      ? o.isMember &&
+        (o.communityId === communityId || properties.some((p) => p.ownerIds.includes(o.id)))
+      : properties.some((p) => p.ownerIds.includes(o.id)),
+  );
   const today = getLocalDateInputValue();
   const tenants = data.tenants.filter(
     (t) => properties.some((p) => p.id === t.propertyId) && isTenantContractActive(t, today),
@@ -327,9 +344,10 @@ export function mayVote(user, post, data = policyData()) {
     .get(post.id, user.id);
   if (!invited) return false;
   if (post.poll.electorate !== "owners") return true;
-  return profiles(post.communityId, data).owners.some(
-    (o) => o.userId === user.id && o.votingRights !== "suspended",
-  );
+  const owners = profiles(post.communityId, data).owners.filter((o) => o.userId === user.id);
+  // Si cualquiera de sus fichas está suspendida, la cuenta no vota: la vista
+  // y la ruta deben aplicar el mismo criterio, también con varias fichas.
+  return owners.length > 0 && !owners.some((o) => o.votingRights === "suspended");
 }
 export function pollOpen(post, now = Date.now()) {
   return (
@@ -339,6 +357,157 @@ export function pollOpen(post, now = Date.now()) {
     !["draft", "scheduled", "cancelled", "archived"].includes(phase(post, now))
   );
 }
+function pollRule(post) {
+  const stored = post.poll?.votingRule;
+  if (stored?.censo) return stored;
+  const association =
+    legalConfigOf(
+      db.prepare("SELECT legalConfig FROM communities WHERE id=?").get(post.communityId),
+    ).regimen === "asociacion";
+  const base = stored || {
+    unidad: "cuenta",
+    copropiedad: "representante",
+    mayoriaOrdinaria: "simple",
+  };
+  // Consultas creadas antes de congelar el censo: se interpretan según el
+  // régimen actual de la comunidad sin reescribir su regla guardada.
+  return association
+    ? {
+        ...base,
+        unidad: base.unidad === "cuenta" ? "cuenta" : "propietario",
+        copropiedad: "representante",
+        censo: "socios",
+      }
+    : { ...base, censo: "propietarios" };
+}
+const parseList = (value) => {
+  try {
+    return JSON.parse(value || "[]");
+  } catch {
+    return [];
+  }
+};
+const parseObject = (value) => {
+  try {
+    return JSON.parse(value || "{}");
+  } catch {
+    return {};
+  }
+};
+/**
+ * Peso de cada respuesta según la regla congelada en la consulta. Las
+ * encuestas informativas y las consultas antiguas sin regla siguen contando
+ * una respuesta por cuenta. En votaciones LPH se pondera por identidad,
+ * inmueble o coeficiente, sin duplicar la copropiedad representada.
+ */
+export function ballotWeights(post, ballots) {
+  const rule = pollRule(post);
+  const perAccount = new Map(ballots.map((ballot) => [ballot.userId, 1]));
+  // El peso guardado al votar manda; los votos anteriores a esta columna
+  // (weight=0) se calculan con la regla vigente como hasta ahora.
+  const stored = new Map(
+    ballots
+      .filter((ballot) => Number(ballot.weightFrozen) === 1)
+      .map((ballot) => [ballot.userId, Number(ballot.weight) || 0]),
+  );
+  const withStored = (map) => {
+    for (const [userId, weight] of stored) if (map.has(userId)) map.set(userId, weight);
+    return map;
+  };
+  // Solo las votaciones de propietarios usan el censo LPH. Las consultas
+  // abiertas a destinatarios y las encuestas informativas cuentan por cuenta:
+  // la etiqueta debe reflejarlo aunque la regla congelada hable de coeficientes.
+  if (post.poll.type !== "vote" || post.poll.electorate !== "owners")
+    return {
+      weights: withStored(perAccount),
+      weighted: false,
+      rule: { ...rule, unidad: "cuenta", censo: undefined },
+    };
+  if (rule.unidad === "cuenta")
+    return { weights: withStored(perAccount), weighted: false, rule };
+  // Sin respuestas todavía se muestra la regla prevista, no una equivalencia.
+  if (!ballots.length) return { weights: perAccount, weighted: false, rule };
+  if (rule.censo === "socios")
+    // Una persona socia, un voto: la cuenta computa una sola vez aunque tenga
+    // varios registros de socio vinculados. No se aplican coeficientes.
+    return { weights: withStored(perAccount), weighted: false, rule };
+  const weights = new Map(perAccount);
+  const owners = db.prepare("SELECT id,userId,communityId FROM owners").all();
+  const properties = db
+    .prepare(
+      "SELECT ownerIds,ownerPercentages,participationCoef FROM properties WHERE communityId=?",
+    )
+    .all(post.communityId);
+  const ownerById = new Map(owners.map((owner) => [owner.id, owner]));
+  const communityOwnerIds = new Set(properties.flatMap((p) => parseList(p.ownerIds)));
+  for (const userId of weights.keys()) weights.set(userId, 0);
+  if (rule.unidad === "propietario") {
+    // Solo computa identidades del censo de esta comunidad, no perfiles del
+    // mismo usuario en otras comunidades.
+    for (const ballot of ballots) {
+      const count = owners.filter(
+        (owner) =>
+          owner.userId === ballot.userId &&
+          (owner.communityId === post.communityId || communityOwnerIds.has(owner.id)),
+      ).length;
+      weights.set(ballot.userId, count || 1);
+    }
+    return { weights: withStored(weights), weighted: true, rule };
+  }
+  for (const property of properties) {
+    const voters = new Map();
+    for (const ownerId of parseList(property.ownerIds)) {
+      const owner = ownerById.get(ownerId);
+      if (!owner?.userId || !weights.has(owner.userId)) continue;
+      if (!voters.has(owner.userId)) voters.set(owner.userId, []);
+      voters.get(owner.userId).push(ownerId);
+    }
+    if (!voters.size) continue;
+    const coefficient = Number(property.participationCoef);
+    const value =
+      rule.unidad === "coeficiente" && Number.isFinite(coefficient) && coefficient > 0
+        ? coefficient
+        : 1;
+    if (rule.copropiedad === "todos") {
+      // Cada cotitular computa su cuota; si no consta, se reparte por igual.
+      const shares = parseObject(property.ownerPercentages);
+      const candidates = [...voters.entries()];
+      const allOwnerIds = candidates.flatMap(([, ownerIds]) => ownerIds);
+      const known = allOwnerIds.filter((id) => Number(shares[id]) > 0);
+      const totalKnown = known.reduce((sum, id) => sum + Number(shares[id]), 0);
+      // Si faltan porcentajes, se reparte el 100 % restante por igual entre
+      // las cuotas desconocidas; no se deja a nadie con peso cero por un dato
+      // ausente. Si los porcentajes conocidos ya superan el 100 %, el dato es
+      // incoherente y se usa el reparto igualitario entre cotitulares.
+      const missingShare =
+        known.length && totalKnown <= 100
+          ? (100 - totalKnown) / (allOwnerIds.length - known.length || 1)
+          : 0;
+      for (const [userId, ownerIds] of candidates) {
+        const share = known.length
+          ? totalKnown > 100
+            ? 1 / candidates.length
+            : ownerIds.reduce(
+                (sum, id) => sum + (Number(shares[id]) > 0 ? Number(shares[id]) : missingShare),
+                0,
+              ) / 100
+          : 1 / candidates.length;
+        weights.set(userId, weights.get(userId) + value * share);
+      }
+    } else {
+      // Representante común: el inmueble computa una sola vez.
+      const voter = ballots.map((ballot) => ballot.userId).find((userId) => voters.has(userId));
+      if (voter) weights.set(voter, weights.get(voter) + value);
+    }
+  }
+  // Si el censo no aporta ningún peso (por ejemplo, una asociación sin
+  // coeficientes), no se anulan los votos: se computan por cuenta.
+  if (![...weights.values()].some((value) => value > 0))
+    return { weights: withStored(perAccount), weighted: false, rule };
+  return { weights: withStored(weights), weighted: true, rule };
+}
+const roundWeight = (value) => Math.round(value * 100) / 100;
+
 export function summary(post, user, data = policyData()) {
   const manager = canPublish(user, post.communityId, data);
   const mine = db
@@ -392,16 +561,47 @@ export function detail(post, user) {
     .filter((f) => f.kind !== "minutes" || f.final || result.canManage);
   if (post.poll) {
     const ballots = db
-      .prepare("SELECT userId,choices FROM communication_ballots WHERE postId=?")
+      .prepare(
+        "SELECT userId,choices,weight,weightFrozen FROM communication_ballots WHERE postId=? ORDER BY createdAt,userId",
+      )
       .all(post.id);
-    result.ballot = JSON.parse(ballots.find((b) => b.userId === user.id)?.choices || "[]");
+    const { weights, weighted, rule } = ballotWeights(post, ballots);
+    const choices = new Map(
+      ballots.map((ballot) => [ballot.userId, JSON.parse(ballot.choices || "[]")]),
+    );
+    result.ballot = choices.get(user.id) || [];
+    result.pollRule = votingRuleLabel(rule);
+    // La mayoría solo se muestra en votaciones; en encuestas no decide nada.
+    // Se toma la regla congelada de la consulta, no la versión que fuerza el
+    // cómputo por cuenta para un electorado abierto: en una asociación la
+    // mayoría sigue siendo de socios, aunque voten también destinatarios.
+    const majorityRule = pollRule(post);
+    result.pollMajority =
+      post.poll.type === "vote"
+        ? (majorityRule.censo === "socios"
+            ? ASSOCIATION_MAJORITIES[majorityRule.mayoriaOrdinaria]
+            : null) ||
+          MAJORITIES[majorityRule.mayoriaOrdinaria] ||
+          ""
+        : "";
     result.pollResults =
       !pollOpen(post) || post.poll.resultsLive
         ? {
-            total: ballots.length,
-            counts: post.poll.options.map(
-              (_, i) => ballots.filter((b) => JSON.parse(b.choices).includes(i)).length,
+            total: roundWeight([...weights.values()].reduce((sum, value) => sum + value, 0)),
+            counts: post.poll.options.map((_, index) =>
+              roundWeight(
+                ballots.reduce(
+                  (sum, ballot) =>
+                    sum +
+                    (choices.get(ballot.userId)?.includes(index)
+                      ? weights.get(ballot.userId) || 0
+                      : 0),
+                  0,
+                ),
+              ),
             ),
+            ballots: ballots.length,
+            weighted,
           }
         : null;
   }

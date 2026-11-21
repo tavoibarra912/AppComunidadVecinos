@@ -297,6 +297,33 @@ test("cascada: exige sesión, permiso maestro y permisos del ámbito en preview 
     403,
   );
   assert.ok(get("owners", f.owner));
+  // Un community_admin asignado debe poder revisar una ficha de socio sin
+  // inmueble de su propia comunidad aunque no tenga ningún inmueble.
+  const member = `${f.owner}-admin-member`;
+  insert("owners", {
+    id: member,
+    name: "Socia",
+    surname: "Del censo",
+    dni: member,
+    isMember: 1,
+    communityId: f.c1,
+  });
+  const reader = account("community_admin", [
+    "cascade-delete",
+    "community:read",
+    "owner:read",
+    "owner:delete",
+  ]);
+  // `account` no reescribe un rol ya creado en esta prueba; se ajusta aquí
+  // para comprobar el permiso real de administración de la ficha.
+  db.prepare("UPDATE roles SET permisos=? WHERE nombre='community_admin'").run(
+    JSON.stringify(["cascade-delete", "community:read", "owner:read", "owner:delete"]),
+  );
+  db.prepare("UPDATE communities SET adminUserId=? WHERE id=?").run(reader.uid, f.c1);
+  assert.equal(
+    (await request(`/owners/${member}/cascade-preview`, "GET", undefined, reader)).status,
+    200,
+  );
 });
 test("cascada: las cuatro vistas previas evalúan relaciones reales sin columnas inventadas", async () => {
   const f = fixture();
@@ -356,14 +383,121 @@ test("finanzas: borrar todo requiere casillas y limpia recibos, cobros y aplicac
     undefined,
   );
 });
+test("crédito: la política advertir deja constancia sin bloquear la liquidación", async () => {
+  const f = fixture();
+  // El titular tiene inmuebles en dos comunidades: ambas deben permitir advertir.
+  for (const id of [f.c1, f.c2])
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+      JSON.stringify({
+        creditoTitular: { politica: "advertir", destinoPorDefecto: "compensacion" },
+      }),
+      id,
+    );
+  try {
+    const p = await plan("owners", f.owner);
+    p.actions.finance = "liquidate_final";
+    const r = await execute("owners", f.owner, p);
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.settlement.creditPolicy, "advertir");
+    assert.equal(r.data.settlement.creditDestination, "compensacion");
+    assert.equal(r.data.settlement.creditReference, "");
+    // No hubo confirmación expresa: se deja constancia del destino previsto.
+    assert.equal(r.data.settlement.creditSettlementConfirmed, false);
+  } finally {
+    for (const id of [f.c1, f.c2])
+      db.prepare("UPDATE communities SET legalConfig='{}' WHERE id=?").run(id);
+  }
+});
+test("crédito: no agrega saldo a favor de comunidades en monedas distintas", async () => {
+  const f = fixture();
+  db.prepare("UPDATE communities SET currency='USD' WHERE id=?").run(f.c2);
+  for (const [id, communityId, amount] of [
+    [f.owner + "-credit-eur", f.c1, 1000],
+    [f.owner + "-credit-usd", f.c2, 1000],
+  ])
+    insert("fee_payments", {
+      id,
+      communityId,
+      ownerId: f.owner,
+      amount,
+      paidOn: "2026-01-01",
+      method: "transfer",
+      reference: "",
+      requestId: id,
+      createdAt: "now",
+      actorId: admin.uid,
+    });
+  const p = await plan("owners", f.owner);
+  const preview = await execute("owners", f.owner, p);
+  assert.equal(preview.status, 409, JSON.stringify(preview.data));
+  assert.match(preview.data.error, /varias monedas/i);
+});
+test("crédito: no atribuye al titular el cobro aplicado por un cotitular", async () => {
+  const f = fixture(),
+    coPayment = `${f.payment}-coowner`;
+  insert("fee_payments", {
+    id: coPayment,
+    communityId: f.c1,
+    ownerId: f.coowner,
+    amount: 3000,
+    paidOn: "2026-01-02",
+    method: "transfer",
+    reference: "",
+    requestId: coPayment,
+    createdAt: "now",
+    actorId: admin.uid,
+  });
+  insert("fee_allocations", { receiptId: f.r1, paymentId: coPayment, amount: 3000 });
+  const p = await plan("owners", f.owner);
+  p.actions.finance = "liquidate_final";
+  const review = await request(`/owners/${f.owner}/cascade-preview`, "POST", p);
+  assert.equal(review.status, 200, JSON.stringify(review.data));
+  // Solo los 4.000 del titular salen de su bolsillo; los 3.000 del cotitular
+  // siguen siendo crédito de este último y no se le exigen al que se borra.
+  assert.equal(review.data.credit.amount, 4000);
+  assert.equal(review.data.credit.currency, "EUR");
+});
+
+test("propietario: un contrato no queda sin arrendador si el inmueble pierde a su único titular", async () => {
+  const f = fixture();
+  insert("tenants", {
+    id: `${f.t1}-p2`,
+    ownerId: f.owner,
+    propertyId: f.p2,
+    name: "Inquilino",
+    surname: "Sin relevo",
+    contractStart: "2020-01-01",
+  });
+  rebuildPropertyTenantReferences();
+  const p = await plan("owners", f.owner);
+  const r = await execute("owners", f.owner, p);
+  assert.equal(r.status, 400, JSON.stringify(r.data));
+  assert.match(r.data.error, /sin arrendador/i);
+  assert.ok(get("owners", f.owner));
+});
+
 test("liquidación final: perdona el pendiente y devuelve aplicaciones como crédito sin inventar pagos", async () => {
   const f = fixture(),
     p = await plan("owners", f.owner);
   p.actions.finance = "liquidate_final";
+  // La política conservadora exige documentar el saldo a favor del titular.
+  const blocked = await execute("owners", f.owner, p);
+  assert.equal(blocked.status, 409, JSON.stringify(blocked.data));
+  assert.match(blocked.data.error, /saldo a favor/);
+  p.confirmCreditSettlement = true;
+  p.creditDestination = "devolucion";
+  p.creditReference = "   ";
+  const missingReference = await execute("owners", f.owner, p);
+  assert.equal(missingReference.status, 400, JSON.stringify(missingReference.data));
+  assert.match(missingReference.data.error, /referencia/i);
+  p.creditReference = "  Acta de conciliación de 2026-11-01  ";
   const r = await execute("owners", f.owner, p);
   assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.settlement.creditReference, "Acta de conciliación de 2026-11-01");
   assert.equal(r.data.settlement.forgiven, 16000);
   assert.equal(r.data.settlement.releasedCredit, 4000);
+  assert.equal(r.data.settlement.creditDestination, "devolucion");
+  assert.equal(r.data.settlement.creditPolicy, "bloquear");
   assert.ok(get("fee_receipts", f.r1).cancelledAt);
   assert.equal(get("fee_payments", f.payment).amount, 4000);
   assert.equal(
@@ -404,14 +538,160 @@ test("comunidad: borrar todo incluye inquilinos, dependencias financieras y publ
   );
   assert.equal(existsSync(path.join(UPLOADS_DIR, f.document)), false);
 });
+test("comunidad: incluye y desvincula a los socios sin inmueble del censo de la asociación", async () => {
+  const f = fixture(),
+    member = `${f.owner}-member`;
+  insert("owners", {
+    id: member,
+    name: "Socia",
+    surname: "Sin inmueble",
+    dni: member,
+    isMember: 1,
+    communityId: f.c1,
+  });
+  const preview = await request(`/communities/${f.c1}/cascade-preview`);
+  assert.equal(preview.status, 200, JSON.stringify(preview.data));
+  assert.ok(preview.data.owners.some((owner) => owner.id === member));
+  const p = await plan("communities", f.c1);
+  const r = await execute("communities", f.c1, p);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.ok(get("owners", member));
+  assert.equal(get("owners", member).communityId, "");
+});
+
+test("comunidad: el borrado normal no deja socios del censo huérfanos", async () => {
+  const f = fixture(),
+    communityId = `${f.c1}-empty`,
+    member = `${f.owner}-orphan`;
+  insert("communities", { id: communityId, name: communityId, nif: communityId, currency: "EUR" });
+  insert("owners", {
+    id: member,
+    name: "Socia",
+    surname: "Sin inmueble",
+    dni: member,
+    isMember: 1,
+    communityId,
+  });
+  const r = await request(`/communities/${communityId}`, "DELETE");
+  assert.equal(r.status, 409, JSON.stringify(r.data));
+  assert.match(r.data.error, /socios o titulares/i);
+  assert.ok(get("communities", communityId));
+  assert.equal(get("owners", member).communityId, communityId);
+});
+
+test("inmueble: el borrado normal limpia los datos del inmueble en el titular", async () => {
+  const f = fixture(),
+    owner = `${f.owner}-normal-property`,
+    propertyId = `${f.p1}-normal-property`;
+  insert("owners", {
+    id: owner,
+    name: "Titular",
+    surname: "Sin inmueble",
+    dni: owner,
+  });
+  insert("properties", {
+    id: propertyId,
+    communityId: f.c2,
+    communityName: f.c2,
+    plot: propertyId,
+    ownerIds: JSON.stringify([owner]),
+    ownerPercentages: JSON.stringify({ [owner]: 100 }),
+  });
+  rebuildOwnersPropertyIds();
+  const r = await request(`/properties/${propertyId}`, "DELETE");
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(get("owners", owner).communityId, "");
+  assert.equal(get("owners", owner).communityName, "");
+  assert.equal(get("owners", owner).propertyId, "");
+});
+
+test("inmueble: el cambio normal de comunidad actualiza al titular", async () => {
+  const f = fixture(),
+    owner = `${f.owner}-normal-community`,
+    propertyId = `${f.p1}-normal-community`;
+  insert("owners", {
+    id: owner,
+    name: "Titular",
+    surname: "Cambio de comunidad",
+    dni: owner,
+  });
+  insert("properties", {
+    id: propertyId,
+    communityId: "",
+    communityName: "",
+    plot: propertyId,
+    propertyType: "Vivienda",
+    participationCoef: "10",
+    address: "Calle de prueba 1",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28001",
+    ownerIds: JSON.stringify([owner]),
+    ownerPercentages: JSON.stringify({ [owner]: 100 }),
+  });
+  rebuildOwnersPropertyIds();
+  const before = (await request(`/properties/${propertyId}`)).data;
+  const r = await request(`/properties/${propertyId}`, "PUT", {
+    ...before,
+    communityId: f.c2,
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(get("owners", owner).communityId, f.c2);
+  assert.equal(get("owners", owner).communityName, f.c2);
+});
+
+test("inmueble: borrar el último inmueble de un socio conserva su comunidad de censo", async () => {
+  const f = fixture(),
+    member = `${f.owner}-member-property`,
+    propertyId = `${f.p1}-member-property`;
+  insert("owners", {
+    id: member,
+    name: "Socia",
+    surname: "Con inmueble",
+    dni: member,
+    isMember: 1,
+    communityId: f.c1,
+  });
+  insert("properties", {
+    id: propertyId,
+    communityId: f.c1,
+    communityName: f.c1,
+    plot: propertyId,
+    ownerIds: JSON.stringify([member]),
+    ownerPercentages: JSON.stringify({ [member]: 100 }),
+  });
+  rebuildOwnersPropertyIds();
+  const p = await plan("properties", propertyId);
+  const r = await execute("properties", propertyId, p);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(get("properties", propertyId), undefined);
+  assert.equal(get("owners", member).communityId, f.c1);
+  assert.equal(get("owners", member).isMember, 1);
+});
+
 test("comunidad: mover a otra comunidad sincroniza nombres, propietarios, finanzas y publicaciones", async () => {
   const f = fixture(),
     p = await plan("communities", f.c1);
   p.actions.properties[f.p1] = { action: "reassign_community", newCommunityId: f.target };
   p.actions.finance = "reassign_community";
   p.actions.posts = "reassign_community";
+  const blocked = await execute("communities", f.c1, p);
+  assert.equal(blocked.status, 409, JSON.stringify(blocked.data));
+  assert.match(blocked.data.error, /libro financiero/);
+  p.confirmLedgerTransfer = true;
+  // La confirmación sin referencia no basta: el documento debe identificarse.
+  const missingReference = await execute("communities", f.c1, p);
+  assert.equal(missingReference.status, 400, JSON.stringify(missingReference.data));
+  assert.match(missingReference.data.error, /referencia/i);
+  p.transferDocument = "   ";
+  const blankReference = await execute("communities", f.c1, p);
+  assert.equal(blankReference.status, 400, JSON.stringify(blankReference.data));
+  assert.match(blankReference.data.error, /referencia/i);
+  p.transferDocument = "  Acta de la junta de 2026-11-01  ";
   const r = await execute("communities", f.c1, p);
   assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.settlement.transferRequired, true);
+  assert.equal(r.data.settlement.transferDocument, "Acta de la junta de 2026-11-01");
   assert.equal(get("properties", f.p1).communityName, f.target);
   assert.equal(get("properties", f.p1).communityId, f.target);
   assert.equal(get("fee_receipts", f.r1).communityId, f.target);
@@ -422,12 +702,54 @@ test("comunidad: mover a otra comunidad sincroniza nombres, propietarios, finanz
     get("properties", get("owners", f.owner).propertyId).communityId,
   );
 });
+test("comunidad: liquidar el libro documenta el crédito de socios que conservan ficha", async () => {
+  const f = fixture(),
+    p = await plan("communities", f.c1);
+  p.actions.finance = "liquidate_final";
+  const review = await request(`/communities/${f.c1}/cascade-preview`, "POST", p);
+  assert.equal(review.status, 200, JSON.stringify(review.data));
+  assert.equal(review.data.credit.amount, 4000);
+  assert.equal(review.data.requiresCreditSettlement, true);
+  assert.equal((await execute("communities", f.c1, p)).status, 409);
+  p.confirmCreditSettlement = true;
+  p.creditDestination = "devolucion";
+  p.creditReference = "Acta de conciliación del saldo";
+  const r = await execute("communities", f.c1, p);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.settlement.releasedCredit, 4000);
+  assert.ok(get("owners", f.owner));
+  assert.equal(
+    db.prepare("SELECT 1 FROM fee_allocations WHERE paymentId=?").get(f.payment),
+    undefined,
+  );
+});
+
+test("comunidad: el destino del libro también puede exigir acuerdo o documento", async () => {
+  const f = fixture();
+  db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+    JSON.stringify({ regimen: "lph", traslados: { exigirDocumento: false } }),
+    f.c1,
+  );
+  const p = await plan("communities", f.c1);
+  p.actions.properties[f.p1] = { action: "reassign_community", newCommunityId: f.target };
+  p.actions.finance = "reassign_community";
+  const blocked = await execute("communities", f.c1, p);
+  assert.equal(blocked.status, 409, JSON.stringify(blocked.data));
+  assert.match(blocked.data.error, /libro financiero/);
+  p.confirmLedgerTransfer = true;
+  p.transferDocument = "Acuerdo de la comunidad de destino";
+  const r = await execute("communities", f.c1, p);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+});
+
 test("comunidad: crear destino temporal se hace en la misma transacción", async () => {
   const f = fixture(),
     p = await plan("communities", f.c1);
   p.actions.properties[f.p1].action = "create_temp_community";
   p.actions.temporaryCommunity = { name: "Destino temporal", nif: "H10000008" };
   p.actions.finance = "reassign_community";
+  p.confirmLedgerTransfer = true;
+  p.transferDocument = "Acuerdo de traslado a comunidad temporal";
   const r = await execute("communities", f.c1, p);
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.equal(get("communities", r.data.temporaryCommunityId).name, "Destino temporal");
@@ -667,6 +989,22 @@ test("regresión: no se finaliza un contrato cuya fecha de inicio todavía no ll
   assert.equal(get("tenants", f.t1).contractEnd, "");
 });
 
+test("R8: cascada rechaza un destino sin titulares antes de mover el contrato", async () => {
+  const f = fixture();
+  db.prepare("UPDATE properties SET ownerIds='[]',ownerPercentages='{}' WHERE id=?").run(
+    f.destination,
+  );
+  const tenant = get("tenants", f.t1),
+    source = get("properties", f.p1);
+  const p = await plan("tenants", f.t1);
+  p.actions.tenants[f.t1] = { action: "reassign_tenant", newPropertyId: f.destination };
+  const result = await execute("tenants", f.t1, p);
+  assert.equal(result.status, 400, JSON.stringify(result.data));
+  assert.match(result.data.error, /titular válido/);
+  assert.deepEqual(get("tenants", f.t1), tenant);
+  assert.deepEqual(get("properties", f.p1), source);
+});
+
 test("regresión: eliminar documentos requiere también el permiso document:delete", async () => {
   const f = fixture(),
     { PERMISSIONS } = await import("../../public/js/permissions.js");
@@ -755,6 +1093,8 @@ test("comunidad sin inmuebles: admite un destino explícito para el histórico",
   const p = await plan("communities", f.c1);
   p.actions.finance = p.actions.posts = "reassign_community";
   p.actions.destinationCommunityId = f.target;
+  p.confirmLedgerTransfer = true;
+  p.transferDocument = "Acuerdo de traslado del libro";
   const r = await execute("communities", f.c1, p);
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.equal(get("fee_receipts", f.r1).communityId, f.target);

@@ -84,7 +84,7 @@ Antes de confirmar, el servidor valida el plan y calcula su alcance financiero e
   adicional cuando afecta a varias, incluso si se inicia desde una comunidad.
 - Las finanzas se conservan como histórico por defecto. La liquidación final anula
   los recibos afectados, perdona el pendiente y libera los cobros aplicados como saldo
-  a favor; no registra pagos ni movimientos bancarios. El acta detalla importes por moneda.
+  a favor; no registra pagos ni movimientos bancarios. El acta detalla importes por moneda, el destino del crédito y su referencia de conciliación.
 - **Eliminar definitivamente** permite borrar también recibos activos, pagos,
   aplicaciones y justificantes mediante una casilla expresa, sin exigir liquidación
   previa. Los recibos compartidos requieren otra confirmación porque la acción afecta
@@ -503,6 +503,7 @@ protección de sus copias de seguridad para producción.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
 - CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito numérico de control, teléfonos de 9 dígitos, correo electrónico, CP contra catálogo INE con autocompletado de municipio y provincia). El NIF se normaliza antes de validar y guardar: admite minúsculas y separadores habituales (espacios, puntos y guiones), y conserva la comprobación del dígito de control.
 - Documentación adjunta y ficha con propietarios censados. La gestión de archivos y estatutos se describe en [Estatutos y biblioteca documental](#estatutos-y-biblioteca-documental).
+- La pestaña **Estatutos** permite configurar el régimen jurídico (comunidad de propietarios LPH o asociación) y las reglas de deuda de copropietarios, crédito al borrar un titular, traslados y votaciones. Se guardan con la comunidad y se aplican al certificado de deuda, al crédito del borrado avanzado, al traslado documentado y a las consultas nuevas; el destino del crédito y su referencia de conciliación, y el criterio de traslado de deuda con su referencia quedan en el acta, pero el asistente sigue exigiendo elegir expresamente si mueve el libro financiero. Son criterios orientativos que deben validarse con los estatutos y títulos antes de emitir certificados formales o votaciones vinculantes.
 
 ### Propietarios
 
@@ -529,7 +530,7 @@ protección de sus copias de seguridad para producción.
 - El detalle separa publicación, participación, reunión y seguimiento. Lectura y confirmación de recepción se registran por separado. Las ediciones publicadas se versionan, vuelven a marcar el aviso como pendiente y generan avisos de actualización. El guardado detecta conflictos de edición.
 - Reuniones: lugar/videollamada HTTPS, orden del día, confirmación de invitación, asistencia real, acuerdos y tareas con responsable/vencimiento. Los adjuntos admiten PDF/JPG/PNG, hasta 10 MB por archivo y 30 archivos por publicación. Se comprueba el contenido y cada descarga requiere sesión y acceso a esa publicación.
 - Las actas se suben como borradores privados de administración. **Publicar acta** habilita esa versión para destinatarios y genera un aviso. Las versiones publicadas se conservan; las correcciones se suben como versiones nuevas.
-- Comentarios habilitables por publicación, eliminación propia y moderación administrativa. Encuestas/votaciones de una pregunta con 2–12 opciones, respuesta simple o múltiple, cierre por fecha o manual y electorado de destinatarios o propietarios destinatarios. Una respuesta inmutable por cuenta; los resultados son agregados y pueden mostrarse en vivo o al cerrar. No se pondera por unidad, coeficiente ni representación.
+- Comentarios habilitables por publicación, eliminación propia y moderación administrativa. Encuestas/votaciones de una pregunta con 2–12 opciones, respuesta simple o múltiple, cierre por fecha o manual y electorado de destinatarios o propietarios/socios destinatarios según el régimen jurídico. Una respuesta inmutable por cuenta; los resultados son agregados y pueden mostrarse en vivo o al cerrar. En votaciones, la unidad de cómputo (cuenta, propietario, inmueble o coeficiente), la regla de copropiedad y la mayoría ordinaria se congelan desde el régimen jurídico de la comunidad al crear la consulta, y el peso de cada voto se congela al emitirlo; en las asociaciones el censo son los socios (`isMember`) y sus derechos estatutarios, aunque no tengan inmueble; no se aplican coeficientes y cada cuenta computa una sola vez aunque tenga varios registros de socio. Las encuestas informativas siguen contando una respuesta por cuenta.
 
 ### Proveedores SMTP, SMS y WhatsApp
 

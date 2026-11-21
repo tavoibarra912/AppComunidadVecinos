@@ -7,6 +7,7 @@ import { recordAudit } from "../audit.js";
 import { documentLimits, allowedDocumentLabels, detectContentType } from "../document-policy.js";
 import { policyData, allowed } from "../security.js";
 import { textosActuales, aplicarPlantilla, nombrePlataforma } from "../textos-envio.js";
+import { legalConfigOf } from "../legal-config.js";
 import {
   allPosts,
   postById,
@@ -21,6 +22,7 @@ import {
   queue,
   materialize,
   mayVote,
+  ballotWeights,
   pollOpen,
   summary,
   detail,
@@ -144,6 +146,7 @@ router.get(
       communities: communities.map((c) => ({
         id: c.id,
         name: c.name,
+        regimen: legalConfigOf(c).regimen,
         canManage: canPublish(req.user, c.id, data),
       })),
       selectors: communities
@@ -431,12 +434,27 @@ router.post(
         .get(p.id, req.user.id)
     )
       throw problem("Ya registraste tu respuesta.", 409);
-    db.prepare("INSERT INTO communication_ballots VALUES (?,?,?,?)").run(
-      p.id,
-      req.user.id,
-      JSON.stringify(choices),
-      new Date().toISOString(),
-    );
+    // El peso se fija al votar: cambios posteriores de coeficientes o del
+    // censo no reescriben el resultado. Se calcula junto a los votos ya
+    // emitidos para que la copropiedad con representante compute una sola vez.
+    const existing = db
+      .prepare(
+        "SELECT userId,choices,weight,weightFrozen FROM communication_ballots WHERE postId=? ORDER BY createdAt,userId",
+      )
+      .all(p.id);
+    const weight =
+      ballotWeights(p, [...existing, { userId: req.user.id }]).weights.get(req.user.id) || 0;
+    try {
+      db.prepare(
+        "INSERT INTO communication_ballots (postId,userId,choices,createdAt,weight,weightFrozen) VALUES (?,?,?,?,?,1)",
+      ).run(p.id, req.user.id, JSON.stringify(choices), new Date().toISOString(), weight);
+    } catch (error) {
+      // Dos peticiones simultáneas pueden pasar la comprobación anterior; la
+      // clave primaria sigue garantizando una única respuesta por cuenta.
+      if (/UNIQUE constraint/.test(error.message))
+        throw problem("Ya registraste tu respuesta.", 409);
+      throw error;
+    }
     res.status(201).json({ ok: true });
   }),
 );

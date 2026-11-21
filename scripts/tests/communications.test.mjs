@@ -381,10 +381,221 @@ test("votaciones: electorado, una respuesta, opciones válidas y resultados rese
   const closed = await update(old, { poll: { ...old.poll, closed: true } });
   assert.equal(closed.status, 200, JSON.stringify(closed.data));
   d = (await tenant(`/communications/posts/${p.id}`)).data;
-  assert.deepEqual(d.pollResults, { total: 1, counts: [1, 0, 0] });
+  // Votación LPH: pesa el coeficiente del inmueble del votante (4,25 %).
+  assert.deepEqual(d.pollResults, {
+    total: 4.25,
+    counts: [4.25, 0, 0],
+    ballots: 1,
+    weighted: true,
+  });
+  assert.match(d.pollRule, /coeficiente/i);
+  assert.match(d.pollMajority, /mayoría simple/i);
   assert.deepEqual(d.ballot, []);
   assert.equal(d.ballots, undefined);
 });
+test("votaciones: el peso LPH se congela al emitir el voto", async () => {
+  const properties = db
+    .prepare(
+      "SELECT id,participationCoef FROM properties WHERE communityId='com-seed-1' AND EXISTS (SELECT 1 FROM json_each(ownerIds) o WHERE o.value='own-seed-1')",
+    )
+    .all();
+  const expected = properties.reduce(
+    (sum, property) => sum + (Number(property.participationCoef) || 0),
+    0,
+  );
+  try {
+    const p = await create({ poll: poll() });
+    assert.equal(
+      (await owner(`/communications/posts/${p.id}/ballot`, "POST", { choices: [0] })).status,
+      201,
+    );
+    // Cambiar el coeficiente después del voto no reescribe el resultado.
+    for (const property of properties)
+      db.prepare("UPDATE properties SET participationCoef='99' WHERE id=?").run(property.id);
+    const current = (await admin(`/communications/posts/${p.id}`)).data;
+    assert.equal((await update(current, { poll: { ...current.poll, closed: true } })).status, 200);
+    assert.equal((await tenant(`/communications/posts/${p.id}`)).data.pollResults.total, expected);
+  } finally {
+    for (const property of properties)
+      db.prepare("UPDATE properties SET participationCoef=? WHERE id=?").run(
+        property.participationCoef,
+        property.id,
+      );
+  }
+});
+test("votaciones: la unidad configurada se congela al crear la consulta", async () => {
+  const before = db
+    .prepare("SELECT legalConfig FROM communities WHERE id='com-seed-1'")
+    .get().legalConfig;
+  try {
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id='com-seed-1'").run(
+      JSON.stringify({
+        regimen: "lph",
+        votaciones: { unidad: "cuenta", copropiedad: "representante", mayoriaOrdinaria: "simple" },
+      }),
+    );
+    const p = await create({ poll: poll() });
+    const created = (await admin(`/communications/posts/${p.id}`)).data;
+    assert.equal(created.poll.votingRule.unidad, "cuenta");
+    assert.match(created.pollRule, /cuenta/i);
+    assert.equal(
+      (await owner(`/communications/posts/${p.id}/ballot`, "POST", { choices: [1] })).status,
+      201,
+    );
+    const open = (await admin(`/communications/posts/${p.id}`)).data;
+    assert.equal((await update(open, { poll: { ...open.poll, closed: true } })).status, 200);
+    assert.deepEqual((await tenant(`/communications/posts/${p.id}`)).data.pollResults, {
+      total: 1,
+      counts: [0, 1, 0],
+      ballots: 1,
+      weighted: false,
+    });
+  } finally {
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id='com-seed-1'").run(before);
+  }
+});
+
+test("asociaciones: vota el censo de socios (isMember), no los propietarios ni sus coeficientes", async () => {
+  const beforeConfig = db
+    .prepare("SELECT legalConfig FROM communities WHERE id=?")
+    .get(communityId).legalConfig;
+  const beforeOwner = db
+    .prepare("SELECT isMember,userId FROM owners WHERE id='own-seed-2'")
+    .get();
+  const insertAccount = (usuario) => {
+    const id = `assoc-${usuario}`;
+    db.prepare(
+      "INSERT INTO users(id,nombre,usuario,email,rol,activo,passwordHash) VALUES (?,?,?,?,?,1,?)",
+    ).run(id, usuario, usuario, `${usuario}@example.test`, "user", passwordRecord(usuario));
+    return id;
+  };
+  const memberUser = "socio-sin-inmueble";
+  const suspendedUser = "socio-suspendido";
+  const ownerUser = "propietario-no-socio";
+  const memberId = insertAccount(memberUser);
+  const suspendedId = insertAccount(suspendedUser);
+  const nonMemberId = insertAccount(ownerUser);
+  const memberOwner = "assoc-member-no-property";
+  const duplicateMemberOwner = "assoc-member-duplicate";
+  const suspendedOwner = "assoc-member-suspended";
+  db.prepare(
+    "INSERT INTO owners(id,name,surname,dni,isMember,communityId,userId,email,votingRights) VALUES (?,?,?,?,1,?,?,?,?)",
+  ).run(memberOwner, "Socia", "Sin Inmueble", memberOwner, communityId, memberId, `${memberUser}@example.test`, "active");
+  // Un segundo registro de la misma persona no le da un segundo voto.
+  db.prepare(
+    "INSERT INTO owners(id,name,surname,dni,isMember,communityId,userId,email,votingRights) VALUES (?,?,?,?,1,?,?,?,?)",
+  ).run(duplicateMemberOwner, "Socia", "Duplicada", duplicateMemberOwner, communityId, memberId, `${memberUser}+dup@example.test`, "active");
+  db.prepare(
+    "INSERT INTO owners(id,name,surname,dni,isMember,communityId,userId,email,votingRights) VALUES (?,?,?,?,1,?,?,?,?)",
+  ).run(suspendedOwner, "Socia", "Suspendida", suspendedOwner, communityId, suspendedId, `${suspendedUser}@example.test`, "suspended");
+  // Un propietario con inmueble y coeficiente, pero no socio, queda fuera del censo.
+  db.prepare("UPDATE owners SET isMember=0,userId=? WHERE id='own-seed-2'").run(nonMemberId);
+  db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+    JSON.stringify({
+      regimen: "asociacion",
+      votaciones: { unidad: "coeficiente", copropiedad: "todos", mayoriaOrdinaria: "absoluta" },
+    }),
+    communityId,
+  );
+  const member = client(), suspended = client(), nonMember = client();
+  try {
+    for (const [c, usuario] of [
+      [member, memberUser],
+      [suspended, suspendedUser],
+      [nonMember, ownerUser],
+    ])
+      assert.equal(
+        (await c("/auth/signin", "POST", { usuario, password: usuario })).status,
+        200,
+      );
+    const p = await create({ poll: poll() });
+    // La regla se congela como censo de socios aunque la configuración pedía coeficiente.
+    assert.deepEqual(p.poll.votingRule, {
+      unidad: "propietario",
+      copropiedad: "representante",
+      mayoriaOrdinaria: "absoluta",
+      censo: "socios",
+    });
+    assert.match(p.pollRule, /socio/i);
+    assert.match(p.pollMajority, /socios/i);
+    assert.ok(p.recipients.some((r) => r.userId === memberId));
+    assert.ok(!p.recipients.some((r) => r.userId === nonMemberId));
+    // Una socia sin inmueble vota.
+    assert.equal(
+      (await member(`/communications/posts/${p.id}/ballot`, "POST", { choices: [0] })).status,
+      201,
+    );
+    // Otro socio con inmueble vota con el mismo peso: no se aplica su coeficiente 4,25.
+    assert.equal(
+      (await owner(`/communications/posts/${p.id}/ballot`, "POST", { choices: [1] })).status,
+      201,
+    );
+    // Una persona socia con derecho suspendido no vota.
+    assert.equal(
+      (await suspended(`/communications/posts/${p.id}/ballot`, "POST", { choices: [1] })).status,
+      403,
+    );
+    // Un propietario no socio queda fuera del censo y ni siquiera accede a la consulta.
+    assert.equal((await nonMember(`/communications/posts/${p.id}/ballot`, "POST", { choices: [1] })).status, 404);
+    const current = (await admin(`/communications/posts/${p.id}`)).data;
+    assert.equal((await update(current, { poll: { ...current.poll, closed: true } })).status, 200);
+    const results = (await tenant(`/communications/posts/${p.id}`)).data;
+    assert.deepEqual(results.pollResults, {
+      total: 2,
+      counts: [1, 1, 0],
+      ballots: 2,
+      weighted: false,
+    });
+    // La mayoría de una asociación sigue siendo de socios aunque la consulta
+    // se abra a todos los destinatarios y el cómputo sea por cuenta.
+    const recipientsPoll = await create({ poll: poll({ electorate: "recipients" }) });
+    const recipientsDetail = (await admin(`/communications/posts/${recipientsPoll.id}`)).data;
+    assert.match(recipientsDetail.pollMajority, /socios/i);
+    assert.match(recipientsDetail.pollRule, /cuenta/i);
+    // Una cuenta con una ficha suspendida no puede votar aunque otra ficha
+    // suya esté activa: la suspensión se aplica a la cuenta completa.
+    const mixedSuspendedOwner = "assoc-member-mixed-suspended";
+    db.prepare(
+      "INSERT INTO owners(id,name,surname,dni,isMember,communityId,userId,email,votingRights) VALUES (?,?,?,?,1,?,?,?,?)",
+    ).run(
+      mixedSuspendedOwner,
+      "Socia",
+      "Mixta",
+      mixedSuspendedOwner,
+      communityId,
+      memberId,
+      `${memberUser}+mixed@example.test`,
+      "suspended",
+    );
+    try {
+      const blocked = await create({ poll: poll() });
+      const denied = await member(`/communications/posts/${blocked.id}/ballot`, "POST", {
+        choices: [0],
+      });
+      assert.equal(denied.status, 403, JSON.stringify(denied.data));
+      const blockedDetail = (await member(`/communications/posts/${blocked.id}`)).data;
+      assert.equal(blockedDetail.canVote, false);
+      assert.equal(blockedDetail.votingSuspended, true);
+    } finally {
+      db.prepare("DELETE FROM owners WHERE id=?").run(mixedSuspendedOwner);
+    }
+  } finally {
+    db.prepare("DELETE FROM owners WHERE id IN (?,?,?)").run(
+      memberOwner,
+      duplicateMemberOwner,
+      suspendedOwner,
+    );
+    db.prepare("UPDATE owners SET isMember=?,userId=? WHERE id='own-seed-2'").run(
+      beforeOwner.isMember,
+      beforeOwner.userId,
+    );
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+      beforeConfig,
+      communityId,
+    );
+  }
+});
+
 test("votaciones: un propietario con voto suspendido no puede votar", async () => {
   db.prepare("UPDATE owners SET votingRights='suspended' WHERE id='own-seed-1'").run();
   try {
@@ -417,10 +628,15 @@ test("encuestas permiten respuesta múltiple de inquilinos y cierre por fecha", 
     ).status,
     201,
   );
-  assert.deepEqual((await owner(`/communications/posts/${p.id}`)).data.pollResults, {
+  const results = (await owner(`/communications/posts/${p.id}`)).data;
+  assert.deepEqual(results.pollResults, {
     total: 1,
     counts: [1, 0, 1],
+    ballots: 1,
+    weighted: false,
   });
+  // La encuesta cuenta por cuenta aunque la regla congelada sea por coeficiente.
+  assert.match(results.pollRule, /cuenta/i);
   const data = postById(p.id);
   data.poll.closesAt = new Date(Date.now() - 1000).toISOString();
   db.prepare("UPDATE communication_posts SET data=? WHERE id=?").run(JSON.stringify(data), p.id);

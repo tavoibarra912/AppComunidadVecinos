@@ -112,9 +112,23 @@ export function createPermissionChecker(user, data) {
   const ownedProperties = properties.filter((p) => p.ownerIds?.some((id) => ownOwners.has(id)));
   const ownedPropertyIds = new Set(ownedProperties.map((p) => p.id));
   const ownedCommunityIds = new Set(ownedProperties.map((p) => p.communityId));
+  // En una asociación el censo son los socios: un socio sin inmueble también
+  // accede a su comunidad y puede votar si sus derechos están activos.
+  const associationCommunities = new Set(
+    communities.filter((c) => c.legalConfig?.regimen === "asociacion").map((c) => c.id),
+  );
+  const memberCommunityIds = new Set(
+    owners
+      .filter(
+        (o) =>
+          o.userId === user.id && o.isMember && associationCommunities.has(o.communityId),
+      )
+      .map((o) => o.communityId),
+  );
   const assigned = new Set(communities.filter((c) => c.adminUserId === user.id).map((c) => c.id));
   const ownCommunities = new Set([
     ...ownedCommunityIds,
+    ...memberCommunityIds,
     ...ownTenants.map((t) => propertiesById.get(t.propertyId)?.communityId),
   ]);
   const readablePropertyIds = new Set([
@@ -131,6 +145,14 @@ export function createPermissionChecker(user, data) {
     for (const ownerId of property.ownerIds || []) {
       if (!ownerCommunities.has(ownerId)) ownerCommunities.set(ownerId, new Set());
       ownerCommunities.get(ownerId).add(property.communityId);
+    }
+  // La comunidad de censo de un socio también vincula su ficha, aunque no
+  // tenga inmueble o lo tenga en otra comunidad. Sin este vínculo, un
+  // community_admin asignado no podría revisar ni borrar su ficha en cascada.
+  for (const owner of owners)
+    if (owner.isMember && owner.communityId) {
+      if (!ownerCommunities.has(owner.id)) ownerCommunities.set(owner.id, new Set());
+      ownerCommunities.get(owner.id).add(owner.communityId);
     }
   return (permission, resourceId = "") => {
     if (!PERMISSIONS.includes(permission) || !permissions.has(permission)) return false;

@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { DDL_APP } from "./ddl.js";
+import { legalConfigFromValue } from "./legal-config.js";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
@@ -36,6 +37,7 @@ db.exec(`
     reserveFund TEXT NOT NULL DEFAULT '',
     notes TEXT NOT NULL DEFAULT '',
     documents TEXT NOT NULL DEFAULT '[]',
+    legalConfig TEXT NOT NULL DEFAULT '{}',
     version INTEGER NOT NULL DEFAULT 1,
     createdAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -238,6 +240,7 @@ ensureColumns("communities", {
   adminUserId: "TEXT NOT NULL DEFAULT ''",
   logoDataUrl: "TEXT NOT NULL DEFAULT ''",
   marca: "TEXT NOT NULL DEFAULT '{}'",
+  legalConfig: "TEXT NOT NULL DEFAULT '{}'",
 });
 
 ensureColumns("users", {
@@ -249,6 +252,8 @@ ensureColumns("users", {
 });
 
 ensureColumns("owners", {
+  communityId: "TEXT NOT NULL DEFAULT ''",
+  communityName: "TEXT NOT NULL DEFAULT ''",
   userId: "TEXT NOT NULL DEFAULT ''",
   votingRights: "TEXT NOT NULL DEFAULT 'active'",
   legalRepresentative: "TEXT NOT NULL DEFAULT ''",
@@ -257,6 +262,14 @@ ensureColumns("owners", {
 
 ensureColumns("tenants", {
   userId: "TEXT NOT NULL DEFAULT ''",
+});
+
+// El peso del voto se congela al emitirlo; los votos antiguos quedan en 0 y
+// se calculan con la regla vigente al consultar.
+ensureColumns("communication_ballots", {
+  weight: "REAL NOT NULL DEFAULT 0",
+  // Los votos anteriores a la congelación quedan en 0 y se recalculan.
+  weightFrozen: "INTEGER NOT NULL DEFAULT 0",
 });
 
 // Biblioteca documental: las columnas nuevas dejan los documentos existentes
@@ -1032,6 +1045,20 @@ function parseJson(value, fallback) {
   }
 }
 
+export function hasCommunityFinancialActivity(id) {
+  return !!db
+    .prepare(
+      `SELECT EXISTS (
+    SELECT 1 FROM fee_plans WHERE communityId=?
+    UNION ALL SELECT 1 FROM fee_receipts WHERE communityId=?
+    UNION ALL SELECT 1 FROM fee_payments WHERE communityId=?
+    UNION ALL SELECT 1 FROM fee_assessments WHERE communityId=?
+    UNION ALL SELECT 1 FROM service_bills WHERE communityId=?
+  ) AS active`,
+    )
+    .get(id, id, id, id, id).active;
+}
+
 export function communityFromRow(row) {
   return {
     id: row.id,
@@ -1051,9 +1078,11 @@ export function communityFromRow(row) {
     constitutionYear: row.constitutionYear || "",
     reserveFund: row.reserveFund || "",
     currency: row.currency || "",
+    hasFinancialActivity: hasCommunityFinancialActivity(row.id),
     adminUserId: row.adminUserId || "",
     logoDataUrl: row.logoDataUrl || "",
     marca: parseJson(row.marca, {}),
+    legalConfig: legalConfigFromValue(parseJson(row.legalConfig, {})),
     notes: row.notes,
     documents: parseJson(row.documents, []),
   };

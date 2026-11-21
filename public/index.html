@@ -204,10 +204,14 @@
         <a class="mobile-nav-item active" href="#home" id="mobile-nav-home">Inicio</a>
         <a class="mobile-nav-item" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
         <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
-        <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
+        <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios"
+          >Propietarios</a
+        >
         <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
         <a class="mobile-nav-item" href="#cuotas" id="mobile-nav-cuotas" hidden>Cuotas</a>
-        <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion">Comunicación</a>
+        <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion"
+          >Comunicación</a
+        >
         <a class="mobile-nav-item" href="#administracion" id="mobile-nav-administracion" hidden
           >Administración</a
         >
@@ -2380,9 +2384,9 @@
               <select name="currency">
                 <option value="">Cargando monedas…</option>
               </select>
-              <span class="field-hint"
-                >Las cuotas se gestionan solo en EUR. Con otra moneda, no se pueden configurar ni
-                emitir recibos.</span
+              <span class="field-hint" id="community-currency-hint"
+                >Las cuotas se gestionan solo en EUR. Con actividad financiera registrada no se
+                puede cambiar a otra moneda. Los importes históricos conservan su moneda.</span
               >
             </label>
             <label
@@ -2588,6 +2592,115 @@
                 </p>
               </div>
             </div>
+          </div>
+          <div class="form-grid" id="community-legal-config">
+            <div class="full">
+              <h3>Régimen jurídico y reglas aplicables</h3>
+              <p class="detail-section-subtitle">
+                Define cómo se expresa la deuda, qué ocurre con el saldo a favor al borrar un
+                titular, cuándo se traslada el libro financiero y cómo se computan las votaciones.
+                Son criterios orientativos: valida los estatutos y títulos con el administrador o
+                asesor legal antes de emitir certificados formales o votaciones vinculantes.
+              </p>
+            </div>
+            <label
+              >Régimen jurídico
+              <select name="legalRegimen"></select>
+              <span class="field-hint"
+                >Determina el marco de la entidad: comunidad de propietarios (LPH) o
+                asociación.</span
+              >
+            </label>
+            <label
+              >Deuda de copropietarios
+              <select name="legalDebtExpression"></select>
+              <span class="field-hint"
+                >La deuda del inmueble es la referencia frente a la comunidad; la cuota individual
+                aplica el porcentaje acreditado al emitir el recibo.</span
+              >
+            </label>
+            <label
+              >Porcentajes históricos ausentes
+              <select name="legalDebtHistorical"></select>
+              <span class="field-hint"
+                >Si el recibo no guardó el porcentaje, no se inventa: se indica «no consta» o se
+                usa el último porcentaje conocido.</span
+              >
+            </label>
+            <label
+              >Crédito al borrar un titular
+              <select name="legalCreditPolicy"></select>
+              <span class="field-hint"
+                >El saldo a favor debe conciliarse o documentarse; liberar una asignación contable
+                no equivale a devolver dinero.</span
+              >
+            </label>
+            <label
+              >Destino por defecto del crédito
+              <select name="legalCreditDestination"></select>
+            </label>
+            <label
+              >Criterio de traslado de deuda
+              <select name="legalTransferDebt"></select>
+              <span class="field-hint"
+                >Se deja constancia en el acta. Mover una ficha o un inmueble no traslada
+                automáticamente sus recibos: el histórico permanece en la comunidad de origen
+                salvo que el asistente ejecute el traslado financiero documentado.</span
+              >
+            </label>
+            <label
+              >Unidad de voto
+              <select name="legalVotingUnit"></select>
+              <span class="field-hint"
+                >En LPH se computan propietarios y cuotas. En asociaciones manda el censo de
+                socios (isMember) y sus derechos estatutarios, aunque no tengan inmueble; no se
+                aplican coeficientes. La regla queda congelada en cada consulta al crearla.</span
+              >
+            </label>
+            <label
+              >Copropiedad
+              <select name="legalCoownership"></select>
+              <span class="field-hint"
+                >Con representante común el inmueble computa una sola vez; si votan varios
+                cotitulares, se toma la primera respuesta registrada.</span
+              >
+            </label>
+            <label
+              >Mayoría ordinaria
+              <select name="legalMajority"></select>
+              <span class="field-hint"
+                >Se muestra junto a la consulta. En LPH se computan propietarios y cuotas; en
+                asociaciones, socios con derecho a voto. La aplicación no declara por sí sola un
+                acuerdo aprobado: la mayoría aplicable depende del asunto y de la
+                convocatoria.</span
+              >
+            </label>
+            <label
+              >Referencia de los estatutos (opcional)
+              <input
+                name="legalStatutesReference"
+                maxlength="200"
+                placeholder="Ej: Estatutos de 2018, artículo 12"
+              />
+            </label>
+            <label
+              >Fecha de aprobación de estatutos (opcional)
+              <input name="legalStatutesDate" type="date" />
+            </label>
+            <label class="full"
+              ><input type="checkbox" name="legalDebtShowInternal" /> Mostrar el reparto interno
+              de la deuda en el certificado (informativo)<span class="field-hint"
+                >El reparto entre cotitulares (art. 393 CC) no limita por sí solo la
+                responsabilidad frente a la comunidad.</span
+              ></label
+            >
+            <label class="full"
+              ><input type="checkbox" name="legalTransferDocument" /> Exigir acuerdo o documento
+              para trasladar el libro financiero completo<span class="field-hint"
+                >Se solicita una confirmación expresa y la referencia del acuerdo o documento en el
+                asistente de borrado avanzado antes de mover recibos y cobros a otra comunidad.</span
+              ></label
+            >
           </div>
           <div class="doc-library-host" id="community-statutes-list"></div>
         </section>

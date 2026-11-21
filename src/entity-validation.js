@@ -1,8 +1,8 @@
 import { requiredTrimmed } from "./validation.js";
 
 // Validación de campos obligatorios por entidad, alineada con la interfaz.
-// Lógica: un campo presente pero vacío o con solo espacios se rechaza
-// (R01/R02). Un campo ausente se respeta (edición parcial o valores previos).
+// Las altas validan todos los obligatorios. Las ediciones parciales deben
+// fusionarse con el registro existente antes de validar el resultado completo.
 
 const CAMPOS = {
   community: ["name", "nif", "address", "city"],
@@ -42,12 +42,10 @@ const ETIQUETAS = {
   },
 };
 
-/** Rechaza valores vacíos o solo-espacios en campos que VENGAN en el payload
- * (no exige campos ausentes). Devuelve el mensaje o null. */
-export function entityRequiredError(entity, data, { exigirAusentes = true } = {}) {
+/** Rechaza campos obligatorios ausentes, vacíos o con solo espacios. */
+export function entityRequiredError(entity, data) {
   const campos = CAMPOS[entity] || [];
-  const aChequear = exigirAusentes ? campos : campos.filter((c) => data[c] !== undefined);
-  const campo = requiredTrimmed(data, aChequear);
+  const campo = requiredTrimmed(data, campos);
   if (!campo) return null;
   const etiqueta = ETIQUETAS[entity]?.[campo] || `el campo ${campo}`;
   const causa =
