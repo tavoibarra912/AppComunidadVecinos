@@ -79,6 +79,10 @@ async function boot() {
   // Catálogo territorial del INE (script clásico con window.MUNICIPIOS_INE)
   loadLocations();
 
+  // El menú de cuenta es transversal: debe enlazar sus eventos también si
+  // la primera pantalla es el login y todavía no se abrió ninguna sección.
+  const accountMenu = await loadFeature("account-menu");
+
   // Esqueleto de carga del home: se muestra/oculta según state.loading.bootstrap
   subscribe("loading", () => {
     const isLoading = state.loading.bootstrap;
@@ -95,6 +99,7 @@ async function boot() {
     renderHomeDashboard();
     applyRoleUI();
     renderUserSelector();
+    accountMenu.renderAccountMenu();
 
     // Badges de notificaciones (lazy)
     const notif = await getBadge("notificaciones").catch(() => ({}));
