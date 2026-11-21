@@ -215,7 +215,13 @@ export function resourceAccess(req, res, next) {
     if (req.body[field] !== undefined && typeof req.body[field] !== "string")
       return res.status(400).json({ error: `El campo ${field} debe ser texto.` });
   }
-  for (const field of ["ownerIds", "tenantIds", "propertyIds"]) {
+  for (const field of [
+    "ownerIds",
+    "tenantIds",
+    "propertyIds",
+    "linkTenantIds",
+    "unlinkTenantIds",
+  ]) {
     if (
       req.body[field] !== undefined &&
       (!Array.isArray(req.body[field]) ||
@@ -283,7 +289,11 @@ export function resourceAccess(req, res, next) {
       : req.body.propertyId
         ? [req.body.propertyId]
         : [];
-    if (req.method === "PUT" && existing) {
+    if (
+      req.method === "PUT" &&
+      existing &&
+      (req.body.propertyIds !== undefined || req.body.propertyId !== undefined)
+    ) {
       const currentPropertyIds = Array.isArray(existing.propertyIds) ? existing.propertyIds : [];
       const preserved = currentPropertyIds.filter(
         (propertyId) =>

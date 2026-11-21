@@ -888,7 +888,7 @@ export function seedIfEmpty() {
       if (propertyId) updateOwnerMainProperty.run(propertyId, o.id);
     });
 
-    rebuildOwnersPropertyIds();
+    rebuildOwnersPropertyIds({ repairPercentages: true });
 
     // El propietario del inquilino se deriva del dueño del inmueble vinculado
     db.prepare(
@@ -1161,7 +1161,9 @@ export function seedCommunicationsDemo() {
       .prepare("SELECT userId FROM communication_recipients WHERE postId=?")
       .all(ids[titulo])
       .map((r) => r.userId);
-  const insertBola = db.prepare("INSERT OR IGNORE INTO communication_ballots VALUES (?,?,?,?)");
+  const insertBola = db.prepare(
+    "INSERT OR IGNORE INTO communication_ballots (postId,userId,choices,createdAt) VALUES (?,?,?,?)",
+  );
   const votos = {
     [definiciones[13].title]: [[0], [1], [2]],
     [definiciones[14].title]: [[0, 2], [1], [0], [3]],

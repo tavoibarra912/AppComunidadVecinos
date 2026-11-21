@@ -16,6 +16,7 @@ import {
   receiptById,
   receiptConcept,
   receiptView,
+  canRectifyReceipt,
   noticeDefaults,
   formatMoney,
 } from "./fees.js";
@@ -556,13 +557,16 @@ export function serviceView(row, date = today()) {
     outstanding = active.reduce((sum, view) => sum + view.outstanding, 0),
     issuedAmount = active.reduce((sum, view) => sum + view.amount, 0),
     issued = !!row.issuedAt || receipts.length > 0;
+  const needsRectification = !row.cancelledAt && receipts.some(canRectifyReceipt);
   let status = "draft";
   if (row.cancelledAt) status = "cancelled";
   else if (!issued) status = "draft";
   else if (data.billing === "informative") status = "informative";
+  else if (needsRectification) status = "rectification";
   else if (outstanding === 0 && issuedAmount > 0) status = "paid";
   else if (paid > 0) status = "partial";
-  else if (row.dueDate < date) status = "overdue";
+  else if (active.some((receipt) => receipt.outstanding > 0 && receipt.dueDate < date))
+    status = "overdue";
   else status = "issued";
   return {
     id: row.id,
@@ -582,6 +586,7 @@ export function serviceView(row, date = today()) {
     cancellationReason: row.cancellationReason,
     concept: serviceConcept(row),
     canEdit: !row.cancelledAt && !row.issuedAt && receipts.length === 0,
+    needsRectification,
     method: data.method,
     billing: data.billing,
     variableShare: data.variableShare,
@@ -607,6 +612,9 @@ export function serviceView(row, date = today()) {
       issued: issuedAmount,
       paid,
       outstanding,
+      rectification: receipts
+        .filter(canRectifyReceipt)
+        .reduce((sum, receipt) => sum + receipt.amount, 0),
       cancelled: receipts
         .filter((receipt) => receipt.cancelledAt)
         .reduce((sum, receipt) => sum + receipt.amount, 0),

@@ -204,10 +204,14 @@
         <a class="mobile-nav-item active" href="#home" id="mobile-nav-home">Inicio</a>
         <a class="mobile-nav-item" href="#comunidades" id="mobile-nav-comunidades">Comunidades</a>
         <a class="mobile-nav-item" href="#inmuebles" id="mobile-nav-inmuebles">Inmuebles</a>
-        <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios">Propietarios</a>
+        <a class="mobile-nav-item" href="#propietarios" id="mobile-nav-propietarios"
+          >Propietarios</a
+        >
         <a class="mobile-nav-item" href="#inquilinos" id="mobile-nav-inquilinos">Inquilinos</a>
         <a class="mobile-nav-item" href="#cuotas" id="mobile-nav-cuotas" hidden>Cuotas</a>
-        <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion">Comunicación</a>
+        <a class="mobile-nav-item" href="#comunicacion" id="mobile-nav-comunicacion"
+          >Comunicación</a
+        >
         <a class="mobile-nav-item" href="#administracion" id="mobile-nav-administracion" hidden
           >Administración</a
         >
@@ -921,7 +925,7 @@
             data-admin-tab="settings"
             aria-selected="false"
           >
-            Configuración General
+            Configuracion
           </button>
           <button
             class="community-editor-tab"
@@ -1152,7 +1156,7 @@
               data-settings-tab="estilo"
               aria-selected="false"
             >
-              Estilo
+              Estilo Aplicacion
             </button>
             <button
               type="button"
@@ -1565,7 +1569,7 @@
                   Personaliza el nombre, el logo y el estilo (colores, tipografía y formato) de cada
                   comunidad. Se aplican en la app solo para usuarios con sesión iniciada que tengan
                   acceso a una única comunidad; el resto sigue viendo el estilo global de la pestaña
-                  Estilo.
+                  Estilo Aplicacion.
                 </p>
                 <label class="full"
                   >Comunidad
@@ -1663,7 +1667,8 @@
                   </select>
                 </label>
 
-                <div class="heading-actions full">
+                <div class="heading-actions full settings-community-actions">
+                  <p class="form-intro" id="settings-community-hint"></p>
                   <button
                     type="button"
                     class="secondary-button"
@@ -1697,7 +1702,6 @@
                     </svg>
                   </button>
                 </div>
-                <p class="form-intro full" id="settings-community-hint"></p>
               </div>
             </div>
             <div id="settings-estilo-panel" hidden>
@@ -2380,9 +2384,9 @@
               <select name="currency">
                 <option value="">Cargando monedas…</option>
               </select>
-              <span class="field-hint"
-                >Las cuotas se gestionan solo en EUR. Con otra moneda, no se pueden configurar ni
-                emitir recibos.</span
+              <span class="field-hint" id="community-currency-hint"
+                >Las cuotas se gestionan solo en EUR. Con actividad financiera registrada no se
+                puede cambiar a otra moneda. Los importes históricos conservan su moneda.</span
               >
             </label>
             <label
@@ -2560,36 +2564,286 @@
           data-community-pane="statutes"
           hidden
         >
-          <div class="detail-section-heading doc-pane-heading">
-            <div class="doc-pane-title">
-              <span class="doc-pane-icon" aria-hidden="true">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>
-                  <path d="m9 12 2 2 4-4"></path>
-                </svg>
-              </span>
-              <div>
-                <h3>
-                  Estatutos de la comunidad
-                  <span class="doc-pane-count" id="community-statutes-count">0</span>
-                </h3>
+          <nav
+            class="community-editor-tabs community-statutes-tabs"
+            role="tablist"
+            aria-label="Apartados de Estatutos"
+          >
+            <button
+              type="button"
+              class="community-editor-tab active"
+              id="community-statutes-regime-tab"
+              data-community-statutes-tab="regime"
+              role="tab"
+              aria-selected="true"
+              aria-controls="community-statutes-regime"
+            >
+              Regimen Juridico
+            </button>
+            <button
+              type="button"
+              class="community-editor-tab"
+              id="community-statutes-rules-tab"
+              data-community-statutes-tab="rules"
+              role="tab"
+              aria-selected="false"
+              aria-controls="community-statutes-rules"
+              tabindex="-1"
+            >
+              Reglas
+            </button>
+            <button
+              type="button"
+              class="community-editor-tab"
+              id="community-statutes-documents-tab"
+              data-community-statutes-tab="documents"
+              role="tab"
+              aria-selected="false"
+              aria-controls="community-statutes-documents"
+              tabindex="-1"
+            >
+              Documentacion
+            </button>
+          </nav>
+          <div id="community-legal-config">
+            <section
+              class="form-grid community-statutes-pane"
+              id="community-statutes-regime"
+              data-community-statutes-pane="regime"
+              role="tabpanel"
+              aria-labelledby="community-statutes-regime-tab"
+            >
+              <div class="full">
+                <h3>Régimen jurídico y estatutos de referencia</h3>
                 <p class="detail-section-subtitle">
-                  Documentos vigentes para consulta de todos los vecinos. Solo los administradores
-                  pueden subirlos, reemplazarlos, renombrarlos o eliminarlos.
+                  Identifica el tipo de entidad y los estatutos que sirven de referencia. Las reglas
+                  de deuda, crédito, traslados y votaciones se configuran en Reglas; los archivos de
+                  los estatutos se publican en Documentacion.
                 </p>
               </div>
-            </div>
+              <label
+                >Régimen jurídico<select
+                  name="legalRegimen"
+                  aria-describedby="legalRegimen-hint"
+                ></select
+                ><span class="field-hint" id="legalRegimen-hint"
+                  >Selecciona Comunidad de propietarios (LPH) o Asociación según la entidad que
+                  estás gestionando. Esta elección adapta las opciones de votación: en asociaciones
+                  se utiliza el censo de socios, aunque no tengan inmuebles, y no se aplican
+                  coeficientes de participación.</span
+                ></label
+              >
+              <label
+                >Referencia de los estatutos (opcional)<input
+                  name="legalStatutesReference"
+                  aria-describedby="legalStatutesReference-hint"
+                  maxlength="200"
+                  placeholder="Ej.: Estatutos de 2018, artículo 12"
+                /><span class="field-hint" id="legalStatutesReference-hint"
+                  >Indica el nombre o versión de los estatutos y, si corresponde, el artículo o
+                  acuerdo que respalda estas reglas. Es una referencia descriptiva: adjunta el
+                  documento completo en Documentacion.</span
+                ></label
+              >
+              <label
+                >Fecha de aprobación de estatutos (opcional)<input
+                  name="legalStatutesDate"
+                  aria-describedby="legalStatutesDate-hint"
+                  type="date"
+                /><span class="field-hint" id="legalStatutesDate-hint"
+                  >Anota la fecha del acuerdo que aprobó la versión de los estatutos indicada
+                  arriba. No cambia las fechas de los recibos ni de las consultas ya creadas.</span
+                ></label
+              >
+            </section>
+            <section
+              class="form-grid community-statutes-pane"
+              id="community-statutes-rules"
+              data-community-statutes-pane="rules"
+              role="tabpanel"
+              aria-labelledby="community-statutes-rules-tab"
+              hidden
+            >
+              <div class="full">
+                <h3>Reglas de gestión de la comunidad</h3>
+                <p class="detail-section-subtitle">
+                  Define cómo se presentan las deudas y cómo se gestionan los saldos, los traslados
+                  y las consultas. Comprueba que estas opciones coincidan con los estatutos y
+                  acuerdos aplicables antes de utilizarlas.
+                </p>
+              </div>
+              <label
+                >Deuda de copropietarios<select
+                  name="legalDebtExpression"
+                  aria-describedby="legalDebtExpression-hint"
+                ></select
+                ><span class="field-hint" id="legalDebtExpression-hint"
+                  >Elige entre mostrar la deuda completa de los inmuebles o una cuota individual
+                  informativa por titular. La cuota individual aplica a cada recibo el porcentaje de
+                  titularidad acreditado; no modifica el recibo ni reparte automáticamente los pagos
+                  entre cotitulares.</span
+                ></label
+              >
+              <label
+                >Porcentajes históricos ausentes<select
+                  name="legalDebtHistorical"
+                  aria-describedby="legalDebtHistorical-hint"
+                ></select
+                ><span class="field-hint" id="legalDebtHistorical-hint"
+                  >Decide qué mostrar cuando un recibo antiguo no conserva el porcentaje del
+                  titular: indicar «no consta», usar el porcentaje actual con una advertencia o no
+                  mostrar el reparto interno. Usar el porcentaje actual no acredita cuál era el
+                  reparto al emitir el recibo.</span
+                ></label
+              >
+              <label
+                >Crédito al borrar un titular<select
+                  name="legalCreditPolicy"
+                  aria-describedby="legalCreditPolicy-hint"
+                ></select
+                ><span class="field-hint" id="legalCreditPolicy-hint"
+                  >Elige si el borrado avanzado debe bloquearse hasta conciliar el saldo, mostrar
+                  una advertencia o permitirse sin conciliación previa. Revisa el destino del
+                  crédito antes de confirmar. Liberar un cobro de un recibo no devuelve dinero al
+                  pagador.</span
+                ></label
+              >
+              <label
+                >Destino por defecto del crédito<select
+                  name="legalCreditDestination"
+                  aria-describedby="legalCreditDestination-hint"
+                ></select
+                ><span class="field-hint" id="legalCreditDestination-hint"
+                  >Propone un destino al revisar el saldo en el asistente: devolución al titular,
+                  compensación de deuda, cesión a un tercero, aportación al fondo de reserva u otro
+                  destino documentado. Se puede revisar antes de confirmar; esta selección no
+                  ejecuta transferencias bancarias ni mueve dinero por sí sola.</span
+                ></label
+              >
+              <label
+                >Criterio de traslado de deuda<select
+                  name="legalTransferDebt"
+                  aria-describedby="legalTransferDebt-hint"
+                ></select
+                ><span class="field-hint" id="legalTransferDebt-hint"
+                  >Conservar en origen mantiene allí los recibos y cobros históricos. La opción de
+                  traslado permite documentar el movimiento completo del libro mediante el
+                  asistente, sujeto a sus comprobaciones. Cambiar la comunidad de una ficha o
+                  inmueble no mueve automáticamente su histórico financiero.</span
+                ></label
+              >
+              <label
+                >Unidad de voto<select
+                  name="legalVotingUnit"
+                  aria-describedby="legalVotingUnit-hint"
+                ></select
+                ><span class="field-hint" id="legalVotingUnit-hint"
+                  >Define cómo se cuentan las respuestas: por cuenta, por propietario, por inmueble
+                  o por coeficiente, según el régimen elegido. En asociaciones se cuenta por socio o
+                  por cuenta. La regla se fija al crear la consulta; en votaciones LPH, las
+                  titularidades y coeficientes se guardan al publicarla para evitar que los cambios
+                  posteriores dupliquen peso.</span
+                ></label
+              >
+              <label
+                >Copropiedad<select
+                  name="legalCoownership"
+                  aria-describedby="legalCoownership-hint"
+                ></select
+                ><span class="field-hint" id="legalCoownership-hint"
+                  >Con representante común, el inmueble computa una sola vez y se toma la primera
+                  respuesta registrada entre sus cotitulares. Con voto de todos los cotitulares, el
+                  peso se distribuye según sus porcentajes. En asociaciones esta opción no se
+                  utiliza: manda el censo de socios.</span
+                ></label
+              >
+              <label
+                >Mayoría ordinaria<select
+                  name="legalMajority"
+                  aria-describedby="legalMajority-hint"
+                ></select
+                ><span class="field-hint" id="legalMajority-hint"
+                  >Selecciona la referencia de mayoría que se mostrará junto a las consultas:
+                  simple, absoluta, tres quintos o unanimidad. La aplicación presenta los resultados
+                  y la regla elegida; no declara automáticamente que un acuerdo esté aprobado.
+                  Comprueba la mayoría que corresponde al asunto y a la convocatoria.</span
+                ></label
+              >
+              <label class="community-legal-check"
+                ><input
+                  type="checkbox"
+                  name="legalDebtShowInternal"
+                  aria-describedby="legalDebtShowInternal-hint"
+                /><span
+                  ><span class="community-legal-check-title"
+                    >Mostrar el reparto interno de la deuda en el certificado (informativo)</span
+                  ><span class="field-hint" id="legalDebtShowInternal-hint"
+                    >Añade los porcentajes y el reparto informativo por titular cuando el criterio
+                    de porcentajes históricos lo permite. Si eliges omitir ese reparto, no se
+                    mostrará aunque esta casilla esté marcada. Los pagos reflejan la aportación real
+                    de cada pagador.</span
+                  ></span
+                ></label
+              >
+              <label class="community-legal-check"
+                ><input
+                  type="checkbox"
+                  name="legalTransferDocument"
+                  aria-describedby="legalTransferDocument-hint"
+                /><span
+                  ><span class="community-legal-check-title"
+                    >Exigir acuerdo o documento para trasladar el libro financiero completo</span
+                  ><span class="field-hint" id="legalTransferDocument-hint"
+                    >Pide confirmación expresa y una referencia del acuerdo o documento en el
+                    asistente antes del traslado financiero. No basta con mover la ficha del
+                    inmueble. Los requisitos de las comunidades de origen y destino también se
+                    comprueban al confirmar.</span
+                  ></span
+                ></label
+              >
+            </section>
           </div>
-          <div class="doc-library-host" id="community-statutes-list"></div>
+          <section
+            class="community-statutes-pane"
+            id="community-statutes-documents"
+            data-community-statutes-pane="documents"
+            role="tabpanel"
+            aria-labelledby="community-statutes-documents-tab"
+            hidden
+          >
+            <div class="detail-section-heading doc-pane-heading">
+              <div class="doc-pane-title">
+                <span class="doc-pane-icon" aria-hidden="true"
+                  ><svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"></path>
+                    <path d="m9 12 2 2 4-4"></path></svg
+                ></span>
+                <div>
+                  <h3>
+                    Estatutos de la comunidad
+                    <span class="doc-pane-count" id="community-statutes-count">0</span>
+                  </h3>
+                  <p class="detail-section-subtitle">
+                    Publica aquí los archivos de los estatutos para que los vecinos puedan
+                    consultarlos. Solo los administradores pueden añadirlos, reemplazarlos,
+                    renombrarlos o eliminarlos. Los cambios en los archivos se guardan al instante;
+                    las opciones de Régimen jurídico y Reglas se guardan con el botón Guardar
+                    comunidad.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="doc-library-host" id="community-statutes-list"></div>
+          </section>
         </section>
         <p class="form-error" id="form-error" role="alert"></p>
         <div class="dialog-actions">

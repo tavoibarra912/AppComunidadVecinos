@@ -1,7 +1,7 @@
 import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db, communityFromRow, listDocuments } from "../db.js";
+import { db, communityFromRow, listDocuments, hasCommunityFinancialActivity } from "../db.js";
 import {
   contactError,
   bankAccountError,
@@ -13,61 +13,64 @@ import { removeEntityFiles } from "./documents.js";
 import { sanitizeRichText } from "../rich-text.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { validateBrand } from "../branding.js";
+import { legalConfigFromValue, mergeLegalConfig, validateLegalConfig } from "../legal-config.js";
 import { registerCascadeRoutes } from "../cascade-delete.js";
 
 const router = Router();
 registerCascadeRoutes(router, "communities");
-router.use((req, res, next) => {
-  if (["POST", "PUT"].includes(req.method)) {
-    const data = req.body || {};
-    data.nif = normalizeIdentityDocument(data.nif);
-    const error =
-      contactError(data) ||
-      bankAccountError(data) ||
-      communityFinanceError(data) ||
-      communityNifError(data.nif);
-    if (error) return res.status(400).json({ error });
-    if (data.notes !== undefined) data.notes = sanitizeRichText(data.notes);
-    if (data.logoDataUrl !== undefined) {
-      const logo = data.logoDataUrl;
-      const LOGO = /^data:image\/(png|jpeg|svg\+xml|webp);base64,/;
-      if (logo !== "" && (typeof logo !== "string" || logo.length > 230_400 || !LOGO.test(logo)))
-        return res.status(400).json({
-          error:
-            "El logo de la comunidad debe ser una imagen PNG, JPG, SVG o WebP de menos de 225 KB.",
-        });
-      data.logoDataUrl = logo === "" ? "" : logo;
-    }
-    if (data.marca !== undefined) {
-      const marcaError = validateBrand(data.marca);
-      if (marcaError) return res.status(400).json({ error: marcaError });
-      data.marca =
-        data.marca && typeof data.marca === "object" && !Array.isArray(data.marca)
-          ? data.marca
-          : {};
-    }
-    for (const key of ["constitutionYear", "reserveFund"])
-      if (data[key] !== undefined) data[key] = String(data[key] ?? "").trim();
-    if (data.adminUserId) {
-      const account = db
-        .prepare("SELECT rol FROM users WHERE id = ? AND activo = 1")
-        .get(data.adminUserId);
-      const role =
-        account &&
-        db
-          .prepare("SELECT nombre, permisos FROM roles WHERE id = ? OR nombre = ?")
-          .get(account.rol, account.rol);
-      if (
-        !role ||
-        (role.nombre !== "super_admin" && !JSON.parse(role.permisos).includes("community:manage"))
-      )
-        return res.status(400).json({
-          error: "La cuenta asignada debe tener permisos de administración de comunidades.",
-        });
-    }
+function validateCommunityData(data) {
+  if (data.currency !== undefined && typeof data.currency !== "string")
+    return "La moneda debe ser texto.";
+  if (data.currency !== undefined) {
+    data.currency = data.currency.trim().toUpperCase();
+    if (data.currency && !/^[A-Z]{3}$/.test(data.currency))
+      return "La moneda debe ser un código ISO de tres letras (por ejemplo, EUR o USD).";
   }
-  next();
-});
+  data.nif = normalizeIdentityDocument(data.nif);
+  const error =
+    contactError(data) ||
+    bankAccountError(data) ||
+    communityFinanceError(data) ||
+    communityNifError(data.nif);
+  if (error) return error;
+  if (data.notes !== undefined) data.notes = sanitizeRichText(data.notes);
+  if (data.logoDataUrl !== undefined) {
+    const logo = data.logoDataUrl;
+    const LOGO = /^data:image\/(png|jpeg|svg\+xml|webp);base64,/;
+    if (logo !== "" && (typeof logo !== "string" || logo.length > 230_400 || !LOGO.test(logo)))
+      return "El logo de la comunidad debe ser una imagen PNG, JPG, SVG o WebP de menos de 225 KB.";
+    data.logoDataUrl = logo === "" ? "" : logo;
+  }
+  if (data.marca !== undefined) {
+    const marcaError = validateBrand(data.marca);
+    if (marcaError) return marcaError;
+    data.marca =
+      data.marca && typeof data.marca === "object" && !Array.isArray(data.marca) ? data.marca : {};
+  }
+  if (data.legalConfig !== undefined) {
+    const legalError = validateLegalConfig(data.legalConfig);
+    if (legalError) return legalError;
+    data.legalConfig = legalConfigFromValue(data.legalConfig);
+  }
+  for (const key of ["constitutionYear", "reserveFund"])
+    if (data[key] !== undefined) data[key] = String(data[key] ?? "").trim();
+  if (data.adminUserId) {
+    const account = db
+      .prepare("SELECT rol FROM users WHERE id = ? AND activo = 1")
+      .get(data.adminUserId);
+    const role =
+      account &&
+      db
+        .prepare("SELECT nombre, permisos FROM roles WHERE id = ? OR nombre = ?")
+        .get(account.rol, account.rol);
+    if (
+      !role ||
+      (role.nombre !== "super_admin" && !JSON.parse(role.permisos).includes("community:manage"))
+    )
+      return "La cuenta asignada debe tener permisos de administración de comunidades.";
+  }
+  return null;
+}
 
 function findCommunity(id) {
   const row = db.prepare("SELECT * FROM communities WHERE id = ?").get(id);
@@ -87,15 +90,15 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   const data = req.body || {};
   trimEntityFields("community", data);
-  const errorObligatorio = entityRequiredError("community", data, { exigirAusentes: false });
+  const errorObligatorio = entityRequiredError("community", data) || validateCommunityData(data);
   if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
   if (db.prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?)").get(data.nif)) {
     return res.status(409).json({ error: "Ya existe una comunidad con ese NIF." });
   }
   const id = data.id || crypto.randomUUID();
   db.prepare(
-    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId, logoDataUrl, marca)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId, logoDataUrl, marca, legalConfig)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.name,
@@ -118,6 +121,7 @@ router.post("/", (req, res) => {
     data.adminUserId || "",
     data.logoDataUrl || "",
     data.marca ? JSON.stringify(data.marca) : "{}",
+    JSON.stringify(legalConfigFromValue(data.legalConfig)),
   );
   res.status(201).json(findCommunity(id));
 });
@@ -127,10 +131,31 @@ router.put(
   versionedUpdate("communities", (req, res) => {
     const existing = findCommunity(req.params.id);
     if (!existing) return res.status(404).json({ error: "Comunidad no encontrada." });
-    const data = req.body || {};
+    const data = { ...existing, ...req.body };
+    if (req.body.legalConfig !== undefined) {
+      // Se valida el parche recibido antes de normalizarlo: si no, un valor
+      // desconocido se convertiría silenciosamente en el predeterminado.
+      const legalError = validateLegalConfig(req.body.legalConfig);
+      if (legalError) return res.status(400).json({ error: legalError });
+      data.legalConfig = mergeLegalConfig(existing.legalConfig, req.body.legalConfig);
+    }
     trimEntityFields("community", data);
-    const errorObligatorio = entityRequiredError("community", data, { exigirAusentes: false });
+    const errorObligatorio = entityRequiredError("community", data) || validateCommunityData(data);
     if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
+    const previousCurrency = String(existing.currency || "EUR")
+      .trim()
+      .toUpperCase();
+    const nextCurrency = data.currency || "EUR";
+    if (
+      nextCurrency !== "EUR" &&
+      nextCurrency !== previousCurrency &&
+      hasCommunityFinancialActivity(existing.id)
+    )
+      return res.status(409).json({
+        code: "COMMUNITY_CURRENCY_LOCKED",
+        error:
+          "Esta comunidad tiene actividad financiera registrada en euros. No se puede cambiar a otra moneda. Los importes históricos no se convierten ni se reetiquetan.",
+      });
     const nifOwner = db
       .prepare("SELECT id FROM communities WHERE UPPER(nif) = UPPER(?) AND id <> ?")
       .get(data.nif, existing.id);
@@ -140,7 +165,7 @@ router.put(
     db.prepare(
       `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
        province = ?, postalCode = ?, email = ?, iban = ?, president = ?, administrator = ?,
-       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ?, logoDataUrl = ?, marca = ? WHERE id = ?`,
+       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ?, logoDataUrl = ?, marca = ?, legalConfig = ? WHERE id = ?`,
     ).run(
       data.name,
       data.nif,
@@ -164,6 +189,7 @@ router.put(
       data.marca !== undefined
         ? JSON.stringify({ ...(existing.marca || {}), ...data.marca })
         : JSON.stringify(existing.marca || {}),
+      JSON.stringify(legalConfigFromValue(data.legalConfig ?? existing.legalConfig)),
       existing.id,
     );
     res.json(findCommunity(existing.id));
@@ -198,6 +224,17 @@ function deleteCommunityNormal(req, res) {
     return res
       .status(409)
       .json({ error: "No se puede eliminar una comunidad con inmuebles asociados." });
+  }
+  // Una asociación puede tener socios sin inmueble que solo existen por su
+  // comunidad de censo; el borrado normal no debe dejar esas fichas huérfanas.
+  const linkedOwners = db
+    .prepare("SELECT COUNT(*) AS total FROM owners WHERE communityId = ?")
+    .get(existing.id).total;
+  if (linkedOwners > 0) {
+    return res.status(409).json({
+      error:
+        "No se puede eliminar una comunidad con socios o titulares vinculados. Usa el borrado avanzado para desvincularlos.",
+    });
   }
   removeEntityFiles("community", existing.id);
   db.prepare("DELETE FROM communities WHERE id = ?").run(existing.id);

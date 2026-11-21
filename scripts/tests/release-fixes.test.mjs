@@ -191,13 +191,23 @@ test("IBAN: altas y ediciones rechazan datos inválidos, normalizan y permiten v
         dni: "00000000T",
         email: "alta@example.test",
         iban: "invalido",
+        phone: "612345678",
+        address: "Calle de prueba 1",
+        city: "Madrid",
       })
     ).status,
     400,
   );
   assert.equal(
-    (await admin("/communities", "POST", { name: "Alta", nif: "H00000000", iban: "invalido" }))
-      .status,
+    (
+      await admin("/communities", "POST", {
+        name: "Alta",
+        nif: "H00000000",
+        iban: "invalido",
+        address: "Calle de prueba 1",
+        city: "Madrid",
+      })
+    ).status,
     400,
   );
 });
@@ -244,7 +254,12 @@ test("permisos create: crea las cuatro entidades y sigue sin poder editarlas", a
     await creator("/auth/signin", "POST", { usuario: "solo_altas", password: "Clave-Prueba-123" }),
   );
   const community = ok(
-    await creator("/communities", "POST", { name: "Comunidad de altas", nif: "H00000000" }),
+    await creator("/communities", "POST", {
+      name: "Comunidad de altas",
+      nif: "H00000000",
+      address: "Calle de prueba 1",
+      city: "Madrid",
+    }),
     201,
   );
   const owner = ok(
@@ -253,15 +268,21 @@ test("permisos create: crea las cuatro entidades y sigue sin poder editarlas", a
       surname: "Prueba",
       dni: "00000000T",
       email: "titular@example.test",
+      phone: "612345678",
+      address: "Calle de prueba 1",
+      city: "Madrid",
     }),
     201,
   );
   const property = ok(
     await creator("/properties", "POST", {
       plot: "Piso de prueba",
+      address: "Calle de prueba 1",
+      city: "Madrid",
       propertyType: "vivienda",
       communityId: community.id,
       ownerIds: [owner.id],
+      ownerPercentages: { [owner.id]: 100 },
       participationCoef: "100",
     }),
     201,
@@ -274,6 +295,7 @@ test("permisos create: crea las cuatro entidades y sigue sin poder editarlas", a
       ownerId: owner.id,
       phone: "600123456",
       email: "inquilino@example.test",
+      documentId: "11111111H",
       contractStart: "2026-01-01",
     }),
     201,

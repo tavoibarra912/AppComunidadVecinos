@@ -417,6 +417,13 @@ function openEditor(post = null) {
     post?.communityId ||
     $("#comm-community").value ||
     metadata.communities.find((c) => c.canManage)?.id;
+  const association =
+    metadata.communities.find((c) => c.id === communityId)?.regimen === "asociacion";
+  const ownerTerm = association ? "Socios" : "Propietarios";
+  const audienceOptions = Object.entries(audienceLabels).map(([value, label]) => [
+    value,
+    value === "owners" ? ownerTerm : label,
+  ]);
   showDialog(
     post ? "Editar publicación" : "Nueva publicación",
     `<form id="comm-editor" novalidate><ol class="comm-steps"><li data-step-label="0">1. Contenido</li><li data-step-label="1">2. Destinatarios</li><li data-step-label="2">3. Revisar y publicar</li></ol>
@@ -441,16 +448,19 @@ function openEditor(post = null) {
     )}</select></label><label>Quién puede responder<select name="pollElectorate">${options(
       [
         ["recipients", "Todos los destinatarios"],
-        ["owners", "Solo propietarios destinatarios"],
+        ["owners", association ? "Solo socios destinatarios" : "Solo propietarios destinatarios"],
       ],
       post?.poll?.electorate || "recipients",
-    )}</select></label></div>${input("pollQuestion", "Pregunta", post?.poll?.question || "", "text", 'maxlength="500"')}<label>Opciones (una por línea, entre 2 y 12)<textarea name="pollOptions" rows="4">${h(post?.poll?.options.join("\n") || "")}</textarea></label>${input("pollClosesAt", "Cierre de la consulta", local(post?.poll?.closesAt), "datetime-local")}<div class="comm-actions">${check("pollMultiple", "Permitir varias opciones", post?.poll?.multiple)}${check("pollResultsLive", "Mostrar resultados antes del cierre", post?.poll?.resultsLive)}${check("pollClosed", "Cerrar manualmente la consulta", post?.poll?.closed)}</div><p class="comm-muted">Una respuesta por cuenta, sin ponderación por coeficiente. Los resultados no muestran la identidad de quienes votaron. La pregunta, las opciones y el electorado quedan fijados al publicar.</p></div></fieldset></div>
-    <div data-editor-step="1" hidden><label>Destinatarios<select name="audienceMode">${options(Object.entries(audienceLabels), post?.audience.mode || "all")}</select></label><div id="comm-audience-selectors"></div><fieldset><legend>Canales de aviso</legend><p>El aviso dentro de la app siempre está incluido.</p><div class="comm-actions">${check("channelEmail", "Correo electrónico", post?.channels.includes("email"))}${check("channelSms", "SMS", post?.channels.includes("sms"))}${check("channelWhatsapp", "WhatsApp", post?.channels.includes("whatsapp"))}</div><p class="comm-muted">Los canales externos requieren proveedor habilitado y consentimiento del destinatario en «Mis canales».</p></fieldset></div>
+    )}</select></label></div>${input("pollQuestion", "Pregunta", post?.poll?.question || "", "text", 'maxlength="500"')}<label>Opciones (una por línea, entre 2 y 12)<textarea name="pollOptions" rows="4">${h(post?.poll?.options.join("\n") || "")}</textarea></label>${input("pollClosesAt", "Cierre de la consulta", local(post?.poll?.closesAt), "datetime-local")}<div class="comm-actions">${check("pollMultiple", "Permitir varias opciones", post?.poll?.multiple)}${check("pollResultsLive", "Mostrar resultados antes del cierre", post?.poll?.resultsLive)}${check("pollClosed", "Cerrar manualmente la consulta", post?.poll?.closed)}</div><p class="comm-muted">La regla de voto se congela al crear la consulta según el régimen de la comunidad; las encuestas informativas cuentan una respuesta por cuenta. Los resultados no muestran la identidad de quienes votaron. La pregunta, las opciones y la regla quedan fijadas al publicar. En asociaciones, «socios» se refiere al censo isMember y sus derechos estatutarios.</p></div></fieldset></div>
+    <div data-editor-step="1" hidden><label>Destinatarios<select name="audienceMode">${options(audienceOptions, post?.audience.mode || "all")}</select></label><div id="comm-audience-selectors"></div><fieldset><legend>Canales de aviso</legend><p>El aviso dentro de la app siempre está incluido.</p><div class="comm-actions">${check("channelEmail", "Correo electrónico", post?.channels.includes("email"))}${check("channelSms", "SMS", post?.channels.includes("sms"))}${check("channelWhatsapp", "WhatsApp", post?.channels.includes("whatsapp"))}</div><p class="comm-muted">Los canales externos requieren proveedor habilitado y consentimiento del destinatario en «Mis canales».</p></fieldset></div>
     <div data-editor-step="2" hidden><div id="comm-preview" aria-live="polite"></div><label>Estado al guardar<select name="status">${options([["draft", "Guardar borrador"], ["published", "Publicar o programar"], ...(post && post.status !== "draft" ? [["cancelled", "Cancelar publicación"]] : [])], post?.status || "draft")}</select></label><p class="comm-muted">Las fechas futuras quedan programadas. Los envíos se procesan mientras el servidor está encendido.</p></div>
     <div class="comm-dialog-footer"><button type="button" class="secondary-button" id="comm-prev">Anterior</button><button type="button" class="primary-button" id="comm-next">Siguiente</button><button type="submit" class="primary-button" id="comm-save" hidden>Guardar publicación</button></div></form>`,
   );
   const form = $("#comm-editor");
-  form.elements.communityId.addEventListener("change", () => audienceSelectors());
+  form.elements.communityId.addEventListener("change", () => {
+    syncCommunityTerms();
+    audienceSelectors();
+  });
   form.elements.audienceMode.addEventListener("change", toggleEditorFields);
   for (const name of ["type", "hasPoll"])
     form.elements[name].addEventListener("change", toggleEditorFields);
@@ -466,6 +476,7 @@ function openEditor(post = null) {
     e.target.closest("[data-remove-task]")?.closest(".comm-task-row").remove(),
   );
   audienceSelectors(post?.audience);
+  syncCommunityTerms();
   if (post?.distributed) {
     form.elements.status.querySelector('option[value="draft"]').remove();
     for (const name of [
@@ -520,12 +531,33 @@ function openEditor(post = null) {
   });
   editorSnapshot = JSON.stringify(editorData());
 }
+function syncCommunityTerms() {
+  const form = $("#comm-editor");
+  if (!form) return;
+  const association =
+    metadata.communities.find((c) => c.id === form.elements.communityId.value)?.regimen ===
+    "asociacion";
+  const electorate = form.elements.pollElectorate?.querySelector('option[value="owners"]');
+  if (electorate)
+    electorate.textContent = association
+      ? "Solo socios destinatarios"
+      : "Solo propietarios destinatarios";
+  const audience = form.elements.audienceMode?.querySelector('option[value="owners"]');
+  if (audience) audience.textContent = association ? "Socios" : "Propietarios";
+}
 function audienceSelectors(a = { ownerIds: [], tenantIds: [], propertyIds: [] }) {
   const selector = metadata.selectors.find(
     (s) => s.communityId === $("#comm-editor").elements.communityId.value,
   );
   $("#comm-audience-selectors").innerHTML = `<div class="comm-form-grid">${[
-    ["ownerIds", "Propietarios", selector?.owners || []],
+    [
+      "ownerIds",
+      metadata.communities.find((c) => c.id === $("#comm-editor").elements.communityId.value)
+        ?.regimen === "asociacion"
+        ? "Socios"
+        : "Propietarios",
+      selector?.owners || [],
+    ],
     ["tenantIds", "Inquilinos", selector?.tenants || []],
     ["propertyIds", "Inmuebles (propietarios e inquilinos)", selector?.properties || []],
   ]
@@ -913,6 +945,18 @@ function puedeParticipar(p) {
   return hasPermission("comm:participacion", p.communityId);
 }
 
+function pollResultsHeading(results) {
+  if (!results) return "";
+  if (results.weighted)
+    return `Resultados · ${Number(results.total.toFixed(2))} puntos · ${results.ballots} ${
+      results.ballots === 1 ? "respuesta" : "respuestas"
+    }`;
+  return `Resultados · ${results.total} ${results.total === 1 ? "respuesta" : "respuestas"}`;
+}
+function pollWeight(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
 function participationView(p) {
   const interactive = !["draft", "scheduled", "cancelled", "archived"].includes(p.phase);
   // La parte social (encuestas y comentarios con nombre) se controla con el
@@ -920,7 +964,15 @@ function participationView(p) {
   const participa = puedeParticipar(p);
   let poll = "";
   if (p.poll) {
-    poll = `<section class="comm-poll"><p class="eyebrow">${p.poll.type === "vote" ? "VOTACIÓN" : "ENCUESTA"}</p><h3>${h(p.poll.question)}</h3><p class="comm-muted">Cierre: ${h(date(p.poll.closesAt))} · ${p.poll.electorate === "owners" ? "Propietarios destinatarios" : "Todos los destinatarios"} · Una respuesta por cuenta.</p>${p.ballot.length ? `<p class="comm-callout">Tu respuesta quedó registrada: ${p.ballot.map((i) => h(p.poll.options[i])).join(", ")}.</p>` : p.pollOpen && p.canVote ? `<form id="comm-ballot">${p.poll.options.map((o, i) => `<label class="comm-check"><input type="${p.poll.multiple ? "checkbox" : "radio"}" name="choice" value="${i}">${h(o)}</label>`).join("")}<button class="primary-button" type="submit">Confirmar respuesta</button></form>` : `<p>${p.votingSuspended ? "Tu derecho de voto está suspendido en esta comunidad." : p.pollOpen ? "Tu cuenta no pertenece al electorado de esta consulta." : "La consulta no está abierta."}</p>`}${p.pollResults ? `<h4>Resultados · ${p.pollResults.total} respuestas</h4>${p.poll.options.map((o, i) => `<div class="comm-result"><span>${h(o)}</span><progress max="${Math.max(1, p.pollResults.total)}" value="${p.pollResults.counts[i]}"></progress><strong>${p.pollResults.counts[i]}</strong></div>`).join("")}` : '<p class="comm-muted">Los resultados se mostrarán al cerrar la consulta.</p>'}</section>`;
+    poll = `<section class="comm-poll"><p class="eyebrow">${p.poll.type === "vote" ? "VOTACIÓN" : "ENCUESTA"}</p><h3>${h(p.poll.question)}</h3><p class="comm-muted">Cierre: ${h(date(p.poll.closesAt))} · ${
+      p.poll.electorate === "owners"
+        ? p.poll.votingRule?.censo === "socios" || /socio/i.test(p.pollRule || "")
+          ? "Socios destinatarios"
+          : "Propietarios destinatarios"
+        : "Todos los destinatarios"
+    } · ${h(p.pollRule || "Una respuesta por cuenta")}${
+      p.pollMajority ? ` · ${h(p.pollMajority)}` : ""
+    }.</p>${p.ballot.length ? `<p class="comm-callout">Tu respuesta quedó registrada: ${p.ballot.map((i) => h(p.poll.options[i])).join(", ")}.</p>` : p.pollOpen && p.canVote ? `<form id="comm-ballot">${p.poll.options.map((o, i) => `<label class="comm-check"><input type="${p.poll.multiple ? "checkbox" : "radio"}" name="choice" value="${i}">${h(o)}</label>`).join("")}<button class="primary-button" type="submit">Confirmar respuesta</button></form>` : `<p>${p.votingSuspended ? "Tu derecho de voto está suspendido en esta comunidad." : p.pollOpen ? "Tu cuenta no pertenece al electorado de esta consulta." : "La consulta no está abierta."}</p>`}${p.pollResults ? `<h4>${h(pollResultsHeading(p.pollResults))}</h4>${p.poll.options.map((o, i) => `<div class="comm-result"><span>${h(o)}</span><progress max="${Math.max(1, p.pollResults.total)}" value="${p.pollResults.counts[i]}"></progress><strong>${pollWeight(p.pollResults.counts[i])}</strong></div>`).join("")}` : '<p class="comm-muted">Los resultados se mostrarán al cerrar la consulta.</p>'}</section>`;
   }
   if (!participa)
     return '<p class="comm-muted">La participación (comentarios y consultas) no está habilitada para tu rol.</p>';

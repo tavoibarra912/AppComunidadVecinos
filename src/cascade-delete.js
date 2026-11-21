@@ -6,6 +6,7 @@ import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
 import { communityNifError } from "./validation.js";
 import { isTenantContractActive } from "../public/js/permissions.js";
+import { CREDIT_DESTINATIONS, legalConfigOf } from "./legal-config.js";
 
 const TYPES = {
   owners: "owner",
@@ -61,7 +62,15 @@ function graph(collection, id) {
   const owners =
     collection === "owners"
       ? [root]
-      : allOwners.filter((o) => properties.some((p) => ids(p.ownerIds).includes(o.id)));
+      : collection === "communities"
+        ? allOwners.filter(
+            (o) =>
+              properties.some((p) => ids(p.ownerIds).includes(o.id)) ||
+              // En una asociación el censo incluye socios sin inmueble; también
+              // deben entrar en el borrado y en la limpieza de su comunidad.
+              (o.communityId === id && o.isMember),
+          )
+        : allOwners.filter((o) => properties.some((p) => ids(p.ownerIds).includes(o.id)));
   const ownerIds = owners.map((o) => o.id);
   // External links are part of the preview even when they will be preserved.
   const relationships = allProperties.filter(
@@ -132,6 +141,7 @@ function graph(collection, id) {
     "communication_recipients",
     "communication_comments",
     "communication_ballots",
+    "communication_voting_census",
     "communication_files",
     "communication_audit",
     "communication_outbox",
@@ -169,6 +179,9 @@ function graph(collection, id) {
       .flat()
       .map((row) => row.communityId),
     ...tenants.map((t) => allProperties.find((p) => p.id === t.propertyId)?.communityId),
+    // La comunidad de censo de un socio cuenta aunque tenga inmuebles en otra
+    // comunidad; una ficha heredada sin isMember no amplía el ámbito.
+    ...owners.filter((owner) => owner.isMember).map((owner) => owner.communityId),
   ]);
   const communities = read("communities").filter((c) => communityIds.includes(c.id));
   return {
@@ -315,6 +328,15 @@ function executionToken(g, p, user) {
         actor: user.id,
         graph: token(g),
         plan: p.actions,
+        credit: p.credit ? { ...p.credit, reference: undefined } : undefined,
+        // Las referencias documentales son evidencia, no un cambio de alcance:
+        // no invalidan la revisión si se completan después de la vista previa.
+        transfer: p.transfer
+          ? {
+              debtPolicy: p.transfer.debtPolicy,
+              requiresDocument: p.transfer.requiresDocument,
+            }
+          : undefined,
         targets,
         users,
         closed: p.closedDistributions,
@@ -333,6 +355,11 @@ function ownerCommunities(g, ownerId) {
       .filter((r) => json(r.snapshot).owners?.some((o) => o.id === ownerId))
       .map((r) => r.communityId),
     ...g.payments.filter((p) => p.ownerId === ownerId).map((p) => p.communityId),
+    // La comunidad de censo del socio también cuenta si tiene inmuebles en
+    // otra comunidad; no se usa el communityId de fichas que no son socias.
+    ...g.owners
+      .filter((o) => o.id === ownerId && o.isMember)
+      .map((o) => o.communityId),
   ]);
 }
 function primaryFinance(g, deletedOwners = [], deletedProperties = []) {
@@ -417,6 +444,9 @@ function preview(g, user) {
         ...(g.relationships.some((p) => p.communityId === c.id)
           ? ["Inmuebles vinculados a los propietarios evaluados"]
           : []),
+        ...(g.owners.some((o) => o.isMember && o.communityId === c.id)
+          ? ["Censo de socios"]
+          : []),
         ...([...g.receipts, ...g.payments].some((row) => row.communityId === c.id)
           ? ["Historial financiero relacionado"]
           : []),
@@ -446,7 +476,7 @@ function mapping(value, rows, name) {
     fail(`Selección no válida: ${name}.`);
   return value;
 }
-function plan(g, body, user) {
+function plan(g, body, user, options = {}) {
   const permit = authorize(user, g);
   if (!object(body) || !object(body.actions)) fail("Falta el plan de acciones.");
   if (body.confirmDelete !== true) fail("Confirma expresamente la operación.");
@@ -602,6 +632,21 @@ function plan(g, body, user) {
     const propertyAction = p.properties[t.propertyId]?.action;
     if (action === "keep" && propertyAction === "delete_property")
       fail("Mueve, desvincula o elimina los inquilinos del inmueble que se borra.");
+    // Un contrato no puede quedar apuntando a un arrendador eliminado sin otro
+    // titular que lo sustituya. Si el inmueble se conserva o se traslada sin
+    // reasignar titularidad, hay que resolver el contrato expresamente.
+    if (action === "keep" && deletingOwners.includes(t.ownerId)) {
+      const property = g.properties.find((row) => row.id === t.propertyId);
+      const surviving = property
+        ? ids(property.ownerIds).filter((id) => !deletingOwners.includes(id))
+        : [];
+      const replacement = p.properties[t.propertyId]?.newOwnerId;
+      if (replacement && !surviving.includes(replacement)) surviving.push(replacement);
+      if (!surviving.length)
+        fail(
+          `El contrato de ${label(t)} quedaría sin arrendador. Reasigna el inmueble a otro titular, mueve el contrato o desvincúlalo antes de continuar.`,
+        );
+    }
     if (action !== "keep" || deletingOwners.includes(t.ownerId))
       permit(action === "remove_tenant" ? "tenant:delete" : "tenant:manage", t.id);
     if (action === "end_contract" && t.contractStart && t.contractStart > madridDate())
@@ -621,6 +666,17 @@ function plan(g, body, user) {
         fail("El inmueble destino no existe o también se va a eliminar.");
       permit("property:manage", target.id);
       permit("cascade-delete", target.id);
+      const targetOwners = ids(target.ownerIds).filter((id) => !deletingOwners.includes(id));
+      if (p.properties[target.id]?.newOwnerId)
+        targetOwners.push(p.properties[target.id].newOwnerId);
+      if (
+        !targetOwners.length ||
+        targetOwners.some((id) => !db.prepare("SELECT 1 FROM owners WHERE id=?").get(id))
+      )
+        fail(
+          "El inmueble destino debe tener al menos un titular válido para recibir contratos.",
+          body.executionToken ? 409 : 400,
+        );
       result.newPropertyId = target.id;
     }
     p.tenants[t.id] = result;
@@ -629,6 +685,120 @@ function plan(g, body, user) {
     .filter(([, a]) => a.action === "delete_property")
     .map(([id]) => id);
   const financial = primaryFinance(g, deletingOwners, deletedProperties);
+  // En un titular o inmueble la configuración aplicable es la de sus
+  // comunidades, no la de la entidad raíz (que no tiene legalConfig). Si el
+  // borrado afecta a varias, se aplica la política de crédito más estricta.
+  const legalCommunities = g.collection === "communities" ? [g.root] : g.communities;
+  const legalEntries = (legalCommunities.length ? legalCommunities : [g.root]).map((community) => ({
+    community,
+    config: legalConfigOf(community),
+  }));
+  // Saldo a favor que quedaría sin titular al borrar: crédito ya no aplicado a
+  // recibos más las aplicaciones que la liquidación final libera. No se crea
+  // dinero: solo se documenta su destino antes de que desaparezca el titular.
+  const creditByCurrency = new Map();
+  const currencyOf = (communityId) =>
+    g.communities.find((community) => community.id === communityId)?.currency ||
+    g.root.currency ||
+    "EUR";
+  const addCredit = (amount, currency) => {
+    if (amount > 0)
+      creditByCurrency.set(currency, (creditByCurrency.get(currency) || 0) + amount);
+  };
+  // Al borrar un titular solo cuenta su propio saldo. En un recibo compartido,
+  // el cobro de un cotitular sigue siendo crédito de ese cotitular y no del
+  // titular que se elimina. La excepción es el borrado definitivo de toda la
+  // comunidad, que sí elimina también los cobros de quienes conservan ficha.
+  const allPaymentsRemoved = p.finance === "delete";
+  // Al liquidar una comunidad completa se liberan las aplicaciones de todos
+  // sus recibos, también las de socios que conservan ficha: ese saldo deja de
+  // tener una comunidad donde aplicarse y debe conciliarse igualmente.
+  const allCommunityPaymentsReleased =
+    g.collection === "communities" && p.finance === "liquidate_final";
+  const includeAllPayments = allPaymentsRemoved || allCommunityPaymentsReleased;
+  for (const payment of financial.payments) {
+    if (payment.reversedAt) continue;
+    if (!includeAllPayments && !deletingOwners.includes(payment.ownerId)) continue;
+    const allocated = db
+      .prepare("SELECT COALESCE(SUM(amount),0) n FROM fee_allocations WHERE paymentId=?")
+      .get(payment.id).n;
+    addCredit(Math.max(0, payment.amount - allocated), currencyOf(payment.communityId));
+  }
+  if (p.finance === "liquidate_final" && (deletingOwners.length || includeAllPayments)) {
+    const ownerPlaceholders = deletingOwners.map(() => "?").join(",");
+    for (const receipt of financial.receipts) {
+      if (receipt.cancelledAt) continue;
+      const paid = includeAllPayments
+        ? db
+            .prepare(
+              `SELECT COALESCE(SUM(a.amount),0) n FROM fee_allocations a
+               JOIN fee_payments p ON p.id=a.paymentId
+               WHERE a.receiptId=? AND p.reversedAt=''`,
+            )
+            .get(receipt.id).n
+        : db
+            .prepare(
+              `SELECT COALESCE(SUM(a.amount),0) n FROM fee_allocations a
+               JOIN fee_payments p ON p.id=a.paymentId
+               WHERE a.receiptId=? AND p.reversedAt='' AND p.ownerId IN (${ownerPlaceholders})`,
+            )
+            .get(receipt.id, ...deletingOwners).n;
+      addCredit(paid, json(receipt.snapshot).currency || currencyOf(receipt.communityId));
+    }
+  }
+  const creditCurrencies = [...creditByCurrency.keys()];
+  const creditAmount = [...creditByCurrency.values()].reduce((sum, value) => sum + value, 0);
+  if (creditAmount > 0 && creditCurrencies.length > 1)
+    fail(
+      "El borrado afecta a saldo a favor en varias monedas. Concílialo por comunidad antes de continuar.",
+      409,
+    );
+  const creditPolicies = legalEntries.map((entry) => entry.config.creditoTitular.politica);
+  const creditPolicy =
+    ["bloquear", "advertir", "permitir"].find((policy) => creditPolicies.includes(policy)) ||
+    "bloquear";
+  const creditEntry =
+    legalEntries.find((entry) => entry.config.creditoTitular.politica === creditPolicy) ||
+    legalEntries[0];
+  const creditDestination =
+    body.creditDestination ?? creditEntry.config.creditoTitular.destinoPorDefecto;
+  if (!Object.hasOwn(CREDIT_DESTINATIONS, creditDestination))
+    fail("El destino documentado del saldo a favor no es válido.");
+  if (body.creditReference !== undefined && typeof body.creditReference !== "string")
+    fail("La referencia de la conciliación del saldo a favor no es válida.", 400);
+  const creditReference = String(body.creditReference || "")
+    .trim()
+    .slice(0, 300);
+  p.credit = {
+    amount: creditAmount,
+    currency:
+      creditCurrencies[0] ||
+      creditEntry.community.currency ||
+      g.root.currency ||
+      "EUR",
+    policy: creditPolicy,
+    destination: creditDestination,
+    reference: creditReference,
+    required: creditAmount > 0 && creditPolicy === "bloquear",
+  };
+  if (creditAmount > 0 && creditPolicy === "bloquear") {
+    if (p.finance === "delete")
+      fail(
+        `La operación eliminaría ${creditAmount.toFixed(2)} ${p.credit.currency} de saldo a favor sin conciliar. Concilia o devuelve ese saldo antes de borrar el historial financiero, o cambia la política jurídica de la comunidad.`,
+        409,
+      );
+    if (body.confirmCreditSettlement !== true)
+      fail(
+        `La operación deja ${creditAmount.toFixed(2)} ${p.credit.currency} de saldo a favor sin conciliar. Documenta su destino (${CREDIT_DESTINATIONS[creditDestination]}) y confirma la conciliación antes de borrar el historial.`,
+        409,
+      );
+    // La vista previa no exige todavía la referencia; se valida al ejecutar.
+    if (!options.preview && !creditReference)
+      fail(
+        "Indica la referencia de la conciliación o del documento que acredita el destino del saldo a favor.",
+        400,
+      );
+  }
   if (p.finance === "delete" && body.confirmDeleteFinancial !== true)
     fail("Marca la confirmación para borrar definitivamente los datos financieros.");
   if (
@@ -692,6 +862,52 @@ function plan(g, body, user) {
       if (p.posts === "reassign_community") permit("comm:publicar", p.destination);
     }
   }
+  if (p.finance === "reassign_community") {
+    if (body.transferDocument !== undefined && typeof body.transferDocument !== "string")
+      fail("La referencia del acuerdo o documento no es válida.", 400);
+    const transferDocument = String(body.transferDocument || "")
+      .trim()
+      .slice(0, 300);
+    // Si el borrado afecta a varias comunidades, el traslado debe cumplir la
+    // exigencia más estricta: basta que una pida acuerdo o documento, y la
+    // deuda se conserva en origen si alguna comunidad así lo exige. La
+    // comunidad de destino también puede exigir su propio acuerdo.
+    const originCommunities = g.collection === "communities" ? [g.root] : g.communities;
+    const destinationCommunity =
+      p.destination && p.destination !== "temporary"
+        ? db.prepare("SELECT * FROM communities WHERE id=?").get(p.destination)
+        : null;
+    const transferConfigs = [
+      ...(originCommunities.length ? originCommunities : [g.root]),
+      ...(destinationCommunity ? [destinationCommunity] : []),
+    ].map(legalConfigOf);
+    const requiresDocument = transferConfigs.some(
+      (config) => config.traslados.exigirDocumento,
+    );
+    const debtPolicy = transferConfigs.some(
+      (config) => config.traslados.deuda === "conservar_origen",
+    )
+      ? "conservar_origen"
+      : "trasladar";
+    if (requiresDocument) {
+      if (body.confirmLedgerTransfer !== true)
+        fail(
+          "Trasladar el libro financiero a otra comunidad exige un acuerdo o documento. Confirma que existe antes de continuar.",
+          409,
+        );
+      // La vista previa solo describe el alcance; la referencia se exige al ejecutar.
+      if (!options.preview && !transferDocument)
+        fail(
+          "Indica la referencia del acuerdo o documento que autoriza el traslado del libro financiero.",
+          400,
+        );
+    }
+    p.transfer = {
+      debtPolicy,
+      requiresDocument,
+      document: transferDocument,
+    };
+  }
   if (g.posts.length) permit(p.posts === "delete" ? "comm:eliminar" : "comm:moderar", g.root.id);
   const entities = deletedEntities(g, p);
   for (const [type, row] of entities) {
@@ -752,6 +968,8 @@ function plan(g, body, user) {
   return {
     actions: p,
     financial,
+    credit: p.credit,
+    transfer: p.transfer,
     deletedOwners: deletingOwners,
     deletedProperties,
     closedDistributions: closed,
@@ -784,7 +1002,7 @@ function syncCascadeLinks(changedProperties, changedOwners, tenantProperties) {
     "propertyUse",
   ];
   for (const id of changedOwners) {
-    const owner = db.prepare("SELECT propertyId FROM owners WHERE id=?").get(id);
+    const owner = db.prepare("SELECT * FROM owners WHERE id=?").get(id);
     if (!owner) continue;
     const properties = db
       .prepare(
@@ -792,12 +1010,28 @@ function syncCascadeLinks(changedProperties, changedOwners, tenantProperties) {
       )
       .all(id);
     const primary = properties.find((p) => p.id === owner.propertyId) || properties[0];
+    // La pertenencia del socio es independiente de su inmueble principal.
+    // Solo se limpia si su comunidad de censo ya no existe.
+    const propertyFields = fields.filter(
+      (key) => key !== "communityId" && key !== "communityName",
+    );
+    const membership =
+      owner.isMember &&
+      owner.communityId &&
+      db.prepare("SELECT 1 FROM communities WHERE id=?").get(owner.communityId);
+    const updateFields = primary ? fields : ["communityId", "communityName", ...propertyFields];
     db.prepare(
-      `UPDATE owners SET propertyIds=?,propertyId=?,${fields.map((k) => `${k}=?`).join(",")} WHERE id=?`,
+      `UPDATE owners SET propertyIds=?,propertyId=?,${updateFields.map((k) => `${k}=?`).join(",")} WHERE id=?`,
     ).run(
       JSON.stringify(properties.map((p) => p.id)),
       primary?.id || "",
-      ...fields.map((k) => primary?.[k] || ""),
+      ...updateFields.map((key) => {
+        if (key === "communityId")
+          return owner.isMember ? (membership ? owner.communityId : "") : primary?.communityId || "";
+        if (key === "communityName")
+          return owner.isMember ? (membership ? owner.communityName : "") : primary?.communityName || "";
+        return primary?.[key] || "";
+      }),
       id,
     );
   }
@@ -819,8 +1053,15 @@ function apply(g, plan, req) {
     cancelledReceipts: 0,
     forgiven: 0,
     releasedCredit: 0,
-    currency: g.root.currency || "EUR",
+    currency: plan.credit?.currency || g.root.currency || "EUR",
     byCurrency: {},
+    creditPolicy: plan.credit?.policy || "",
+    creditDestination: plan.credit?.destination || "",
+    creditReference: plan.credit?.reference || "",
+    creditSettlementConfirmed: req.body?.confirmCreditSettlement === true,
+    transferPolicy: plan.transfer?.debtPolicy || "",
+    transferRequired: !!plan.transfer?.requiresDocument,
+    transferDocument: plan.transfer?.document || "",
   };
   let temporaryId = "";
   if (a.temporaryCommunity) {
@@ -855,7 +1096,9 @@ function apply(g, plan, req) {
       changedProperties.add(p.id);
       for (const id of [...ids(p.ownerIds), ...ownerIds]) changedOwners.add(id);
       if (ownerIds.some((id) => !(Number(shares[id]) > 0)))
-        for (const id of ownerIds) shares[id] = 100 / ownerIds.length;
+        fail(
+          "Completa los porcentajes de titularidad antes de transferir un inmueble con datos heredados incompletos.",
+        );
       db.prepare("UPDATE properties SET ownerIds=?,ownerPercentages=? WHERE id=?").run(
         JSON.stringify(ownerIds),
         JSON.stringify(shares),
@@ -896,6 +1139,11 @@ function apply(g, plan, req) {
         .prepare("SELECT ownerIds FROM properties WHERE id=?")
         .get(action.newPropertyId);
       const owners = ids(target.ownerIds);
+      if (
+        !owners.length ||
+        owners.some((id) => !db.prepare("SELECT 1 FROM owners WHERE id=?").get(id))
+      )
+        fail("El inmueble destino debe tener al menos un titular válido para recibir contratos.");
       db.prepare("UPDATE tenants SET propertyId=?,ownerId=? WHERE id=?").run(
         action.newPropertyId,
         owners.includes(t.ownerId)
@@ -932,7 +1180,7 @@ function apply(g, plan, req) {
       bucket.releasedCredit += paid;
       db.prepare("UPDATE fee_receipts SET cancelledAt=?,cancellationReason=? WHERE id=?").run(
         now,
-        "Liquidación final por borrado avanzado; cobros liberados como saldo a favor",
+        `Liquidación final por borrado avanzado; cobros liberados como saldo a favor. Destino documentado: ${CREDIT_DESTINATIONS[plan.credit?.destination] || "pendiente de conciliar"}.`,
         r.id,
       );
       db.prepare("DELETE FROM fee_allocations WHERE receiptId=?").run(r.id);
@@ -1182,6 +1430,8 @@ function apply(g, plan, req) {
       deletedTenants,
       financial: totals(g, financial),
       settlement,
+      credit: plan.credit,
+      transfer: plan.transfer,
       closedDistributions: plan.closedDistributions,
     },
   });
@@ -1228,8 +1478,11 @@ export function registerCascadeRoutes(router, collection) {
           confirmGlobalDelete: true,
           confirmDeleteFinancial: true,
           confirmSharedFinancial: true,
+          confirmCreditSettlement: true,
+          confirmLedgerTransfer: true,
         },
         req.user,
+        { preview: true },
       );
       const receiptIds = p.financial.receipts.map((r) => r.id),
         paymentIds = p.financial.payments.map((r) => r.id);
@@ -1243,6 +1496,10 @@ export function registerCascadeRoutes(router, collection) {
           (["delete", "liquidate_final"].includes(p.actions.finance) &&
             p.financial.receipts.some((r) => (json(r.snapshot).owners || []).length > 1)) ||
           p.closedDistributions.some((row) => row.shared),
+        credit: p.credit,
+        requiresCreditSettlement: p.credit.required,
+        requiresLedgerTransfer: p.actions.finance === "reassign_community",
+        transfer: p.transfer || null,
         closedDistributions: p.closedDistributions,
         accounts: p.accounts,
         otherReceiptsAffected:

@@ -9,12 +9,14 @@ import {
 } from "./fees.js";
 import { sendMessage, destination } from "./delivery-providers.js";
 import { recordAudit } from "./audit.js";
+import { processFeeProofCleanup } from "./fee-proof-cleanup.js";
 
 let running = false;
 export async function processFeeNotifications(send = sendMessage) {
   if (running) return;
   running = true;
   try {
+    processFeeProofCleanup();
     materializeFeeReminders();
     const items = db
       .prepare(

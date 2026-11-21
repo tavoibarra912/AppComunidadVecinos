@@ -119,12 +119,22 @@ test("bootstrap: propietario e inquilino solo reciben datos de sus perfiles", as
   assert.ok(rent.data.owners.every((o) => !o.iban && !o.dni));
 });
 test("copropietarios: el alta conserva titulares y porcentajes coherentes", async () => {
+  const originalProperty = (await admin("/properties/prop-seed-1")).data;
+  const reserved = await admin("/properties/prop-seed-1", "PUT", {
+    ...originalProperty,
+    ownerPercentages: { ...originalProperty.ownerPercentages, "own-seed-1": 60 },
+  });
+  assert.equal(reserved.status, 200, JSON.stringify(reserved.data));
   const result = await admin("/owners", "POST", {
     name: "Copropietario",
     surname: "Prueba",
     dni: "00000000T",
     email: "copropietario@example.test",
+    phone: "612345678",
+    address: "Calle de prueba 1",
+    city: "Madrid",
     propertyIds: ["prop-seed-1"],
+    propertyShares: [{ propertyId: "prop-seed-1", percentage: 40, version: reserved.data.version }],
   });
   assert.equal(result.status, 201, JSON.stringify(result.data));
   const property = (await admin("/properties/prop-seed-1")).data;
@@ -135,6 +145,31 @@ test("copropietarios: el alta conserva titulares y porcentajes coherentes", asyn
     100,
   );
 });
+test("socios: la comunidad de censo se guarda aunque no tenga inmueble", async () => {
+  const created = await admin("/owners", "POST", {
+    name: "Socia",
+    surname: "Censo",
+    dni: "99999999R",
+    phone: "600000000",
+    email: "socia.censo@example.test",
+    address: "Calle del Censo 1",
+    city: "Madrid",
+    isMember: true,
+    communityId: "com-seed-1",
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.equal(created.data.communityId, "com-seed-1");
+  assert.equal(created.data.communityName, "Residencial Peñarrubia");
+  const updated = await admin(`/owners/${created.data.id}`, "PUT", {
+    ...created.data,
+    isMember: true,
+    communityId: "com-seed-1",
+    propertyIds: [],
+  });
+  assert.equal(updated.status, 200, JSON.stringify(updated.data));
+  assert.equal(updated.data.communityId, "com-seed-1");
+  assert.equal(updated.data.communityName, "Residencial Peñarrubia");
+});
 test("inquilinos: varios contratos no se sobrescriben y se conserva userId", async () => {
   const payload = {
     ownerId: "own-seed-1",
@@ -143,6 +178,7 @@ test("inquilinos: varios contratos no se sobrescriben y se conserva userId", asy
     surname: "Prueba",
     phone: "600000000",
     email: "tenant@example.test",
+    documentId: "11111111H",
     contractStart: "2020-01-01",
     contractEnd: "",
   };
@@ -549,6 +585,8 @@ test("roles personalizados: permisos efectivos, sin borrar roles asignados por I
       await request("/communities", "POST", {
         name: "Permitido",
         nif: "H12345674",
+        address: "Calle de prueba 1",
+        city: "Madrid",
       })
     ).status,
     201,
@@ -676,6 +714,8 @@ test("validaciones de servidor rechazan NIF y contacto inválidos", async () => 
       await admin("/communities", "POST", {
         name: "Inválida",
         nif: "NO-VALIDO",
+        address: "Calle de prueba 1",
+        city: "Madrid",
       })
     ).status,
     400,
@@ -686,6 +726,8 @@ test("validaciones de servidor rechazan NIF y contacto inválidos", async () => 
         name: "Inválida",
         nif: "H99999997",
         email: "no-email",
+        address: "Calle de prueba 1",
+        city: "Madrid",
       })
     ).status,
     400,
@@ -826,6 +868,8 @@ test("comunidades: el logo se valida, persiste y llega al bootstrap", async () =
   const created = await admin("/communities", "POST", {
     name: "Comunidad con logo",
     nif: "H10000008",
+    address: "Calle de prueba 1",
+    city: "Madrid",
     logoDataUrl: logo,
   });
   assert.equal(created.status, 201, JSON.stringify(created.data));
@@ -837,6 +881,8 @@ test("comunidades: el NIF se normaliza aunque venga con espacios, guiones o min�
   const created = await admin("/communities", "POST", {
     name: "Comunidad normalizada",
     nif: " h-33333337 ",
+    address: "Calle de prueba 1",
+    city: "Madrid",
   });
   assert.equal(created.status, 201);
   assert.equal(created.data.nif, "H33333337");
@@ -845,6 +891,8 @@ test("comunidades: el NIF se normaliza aunque venga con espacios, guiones o min�
       await admin("/communities", "POST", {
         name: "Duplicada",
         nif: "H 33333337",
+        address: "Calle de prueba 1",
+        city: "Madrid",
       })
     ).status,
     409,
@@ -856,11 +904,74 @@ test("comunidades: el NIF se normaliza aunque venga con espacios, guiones o min�
       await admin("/communities", "POST", {
         name: "Control incorrecto",
         nif: "H33333331",
+        address: "Calle de prueba 1",
+        city: "Madrid",
       })
     ).status,
     400,
   );
 });
+test("comunidades: el régimen jurídico se configura, se valida y sobrevive a ediciones parciales", async () => {
+  const original = (await admin("/communities/com-seed-1")).data;
+  try {
+    const saved = await admin("/communities/com-seed-1", "PUT", {
+      ...original,
+      legalConfig: {
+        regimen: "asociacion",
+        deudaCopropietarios: {
+          expresion: "cuota",
+          mostrarRepartoInterno: false,
+          porcentajesHistoricos: "ultimo_conocido",
+        },
+        creditoTitular: { politica: "advertir", destinoPorDefecto: "compensacion" },
+        traslados: { deuda: "trasladar", exigirDocumento: false },
+        votaciones: {
+          unidad: "propietario",
+          copropiedad: "todos",
+          mayoriaOrdinaria: "tres_quintos",
+        },
+        estatutos: { referencia: "Estatutos 2018, art. 12", fechaAprobacion: "2018-06-15" },
+      },
+    });
+    assert.equal(saved.status, 200, JSON.stringify(saved.data));
+    assert.equal(saved.data.legalConfig.regimen, "asociacion");
+    assert.equal(saved.data.legalConfig.deudaCopropietarios.expresion, "cuota");
+    assert.equal(saved.data.legalConfig.creditoTitular.politica, "advertir");
+    assert.equal(saved.data.legalConfig.traslados.exigirDocumento, false);
+    assert.equal(saved.data.legalConfig.votaciones.unidad, "propietario");
+    assert.equal(saved.data.legalConfig.estatutos.fechaAprobacion, "2018-06-15");
+
+    // Un parche parcial no borra el resto de la configuración.
+    const partial = await admin("/communities/com-seed-1", "PUT", {
+      ...saved.data,
+      legalConfig: { regimen: "lph" },
+    });
+    assert.equal(partial.status, 200, JSON.stringify(partial.data));
+    assert.equal(partial.data.legalConfig.regimen, "lph");
+    assert.equal(partial.data.legalConfig.creditoTitular.politica, "advertir");
+    assert.equal(partial.data.legalConfig.votaciones.unidad, "propietario");
+
+    for (const legalConfig of [
+      { regimen: "otro" },
+      { votaciones: { unidad: "acciones" } },
+      { creditoTitular: { politica: "ignorar" } },
+      { estatutos: { fechaAprobacion: "15/06/2018" } },
+    ]) {
+      const invalid = await admin("/communities/com-seed-1", "PUT", {
+        ...partial.data,
+        legalConfig,
+      });
+      assert.equal(invalid.status, 400, JSON.stringify(legalConfig));
+    }
+  } finally {
+    const latest = (await admin("/communities/com-seed-1")).data;
+    await admin("/communities/com-seed-1", "PUT", {
+      ...latest,
+      legalConfig: original.legalConfig,
+    });
+  }
+});
+
 test("comunidades: el servidor rechaza importes y años inválidos y conserva el cero", async () => {
   const original = (await admin("/communities/com-seed-1")).data;
   for (const patch of [
@@ -2173,11 +2284,22 @@ test("F06 · editar un propietario en una comunidad no altera sus vínculos en o
   const ownerBefore = (await admin("/owners/own-seed-1")).data;
   const propertyBefore = (await admin("/properties/prop-seed-6")).data;
   try {
+    const reserved = await admin("/properties/prop-seed-6", "PUT", {
+      ...propertyBefore,
+      ownerPercentages: Object.fromEntries(
+        propertyBefore.ownerIds.map((id) => [id, 50 / propertyBefore.ownerIds.length]),
+      ),
+    });
+    assert.equal(reserved.status, 200, JSON.stringify(reserved.data));
     assert.equal(
       (
         await admin("/owners/own-seed-1", "PUT", {
           ...ownerBefore,
+          version: (await admin("/owners/own-seed-1")).data.version,
           propertyIds: [...new Set([...(ownerBefore.propertyIds || []), "prop-seed-6"])],
+          propertyShares: [
+            { propertyId: "prop-seed-6", percentage: 50, version: reserved.data.version },
+          ],
         })
       ).status,
       200,

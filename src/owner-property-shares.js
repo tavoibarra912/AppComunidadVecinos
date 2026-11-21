@@ -7,8 +7,12 @@ const fail = (message, status = 400) => Object.assign(new Error(message), { stat
 // Comprobar las copias que vio el formulario ANTES de sincronizar vínculos.
 // Los porcentajes se guardan en la misma transacción que el propietario.
 export function prepareOwnerPropertyShares(data, ownerId, user) {
-  if (data.propertyShares === undefined) return () => {};
-  if (!Array.isArray(data.propertyShares) || data.propertyShares.length > 1000)
+  if (data.propertyIds === undefined && data.propertyId)
+    data = { ...data, propertyIds: [data.propertyId] };
+  if (
+    data.propertyShares !== undefined &&
+    (!Array.isArray(data.propertyShares) || data.propertyShares.length > 1000)
+  )
     throw fail("La lista de titularidades no es válida.");
   const policy = policyData();
   const propertyVersions = data.propertyVersions || {};
@@ -19,9 +23,16 @@ export function prepareOwnerPropertyShares(data, ownerId, user) {
   )
     throw fail("Las versiones de los inmuebles no son válidas.");
   const currentIds = policy.properties.filter((p) => p.ownerIds.includes(ownerId)).map((p) => p.id);
+  const requestedIds = data.propertyIds || currentIds;
+  const additions = requestedIds.filter((id) => !currentIds.includes(id));
+  for (const id of additions)
+    if (!data.propertyShares?.some((share) => share?.propertyId === id))
+      throw fail(
+        "Indica el porcentaje explícito y la versión de cada inmueble que quieres vincular.",
+      );
   for (const propertyId of currentIds) {
     if (
-      !data.propertyIds?.includes(propertyId) &&
+      !requestedIds.includes(propertyId) &&
       allowed(user, "property:manage", propertyId, policy) &&
       !Object.hasOwn(propertyVersions, propertyId)
     )
@@ -29,6 +40,16 @@ export function prepareOwnerPropertyShares(data, ownerId, user) {
         "Falta la versión del inmueble que quieres desvincular. Vuelve a abrir la ficha.",
         428,
       );
+    if (!requestedIds.includes(propertyId)) {
+      const property = policy.properties.find((p) => p.id === propertyId);
+      const remaining = property.ownerIds.filter((id) => id !== ownerId);
+      const tenants = policy.tenants.filter((tenant) => tenant.propertyId === propertyId);
+      if (!remaining.length && tenants.length)
+        throw fail("No se puede quitar el último titular de un inmueble con contratos vinculados.");
+      for (const tenant of tenants.filter((tenant) => tenant.ownerId === ownerId))
+        if (!allowed(user, "tenant:manage", tenant.id, policy))
+          throw fail("No tienes permiso para reasignar los contratos de este propietario.", 403);
+    }
   }
   for (const [propertyId, version] of Object.entries(propertyVersions)) {
     if (!allowed(user, "property:manage", propertyId, policy))
@@ -42,7 +63,7 @@ export function prepareOwnerPropertyShares(data, ownerId, user) {
       throw fail(EDIT_CONFLICT, 409);
   }
   const updates = new Map();
-  for (const share of data.propertyShares) {
+  for (const share of data.propertyShares || []) {
     if (!share || typeof share.propertyId !== "string" || updates.has(share.propertyId))
       throw fail("La titularidad no es válida.");
     if (!allowed(user, "property:manage", share.propertyId, policy))
@@ -66,6 +87,10 @@ export function prepareOwnerPropertyShares(data, ownerId, user) {
     const percentages = Object.fromEntries(
       ownerIds.filter((id) => id !== ownerId).map((id) => [id, Number(saved[id] || 0)]),
     );
+    if (Object.values(percentages).some((value) => !Number.isFinite(value) || value <= 0))
+      throw fail(
+        "Completa explícitamente los porcentajes de los titulares actuales antes de añadir otro.",
+      );
     percentages[ownerId] = percentage;
     if (Object.values(percentages).reduce((sum, value) => sum + value, 0) > 100.0001)
       throw fail("La suma de los porcentajes de titularidad no puede superar el 100%.");

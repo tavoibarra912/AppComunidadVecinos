@@ -67,6 +67,160 @@ function populateCommunityCurrencySelect(selected) {
   select.value = selected || state.settings?.monedaPorDefecto || "EUR";
 }
 
+// Etiquetas y valores de la configuración jurídica. Los valores deben coincidir
+// con src/legal-config.js: el servidor rechaza cualquier opción desconocida.
+const LEGAL_SELECT_OPTIONS = {
+  legalRegimen: [
+    ["lph", "Comunidad de propietarios (LPH)"],
+    ["asociacion", "Asociación"],
+  ],
+  legalDebtExpression: [
+    ["inmueble", "Deuda del inmueble (recomendado)"],
+    ["cuota", "Cuota individual proporcional"],
+  ],
+  legalDebtHistorical: [
+    ["no_consta", "Indicar «no consta» (recomendado)"],
+    ["ultimo_conocido", "Usar el último porcentaje conocido"],
+    ["omitir", "Omitir el reparto interno"],
+  ],
+  legalCreditPolicy: [
+    ["bloquear", "Bloquear hasta conciliar el saldo (recomendado)"],
+    ["advertir", "Advertir y dejar constancia"],
+    ["permitir", "Permitir sin conciliación previa"],
+  ],
+  legalCreditDestination: [
+    ["devolucion", "Devolución al titular"],
+    ["compensacion", "Compensación con deudas vencidas, líquidas y exigibles"],
+    ["cesion", "Cesión documentada a un tercero"],
+    ["fondo_reserva", "Aportación al fondo de reserva"],
+    ["otro", "Otro destino documentado"],
+  ],
+  legalTransferDebt: [
+    ["conservar_origen", "Dejar constancia: conservar la deuda en origen (recomendado)"],
+    ["trasladar", "Dejar constancia: trasladar la deuda al destino"],
+  ],
+  legalVotingUnit: [
+    ["coeficiente", "Por coeficiente de participación (LPH)"],
+    ["inmueble", "Un voto por inmueble"],
+    ["propietario", "Un voto por propietario"],
+    ["cuenta", "Una respuesta por cuenta (informativo)"],
+  ],
+  legalCoownership: [
+    ["representante", "Un voto por inmueble (representante común)"],
+    ["todos", "Voto separado de cada cotitular según su cuota"],
+  ],
+  legalMajority: [
+    ["simple", "Mayoría simple de los asistentes"],
+    ["absoluta", "Mayoría absoluta de propietarios y cuotas"],
+    ["tres_quintos", "Tres quintos de propietarios y cuotas"],
+    ["unanimidad", "Unanimidad"],
+  ],
+};
+
+const ASSOCIATION_VOTING_OPTIONS = [
+  ["propietario", "Un voto por socio"],
+  ["cuenta", "Una respuesta por cuenta"],
+];
+const ASSOCIATION_MAJORITY_OPTIONS = [
+  ["simple", "Mayoría simple de socios"],
+  ["absoluta", "Mayoría absoluta de socios"],
+  ["tres_quintos", "Tres quintos de socios"],
+  ["unanimidad", "Unanimidad de socios"],
+];
+
+function setLegalOptions(name, options) {
+  const select = communityForm.elements[name];
+  if (!select) return;
+  const current = select.value;
+  select.replaceChildren(...options.map(([value, label]) => new Option(label, value)));
+  if (options.some(([value]) => value === current)) select.value = current;
+}
+
+/** En una asociación el censo manda: no se ofrecen coeficientes ni copropiedad. */
+function syncLegalRegimeFields() {
+  const regime = communityForm.elements.legalRegimen?.value;
+  const association = regime === "asociacion";
+  setLegalOptions(
+    "legalVotingUnit",
+    association ? ASSOCIATION_VOTING_OPTIONS : LEGAL_SELECT_OPTIONS.legalVotingUnit,
+  );
+  setLegalOptions(
+    "legalMajority",
+    association ? ASSOCIATION_MAJORITY_OPTIONS : LEGAL_SELECT_OPTIONS.legalMajority,
+  );
+  const coownership = communityForm.elements.legalCoownership;
+  if (coownership) {
+    if (association) {
+      coownership.value = "representante";
+      coownership.disabled = true;
+    } else coownership.disabled = false;
+  }
+}
+
+function populateLegalSelects() {
+  for (const [name, options] of Object.entries(LEGAL_SELECT_OPTIONS)) {
+    const select = communityForm.elements[name];
+    if (!select) continue;
+    select.replaceChildren(...options.map(([value, label]) => new Option(label, value)));
+  }
+  communityForm.elements.legalRegimen?.addEventListener("change", syncLegalRegimeFields);
+}
+
+function fillLegalConfigForm(legal = {}) {
+  const debt = legal.deudaCopropietarios || {};
+  const credit = legal.creditoTitular || {};
+  const transfers = legal.traslados || {};
+  const votes = legal.votaciones || {};
+  const statutes = legal.estatutos || {};
+  const setValue = (name, value) => {
+    const field = communityForm.elements[name];
+    if (field) field.value = value;
+  };
+  setValue("legalRegimen", legal.regimen || "lph");
+  setValue("legalDebtExpression", debt.expresion || "inmueble");
+  setValue("legalDebtHistorical", debt.porcentajesHistoricos || "no_consta");
+  setValue("legalCreditPolicy", credit.politica || "bloquear");
+  setValue("legalCreditDestination", credit.destinoPorDefecto || "devolucion");
+  setValue("legalTransferDebt", transfers.deuda || "conservar_origen");
+  setValue("legalVotingUnit", votes.unidad || "coeficiente");
+  setValue("legalCoownership", votes.copropiedad || "representante");
+  setValue("legalMajority", votes.mayoriaOrdinaria || "simple");
+  setValue("legalStatutesReference", statutes.referencia || "");
+  setValue("legalStatutesDate", statutes.fechaAprobacion || "");
+  communityForm.elements.legalDebtShowInternal.checked = debt.mostrarRepartoInterno !== false;
+  communityForm.elements.legalTransferDocument.checked = transfers.exigirDocumento !== false;
+  syncLegalRegimeFields();
+}
+
+function readLegalConfigForm() {
+  const fields = communityForm.elements;
+  return {
+    regimen: fields.legalRegimen.value,
+    deudaCopropietarios: {
+      expresion: fields.legalDebtExpression.value,
+      mostrarRepartoInterno: fields.legalDebtShowInternal.checked,
+      porcentajesHistoricos: fields.legalDebtHistorical.value,
+    },
+    creditoTitular: {
+      politica: fields.legalCreditPolicy.value,
+      destinoPorDefecto: fields.legalCreditDestination.value,
+    },
+    traslados: {
+      deuda: fields.legalTransferDebt.value,
+      exigirDocumento: fields.legalTransferDocument.checked,
+    },
+    votaciones: {
+      unidad: fields.legalVotingUnit.value,
+      copropiedad: fields.legalCoownership.value,
+      mayoriaOrdinaria: fields.legalMajority.value,
+    },
+    estatutos: {
+      referencia: fields.legalStatutesReference.value.trim(),
+      fechaAprobacion: fields.legalStatutesDate.value,
+    },
+  };
+}
+
 /** Selector de Administrador de Comunidad (usuario del sistema). */
 function updateCommunityAdminSelect(selectedUserId = "") {
   const select = communityForm.elements.adminUserId;
@@ -138,7 +292,9 @@ function applyCommunityReadonly() {
       const allowed =
         element.closest("#community-editor-fees") ||
         element.closest(".doc-library") ||
-        element.matches("button[data-community-tab],#close-dialog") ||
+        element.matches(
+          "button[data-community-tab],button[data-community-statutes-tab],#close-dialog",
+        ) ||
         (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
       if (!allowed && "disabled" in element && !element.disabled) {
         if (element.matches("button")) element.dataset.communityReadonlyDisabled = "true";
@@ -175,7 +331,7 @@ communityForm.addEventListener(
   (event) => {
     if (!communityReadonly) return;
     const allowed = event.target.closest(
-      'button[data-community-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees,.doc-library',
+      'button[data-community-tab],button[data-community-statutes-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees,.doc-library',
     );
     if (!allowed) {
       event.preventDefault();
@@ -188,6 +344,7 @@ makeSelectSearchable(communityForm.elements.adminUserId, "Buscar administrador�
 // Control territorial unificado: municipio → provincia → código postal
 // con sincronización bidireccional, igual en todas las pantallas.
 const communityTerritory = setupTerritory(communityForm);
+populateLegalSelects();
 
 const communityDetailDialog = document.querySelector("#detail-dialog");
 const closeDetailDialog = document.querySelector("#close-detail-dialog");
@@ -436,6 +593,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
     : "Nueva comunidad";
 
   switchCommunityEditorTab(defaultTab);
+  switchCommunityStatutesTab("regime");
   setFormReadonly(communityForm, readonly);
 
   if (c) {
@@ -465,6 +623,19 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   communityNotes?.setValue(c?.notes || "");
   syncCommunityLibraries();
   populateCommunityCurrencySelect(c?.currency || "EUR");
+  fillLegalConfigForm(c?.legalConfig);
+  const currency = communityForm.elements.currency;
+  const currentCurrency = String(c?.currency || "EUR")
+    .trim()
+    .toUpperCase();
+  for (const option of currency.options)
+    option.disabled =
+      !!c?.hasFinancialActivity && option.value !== "EUR" && option.value !== currentCurrency;
+  const currencyHint = document.querySelector("#community-currency-hint");
+  if (currencyHint)
+    currencyHint.textContent = c?.hasFinancialActivity
+      ? "Esta comunidad tiene actividad financiera. Solo se puede conservar su moneda o corregirla a EUR; los importes históricos no se convierten."
+      : "Las cuotas se gestionan solo en EUR. Con actividad financiera registrada no se puede cambiar a otra moneda.";
   updateCommunityAdminSelect(c?.adminUserId || "");
   applyCommunityReadonly();
   armarGuardia(communityForm, communityDialog);
@@ -588,6 +759,36 @@ function renderCommunityEditorProperties(c) {
 }
 
 // --- Tabs del editor de comunidad ---
+function switchCommunityStatutesTab(tab) {
+  document.querySelectorAll("[data-community-statutes-tab]").forEach((button) => {
+    const active = button.dataset.communityStatutesTab === tab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+  document.querySelectorAll("[data-community-statutes-pane]").forEach((pane) => {
+    pane.hidden = pane.dataset.communityStatutesPane !== tab;
+  });
+}
+const communityStatutesTabs = [...document.querySelectorAll("[data-community-statutes-tab]")];
+communityStatutesTabs.forEach((button, index) => {
+  button.addEventListener("click", () =>
+    switchCommunityStatutesTab(button.dataset.communityStatutesTab),
+  );
+  button.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? communityStatutesTabs.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + communityStatutesTabs.length) %
+            communityStatutesTabs.length;
+    communityStatutesTabs[next].click();
+    communityStatutesTabs[next].focus();
+  });
+});
 document.querySelectorAll(".community-editor-tab[data-community-tab]").forEach((btn) => {
   btn.addEventListener("click", () => switchCommunityEditorTab(btn.dataset.communityTab));
 });
@@ -1099,6 +1300,21 @@ async function persistCommunityDraft() {
   const selectedLocation = getLocationById(citySelect.value);
 
   const messages = [];
+  const existingCommunity = state.communities.find(
+    (community) => community.id === editingCommunityId,
+  );
+  const nextCurrency = communityForm.elements.currency.value.trim().toUpperCase() || "EUR";
+  const currentCurrency = String(existingCommunity?.currency || "EUR")
+    .trim()
+    .toUpperCase();
+  if (
+    existingCommunity?.hasFinancialActivity &&
+    nextCurrency !== "EUR" &&
+    nextCurrency !== currentCurrency
+  )
+    messages.push(
+      "Moneda: la comunidad tiene actividad financiera registrada y no admite cambiar a una moneda distinta de EUR.",
+    );
   [...communityForm.elements].forEach((element) => {
     if (element.willValidate && !element.checkValidity()) {
       messages.push(`${fieldLabel(element)}: ${mensajeDeValidez(element)}.`);
@@ -1147,6 +1363,7 @@ async function persistCommunityDraft() {
   });
   data.city = selectedLocation.name;
   data.province = provinceSelect.value;
+  data.legalConfig = readLegalConfigForm();
 
   const isEditing = !!editingCommunityId;
   const communityId = editingCommunityId || crypto.randomUUID();

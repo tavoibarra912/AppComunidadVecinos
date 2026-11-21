@@ -16,26 +16,41 @@ import { removeEntityFiles } from "./documents.js";
 
 const router = Router();
 registerCascadeRoutes(router, "owners");
-router.use((req, res, next) => {
-  if (["POST", "PUT"].includes(req.method)) {
-    const data = req.body || {};
-    const error = contactError(data) || bankAccountError(data);
-    if (error) return res.status(400).json({ error });
-    if (data.documentType !== undefined) {
-      data.documentType = String(data.documentType || "DNI")
-        .trim()
-        .toUpperCase();
-    }
-    if (data.dni !== undefined) {
-      data.dni = String(data.dni || "")
-        .trim()
-        .toUpperCase();
-      const documentError = identityDocumentError(data.dni, data.documentType || "DNI");
-      if (documentError) return res.status(400).json({ error: documentError });
-    }
+function memberCommunityFor(data) {
+  if (!data.isMember) return { id: "", name: "" };
+  const id = String(data.communityId || "").trim();
+  if (!id) return { id: "", name: "" };
+  return db.prepare("SELECT id, name FROM communities WHERE id = ?").get(id) || null;
+}
+
+/** En una ficha no socia, communityId es el dato denormalizado del inmueble. */
+function ownerCommunityFor(data, existing) {
+  if (data.isMember) return memberCommunityFor(data) || { id: "", name: "" };
+  return {
+    id: existing?.communityId || "",
+    name: existing?.communityName || "",
+  };
+}
+
+function validateOwnerData(data) {
+  const error = contactError(data) || bankAccountError(data);
+  if (error) return error;
+  if (data.isMember && String(data.communityId || "").trim() && !memberCommunityFor(data))
+    return "La comunidad del socio no existe.";
+  if (data.documentType !== undefined) {
+    data.documentType = String(data.documentType || "DNI")
+      .trim()
+      .toUpperCase();
   }
-  next();
-});
+  if (data.dni !== undefined) {
+    data.dni = String(data.dni || "")
+      .trim()
+      .toUpperCase();
+    const documentError = identityDocumentError(data.dni, data.documentType || "DNI");
+    if (documentError) return documentError;
+  }
+  return null;
+}
 
 function findOwner(id) {
   const row = db.prepare("SELECT * FROM owners WHERE id = ?").get(id);
@@ -71,7 +86,7 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   const data = req.body || {};
   trimEntityFields("owner", data);
-  const errorObligatorio = entityRequiredError("owner", data, { exigirAusentes: false });
+  const errorObligatorio = entityRequiredError("owner", data) || validateOwnerData(data);
   if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
   if (db.prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?)").get(String(data.dni))) {
     return res
@@ -80,15 +95,17 @@ router.post("/", (req, res) => {
   }
   const id = data.id || crypto.randomUUID();
   const lph = ownerLphFields(data);
+  const membership = memberCommunityFor(data) || { id: "", name: "" };
 
   db.exec("BEGIN");
   try {
     const saveShares = prepareOwnerPropertyShares(data, id, req.user);
     db.prepare(
-      `INSERT INTO owners (id, name, surname, documentType, dni, isMember, phone, otherPhone, email,
-         phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt, address, province, city, postalCode,
-         iban, currency, votingRights, legalRepresentative, notificationPreference, notes, documents, userId)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO owners (id, name, surname, documentType, dni, isMember, communityId, communityName,
+         phone, otherPhone, email, phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt,
+         address, province, city, postalCode, iban, currency, votingRights, legalRepresentative,
+         notificationPreference, notes, documents, userId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       data.name,
@@ -96,6 +113,8 @@ router.post("/", (req, res) => {
       data.documentType || "DNI",
       String(data.dni).toUpperCase(),
       data.isMember ? 1 : 0,
+      membership.id,
+      membership.name,
       data.phone || "",
       data.otherPhone || "",
       data.email || "",
@@ -138,9 +157,11 @@ router.put(
   versionedUpdate("owners", (req, res) => {
     const existing = findOwner(req.params.id);
     if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
-    const data = req.body || {};
+    const data = { ...existing, ...req.body };
+    if (req.body.propertyId && req.body.propertyIds === undefined)
+      data.propertyIds = [req.body.propertyId];
     trimEntityFields("owner", data);
-    const errorObligatorio = entityRequiredError("owner", data, { exigirAusentes: false });
+    const errorObligatorio = entityRequiredError("owner", data) || validateOwnerData(data);
     if (errorObligatorio) return res.status(400).json({ error: errorObligatorio });
     const dniOwner = db
       .prepare("SELECT id FROM owners WHERE UPPER(dni) = UPPER(?) AND id <> ?")
@@ -152,12 +173,14 @@ router.put(
     }
 
     const lph = ownerLphFields(data, existing);
+    const membership = ownerCommunityFor(data, existing);
     db.exec("SAVEPOINT entity_update");
     try {
       const saveShares = prepareOwnerPropertyShares(data, existing.id, req.user);
       db.prepare(
-        `UPDATE owners SET name = ?, surname = ?, documentType = ?, dni = ?, isMember = ?, phone = ?, otherPhone = ?,
-         email = ?, phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ?, address = ?,
+        `UPDATE owners SET name = ?, surname = ?, documentType = ?, dni = ?, isMember = ?,
+         communityId = ?, communityName = ?, phone = ?, otherPhone = ?, email = ?,
+         phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ?, address = ?,
          province = ?, city = ?, postalCode = ?, iban = ?, currency = ?, votingRights = ?,
          legalRepresentative = ?, notificationPreference = ?, notes = ?, documents = ?, userId = ?
        WHERE id = ?`,
@@ -167,6 +190,8 @@ router.put(
         data.documentType || "DNI",
         String(data.dni).toUpperCase(),
         data.isMember ? 1 : 0,
+        membership.id,
+        membership.name,
         data.phone || "",
         data.otherPhone || "",
         data.email || "",
@@ -188,15 +213,13 @@ router.put(
         data.userId !== undefined ? data.userId : existing.userId || "",
         existing.id,
       );
-      const propertyIds = Array.isArray(data.propertyIds)
-        ? data.propertyIds
-        : data.propertyId
-          ? [data.propertyId]
+      const propertyIds = Array.isArray(req.body.propertyIds)
+        ? req.body.propertyIds
+        : req.body.propertyId
+          ? [req.body.propertyId]
           : null;
       if (propertyIds) {
         syncOwnerProperties(existing.id, propertyIds);
-      } else if (data.propertyId) {
-        applyOwnerPropertyLink(existing.id, data.propertyId);
       }
       saveShares();
       db.exec("RELEASE entity_update");

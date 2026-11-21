@@ -174,6 +174,70 @@ function control(w, label) {
   assert.ok(wrap, label);
   return wrap.querySelector("input,select,textarea");
 }
+
+test("R7 UI: rectificación individual con vista previa, invalidación al editar y emisión trazada", async () => {
+  const f = fixture();
+  try {
+    const receipt = f.data.receipts[0];
+    Object.assign(receipt, {
+      cancelledAt: "2026-11-01",
+      cancellationReason: "Revisar",
+      status: "cancelled",
+      canRectify: true,
+      paid: 0,
+      outstanding: 0,
+    });
+    const original = f.w.api.fees;
+    const replacement = {
+      ...receipt,
+      id: "r2",
+      cancelledAt: "",
+      rectifiesReceiptId: "r1",
+      rectificationReason: "Corrección aprobada",
+      canManage: true,
+      canRectify: false,
+    };
+    f.w.api.fees = async (route, method, body) => {
+      if (route === "/receipts/r1/rectification/preview") {
+        f.calls.push([route, method, body]);
+        return { ...body, snapshot: receipt.snapshot, amount: 4000, token: "rectification-token" };
+      }
+      if (route === "/receipts/r1/rectify") {
+        f.calls.push([route, method, body]);
+        return replacement;
+      }
+      if (route === "/receipts/r2") return replacement;
+      return original(route, method, body);
+    };
+    await f.w.feeTest.showReceipt("r1");
+    click(f.w, "Rectificar recibo anulado");
+    const value = control(f.w, "Importe (€)"),
+      reason = control(f.w, "Motivo de la rectificación");
+    value.value = "40.00";
+    reason.value = "Corrección aprobada";
+    click(f.w, "Revisar rectificación");
+    await flush();
+    assert.match(f.w.document.querySelector("#fee-dialog-body").textContent, /40,00/);
+    reason.dispatchEvent(new f.w.Event("input"));
+    assert.doesNotMatch(
+      f.w.document.querySelector("#fee-dialog-body").textContent,
+      /Emitir recibo rectificado/,
+    );
+    click(f.w, "Revisar rectificación");
+    await flush();
+    click(f.w, "Emitir recibo rectificado");
+    await flush();
+    const sent = f.calls.find((call) => call[0] === "/receipts/r1/rectify");
+    assert.equal(sent[2].token, "rectification-token");
+    assert.equal(sent[2].reason, "Corrección aprobada");
+    assert.match(
+      f.w.document.querySelector("#fee-dialog-body").textContent,
+      /Rectifica al recibo r1/,
+    );
+  } finally {
+    f.dom.window.close();
+  }
+});
 test("cuotas UI: pantalla independiente con estados e importes escapados", async () => {
   const f = fixture();
   try {

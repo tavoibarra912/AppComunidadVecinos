@@ -4,6 +4,8 @@ import { db, getSettings, listProperties, listOwners } from "./db.js";
 import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
 import { sanitizeRichText } from "./rich-text.js";
+import { queueFeeProofCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
+import { legalConfigOf } from "./legal-config.js";
 
 for (const table of ["owner_notifications", "admin_emails"])
   if (
@@ -16,6 +18,8 @@ for (const table of ["owner_notifications", "admin_emails"])
 for (const [name, ddl] of [
   ["assessmentId", "TEXT NOT NULL DEFAULT ''"],
   ["installment", "INTEGER NOT NULL DEFAULT 0"],
+  ["rectifiesReceiptId", "TEXT NOT NULL DEFAULT ''"],
+  ["rectificationReason", "TEXT NOT NULL DEFAULT ''"],
 ]) {
   if (
     db
@@ -26,6 +30,9 @@ for (const [name, ddl] of [
     continue;
   db.exec(`ALTER TABLE fee_receipts ADD COLUMN ${name} ${ddl}`);
 }
+db.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS fee_receipts_rectification ON fee_receipts(rectifiesReceiptId) WHERE rectifiesReceiptId<>''",
+);
 if (!db.prepare("SELECT 1 FROM schema_migrations WHERE id='extraordinary-fees-v1'").get()) {
   transaction(() => {
     // El índice anterior impedía que un inmueble tuviera una cuota ordinaria
@@ -259,6 +266,13 @@ export function receiptView(row, date = today()) {
   const returned = outstanding > 0 && payments.some((p) => p.reversedAt);
   return {
     ...row,
+    canRectify: canRectifyReceipt(row),
+    rectifiedBy:
+      db
+        .prepare(
+          "SELECT id FROM fee_receipts WHERE rectifiesReceiptId=? AND rectifiesReceiptId<>''",
+        )
+        .get(row.id)?.id || "",
     snapshot,
     kind: row.serviceBillId ? "service" : row.assessmentId ? "assessment" : "ordinary",
     concept: receiptConcept(row, snapshot),
@@ -562,8 +576,7 @@ export function deletePlan(communityId, id, actor) {
   feeCommunity(communityId);
   const row = db.prepare("SELECT * FROM fee_plans WHERE id=?").get(id);
   if (!row) throw problem("Acuerdo de cuotas no encontrado.", 404);
-  if (row.communityId !== communityId)
-    throw problem("El acuerdo pertenece a otra comunidad.", 403);
+  if (row.communityId !== communityId) throw problem("El acuerdo pertenece a otra comunidad.", 403);
   return transaction(() => {
     if (
       db
@@ -590,6 +603,22 @@ function monthIndex(value) {
 function monthString(index) {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
 }
+/** Porcentaje de titularidad acreditado al emitir, o null si no consta. */
+function ownerPercentage(property, ownerId) {
+  // La fila cruda guarda los porcentajes como JSON; las vistas ya lo traen
+  // mapeado. Se aceptan ambas formas para no perder el porcentaje actual.
+  let percentages = property?.ownerPercentages || {};
+  if (typeof percentages === "string") {
+    try {
+      percentages = JSON.parse(percentages || "{}");
+    } catch {
+      percentages = {};
+    }
+  }
+  const value = Number(percentages?.[ownerId]);
+  return Number.isFinite(value) && value > 0 && value <= 100 ? value : null;
+}
+
 export function distribute(total, entries) {
   const sum = entries.reduce((s, x) => s + x.weight, 0);
   const parts = entries.map((x) => ({
@@ -656,6 +685,7 @@ export function preview(communityId, period) {
       owners: linked.map((o) => ({
         id: o.id,
         name: `${o.name} ${o.surname}`.trim(),
+        percentage: ownerPercentage(property, o.id),
       })),
     });
   }
@@ -756,6 +786,7 @@ export function issue(communityId, input, actor) {
     if (input.token !== batch.token)
       throw problem("Los datos cambiaron. Vuelve a revisar la vista previa antes de emitir.", 409);
     const ids = [];
+    const currency = communityCurrency(communityId);
     for (const item of batch.rows) {
       const id = crypto.randomUUID();
       db.prepare(
@@ -779,7 +810,7 @@ export function issue(communityId, input, actor) {
         "issued",
         id,
         "Nuevo recibo de cuota",
-        `Cuota ordinaria ${batch.period}: ${formatMoney(item.amount)}. Vencimiento: ${batch.dueDate}.${
+        `Cuota ordinaria ${batch.period}: ${formatMoney(item.amount, currency)}. Vencimiento: ${batch.dueDate}.${
           item.snapshot.communityIban
             ? ` IBAN para transferencia: ${item.snapshot.communityIban}.`
             : ""
@@ -834,6 +865,7 @@ export function selectedChargeProperties(communityId, input) {
       owners: linked.map((owner) => ({
         id: owner.id,
         name: `${owner.name} ${owner.surname}`.trim(),
+        percentage: ownerPercentage(property, owner.id),
       })),
     });
   }
@@ -940,8 +972,7 @@ export function saveAssessment(communityId, input, actor, id = "") {
         entry.weight = Math.round(Number(text) * 10000);
         weightSum += entry.weight;
       }
-      if (weightSum === 0)
-        throw problem("No hay coeficientes válidos para el reparto variable.");
+      if (weightSum === 0) throw problem("No hay coeficientes válidos para el reparto variable.");
       for (const entry of distribute(remainingAmount, coefficientEntries)) {
         if (entry.amount <= 0)
           throw problem(
@@ -1061,7 +1092,9 @@ export function assessmentView(row, date = today()) {
     const paid = views.reduce((sum, view) => sum + view.paid, 0);
     const outstanding = views.reduce((sum, view) => sum + view.outstanding, 0);
     const issued = active.length > 0;
-    const overdue = outstanding > 0 && installment.dueDate < date;
+    const overdue = views.some((receipt) => receipt.outstanding > 0 && receipt.dueDate < date);
+    const needsRectification =
+      !row.cancelledAt && !installment.cancelledAt && rows.some(canRectifyReceipt);
     return {
       ...installment,
       issued,
@@ -1070,20 +1103,23 @@ export function assessmentView(row, date = today()) {
       paid,
       outstanding,
       overdue,
+      needsRectification,
       status:
         row.cancelledAt || installment.cancelledAt
           ? "cancelled"
           : !rows.length
             ? "pending"
             : !active.length
-              ? "cancelled"
-              : outstanding === 0
-                ? "paid"
-                : paid > 0
-                  ? "partial"
-                  : overdue
-                    ? "overdue"
-                    : "issued",
+              ? "rectification"
+              : needsRectification
+                ? "rectification"
+                : outstanding === 0
+                  ? "paid"
+                  : paid > 0
+                    ? "partial"
+                    : overdue
+                      ? "overdue"
+                      : "issued",
     };
   });
   const active = receipts
@@ -1100,6 +1136,7 @@ export function assessmentView(row, date = today()) {
   if (row.cancelledAt) status = "cancelled";
   else if (installments.length && cancelledCount === installments.length) status = "cancelled";
   else if (canEdit) status = "draft";
+  else if (installments.some((item) => item.needsRectification)) status = "rectification";
   else if (installments.every((item) => ["paid", "cancelled"].includes(item.status)))
     status = "collected";
   else status = "active";
@@ -1126,6 +1163,9 @@ export function assessmentView(row, date = today()) {
       issued,
       paid,
       outstanding,
+      rectification: receipts
+        .filter(canRectifyReceipt)
+        .reduce((sum, receipt) => sum + receipt.amount, 0),
       unissued: installments
         .filter((item) => item.status === "pending")
         .reduce((sum, item) => sum + item.amount, 0),
@@ -1256,6 +1296,7 @@ export function issueAssessment(id, input, actor) {
     if (input.token !== batch.token)
       throw problem("Los datos cambiaron. Vuelve a revisar la vista previa antes de emitir.", 409);
     const ids = [];
+    const currency = communityCurrency(row.communityId);
     for (const item of batch.rows) {
       const receiptId = crypto.randomUUID();
       db.prepare(
@@ -1282,7 +1323,7 @@ export function issueAssessment(id, input, actor) {
         "issued",
         `${row.id}:${batch.installment}`,
         `Nueva derrama: ${row.name}`,
-        `Derrama "${row.name}" · plazo ${batch.installment}/${batch.installmentCount}: ${formatMoney(item.amount)}. Vencimiento: ${batch.dueDate}.${
+        `Derrama "${row.name}" · plazo ${batch.installment}/${batch.installmentCount}: ${formatMoney(item.amount, currency)}. Vencimiento: ${batch.dueDate}.${
           item.snapshot.communityIban
             ? ` IBAN para transferencia: ${item.snapshot.communityIban}.`
             : ""
@@ -1387,11 +1428,22 @@ function audit(actor, action, id, details) {
     details,
   });
 }
-export function formatMoney(cents) {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-  }).format(cents / 100);
+function communityCurrency(communityId) {
+  return (
+    db.prepare("SELECT currency FROM communities WHERE id = ?").get(communityId)?.currency || "EUR"
+  );
+}
+
+export function formatMoney(cents, currency = "EUR") {
+  const code = String(currency || "EUR").toUpperCase();
+  try {
+    return new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: code,
+    }).format(cents / 100);
+  } catch {
+    return `${(cents / 100).toFixed(2)} ${code}`;
+  }
 }
 export function paymentView(row) {
   const allocations = db
@@ -1432,53 +1484,181 @@ function allocate(payment, ids) {
         "payment",
         `${payment.id}:${view.paid + amount}`,
         "Cobro registrado",
-        `Se registraron ${formatMoney(amount)} para ${receiptArticle(receipt)} ${lowerFirst(receiptConcept(receipt, view.snapshot))} de ${view.snapshot.property}.`,
+        `Se registraron ${formatMoney(amount, communityCurrency(receipt.communityId))} para ${receiptArticle(receipt)} ${lowerFirst(receiptConcept(receipt, view.snapshot))} de ${view.snapshot.property}.`,
       );
     }
   }
 }
+/**
+ * Porcentaje aplicable a un recibo concreto. El recibo manda: si guarda el
+ * porcentaje acreditado al emitir, se usa ese. Solo si falta y la comunidad
+ * lo permite se recurre al porcentaje actual del inmueble.
+ */
+function receiptShare(receipt, ownerId, property, policy) {
+  const entry = (receipt.snapshot.owners || []).find((owner) => owner.id === ownerId);
+  const saved = Number(entry?.percentage);
+  if (Number.isFinite(saved) && saved > 0 && saved <= 100)
+    return { percentage: saved, source: "snapshot" };
+  if (policy === "ultimo_conocido") {
+    // La fila de inmueble guarda los porcentajes como JSON; no siempre llega
+    // ya mapeada a objeto (el certificado consulta la tabla directamente).
+    let percentages = property?.ownerPercentages || {};
+    if (typeof percentages === "string") {
+      try {
+        percentages = JSON.parse(percentages || "{}");
+      } catch {
+        percentages = {};
+      }
+    }
+    const current = Number(percentages[ownerId]);
+    if (Number.isFinite(current) && current > 0 && current <= 100)
+      return { percentage: current, source: "actual" };
+  }
+  return { percentage: null, source: "missing" };
+}
+
+const shareAmount = (amount, percentage) => Math.round((amount * percentage) / 100);
+
 export function generateDebtCertificate({ communityId, ownerId, propertyId, actor }) {
+  if (ownerId && propertyId)
+    throw problem("Debe indicar un único propietario o inmueble para definir el ámbito.");
   const community = db.prepare("SELECT * FROM communities WHERE id=?").get(communityId);
   if (!community) throw problem("Comunidad no encontrada.", 404);
+  const legal = legalConfigOf(community);
+  const debtRule = legal.deudaCopropietarios;
+  const propertyRows = new Map(
+    db
+      .prepare("SELECT * FROM properties WHERE communityId=?")
+      .all(communityId)
+      .map((row) => [row.id, row]),
+  );
 
-  let owner = null;
+  let owners = [];
   let property = null;
   let receipts = [];
+  const certificateProperties = new Map();
 
   if (ownerId) {
-    owner = db.prepare("SELECT * FROM owners WHERE id=? AND communityId=?").get(ownerId, communityId);
+    const owner = db.prepare("SELECT * FROM owners WHERE id=?").get(ownerId);
     if (!owner) throw problem("Propietario no encontrado.", 404);
-    property = db.prepare("SELECT * FROM properties WHERE ownerIds LIKE ? AND communityId=?").get(
-      `%"${ownerId}"%`,
-      communityId,
-    );
+    owners = [owner];
+    for (const entry of db
+      .prepare(
+        `SELECT * FROM properties p WHERE communityId=?
+      AND EXISTS (SELECT 1 FROM json_each(p.ownerIds) o WHERE o.value=?) ORDER BY plot, id`,
+      )
+      .all(communityId, ownerId))
+      certificateProperties.set(entry.id, entry.plot || entry.id);
+    const hasHistory = db
+      .prepare(
+        `SELECT 1 FROM fee_receipts r WHERE communityId=?
+      AND EXISTS (SELECT 1 FROM json_each(r.snapshot, '$.owners') o
+        WHERE json_extract(o.value, '$.id')=?) LIMIT 1`,
+      )
+      .get(communityId, ownerId);
+    if (!certificateProperties.size && !hasHistory)
+      throw problem(
+        "El propietario no tiene inmuebles ni historial de recibos en esta comunidad.",
+        404,
+      );
     receipts = db
       .prepare(
-        `SELECT * FROM fee_receipts WHERE communityId=? AND JSON_EXTRACT(snapshot, '$.owners') LIKE ? AND cancelledAt='' ORDER BY period DESC`,
+        `SELECT * FROM fee_receipts r WHERE communityId=? AND EXISTS
+         (SELECT 1 FROM json_each(r.snapshot, '$.owners') o WHERE json_extract(o.value, '$.id')=?)
+         AND cancelledAt='' ORDER BY period DESC`,
       )
-      .all(communityId, `%"${ownerId}"%`);
+      .all(communityId, ownerId);
   } else if (propertyId) {
-    property = db.prepare("SELECT * FROM properties WHERE id=? AND communityId=?").get(propertyId, communityId);
+    property = db
+      .prepare("SELECT * FROM properties WHERE id=? AND communityId=?")
+      .get(propertyId, communityId);
     if (!property) throw problem("Inmueble no encontrado.", 404);
-    owner = db.prepare("SELECT * FROM owners WHERE id IN (?)").get(property.ownerIds);
+    owners = db
+      .prepare(
+        "SELECT * FROM owners WHERE id IN (SELECT value FROM json_each(?)) ORDER BY name, surname, id",
+      )
+      .all(property.ownerIds || "[]");
     receipts = db
-      .prepare("SELECT * FROM fee_receipts WHERE communityId=? AND propertyId=? AND cancelledAt='' ORDER BY period DESC")
+      .prepare(
+        "SELECT * FROM fee_receipts WHERE communityId=? AND propertyId=? AND cancelledAt='' ORDER BY period DESC",
+      )
       .all(communityId, propertyId);
   } else {
     throw problem("Debe indicar propietario o inmueble.", 400);
   }
 
-  const payments = db
-    .prepare("SELECT * FROM fee_payments WHERE communityId=? AND ownerId=? ORDER BY createdAt DESC")
-    .all(communityId, owner?.id || "");
+  const payments = ownerId
+    ? db
+        .prepare(
+          "SELECT * FROM fee_payments WHERE communityId=? AND ownerId=? ORDER BY createdAt DESC",
+        )
+        .all(communityId, ownerId)
+    : [];
+  const paymentIds = new Set(payments.map((payment) => payment.id));
 
-  const outstandingReceipts = receipts.filter((r) => {
-    const view = receiptView(r);
-    return view.outstanding > 0;
-  });
+  const receiptViews = receipts.map((receipt) => receiptView(receipt));
+  for (const receipt of receiptViews)
+    if (!certificateProperties.has(receipt.propertyId))
+      certificateProperties.set(
+        receipt.propertyId,
+        receipt.snapshot.property || receipt.propertyId,
+      );
+  const historicalOwners = new Map();
+  if (property) {
+    const currentOwnerIds = new Set(owners.map((entry) => entry.id));
+    for (const receipt of receiptViews)
+      for (const entry of receipt.snapshot.owners)
+        if (!currentOwnerIds.has(entry.id) && !historicalOwners.has(entry.id))
+          historicalOwners.set(entry.id, entry);
+  }
 
-  const totalOutstanding = outstandingReceipts.reduce((sum, r) => sum + receiptView(r).outstanding, 0);
-  const totalPaid = payments.filter((p) => !p.reversedAt).reduce((sum, p) => sum + p.amount, 0);
+  const outstandingReceipts = receiptViews.filter((receipt) => receipt.outstanding > 0);
+
+  const totalOutstanding = outstandingReceipts.reduce(
+    (sum, receipt) => sum + receipt.outstanding,
+    0,
+  );
+  // Un cobro puede cubrir varios inmuebles y dejar crédito sin asignar. Solo
+  // las asignaciones vigentes a los recibos del ámbito cuentan como pagadas.
+  const totalPaid = receiptViews.reduce(
+    (sum, receipt) =>
+      sum +
+      receipt.payments
+        .filter((payment) => !payment.reversedAt && (!ownerId || paymentIds.has(payment.id)))
+        .reduce((paid, payment) => paid + payment.amount, 0),
+    0,
+  );
+  const totalCredit = payments.reduce((sum, payment) => sum + paymentView(payment).credit, 0);
+
+  // Reparto interno por recibo. No se inventan porcentajes: si el recibo no
+  // los guardó, se indica «no consta» salvo que la comunidad haya elegido
+  // expresamente usar el último porcentaje conocido.
+  const receiptShares = new Map();
+  let imputableOutstanding = 0;
+  let unattributedOutstanding = 0;
+  if (ownerId) {
+    for (const receipt of receiptViews) {
+      const share = receiptShare(
+        receipt,
+        ownerId,
+        propertyRows.get(receipt.propertyId),
+        debtRule.porcentajesHistoricos,
+      );
+      receiptShares.set(receipt.id, share);
+      if (receipt.outstanding > 0) {
+        if (share.percentage)
+          imputableOutstanding += shareAmount(receipt.outstanding, share.percentage);
+        else unattributedOutstanding += receipt.outstanding;
+      }
+    }
+  }
+  const individualExpression = !!ownerId && debtRule.expresion === "cuota";
+  // «Omitir» manda sobre la casilla de mostrar: no se inventa ni se insinúa un
+  // reparto que la comunidad decidió no publicar.
+  const showInternalShares =
+    debtRule.mostrarRepartoInterno && debtRule.porcentajesHistoricos !== "omitir";
+  const money = (cents) => formatMoney(cents, community.currency || "EUR");
+  const certificateOutstanding = individualExpression ? imputableOutstanding : totalOutstanding;
 
   // Generate PDF using pdfkit
   const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
@@ -1490,27 +1670,61 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
     doc.on("end", () => resolve(Buffer.concat(chunks)));
 
     // Header
-    doc.font("Helvetica-Bold").fontSize(18).fillColor("#17413f").text("CERTIFICADO DE DEUDA", { align: "center" });
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .fillColor("#17413f")
+      .text("CERTIFICADO DE DEUDA", { align: "center" });
     doc.moveDown(0.5);
-    doc.font("Helvetica").fontSize(10).fillColor("#444444").text(`Comunidad: ${community.name}`, { align: "center" });
-    if (community.address) doc.text(`${community.address}, ${community.postalCode} ${community.city}`, { align: "center" });
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor("#444444")
+      .text(`Comunidad: ${community.name}`, { align: "center" });
+    if (community.address)
+      doc.text(`${community.address}, ${community.postalCode} ${community.city}`, {
+        align: "center",
+      });
     if (community.nif) doc.text(`NIF: ${community.nif}`, { align: "center" });
     doc.moveDown(1);
 
     // Certificate info
-    const issueDate = new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const issueDate = new Date().toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
     doc.font("Helvetica").fontSize(10).text(`Fecha de emisión: ${issueDate}`);
     doc.text(`Expedido a solicitud de: ${actor?.nombre || "Administración"}`);
+    doc.text(
+      property
+        ? "Ámbito: recibos del inmueble."
+        : individualExpression
+          ? "Ámbito: cuota individual del propietario en esta comunidad. El reparto es informativo."
+          : "Ámbito: deuda del inmueble atribuida al propietario en esta comunidad.",
+    );
     doc.moveDown(1);
 
     // Owner/Property info
-    doc.font("Helvetica-Bold").fontSize(12).fillColor("#17413f").text("DATOS DEL TITULAR / INMUEBLE");
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .fillColor("#17413f")
+      .text("DATOS DEL TITULAR / INMUEBLE");
     doc.moveDown(0.3);
     doc.font("Helvetica").fontSize(10).fillColor("#000000");
-    if (owner) {
+    for (const owner of owners) {
       doc.text(`Nombre: ${owner.name} ${owner.surname || ""}`.trim());
       if (owner.dni) doc.text(`DNI/NIF: ${owner.dni}`);
       if (owner.email) doc.text(`Email: ${owner.email}`);
+      if (property) {
+        const percentage = ownerPercentage(property, owner.id);
+        if (percentage) doc.text(`Porcentaje de titularidad actual: ${percentage} %`);
+      }
+    }
+    if (historicalOwners.size) {
+      doc.text("Titulares históricos según los recibos:");
+      for (const entry of historicalOwners.values()) doc.text(`Nombre (histórico): ${entry.name}`);
     }
     if (property) {
       doc.text(`Inmueble: ${property.plot}`);
@@ -1518,6 +1732,9 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
       if (property.floor) doc.text(`Planta: ${property.floor}`);
       if (property.door) doc.text(`Puerta: ${property.door}`);
       if (property.participationCoef) doc.text(`Coeficiente: ${property.participationCoef}%`);
+    } else {
+      doc.text("Inmuebles incluidos (actuales e históricos con recibos):");
+      for (const label of certificateProperties.values()) doc.text(`Inmueble: ${label}`);
     }
     doc.moveDown(1);
 
@@ -1526,47 +1743,188 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
     doc.moveDown(0.3);
 
     if (outstandingReceipts.length === 0) {
-      doc.font("Helvetica").fontSize(10).fillColor("#000000").text("No hay recibos pendientes de pago.");
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .fillColor("#000000")
+        .text("No hay recibos pendientes de pago.");
     } else {
-      // Table header
-      const colWidths = { period: 80, concept: 150, dueDate: 80, amount: 70, outstanding: 70 };
-      const startX = 50;
-      let y = doc.y;
-
-      doc.font("Helvetica-Bold").fontSize(8);
-      doc.rect(startX, y, 450, 20).fill("#17413f");
-      doc.fillColor("white");
-      doc.text("Periodo", startX + 5, y + 5, { width: colWidths.period - 10 });
-      doc.text("Concepto", startX + colWidths.period + 5, y + 5, { width: colWidths.concept - 10 });
-      doc.text("Vencimiento", startX + colWidths.period + colWidths.concept + 5, y + 5, { width: colWidths.dueDate - 10 });
-      doc.text("Importe", startX + colWidths.period + colWidths.concept + colWidths.dueDate + 5, y + 5, { width: colWidths.amount - 10 });
-      doc.text("Pendiente", startX + colWidths.period + colWidths.concept + colWidths.dueDate + colWidths.amount + 5, y + 5, { width: colWidths.outstanding - 10 });
-      y += 20;
-
-      doc.font("Helvetica").fontSize(8).fillColor("#000000");
-      for (const receipt of outstandingReceipts) {
-        const view = receiptView(receipt);
-        const snapshot = JSON.parse(receipt.snapshot);
-        const concept = receiptConcept(receipt, snapshot);
-        const kind = receipt.serviceBillId ? "Servicio" : receipt.assessmentId ? "Derrama" : "Cuota";
-
-        if (y > 700) {
-          doc.addPage();
-          y = 50;
+      const groups = ownerId
+        ? [...certificateProperties]
+            .map(([id, label]) => ({
+              label,
+              receipts: outstandingReceipts.filter((receipt) => receipt.propertyId === id),
+            }))
+            .filter((group) => group.receipts.length)
+        : [{ receipts: outstandingReceipts }];
+      for (const group of groups) {
+        if (ownerId) {
+          const groupOutstanding = group.receipts.reduce(
+            (sum, receipt) => sum + receipt.outstanding,
+            0,
+          );
+          const known = group.receipts
+            .map((receipt) => receiptShares.get(receipt.id))
+            .filter((share) => share?.percentage);
+          const groupImputable = group.receipts.reduce((sum, receipt) => {
+            const share = receiptShares.get(receipt.id);
+            return (
+              sum + (share?.percentage ? shareAmount(receipt.outstanding, share.percentage) : 0)
+            );
+          }, 0);
+          const percentages = [
+            ...new Set(known.map((share) => Number(share.percentage.toFixed(2)))),
+          ];
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .fillColor("#000000")
+            .text(`Inmueble: ${group.label}`);
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .text(`Pendiente del inmueble: ${money(groupOutstanding)}`);
+          if (showInternalShares) {
+            doc.text(
+              percentages.length
+                ? `Reparto interno del titular: ${
+                    percentages.length === 1
+                      ? `${percentages[0]} %`
+                      : `porcentajes históricos ${percentages.join(" / ")} %`
+                  } · ${money(groupImputable)}`
+                : "Reparto interno del titular: porcentaje no consta",
+            );
+            const groupUnattributed = group.receipts.reduce(
+              (sum, receipt) =>
+                sum + (receiptShares.get(receipt.id)?.percentage ? 0 : receipt.outstanding),
+              0,
+            );
+            if (groupUnattributed > 0 && percentages.length)
+              doc.text(`Sin porcentaje acreditado en algún recibo: ${money(groupUnattributed)}`);
+          }
+          if (known.some((share) => share.source === "actual"))
+            doc.text("Incluye porcentaje actual, no acreditado al emitir el recibo.");
+          doc.moveDown(0.3);
+        } else if (property && showInternalShares) {
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .fillColor("#000000")
+            .text("Reparto interno de la titularidad (informativo)");
+          doc.font("Helvetica").fontSize(9);
+          for (const owner of owners) {
+            const percentage = ownerPercentage(property, owner.id);
+            doc.text(
+              `${`${owner.name} ${owner.surname || ""}`.trim()}: ${
+                percentage
+                  ? `${percentage} % · ${money(shareAmount(totalOutstanding, percentage))}`
+                  : "porcentaje no consta"
+              }`,
+            );
+          }
+          for (const entry of historicalOwners.values()) {
+            const percentage = Number(entry.percentage);
+            doc.text(
+              `${entry.name} (histórico): ${
+                Number.isFinite(percentage) && percentage > 0 && percentage <= 100
+                  ? `${percentage} %`
+                  : "porcentaje no consta"
+              }`,
+            );
+          }
+          doc.text(
+            "El reparto interno no limita la responsabilidad del titular frente a la comunidad.",
+          );
+          doc.moveDown(0.5);
         }
+        // Table header
+        const colWidths = { period: 80, concept: 150, dueDate: 80, amount: 70, outstanding: 70 };
+        const startX = 50;
+        let y = doc.y;
 
-        const rowHeight = 18;
-        if (Math.floor(outstandingReceipts.indexOf(receipt) / 2) * 2 === outstandingReceipts.indexOf(receipt)) {
-          doc.rect(startX, y, 450, rowHeight).fill("#f5f5f5");
+        doc.font("Helvetica-Bold").fontSize(8);
+        doc.rect(startX, y, 450, 20).fill("#17413f");
+        doc.fillColor("white");
+        doc.text("Periodo", startX + 5, y + 5, { width: colWidths.period - 10 });
+        doc.text("Concepto", startX + colWidths.period + 5, y + 5, {
+          width: colWidths.concept - 10,
+        });
+        doc.text("Vencimiento", startX + colWidths.period + colWidths.concept + 5, y + 5, {
+          width: colWidths.dueDate - 10,
+        });
+        doc.text(
+          "Importe",
+          startX + colWidths.period + colWidths.concept + colWidths.dueDate + 5,
+          y + 5,
+          { width: colWidths.amount - 10 },
+        );
+        doc.text(
+          individualExpression ? "Pendiente / cuota" : "Pendiente",
+          startX + colWidths.period + colWidths.concept + colWidths.dueDate + colWidths.amount + 5,
+          y + 5,
+          { width: colWidths.outstanding - 10 },
+        );
+        y += 20;
+
+        doc.font("Helvetica").fontSize(8).fillColor("#000000");
+        for (const receipt of group.receipts) {
+          const view = receipt;
+          const snapshot = receipt.snapshot;
+          const concept = receiptConcept(receipt, snapshot);
+          const kind = receipt.serviceBillId
+            ? "Servicio"
+            : receipt.assessmentId
+              ? "Derrama"
+              : "Cuota";
+
+          if (y > 700) {
+            doc.addPage();
+            y = 50;
+          }
+
+          const rowHeight = 18;
+          if (
+            Math.floor(outstandingReceipts.indexOf(receipt) / 2) * 2 ===
+            outstandingReceipts.indexOf(receipt)
+          ) {
+            doc.rect(startX, y, 450, rowHeight).fill("#f5f5f5");
+          }
+          doc.fillColor("#000000");
+          doc.text(receipt.period, startX + 5, y + 3, { width: colWidths.period - 10 });
+          doc.text(`${kind}: ${concept}`, startX + colWidths.period + 5, y + 3, {
+            width: colWidths.concept - 10,
+          });
+          doc.text(receipt.dueDate, startX + colWidths.period + colWidths.concept + 5, y + 3, {
+            width: colWidths.dueDate - 10,
+          });
+          doc.text(
+            money(view.amount),
+            startX + colWidths.period + colWidths.concept + colWidths.dueDate + 5,
+            y + 3,
+            { width: colWidths.amount - 10, align: "right" },
+          );
+          const share = ownerId ? receiptShares.get(receipt.id) : null;
+          const pendingLabel = individualExpression
+            ? share?.percentage
+              ? money(shareAmount(view.outstanding, share.percentage))
+              : "No consta"
+            : money(view.outstanding);
+          doc.text(
+            pendingLabel,
+            startX +
+              colWidths.period +
+              colWidths.concept +
+              colWidths.dueDate +
+              colWidths.amount +
+              5,
+            y + 3,
+            { width: colWidths.outstanding - 10, align: "right" },
+          );
+          y += rowHeight;
         }
-        doc.text(receipt.period, startX + 5, y + 3, { width: colWidths.period - 10 });
-        doc.text(`${kind}: ${concept}`, startX + colWidths.period + 5, y + 3, { width: colWidths.concept - 10 });
-        doc.text(receipt.dueDate, startX + colWidths.period + colWidths.concept + 5, y + 3, { width: colWidths.dueDate - 10 });
-        doc.text(formatMoney(view.amount), startX + colWidths.period + colWidths.concept + colWidths.dueDate + 5, y + 3, { width: colWidths.amount - 10, align: "right" });
-        doc.text(formatMoney(view.outstanding), startX + colWidths.period + colWidths.concept + colWidths.dueDate + colWidths.amount + 5, y + 3, { width: colWidths.outstanding - 10, align: "right" });
-        y += rowHeight;
+        doc.x = startX;
+        doc.y = y + 10;
       }
-      doc.y = y + 10;
     }
 
     doc.moveDown(1);
@@ -1575,19 +1933,59 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
     doc.font("Helvetica-Bold").fontSize(12).fillColor("#17413f").text("RESUMEN ECONÓMICO");
     doc.moveDown(0.3);
     doc.font("Helvetica").fontSize(10).fillColor("#000000");
-    doc.text(`Total pendiente: ${formatMoney(totalOutstanding)}`);
-    doc.text(`Total pagado (histórico): ${formatMoney(totalPaid)}`);
+    if (individualExpression) {
+      doc.text(`Total pendiente imputable: ${money(certificateOutstanding)}`);
+      doc.text(`Deuda del inmueble (referencia): ${money(totalOutstanding)}`);
+      if (unattributedOutstanding > 0)
+        doc.text(
+          `Pendiente sin porcentaje acreditado (deuda del inmueble): ${money(
+            unattributedOutstanding,
+          )}`,
+        );
+      doc.text(`Total pagado por el titular (histórico): ${money(totalPaid)}`);
+    } else {
+      doc.text(`Total pendiente: ${money(totalOutstanding)}`);
+      doc.text(`Total pagado (histórico): ${money(totalPaid)}`);
+    }
+    if (ownerId) doc.text(`Saldo a favor sin asignar: ${money(totalCredit)}`);
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .text(
+        "El total pagado corresponde a cobros aplicados a los recibos de este ámbito, excluidos los anulados. " +
+          (property
+            ? "El saldo a favor sin asignar pertenece al pagador y no se atribuye al inmueble."
+            : "Los cobros del titular reflejan su aportación real, sin aplicar de nuevo su porcentaje de titularidad. El saldo a favor sin asignar se muestra por separado."),
+      );
     doc.moveDown(1);
 
-// Legal footer
+    // Legal footer
     doc.font("Helvetica-Oblique").fontSize(8).fillColor("#666666");
+    doc.text(
+      legal.regimen === "asociacion"
+        ? "Régimen: asociación. La obligación de pago se determina por los estatutos y los acuerdos válidos de la asociación. Este certificado no sustituye la liquidación social ni la revisión de la documentación societaria."
+        : "Régimen: comunidad de propietarios (LPH). La deuda corresponde al inmueble y su titular responde frente a la comunidad conforme al artículo 9.1.e de la LPH. El reparto interno entre cotitulares (artículo 393 del Código Civil) es informativo y no altera esa responsabilidad, salvo pacto o resolución judicial.",
+      { align: "justify" },
+    );
+    doc.moveDown(0.5);
+    if (individualExpression)
+      doc.text(
+        "La cuota individual se calcula aplicando el porcentaje de titularidad acreditado al emitir el recibo. Si el porcentaje no consta, no se imputa un importe individual y se muestra la deuda del inmueble. Los porcentajes marcados como «actuales» no acreditan la situación histórica.",
+        { align: "justify" },
+      );
+    doc.moveDown(0.5);
     doc.text(
       "Este certificado tiene carácter informativo y refleja la situación contable a la fecha de emisión. " +
         "No constituye título ejecutivo ni documento de cobro. Para cualquier discrepancia, diríjase a la administración de la comunidad.",
-      { align: "justify" }
+      { align: "justify" },
     );
     doc.moveDown(1);
-    doc.font("Helvetica").fontSize(8).text(`Documento generado automáticamente el ${new Date().toISOString().split("T")[0]}`, { align: "center" });
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .text(`Documento generado automáticamente el ${new Date().toISOString().split("T")[0]}`, {
+        align: "center",
+      });
 
     doc.end();
   });
@@ -1663,6 +2061,136 @@ export function reason(value) {
     throw problem("Indica el motivo (máximo 500 caracteres).");
   return value.trim();
 }
+
+function rectificationConflict(row) {
+  if (!row.cancelledAt) return "Solo se puede rectificar un recibo anulado.";
+  if (
+    db
+      .prepare("SELECT 1 FROM fee_receipts WHERE rectifiesReceiptId=? AND rectifiesReceiptId<>''")
+      .get(row.id)
+  )
+    return "Este recibo ya tiene una rectificación. Consulta su recibo sucesor.";
+  if (row.assessmentId) {
+    const parent = db.prepare("SELECT * FROM fee_assessments WHERE id=?").get(row.assessmentId);
+    const installment =
+      parent &&
+      JSON.parse(parent.data).installments.find((item) => item.number === row.installment);
+    if (!parent || parent.cancelledAt || !installment || installment.cancelledAt)
+      return "La derrama o el plazo están anulados. No se pueden rectificar sus recibos.";
+    if (
+      db
+        .prepare(
+          "SELECT 1 FROM fee_receipts WHERE assessmentId=? AND installment=? AND propertyId=? AND cancelledAt=''",
+        )
+        .get(row.assessmentId, row.installment, row.propertyId)
+    )
+      return "Ya existe un recibo activo para ese inmueble y plazo.";
+  } else if (row.serviceBillId) {
+    const parent = db.prepare("SELECT * FROM service_bills WHERE id=?").get(row.serviceBillId);
+    if (!parent || parent.cancelledAt)
+      return "El servicio está anulado. No se pueden rectificar sus recibos.";
+    if (
+      db
+        .prepare(
+          "SELECT 1 FROM fee_receipts WHERE serviceBillId=? AND propertyId=? AND cancelledAt=''",
+        )
+        .get(row.serviceBillId, row.propertyId)
+    )
+      return "Ya existe un recibo activo para ese inmueble y servicio.";
+  } else if (
+    db
+      .prepare(
+        `SELECT 1 FROM fee_receipts WHERE communityId=? AND propertyId=?
+      AND assessmentId='' AND serviceBillId='' AND cancelledAt='' AND period<=? AND periodEnd>=?`,
+      )
+      .get(row.communityId, row.propertyId, row.periodEnd.slice(0, 7), `${row.period}-01`)
+  )
+    return "El inmueble ya tiene una cuota activa que se solapa con este periodo.";
+  return "";
+}
+
+export function canRectifyReceipt(row) {
+  return !!row.cancelledAt && !rectificationConflict(row);
+}
+
+export function previewReceiptRectification(id, input, actor) {
+  const row = receiptById(id);
+  if (!canManage(actor, row.communityId))
+    throw problem("No tienes permiso para rectificar recibos de esta comunidad.", 403);
+  feeCommunity(row.communityId);
+  const conflict = rectificationConflict(row);
+  if (conflict) throw problem(conflict, 409);
+  const amount = input.amount === undefined ? row.amount : money(input.amount);
+  if ((row.assessmentId || row.serviceBillId) && amount !== row.amount)
+    throw problem(
+      "El importe del recibo está fijado por el reparto aprobado. La rectificación debe conservarlo.",
+    );
+  const dueDate = input.dueDate === undefined ? row.dueDate : input.dueDate;
+  if (!validDate(dueDate)) throw problem("La fecha de vencimiento no es válida.");
+  const result = {
+    originalId: row.id,
+    communityId: row.communityId,
+    propertyId: row.propertyId,
+    period: row.period,
+    dueDate,
+    amount,
+    originalAmount: row.amount,
+    snapshot: JSON.parse(row.snapshot),
+    reason: reason(input.reason),
+  };
+  return {
+    ...result,
+    token: crypto.createHash("sha256").update(JSON.stringify({ row, result })).digest("hex"),
+  };
+}
+
+export function rectifyReceipt(id, input, actor) {
+  return transaction(() => {
+    const batch = previewReceiptRectification(id, input, actor);
+    if (input.token !== batch.token)
+      throw problem("Los datos cambiaron. Revisa de nuevo la rectificación antes de emitir.", 409);
+    const original = receiptById(id),
+      replacementId = crypto.randomUUID();
+    db.prepare(
+      `INSERT INTO fee_receipts
+      (id,communityId,propertyId,planId,period,periodEnd,dueDate,amount,snapshot,createdAt,actorId,assessmentId,installment,serviceBillId,rectifiesReceiptId,rectificationReason)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      replacementId,
+      original.communityId,
+      original.propertyId,
+      original.planId,
+      original.period,
+      original.periodEnd,
+      batch.dueDate,
+      batch.amount,
+      original.snapshot,
+      now(),
+      actor.id,
+      original.assessmentId,
+      original.installment,
+      original.serviceBillId,
+      original.id,
+      batch.reason,
+    );
+    notify(
+      receiptById(replacementId),
+      "issued",
+      replacementId,
+      "Recibo rectificado",
+      `Se emitió una rectificación de ${receiptConcept(original)} de ${batch.snapshot.property}: ${formatMoney(batch.amount, communityCurrency(original.communityId))}. Motivo: ${batch.reason}`,
+    );
+    audit(actor, "rectify", replacementId, {
+      communityId: original.communityId,
+      originalId: original.id,
+      amount: batch.amount,
+      originalAmount: original.amount,
+      dueDate: batch.dueDate,
+      reason: batch.reason,
+    });
+    return receiptView(receiptById(replacementId));
+  });
+}
 export function reversePayment(id, input, actor) {
   const note = reason(input.reason);
   return transaction(() => {
@@ -1681,7 +2209,7 @@ export function reversePayment(id, input, actor) {
         "returned",
         id,
         "Devolución de cobro",
-        `Se devolvió un cobro de ${formatMoney(a.amount)} aplicado sobre ${receiptArticle(r)} ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
+        `Se devolvió un cobro de ${formatMoney(a.amount, communityCurrency(p.communityId))} aplicado sobre ${receiptArticle(r)} ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
       );
     }
     audit(actor, "return", id, { communityId: p.communityId, reason: note });
@@ -1763,47 +2291,42 @@ export function adminNotice(row, ownerId, subject) {
     row.id,
   );
 }
+function purgeReceiptDependencies(id) {
+  for (const proof of db.prepare("SELECT diskName FROM fee_proofs WHERE receiptId=?").all(id))
+    queueFeeProofCleanup(proof.diskName);
+  db.prepare("DELETE FROM fee_allocations WHERE receiptId=?").run(id);
+  db.prepare("DELETE FROM fee_proofs WHERE receiptId=?").run(id);
+  db.prepare("DELETE FROM owner_notifications WHERE feeReceiptId=?").run(id);
+  db.prepare("DELETE FROM admin_emails WHERE feeReceiptId=?").run(id);
+  db.prepare(
+    "DELETE FROM fee_mail WHERE eventId IN (SELECT id FROM fee_events WHERE receiptId=?)",
+  ).run(id);
+  db.prepare("DELETE FROM fee_events WHERE receiptId=?").run(id);
+  db.prepare("DELETE FROM fee_receipts WHERE id=?").run(id);
+}
+
 export function purgeReceipt(id, actor) {
-  return transaction(() => {
+  transaction(() => {
     const row = receiptById(id);
     if (!row.cancelledAt) throw problem("Solo se pueden purgar recibos anulados.", 409);
-    // Delete related data
-    db.prepare("DELETE FROM fee_allocations WHERE receiptId=?").run(id);
-    db.prepare("DELETE FROM fee_proofs WHERE receiptId=?").run(id);
-    // Delete fee_events and fee_mail for this receipt
-    const events = db.prepare("SELECT id FROM fee_events WHERE receiptId=?").all(id);
-    for (const event of events) {
-      db.prepare("DELETE FROM fee_mail WHERE eventId=?").run(event.id);
-    }
-    db.prepare("DELETE FROM fee_events WHERE receiptId=?").run(id);
-    // Finally delete the receipt itself
-    db.prepare("DELETE FROM fee_receipts WHERE id=?").run(id);
+    purgeReceiptDependencies(id);
     audit(actor, "purge", id, { communityId: row.communityId });
   });
+  return processFeeProofCleanup();
 }
 
 export function purgeAssessment(id, actor) {
-  return transaction(() => {
+  transaction(() => {
     const row = assessmentById(id);
     if (!row.cancelledAt) throw problem("Solo se pueden purgar derramas anuladas.", 409);
     // Get all receipts for this assessment
     const receipts = db.prepare("SELECT id FROM fee_receipts WHERE assessmentId=?").all(id);
-    for (const receipt of receipts) {
-      // Delete related data for each receipt
-      db.prepare("DELETE FROM fee_allocations WHERE receiptId=?").run(receipt.id);
-      db.prepare("DELETE FROM fee_proofs WHERE receiptId=?").run(receipt.id);
-      const events = db.prepare("SELECT id FROM fee_events WHERE receiptId=?").all(receipt.id);
-      for (const event of events) {
-        db.prepare("DELETE FROM fee_mail WHERE eventId=?").run(event.id);
-      }
-      db.prepare("DELETE FROM fee_events WHERE receiptId=?").run(receipt.id);
-      // Delete the receipt
-      db.prepare("DELETE FROM fee_receipts WHERE id=?").run(receipt.id);
-    }
+    for (const receipt of receipts) purgeReceiptDependencies(receipt.id);
     // Delete the assessment itself
     db.prepare("DELETE FROM fee_assessments WHERE id=?").run(id);
     audit(actor, "purge_assessment", id, { communityId: row.communityId });
   });
+  return processFeeProofCleanup();
 }
 
 export function materializeFeeReminders(date = today()) {
@@ -1824,14 +2347,15 @@ export function materializeFeeReminders(date = today()) {
         : "";
       const concept = receiptConcept(row, view.snapshot),
         kind = row.serviceBillId ? "servicio" : row.assessmentId ? "derrama" : "cuota",
-        kindArticle = `${kind === "servicio" ? "del" : "de la"} ${kind}`;
+        kindArticle = `${kind === "servicio" ? "del" : "de la"} ${kind}`,
+        currency = communityCurrency(row.communityId);
       if (days <= 0 && days >= -settings.beforeDays && settings.beforeDays > 0)
         notify(
           row,
           "due",
           row.dueDate,
           `Próximo vencimiento ${kindArticle}`,
-          `${concept} de ${view.snapshot.property} vence el ${row.dueDate}. Pendiente: ${formatMoney(view.outstanding)}.${iban}`,
+          `${concept} de ${view.snapshot.property} vence el ${row.dueDate}. Pendiente: ${formatMoney(view.outstanding, currency)}.${iban}`,
         );
       if (days >= settings.afterDays && days > 0) {
         const repeat = settings.repeatDays
@@ -1846,7 +2370,7 @@ export function materializeFeeReminders(date = today()) {
             : kind === "servicio"
               ? "Servicio pendiente de pago"
               : "Cuota vencida pendiente",
-          `${concept} de ${view.snapshot.property} tiene ${formatMoney(view.outstanding)} pendientes desde ${row.dueDate}.${iban}`,
+          `${concept} de ${view.snapshot.property} tiene ${formatMoney(view.outstanding, currency)} pendientes desde ${row.dueDate}.${iban}`,
         );
       }
     }
