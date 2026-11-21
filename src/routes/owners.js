@@ -1,4 +1,5 @@
 import { prepareOwnerPropertyShares } from "../owner-property-shares.js";
+import { allowed, policyData } from "../security.js";
 import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
@@ -244,45 +245,66 @@ router.put(
 router.delete("/:id", deleteOwnerNormal);
 
 function deleteOwnerNormal(req, res) {
-  if (
-    db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() &&
-    (db
-      .prepare("SELECT snapshot FROM fee_receipts")
-      .all()
-      .some((r) => JSON.parse(r.snapshot).owners.some((o) => o.id === req.params.id)) ||
-      db.prepare("SELECT 1 FROM fee_payments WHERE ownerId=?").get(req.params.id))
-  )
-    return res
-      .status(409)
-      .json({ error: "No se puede eliminar un propietario con historial de cuotas o cobros." });
-  const existing = findOwner(req.params.id);
-  if (!existing) return res.status(404).json({ error: "Propietario no encontrado." });
-  // Inmuebles del propietario que tienen inquilino asociado: no se puede eliminar.
-  const conInquilino = db
-    .prepare(
-      `SELECT p.plot FROM properties p
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const existing = findOwner(req.params.id);
+    if (!existing) throw Object.assign(new Error("Propietario no encontrado."), { status: 404 });
+    if (
+      db.prepare("SELECT 1 FROM sqlite_master WHERE name='fee_receipts'").get() &&
+      (db
+        .prepare("SELECT snapshot FROM fee_receipts")
+        .all()
+        .some((r) => JSON.parse(r.snapshot).owners.some((o) => o.id === req.params.id)) ||
+        db.prepare("SELECT 1 FROM fee_payments WHERE ownerId=?").get(req.params.id))
+    )
+      throw Object.assign(
+        new Error("No se puede eliminar un propietario con historial de cuotas o cobros."),
+        { status: 409 },
+      );
+    // Inmuebles del propietario que tienen inquilino asociado: no se puede eliminar.
+    const conInquilino = db
+      .prepare(
+        `SELECT p.plot FROM properties p
        WHERE p.ownerIds LIKE ?
          AND EXISTS (SELECT 1 FROM tenants t WHERE t.propertyId = p.id)`,
+      )
+      .all(`%"${existing.id}"%`);
+    if (conInquilino.length > 0) {
+      throw Object.assign(
+        new Error(
+          `No se puede eliminar el propietario: el inmueble «${conInquilino[0].plot}» tiene un inquilino asociado. Desvincula primero al inquilino.`,
+        ),
+        { status: 409 },
+      );
+    }
+    // Inmuebles sin inquilino: se desvincula al propietario (no se borran los inmuebles).
+    const vinculados = db
+      .prepare(
+        "SELECT id, ownerIds, ownerPercentages, communityId FROM properties WHERE ownerIds LIKE ?",
+      )
+      .all(`%"${existing.id}"%`);
+    const policy = policyData();
+    const affectedTenants = db
+      .prepare("SELECT id, propertyId FROM tenants WHERE ownerId=?")
+      .all(existing.id);
+    const communities = new Set(vinculados.map((property) => property.communityId).filter(Boolean));
+    if (existing.isMember && existing.communityId) communities.add(existing.communityId);
+    if (
+      [...communities].some((id) => !allowed(req.user, "owner:delete", id, policy)) ||
+      vinculados.some((property) => !allowed(req.user, "property:manage", property.id, policy)) ||
+      affectedTenants.some((tenant) => !allowed(req.user, "tenant:manage", tenant.id, policy))
     )
-    .all(`%"${existing.id}"%`);
-  if (conInquilino.length > 0) {
-    return res.status(409).json({
-      error: `No se puede eliminar el propietario: el inmueble «${conInquilino[0].plot}» tiene un inquilino asociado. Desvincula primero al inquilino.`,
-    });
-  }
-  // Inmuebles sin inquilino: se desvincula al propietario (no se borran los inmuebles).
-  const vinculados = db
-    .prepare("SELECT id, ownerIds FROM properties WHERE ownerIds LIKE ?")
-    .all(`%"${existing.id}"%`);
-  db.exec("BEGIN");
-  try {
+      throw Object.assign(
+        new Error(
+          "No tienes permiso para modificar todas las comunidades, inmuebles o contratos afectados por el borrado.",
+        ),
+        { status: 403 },
+      );
     // Referencias antiguas: si un inquilino sigue apuntando a este propietario
     // pero ya no está en un inmueble suyo, se reasigna a otro copropietario o
     // se deja sin titular. Así una desvinculación previa no bloquea el borrado.
     const updateTenantOwner = db.prepare("UPDATE tenants SET ownerId = ? WHERE id = ?");
-    for (const tenant of db
-      .prepare("SELECT id, propertyId FROM tenants WHERE ownerId = ?")
-      .all(existing.id)) {
+    for (const tenant of affectedTenants) {
       const property = db
         .prepare("SELECT ownerIds FROM properties WHERE id = ?")
         .get(tenant.propertyId);
@@ -291,10 +313,14 @@ function deleteOwnerNormal(req, res) {
         : [];
       updateTenantOwner.run(restantes[0] || "", tenant.id);
     }
-    const update = db.prepare("UPDATE properties SET ownerIds = ? WHERE id = ?");
+    const update = db.prepare(
+      "UPDATE properties SET ownerIds = ?, ownerPercentages = ? WHERE id = ?",
+    );
     for (const p of vinculados) {
       const restantes = JSON.parse(p.ownerIds || "[]").filter((id) => id !== existing.id);
-      update.run(JSON.stringify(restantes), p.id);
+      const percentages = JSON.parse(p.ownerPercentages || "{}");
+      delete percentages[existing.id];
+      update.run(JSON.stringify(restantes), JSON.stringify(percentages), p.id);
     }
     rebuildOwnersPropertyIds();
     db.prepare("DELETE FROM owner_notifications WHERE ownerId = ?").run(existing.id);
@@ -304,6 +330,7 @@ function deleteOwnerNormal(req, res) {
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
+    if (error.status) return res.status(error.status).json({ error: error.message });
     throw error;
   }
   res.json({ ok: true });

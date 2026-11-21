@@ -56,19 +56,6 @@ function normalizeParticipationCoef(value) {
     .replace(",", ".");
 }
 
-/** Comunidades en las que el propietario ya tiene algún inmueble. */
-function ownerCommunityIds(ownerId) {
-  const ids = new Set();
-  const owner = db.prepare("SELECT communityId FROM owners WHERE id = ?").get(ownerId);
-  if (owner?.communityId) ids.add(owner.communityId);
-  db.prepare(
-    "SELECT DISTINCT communityId FROM properties WHERE ownerIds LIKE ? AND communityId <> ''",
-  )
-    .all(`%"${ownerId}"%`)
-    .forEach((row) => ids.add(row.communityId));
-  return ids;
-}
-
 router.get("/", (req, res) => {
   res.json(listProperties().map(propertyPayload));
 });
@@ -113,14 +100,6 @@ function validatePropertyPayload(
   for (const ownerId of ownerIds) {
     if (!db.prepare("SELECT id FROM owners WHERE id = ?").get(ownerId)) {
       return "Uno de los propietarios seleccionados ya no existe.";
-    }
-    if (community) {
-      const knownCommunities = ownerCommunityIds(ownerId);
-      // Los propietarios de alta nueva aún no tienen comunidad: se permiten
-      // para poder crear su primer inmueble.
-      if (knownCommunities.size > 0 && !knownCommunities.has(community.id)) {
-        return "Todos los propietarios deben pertenecer a la comunidad del inmueble.";
-      }
     }
   }
   for (const tenantId of [...(data.tenantIds || []), ...(data.linkTenantIds || [])]) {

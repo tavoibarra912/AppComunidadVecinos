@@ -197,8 +197,7 @@ export function profiles(communityId, data = policyData()) {
   // comunidad LPH los perfiles de propietario se derivan de sus inmuebles.
   const owners = data.owners.filter((o) =>
     association
-      ? o.isMember &&
-        (o.communityId === communityId || properties.some((p) => p.ownerIds.includes(o.id)))
+      ? o.isMember && o.communityId === communityId
       : properties.some((p) => p.ownerIds.includes(o.id)),
   );
   const today = getLocalDateInputValue();

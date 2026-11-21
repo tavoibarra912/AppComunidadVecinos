@@ -11,6 +11,18 @@ export function queueFeeProofCleanup(diskName) {
   ).run(diskName, new Date().toISOString());
 }
 
+// La misma cola cubre los documentos y facturas retirados por la cascada.
+export function queueUploadCleanup(relativePath) {
+  if (!db.isTransaction)
+    throw new Error("La limpieza debe encolarse dentro de la transacción de borrado.");
+  const normalized = relativePath.replaceAll("\\", "/");
+  if (normalized.startsWith("fee-proofs/"))
+    return queueFeeProofCleanup(normalized.slice("fee-proofs/".length));
+  db.prepare(
+    "INSERT INTO fee_proof_cleanup(diskName,createdAt,relativePath) VALUES(?,?,?) ON CONFLICT(diskName) DO NOTHING",
+  ).run(`uploads:${normalized}`, new Date().toISOString(), normalized);
+}
+
 // La cola sobrevive a reinicios. ENOENT es éxito: permite repetir un borrado
 // aunque el proceso se interrumpiera entre eliminar el archivo y cerrar la tarea.
 export function processFeeProofCleanup({
@@ -25,19 +37,31 @@ export function processFeeProofCleanup({
       "SELECT * FROM fee_proof_cleanup WHERE nextAttemptAt<=? ORDER BY nextAttemptAt,createdAt,diskName LIMIT ?",
     )
     .all(now, limit);
-  const root = path.resolve(UPLOADS_DIR, "fee-proofs");
   let deleted = 0,
     failed = 0;
   for (const task of tasks) {
     try {
-      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/.test(task.diskName))
+      const relative = task.relativePath || `fee-proofs/${task.diskName}`;
+      const match = /^(?:(fee-proofs|service-bills)\/)?([A-Za-z0-9][A-Za-z0-9._-]{0,254})$/.exec(
+        relative,
+      );
+      if (!match)
         throw Object.assign(new Error("Nombre de archivo no válido."), { code: "INVALID_PATH" });
-      const target = path.resolve(root, task.diskName);
+      const directory = match[1] || "",
+        filename = match[2];
+      const root = path.resolve(UPLOADS_DIR, directory);
+      const target = path.resolve(root, filename);
       if (path.dirname(target) !== root)
         throw Object.assign(new Error("Archivo fuera del directorio de justificantes."), {
           code: "INVALID_PATH",
         });
-      if (db.prepare("SELECT 1 FROM fee_proofs WHERE diskName=? LIMIT 1").get(task.diskName))
+      const inUse =
+        directory === "fee-proofs"
+          ? db.prepare("SELECT 1 FROM fee_proofs WHERE diskName=? LIMIT 1").get(filename)
+          : directory === "service-bills"
+            ? db.prepare("SELECT 1 FROM service_attachments WHERE diskName=? LIMIT 1").get(filename)
+            : db.prepare("SELECT 1 FROM documents WHERE storedName=? LIMIT 1").get(filename);
+      if (inUse)
         throw Object.assign(new Error("El archivo sigue vinculado a otro justificante."), {
           code: "FILE_IN_USE",
         });

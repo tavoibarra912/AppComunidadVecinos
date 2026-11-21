@@ -271,6 +271,7 @@ ensureColumns("communication_ballots", {
   // Los votos anteriores a la congelación quedan en 0 y se recalculan.
   weightFrozen: "INTEGER NOT NULL DEFAULT 0",
 });
+ensureColumns("fee_proof_cleanup", { relativePath: "TEXT NOT NULL DEFAULT ''" });
 
 // Biblioteca documental: las columnas nuevas dejan los documentos existentes
 // en la raíz (folderId = '') sin mover ni reescribir ningún archivo.

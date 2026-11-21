@@ -18,6 +18,7 @@ const labels = {
   cancelled: "Anulado",
 };
 const assessmentLabels = {
+  purged: "Recibos purgados",
   rectification: "Pendiente de rectificación",
   draft: "Borrador",
   active: "En curso",
@@ -25,6 +26,7 @@ const assessmentLabels = {
   cancelled: "Anulada",
 };
 const installmentLabels = {
+  purged: "Recibos purgados",
   rectification: "Pendiente de rectificación",
   pending: "Sin emitir",
   issued: "Emitido",
@@ -67,7 +69,8 @@ const methods = {
 const contexts = new Map();
 const icons = {
   edit: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
-  delete: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6M14 11v6"/>',
+  delete:
+    '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6M14 11v6"/>',
   refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
   close: '<path d="m18 6-12 12M6 6l12 12"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
