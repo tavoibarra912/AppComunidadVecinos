@@ -6,6 +6,7 @@ import { recordAudit } from "./audit.js";
 import { sanitizeRichText } from "./rich-text.js";
 import { queueFeeProofCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
 import { legalConfigOf } from "./legal-config.js";
+import { validateReceiptDeletion } from "./receipt-deletion.js";
 
 for (const table of ["owner_notifications", "admin_emails"])
   if (
@@ -308,6 +309,8 @@ export function receiptView(row, date = today()) {
         )
         .get(row.id)?.id || "",
     snapshot,
+    currency: receiptCurrency(row),
+    currencySource: snapshot.currency ? "snapshot" : "community",
     kind: row.serviceBillId ? "service" : row.assessmentId ? "assessment" : "ordinary",
     concept: receiptConcept(row, snapshot),
     payments,
@@ -504,18 +507,7 @@ export function savePlan(communityId, input, actor, id = "") {
     throw problem("Indica el acuerdo de Junta (máximo 300 caracteres).");
   if (!["coefficient", "manual"].includes(input.mode))
     throw problem("Criterio de reparto no válido.");
-  const defaults = feeDefaults(),
-    reminders = {};
-  for (const [key, max] of [
-    ["beforeDays", 60],
-    ["afterDays", 365],
-    ["repeatDays", 365],
-  ])
-    reminders[key] = integer(input.reminders?.[key] ?? defaults[key], 0, max, key);
-  for (const key of ["internal", "email"]) {
-    reminders[key] = input.reminders?.[key] ?? defaults[key];
-    if (typeof reminders[key] !== "boolean") throw problem("Canal de avisos no válido.");
-  }
+  const reminders = input.reminders === undefined ? null : assessmentReminders(input);
   const manual = {};
   if (input.mode === "manual") {
     const properties = listProperties().filter((p) => p.communityId === communityId);
@@ -576,6 +568,10 @@ export function savePlan(communityId, input, actor, id = "") {
           409,
         );
     }
+    if (input.reminders === undefined)
+      data.reminders = existing
+        ? JSON.parse(existing.data).reminders || {}
+        : assessmentReminders({});
     if (id) {
       db.prepare("UPDATE fee_plans SET effectiveFrom=?, data=? WHERE id=?").run(
         input.effectiveFrom,
@@ -781,6 +777,7 @@ export function preview(communityId, period) {
       propertyId: e.property.id,
       amount: e.amount,
       snapshot: {
+        currency: "EUR",
         property: e.property.plot || e.property.address,
         community: community.name,
         communityIban: community.iban || "",
@@ -972,8 +969,35 @@ export function saveAssessment(communityId, input, actor, id = "") {
   if (!["coefficient", "manual", "mixed"].includes(input.mode))
     throw problem("Criterio de reparto no válido.");
   const { all, selected, entries } = selectedChargeProperties(communityId, input);
-  const allocations = {};
-  if (input.mode === "coefficient") {
+  const allocations = {},
+    fixedAmounts = {};
+  const previousRow = id ? assessmentById(id) : null;
+  const previousData = previousRow && assessmentPayload(previousRow);
+  const preserveLegacy =
+    input.preserveLegacyMixed === true ||
+    (input.mode === "mixed" &&
+      input.manual === undefined &&
+      previousData?.mode === "mixed" &&
+      previousData.fixedAmounts === undefined);
+  const legacyRow = preserveLegacy ? previousRow : null;
+  const legacy = legacyRow && assessmentPayload(legacyRow);
+  if (preserveLegacy) {
+    if (
+      !legacy ||
+      legacy.mode !== "mixed" ||
+      legacy.fixedAmounts !== undefined ||
+      input.mode !== "mixed" ||
+      legacyRow.communityId !== communityId ||
+      legacyRow.totalAmount !== totalAmount ||
+      JSON.stringify([...legacy.propertyIds].sort()) !==
+        JSON.stringify(selected.map((p) => p.id).sort())
+    )
+      throw problem(
+        "Para cambiar el total o los inmuebles debes reconfigurar explícitamente el reparto mixto heredado.",
+        409,
+      );
+    Object.assign(allocations, legacy.allocations);
+  } else if (input.mode === "coefficient") {
     let weightSum = 0;
     for (const entry of entries) {
       const text = String(entry.property.participationCoef).replace(",", ".");
@@ -995,13 +1019,23 @@ export function saveAssessment(communityId, input, actor, id = "") {
     }
   } else if (input.mode === "mixed") {
     // Mixed mode: some properties have fixed amounts, others use coefficient
-    const manual = input.manual || {};
+    const manual =
+      input.manual ??
+      (previousData?.mode === "mixed"
+        ? Object.fromEntries(
+            Object.entries(previousData.fixedAmounts || {}).map(([id, cents]) => [
+              id,
+              (cents / 100).toFixed(2),
+            ]),
+          )
+        : {});
     let manualSum = 0;
     const manualProperties = new Set();
     for (const property of selected) {
       if (manual[property.id] !== undefined) {
         const amount = money(manual[property.id], `Importe fijo de ${property.plot}`);
         allocations[property.id] = amount;
+        fixedAmounts[property.id] = amount;
         manualSum += amount;
         manualProperties.add(property.id);
       }
@@ -1066,9 +1100,12 @@ export function saveAssessment(communityId, input, actor, id = "") {
     mode: input.mode,
     propertyIds: selected.map((property) => property.id),
     allocations,
-    coefficients: Object.fromEntries(
-      entries.map((entry) => [entry.property.id, entry.property.participationCoef]),
-    ),
+    fixedAmounts: input.mode === "mixed" && !legacy ? fixedAmounts : undefined,
+    coefficients: legacy
+      ? legacy.coefficients
+      : Object.fromEntries(
+          entries.map((entry) => [entry.property.id, entry.property.participationCoef]),
+        ),
     installments: assessmentSchedule(
       installments,
       entries.map((entry) => ({
@@ -1084,6 +1121,8 @@ export function saveAssessment(communityId, input, actor, id = "") {
   return transaction(() => {
     if (id) {
       const row = assessmentById(id);
+      if (legacyRow && row.data !== legacyRow.data)
+        throw problem("La derrama cambió. Recarga el borrador antes de guardar.", 409);
       if (row.communityId !== communityId)
         throw problem("La derrama pertenece a otra comunidad.", 403);
       if (row.cancelledAt) throw problem("La derrama está anulada.", 409);
@@ -1213,6 +1252,7 @@ export function assessmentView(row, date = today()) {
     mode: data.mode,
     propertyIds: data.propertyIds,
     allocations: data.allocations,
+    fixedAmounts: data.fixedAmounts,
     coefficients: data.coefficients,
     reminders: data.reminders,
     installments,
@@ -1315,6 +1355,7 @@ export function previewAssessment(id, number) {
       propertyId: entry.property.id,
       amount,
       snapshot: {
+        currency: "EUR",
         property: entry.property.plot || entry.property.address,
         community: community.name,
         communityIban: community.iban || "",
@@ -1493,6 +1534,10 @@ function communityCurrency(communityId) {
     db.prepare("SELECT currency FROM communities WHERE id = ?").get(communityId)?.currency || "EUR"
   );
 }
+export function receiptCurrency(row) {
+  const snapshot = typeof row.snapshot === "string" ? JSON.parse(row.snapshot) : row.snapshot;
+  return snapshot?.currency || communityCurrency(row.communityId);
+}
 
 export function formatMoney(cents, currency = "EUR") {
   const code = String(currency || "EUR").toUpperCase();
@@ -1544,7 +1589,7 @@ function allocate(payment, ids) {
         "payment",
         `${payment.id}:${view.paid + amount}`,
         "Cobro registrado",
-        `Se registraron ${formatMoney(amount, communityCurrency(receipt.communityId))} para ${receiptArticle(receipt)} ${lowerFirst(receiptConcept(receipt, view.snapshot))} de ${view.snapshot.property}.`,
+        `Se registraron ${formatMoney(amount, receiptCurrency(receipt))} para ${receiptArticle(receipt)} ${lowerFirst(receiptConcept(receipt, view.snapshot))} de ${view.snapshot.property}.`,
       );
     }
   }
@@ -2245,7 +2290,7 @@ export function rectifyReceipt(id, input, actor) {
       original.periodEnd,
       batch.dueDate,
       batch.amount,
-      original.snapshot,
+      JSON.stringify({ ...JSON.parse(original.snapshot), currency: receiptCurrency(original) }),
       now(),
       actor.id,
       original.assessmentId,
@@ -2259,7 +2304,7 @@ export function rectifyReceipt(id, input, actor) {
       "issued",
       replacementId,
       "Recibo rectificado",
-      `Se emitió una rectificación de ${receiptConcept(original)} de ${batch.snapshot.property}: ${formatMoney(batch.amount, communityCurrency(original.communityId))}. Motivo: ${batch.reason}`,
+      `Se emitió una rectificación de ${receiptConcept(original)} de ${batch.snapshot.property}: ${formatMoney(batch.amount, receiptCurrency(original))}. Motivo: ${batch.reason}`,
     );
     audit(actor, "rectify", replacementId, {
       communityId: original.communityId,
@@ -2290,7 +2335,7 @@ export function reversePayment(id, input, actor) {
         "returned",
         id,
         "Devolución de cobro",
-        `Se devolvió un cobro de ${formatMoney(a.amount, communityCurrency(p.communityId))} aplicado sobre ${receiptArticle(r)} ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
+        `Se devolvió un cobro de ${formatMoney(a.amount, receiptCurrency(r))} aplicado sobre ${receiptArticle(r)} ${lowerFirst(receiptConcept(r))}. El saldo vuelve a estar pendiente.`,
       );
     }
     audit(actor, "return", id, { communityId: p.communityId, reason: note });
@@ -2393,6 +2438,7 @@ export function purgeReceipt(id, actor) {
   transaction(() => {
     const row = receiptById(id);
     if (!row.cancelledAt) throw problem("Solo se pueden purgar recibos anulados.", 409);
+    validateReceiptDeletion([id], { requireCancelled: true });
     purgeReceiptDependencies(id);
     audit(actor, "purge", id, { communityId: row.communityId });
   });
@@ -2405,6 +2451,10 @@ export function purgeAssessment(id, actor) {
     if (!row.cancelledAt) throw problem("Solo se pueden purgar derramas anuladas.", 409);
     // Get all receipts for this assessment
     const receipts = db.prepare("SELECT id FROM fee_receipts WHERE assessmentId=?").all(id);
+    validateReceiptDeletion(
+      receipts.map((receipt) => receipt.id),
+      { requireCancelled: true },
+    );
     for (const receipt of receipts) purgeReceiptDependencies(receipt.id);
     // Delete the assessment itself
     db.prepare("DELETE FROM fee_assessments WHERE id=?").run(id);
@@ -2432,7 +2482,7 @@ export function materializeFeeReminders(date = today()) {
       const concept = receiptConcept(row, view.snapshot),
         kind = row.serviceBillId ? "servicio" : row.assessmentId ? "derrama" : "cuota",
         kindArticle = `${kind === "servicio" ? "del" : "de la"} ${kind}`,
-        currency = communityCurrency(row.communityId);
+        currency = receiptCurrency(row);
       if (days <= 0 && days >= -settings.beforeDays && settings.beforeDays > 0)
         notify(
           row,

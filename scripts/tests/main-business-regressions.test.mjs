@@ -622,3 +622,268 @@ test("Upload cleanup: document and service files are queued transactionally, sur
   for (const name of names)
     assert.equal(fs.existsSync(path.join(directory, "uploads", name)), false);
 });
+
+test("Acuerdos: omitir avisos conserva la configuración y enviarlos permite cambiarla", () => {
+  const f = fixture(),
+    input = {
+      annualAmount: "120.00",
+      months: 1,
+      effectiveFrom: "2090-01-01",
+      dueDay: 10,
+      agreement: "Junta",
+      mode: "coefficient",
+    };
+  const custom = { beforeDays: 19, afterDays: 31, repeatDays: 14, internal: false, email: true };
+  const plan = fees.savePlan(f.c, { ...input, reminders: custom }, admin);
+  const edited = fees.savePlan(f.c, { ...input, agreement: "Junta corregida" }, admin, plan.id);
+  assert.deepEqual(edited.reminders, custom);
+  assert.deepEqual(
+    fees.savePlan(f.c, { ...input, reminders: { ...custom, beforeDays: 0 } }, admin, plan.id)
+      .reminders,
+    { ...custom, beforeDays: 0 },
+  );
+  assert.throws(
+    () => fees.savePlan(f.c, { ...input, reminders: { email: "sí" } }, admin, plan.id),
+    (e) => e.status === 400,
+  );
+  assert.equal(JSON.parse(get("fee_plans", plan.id).data).reminders.beforeDays, 0);
+  const fresh = fees.savePlan(f.c, { ...input, effectiveFrom: "2091-01-01" }, admin);
+  assert.equal(typeof fresh.reminders.internal, "boolean");
+});
+
+test("Derramas mixtas: conserva los importes fijos al editar y reparte el resto por coeficiente", () => {
+  const f = fixture(),
+    input = { ...assessmentInput(f), mode: "mixed", manual: { [f.p]: "20.00" } };
+  const a = fees.saveAssessment(f.c, input, admin);
+  assert.deepEqual(a.fixedAmounts, { [f.p]: 2000 });
+  assert.deepEqual(a.allocations, { [f.p]: 2000, [f.p2]: 8000 });
+  const { manual, ...withoutManual } = input;
+  const edit = fees.saveAssessment(
+    f.c,
+    {
+      ...withoutManual,
+      totalAmount: "200.00",
+      installments: [{ amount: "200.00", dueDate: "2099-01-10" }],
+    },
+    admin,
+    a.id,
+  );
+  assert.deepEqual(edit.fixedAmounts, { [f.p]: 2000 });
+  assert.deepEqual(edit.allocations, { [f.p]: 2000, [f.p2]: 18000 });
+  assert.throws(
+    () => fees.saveAssessment(f.c, { ...input, manual: { [f.p]: "101.00" } }, admin, a.id),
+    (e) => e.status === 400,
+  );
+  assert.equal(get("fee_assessments", a.id).totalAmount, 20000);
+});
+
+test("Derramas mixtas heredadas: edita textos y plazos sin inferir ni recalcular el reparto", () => {
+  const f = fixture(),
+    input = { ...assessmentInput(f), mode: "mixed", manual: { [f.p]: "20.00" } },
+    a = fees.saveAssessment(f.c, input, admin);
+  const payload = JSON.parse(get("fee_assessments", a.id).data);
+  delete payload.fixedAmounts;
+  db.prepare("UPDATE fee_assessments SET data=? WHERE id=?").run(JSON.stringify(payload), a.id);
+  db.prepare("UPDATE properties SET participationCoef='99' WHERE id=?").run(f.p2);
+  const { manual, ...withoutManual } = input;
+  const edited = fees.saveAssessment(
+    f.c,
+    { ...withoutManual, name: "Nombre corregido" },
+    admin,
+    a.id,
+  );
+  assert.deepEqual(edited.allocations, a.allocations);
+  assert.equal(edited.fixedAmounts, undefined);
+  assert.throws(
+    () =>
+      fees.saveAssessment(
+        f.c,
+        {
+          ...withoutManual,
+          totalAmount: "200.00",
+          installments: [{ amount: "200.00", dueDate: "2099-01-10" }],
+        },
+        admin,
+        a.id,
+      ),
+    (e) => e.status === 409,
+  );
+  const explicit = fees.saveAssessment(f.c, { ...input, manual: { [f.p]: "30.00" } }, admin, a.id);
+  assert.deepEqual(explicit.fixedAmounts, { [f.p]: 3000 });
+  assert.equal(explicit.allocations[f.p2], 7000);
+});
+
+function rectify(id) {
+  const input = { reason: "Corrección de prueba" },
+    preview = fees.previewReceiptRectification(id, input, admin);
+  return fees.rectifyReceipt(id, { ...input, token: preview.token }, admin);
+}
+test("Purga individual: bloquea sucesores conservados y permite retirar la cadena desde sus hojas", async () => {
+  const f = fixture(),
+    id = f.p + "-chain";
+  receipt(f, id, [{ id: f.o, name: "Ana" }]);
+  fees.cancelReceipt(id, { reason: "Corrección" }, admin);
+  const second = rectify(id);
+  fees.cancelReceipt(second.id, { reason: "Otra corrección" }, admin);
+  const third = rectify(second.id);
+  const before = db.prepare("SELECT * FROM fee_receipts WHERE communityId=? ORDER BY id").all(f.c);
+  assert.equal((await request(admin, "/fees/receipts/" + id + "/purge", "POST")).status, 409);
+  assert.equal(
+    (await request(admin, "/fees/receipts/" + second.id + "/purge", "POST")).status,
+    409,
+  );
+  assert.deepEqual(
+    db.prepare("SELECT * FROM fee_receipts WHERE communityId=? ORDER BY id").all(f.c),
+    before,
+  );
+  assert.equal((await request(admin, "/fees/receipts/" + third.id + "/purge", "POST")).status, 409);
+  fees.cancelReceipt(third.id, { reason: "Retirada" }, admin);
+  for (const r of [third.id, second.id, id])
+    assert.equal((await request(admin, "/fees/receipts/" + r + "/purge", "POST")).status, 200);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM fee_receipts WHERE communityId=?").get(f.c).n, 0);
+});
+test("Purga de derrama: permite borrar una cadena completa anulada sin referencias colgantes", () => {
+  const f = fixture(),
+    a = fees.saveAssessment(f.c, assessmentInput(f), admin),
+    batch = fees.previewAssessment(a.id, 1),
+    issued = fees.issueAssessment(a.id, { installment: 1, token: batch.token }, admin);
+  fees.cancelReceipt(issued.ids[0], { reason: "Corrección" }, admin);
+  const successor = rectify(issued.ids[0]);
+  assert.equal(get("fee_receipts", successor.id).assessmentId, a.id);
+  fees.cancelAssessment(a.id, { reason: "Retirada completa" }, admin);
+  fees.purgeAssessment(a.id, admin);
+  assert.equal(get("fee_assessments", a.id), undefined);
+  assert.equal(get("fee_receipts", successor.id), undefined);
+  assert.equal(
+    db.prepare("SELECT COUNT(*) n FROM fee_receipts WHERE rectifiesReceiptId=?").get(issued.ids[0])
+      .n,
+    0,
+  );
+});
+test("Purga de derrama: rechaza hijos activos o sucesores externos y revierte toda la operación", () => {
+  const f = fixture(),
+    a = fees.saveAssessment(f.c, assessmentInput(f), admin),
+    batch = fees.previewAssessment(a.id, 1),
+    issued = fees.issueAssessment(a.id, { installment: 1, token: batch.token }, admin);
+  db.prepare("UPDATE fee_assessments SET cancelledAt='2026-01-01' WHERE id=?").run(a.id);
+  assert.throws(
+    () => fees.purgeAssessment(a.id, admin),
+    (e) => e.status === 409,
+  );
+  assert.ok(get("fee_receipts", issued.ids[0]));
+  db.prepare("UPDATE fee_receipts SET cancelledAt='2026-01-01' WHERE assessmentId=?").run(a.id);
+  receipt(f, f.p + "-external", [{ id: f.o, name: "Ana" }], { rectifiesReceiptId: issued.ids[0] });
+  assert.throws(
+    () => fees.purgeAssessment(a.id, admin),
+    (e) => e.status === 409,
+  );
+  assert.ok(get("fee_assessments", a.id));
+  assert.equal(
+    db.prepare("SELECT COUNT(*) n FROM fee_receipts WHERE assessmentId=?").get(a.id).n,
+    2,
+  );
+  assert.equal(db.isTransaction, false);
+});
+test("Cascada: también rechaza una referencia de rectificación que sobreviviría al borrado", async () => {
+  const f = fixture(),
+    other = fixture(),
+    original = f.p + "-original";
+  receipt(f, original, [{ id: f.o, name: "Ana" }]);
+  receipt(other, other.p + "-external", [{ id: other.o, name: "Otra titular" }], {
+    rectifiesReceiptId: original,
+  });
+  const response = await cascade("properties", f.p);
+  assert.equal(response.status, 409, JSON.stringify(response));
+  assert.ok(get("properties", f.p));
+  assert.ok(get("fee_receipts", original));
+});
+test("Moneda: las emisiones nuevas congelan EUR y las antiguas se leen sin reescribir sus snapshots", async () => {
+  const f = fixture(),
+    plan = fees.savePlan(
+      f.c,
+      {
+        annualAmount: "120.00",
+        months: 1,
+        effectiveFrom: "2090-01-01",
+        dueDay: 10,
+        agreement: "Junta",
+        mode: "coefficient",
+      },
+      admin,
+    );
+  const batch = fees.preview(f.c, "2090-01");
+  const ordinary = fees.issue(f.c, { period: "2090-01", token: batch.token }, admin);
+  const a = fees.saveAssessment(f.c, assessmentInput(f), admin),
+    ap = fees.previewAssessment(a.id, 1),
+    assessment = fees.issueAssessment(a.id, { installment: 1, token: ap.token }, admin);
+  const services = await import("../../src/services.js");
+  const s = services.saveService(
+    f.c,
+    {
+      service: "agua",
+      supplier: "Canal",
+      invoiceNumber: "TEST",
+      period: "2090-02",
+      issueDate: "2090-02-01",
+      dueDate: "2090-03-01",
+      totalAmount: "100.00",
+      billing: "receipts",
+      method: "coefficient",
+    },
+    admin,
+  );
+  const sp = services.previewService(s.id),
+    service = services.issueService(s.id, { token: sp.token }, admin);
+  for (const id of [...ordinary.ids, ...assessment.ids, ...service.ids])
+    assert.equal(JSON.parse(get("fee_receipts", id).snapshot).currency, "EUR");
+  const legacy = f.p + "-legacy";
+  receipt(f, legacy, [{ id: f.o, name: "Ana" }]);
+  const raw = get("fee_receipts", legacy).snapshot;
+  db.prepare("UPDATE communities SET currency='USD' WHERE id=?").run(f.c);
+  assert.equal(fees.receiptView(get("fee_receipts", ordinary.ids[0])).currency, "EUR");
+  assert.equal(fees.receiptView(get("fee_receipts", legacy)).currency, "USD");
+  assert.equal(fees.receiptView(get("fee_receipts", legacy)).currencySource, "community");
+  assert.equal(get("fee_receipts", legacy).snapshot, raw);
+});
+
+test("Moneda: rectificar un recibo heredado congela la moneda nueva sin modificar el original", () => {
+  const f = fixture(),
+    id = f.p + "-legacy-rectification";
+  receipt(f, id, [{ id: f.o, name: "Ana" }]);
+  const snapshot = get("fee_receipts", id).snapshot;
+  fees.cancelReceipt(id, { reason: "Corrección" }, admin);
+  const replacement = rectify(id);
+  assert.equal(replacement.snapshot.currency, "EUR");
+  assert.equal(get("fee_receipts", id).snapshot, snapshot);
+  const { currency, ...historical } = replacement.snapshot;
+  assert.deepEqual(historical, JSON.parse(snapshot));
+});
+
+test("Certificados: el gestor financiero recibe opciones mínimas de su comunidad sin depender de leer el censo", async () => {
+  const f = fixture(),
+    foreign = fixture(),
+    staff = localActor(f, ["fee:read", "fee:manage", "community:read"]);
+  receipt(f, f.p + "-historical-owner", [{ id: f.o2, name: "Titular anterior" }]);
+  assert.equal(allowed(staff, "owner:read", f.o), false);
+  assert.equal(allowed(staff, "property:read", f.p), false);
+  const result = await request(staff, "/fees/communities/" + f.c);
+  assert.equal(result.status, 200, JSON.stringify(result));
+  assert.deepEqual(
+    result.data.certificateTargets.properties.map((p) => p.id).sort(),
+    [f.p, f.p2].sort(),
+  );
+  assert.deepEqual(
+    result.data.certificateTargets.owners.map((o) => o.id).sort(),
+    [f.o, f.o2].sort(),
+  );
+  assert.ok(
+    result.data.certificateTargets.owners.every(
+      (o) => JSON.stringify(Object.keys(o).sort()) === '["id","label"]',
+    ),
+  );
+  assert.equal((await request(staff, "/fees/communities/" + foreign.c)).status, 403);
+  const reader = actor("fee-read-only", ["fee:read"]);
+  const read = await request(reader, "/fees/communities/" + f.c);
+  assert.equal(read.status, 200);
+  assert.equal(read.data.certificateTargets, null);
+});

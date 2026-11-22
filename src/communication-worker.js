@@ -35,7 +35,10 @@ export async function processCommunications(send = sendMessage) {
           error = "Las notificaciones por email están deshabilitadas en la configuración general.";
         else if (!post || !user || !canRead(user, post))
           error = "La cuenta ya no tiene acceso a la publicación.";
-        else if (item.version !== post.version)
+        else if (
+          db.prepare("SELECT version FROM communication_outbox WHERE id=?").get(item.id)
+            ?.version !== post.version
+        )
           error = "El aviso fue sustituido por una actualización posterior.";
         else if (item.kind === "reminder" && Date.parse(post.startsAt) <= Date.now())
           error = "El evento ya comenzó.";

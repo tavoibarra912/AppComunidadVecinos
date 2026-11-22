@@ -459,9 +459,7 @@ test("asociaciones: vota el censo de socios (isMember), no los propietarios ni s
   const beforeConfig = db
     .prepare("SELECT legalConfig FROM communities WHERE id=?")
     .get(communityId).legalConfig;
-  const beforeOwner = db
-    .prepare("SELECT isMember,userId FROM owners WHERE id='own-seed-2'")
-    .get();
+  const beforeOwner = db.prepare("SELECT isMember,userId FROM owners WHERE id='own-seed-2'").get();
   const insertAccount = (usuario) => {
     const id = `assoc-${usuario}`;
     db.prepare(
@@ -480,14 +478,41 @@ test("asociaciones: vota el censo de socios (isMember), no los propietarios ni s
   const suspendedOwner = "assoc-member-suspended";
   db.prepare(
     "INSERT INTO owners(id,name,surname,dni,isMember,communityId,userId,email,votingRights) VALUES (?,?,?,?,1,?,?,?,?)",
-  ).run(memberOwner, "Socia", "Sin Inmueble", memberOwner, communityId, memberId, `${memberUser}@example.test`, "active");
+  ).run(
+    memberOwner,
+    "Socia",
+    "Sin Inmueble",
+    memberOwner,
+    communityId,
+    memberId,
+    `${memberUser}@example.test`,
+    "active",
+  );
   // Un segundo registro de la misma persona no le da un segundo voto.
   db.prepare(
     "INSERT INTO owners(id,name,surname,dni,isMember,communityId,userId,email,votingRights) VALUES (?,?,?,?,1,?,?,?,?)",
-  ).run(duplicateMemberOwner, "Socia", "Duplicada", duplicateMemberOwner, communityId, memberId, `${memberUser}+dup@example.test`, "active");
+  ).run(
+    duplicateMemberOwner,
+    "Socia",
+    "Duplicada",
+    duplicateMemberOwner,
+    communityId,
+    memberId,
+    `${memberUser}+dup@example.test`,
+    "active",
+  );
   db.prepare(
     "INSERT INTO owners(id,name,surname,dni,isMember,communityId,userId,email,votingRights) VALUES (?,?,?,?,1,?,?,?,?)",
-  ).run(suspendedOwner, "Socia", "Suspendida", suspendedOwner, communityId, suspendedId, `${suspendedUser}@example.test`, "suspended");
+  ).run(
+    suspendedOwner,
+    "Socia",
+    "Suspendida",
+    suspendedOwner,
+    communityId,
+    suspendedId,
+    `${suspendedUser}@example.test`,
+    "suspended",
+  );
   // Un propietario con inmueble y coeficiente, pero no socio, queda fuera del censo.
   db.prepare("UPDATE owners SET isMember=0,userId=? WHERE id='own-seed-2'").run(nonMemberId);
   db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
@@ -497,17 +522,16 @@ test("asociaciones: vota el censo de socios (isMember), no los propietarios ni s
     }),
     communityId,
   );
-  const member = client(), suspended = client(), nonMember = client();
+  const member = client(),
+    suspended = client(),
+    nonMember = client();
   try {
     for (const [c, usuario] of [
       [member, memberUser],
       [suspended, suspendedUser],
       [nonMember, ownerUser],
     ])
-      assert.equal(
-        (await c("/auth/signin", "POST", { usuario, password: usuario })).status,
-        200,
-      );
+      assert.equal((await c("/auth/signin", "POST", { usuario, password: usuario })).status, 200);
     const p = await create({ poll: poll() });
     // La regla se congela como censo de socios aunque la configuración pedía coeficiente.
     assert.deepEqual(p.poll.votingRule, {
@@ -536,7 +560,10 @@ test("asociaciones: vota el censo de socios (isMember), no los propietarios ni s
       403,
     );
     // Un propietario no socio queda fuera del censo y ni siquiera accede a la consulta.
-    assert.equal((await nonMember(`/communications/posts/${p.id}/ballot`, "POST", { choices: [1] })).status, 404);
+    assert.equal(
+      (await nonMember(`/communications/posts/${p.id}/ballot`, "POST", { choices: [1] })).status,
+      404,
+    );
     const current = (await admin(`/communications/posts/${p.id}`)).data;
     assert.equal((await update(current, { poll: { ...current.poll, closed: true } })).status, 200);
     const results = (await tenant(`/communications/posts/${p.id}`)).data;
@@ -589,10 +616,7 @@ test("asociaciones: vota el censo de socios (isMember), no los propietarios ni s
       beforeOwner.isMember,
       beforeOwner.userId,
     );
-    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
-      beforeConfig,
-      communityId,
-    );
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(beforeConfig, communityId);
   }
 });
 
@@ -685,6 +709,16 @@ test("reuniones conservan invitación, confirmación y asistencia real por separ
     ).status,
     404,
   );
+  assert.equal(
+    (
+      await admin(`/communications/posts/${p.id}/attendance`, "POST", {
+        userId: user("urucp1").id,
+        attended: true,
+      })
+    ).status,
+    409,
+  );
+  assert.equal((await update(p, { startsAt: later(-1) })).status, 200);
   assert.equal(
     (
       await admin(`/communications/posts/${p.id}/attendance`, "POST", {
@@ -1083,4 +1117,272 @@ test("buzón: marcar todo leído afecta solo a la cuenta y a comunicaciones visi
   );
   const again = await owner("/communications/inbox/read-all", "POST", {});
   assert.equal(again.data.updated, 0);
+});
+
+test("consultas: cerrar y reabrir conserva lecturas, acuses y avisos pendientes sin duplicarlos", async () => {
+  const p = await create({ poll: poll() });
+  db.prepare(
+    "UPDATE communication_recipients SET readAt='2026-01-01',receiptAt='2026-01-02' WHERE postId=?",
+  ).run(p.id);
+  const outboxId = p.id + "-pending";
+  db.prepare(
+    "INSERT INTO communication_outbox(id,postId,userId,channel,kind,version,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?,?)",
+  ).run(outboxId, p.id, user("urucp1").id, "email", "publication", p.version, now(), now());
+  const recipients = () =>
+    db
+      .prepare(
+        "SELECT userId,readAt,receiptAt FROM communication_recipients WHERE postId=? ORDER BY userId",
+      )
+      .all(p.id);
+  const before = recipients();
+  const closed = await update(p, { poll: { ...p.poll, closed: true } });
+  assert.equal(closed.status, 200, JSON.stringify(closed.data));
+  assert.deepEqual(recipients(), before);
+  assert.equal(
+    db.prepare("SELECT version FROM communication_outbox WHERE id=?").get(outboxId).version,
+    closed.data.version,
+  );
+  const reopened = await update(closed.data, { poll: { ...closed.data.poll, closed: false } });
+  assert.equal(reopened.status, 200, JSON.stringify(reopened.data));
+  assert.deepEqual(recipients(), before);
+  assert.equal(
+    db.prepare("SELECT COUNT(*) n FROM communication_outbox WHERE postId=?").get(p.id).n,
+    1,
+  );
+  assert.deepEqual(
+    db
+      .prepare(
+        "SELECT action FROM communication_audit WHERE postId=? AND action IN ('poll-closed','poll-reopened') ORDER BY rowid",
+      )
+      .all(p.id)
+      .map((r) => r.action),
+    ["poll-closed", "poll-reopened"],
+  );
+  assert.equal((await update(p, { poll: { ...p.poll, closed: true } })).status, 409);
+  const changed = await update(reopened.data, { body: "Contenido realmente modificado" });
+  assert.equal(changed.status, 200);
+  assert.ok(recipients().every((r) => r.readAt === "" && r.receiptAt === ""));
+  assert.notEqual(
+    db.prepare("SELECT version FROM communication_outbox WHERE id=?").get(outboxId).version,
+    changed.data.version,
+    "el contenido nuevo sí invalida los avisos anteriores",
+  );
+});
+
+test("asistencia: bloquea borradores, reuniones futuras y canceladas; admite correcciones posteriores", async () => {
+  const meeting = { location: "Salón", url: "", agenda: "Presupuesto", tasks: [] };
+  for (const changes of [
+    { status: "draft", startsAt: later(-2), endsAt: later(-1) },
+    { status: "cancelled", startsAt: later(-2), endsAt: later(-1) },
+    { startsAt: later(1), endsAt: later(2) },
+  ]) {
+    const p = await create({ type: "meeting", meeting, publishAt: later(-3), ...changes });
+    const before = db.prepare("SELECT * FROM communication_recipients WHERE postId=?").all(p.id);
+    assert.equal(
+      (
+        await admin("/communications/posts/" + p.id + "/attendance", "POST", {
+          userId: user("urucp1").id,
+          attended: true,
+        })
+      ).status,
+      409,
+    );
+    assert.deepEqual(
+      db.prepare("SELECT * FROM communication_recipients WHERE postId=?").all(p.id),
+      before,
+    );
+    assert.equal(
+      db
+        .prepare(
+          "SELECT COUNT(*) n FROM communication_audit WHERE postId=? AND action='attendance-updated'",
+        )
+        .get(p.id).n,
+      0,
+    );
+  }
+  const p = await create({
+    type: "meeting",
+    meeting,
+    publishAt: later(-3),
+    startsAt: later(-2),
+    endsAt: later(-1),
+  });
+  assert.equal(p.canRecordAttendance, true);
+  for (const attended of [true, false])
+    assert.equal(
+      (
+        await admin("/communications/posts/" + p.id + "/attendance", "POST", {
+          userId: user("urucp1").id,
+          attended,
+        })
+      ).status,
+      200,
+    );
+  assert.equal(
+    (
+      await admin("/communications/posts/" + p.id + "/attendance", "POST", {
+        userId: "no-invitado",
+        attended: true,
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await admin("/communications/posts/" + p.id + "/attendance", "POST", {
+        userId: user("urucp1").id,
+        attended: "sí",
+      })
+    ).status,
+    400,
+  );
+  const r = db
+    .prepare("SELECT attended,rsvp FROM communication_recipients WHERE postId=? AND userId=?")
+    .get(p.id, user("urucp1").id);
+  assert.equal(r.attended, 0);
+  assert.equal(r.rsvp, "pending");
+});
+
+test("copropiedad: avisa de representación previa sin revelar quién votó ni cambiar el cómputo", async () => {
+  const community = db
+    .prepare("SELECT legalConfig FROM communities WHERE id=?")
+    .get(communityId).legalConfig;
+  const property = db.prepare("SELECT * FROM properties WHERE id='prop-seed-1'").get();
+  const second = db.prepare("SELECT * FROM owners WHERE id='own-seed-2'").get();
+  try {
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+      JSON.stringify({
+        regimen: "lph",
+        votaciones: {
+          unidad: "inmueble",
+          copropiedad: "representante",
+          mayoriaOrdinaria: "simple",
+        },
+      }),
+      communityId,
+    );
+    db.prepare("UPDATE properties SET ownerIds=? WHERE id='prop-seed-1'").run(
+      JSON.stringify(["own-seed-1", "own-seed-2"]),
+    );
+    db.prepare("UPDATE owners SET userId=?,votingRights='active' WHERE id='own-seed-2'").run(
+      user("uruci1").id,
+    );
+    const p = await create({ poll: poll() });
+    assert.equal(
+      (await owner("/communications/posts/" + p.id + "/ballot", "POST", { choices: [0] })).status,
+      201,
+    );
+    const before = (await tenant("/communications/posts/" + p.id)).data;
+    assert.match(before.representationNotice, /Otro cotitular/);
+    assert.doesNotMatch(before.representationNotice, /urucp1|Sí|No/);
+    assert.equal(
+      (await tenant("/communications/posts/" + p.id + "/ballot", "POST", { choices: [1] })).status,
+      201,
+    );
+    const after = (await tenant("/communications/posts/" + p.id)).data;
+    assert.match(after.representationNotice, /no añade peso/);
+    assert.deepEqual(after.ballot, [1]);
+    assert.equal((await owner("/communications/posts/" + p.id)).data.representationNotice, "");
+    assert.equal(
+      db
+        .prepare("SELECT weight FROM communication_ballots WHERE postId=? AND userId=?")
+        .get(p.id, user("uruci1").id).weight,
+      1,
+      "solo computa el otro inmueble que todavía no estaba representado",
+    );
+  } finally {
+    db.prepare("UPDATE properties SET ownerIds=? WHERE id='prop-seed-1'").run(property.ownerIds);
+    db.prepare("UPDATE owners SET userId=?,votingRights=? WHERE id='own-seed-2'").run(
+      second.userId,
+      second.votingRights,
+    );
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(community, communityId);
+  }
+});
+
+test("avisos: cerrar una consulta durante el envío de otro aviso conserva la publicación pendiente", async () => {
+  db.prepare("UPDATE communication_outbox SET state='skipped' WHERE state='pending'").run();
+  await owner("/communications/preferences", "PUT", {
+    phone: "+34600111222",
+    smsEnabled: true,
+    emailEnabled: false,
+  });
+  const audience = { mode: "selected", ownerIds: ["own-seed-1"], tenantIds: [], propertyIds: [] };
+  const first = await create({ channels: ["sms"], audience }),
+    second = await create({ channels: ["sms"], poll: poll(), audience });
+  let sent = 0;
+  await processCommunications(async () => {
+    if (++sent === 1) {
+      const closed = await update(second, { poll: { ...second.poll, closed: true } });
+      assert.equal(closed.status, 200, JSON.stringify(closed.data));
+    }
+    return "SM-local-test";
+  });
+  assert.equal(sent, 2);
+  const delivered = db
+    .prepare("SELECT * FROM communication_outbox WHERE postId=? AND userId=?")
+    .get(second.id, user("urucp1").id);
+  assert.equal(delivered.state, "accepted");
+  assert.equal(delivered.kind, "publication");
+  assert.equal(delivered.version, second.version + 1);
+  assert.equal(
+    db
+      .prepare("SELECT COUNT(*) n FROM communication_outbox WHERE postId=? AND kind='updated'")
+      .get(second.id).n,
+    0,
+  );
+});
+
+test("copropiedad: un segundo cotitular con peso cero recibe un aviso explícito", async () => {
+  const property = db.prepare("SELECT ownerIds FROM properties WHERE id='prop-seed-1'").get();
+  const legal = db
+    .prepare("SELECT legalConfig FROM communities WHERE id=?")
+    .get(communityId).legalConfig;
+  const id = "co-owner-warning-only";
+  db.prepare("INSERT INTO owners(id,name,surname,dni,userId) VALUES(?,?,?,?,?)").run(
+    id,
+    "Cotitular",
+    "Prueba",
+    id,
+    user("uruci1").id,
+  );
+  try {
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+      JSON.stringify({
+        regimen: "lph",
+        votaciones: {
+          unidad: "inmueble",
+          copropiedad: "representante",
+          mayoriaOrdinaria: "simple",
+        },
+      }),
+      communityId,
+    );
+    db.prepare("UPDATE properties SET ownerIds=? WHERE id='prop-seed-1'").run(
+      JSON.stringify(["own-seed-1", id]),
+    );
+    const p = await create({ poll: poll() });
+    assert.equal(
+      (await owner("/communications/posts/" + p.id + "/ballot", "POST", { choices: [0] })).status,
+      201,
+    );
+    assert.match(
+      (await tenant("/communications/posts/" + p.id)).data.representationNotice,
+      /no añade peso/,
+    );
+    assert.equal(
+      (await tenant("/communications/posts/" + p.id + "/ballot", "POST", { choices: [1] })).status,
+      201,
+    );
+    assert.equal(
+      db
+        .prepare("SELECT weight FROM communication_ballots WHERE postId=? AND userId=?")
+        .get(p.id, user("uruci1").id).weight,
+      0,
+    );
+  } finally {
+    db.prepare("UPDATE properties SET ownerIds=? WHERE id='prop-seed-1'").run(property.ownerIds);
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(legal, communityId);
+    db.prepare("DELETE FROM owners WHERE id=?").run(id);
+  }
 });

@@ -6,6 +6,7 @@ import {
   receiptConcept,
   canReadReceipt,
   feeDefaults,
+  formatMoney,
 } from "./fees.js";
 import { sendMessage, destination } from "./delivery-providers.js";
 import { recordAudit } from "./audit.js";
@@ -54,7 +55,7 @@ export async function processFeeNotifications(send = sendMessage) {
             values = {
               titulo: item.title,
               mensaje: reminder
-                ? `${receiptConcept(row, view.snapshot)} de ${view.snapshot.property}. Vencimiento: ${row.dueDate}. Pendiente actual: ${(view.outstanding / 100).toFixed(2)} EUR.`
+                ? `${receiptConcept(row, view.snapshot)} de ${view.snapshot.property}. Vencimiento: ${row.dueDate}. Pendiente actual: ${formatMoney(view.outstanding, view.currency)}.`
                 : item.message,
               comunidad: view.snapshot.community,
             };

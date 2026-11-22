@@ -40,6 +40,25 @@ un cobro se muestra cómo se reparte entre recibos y saldo a favor; la confirmac
 de posibles duplicados solo aparece cuando el servidor detecta una coincidencia.
 
 Los permisos `fee:read` y `fee:manage` se configuran en Administración → Roles.
+Desde **Cuotas → Certificado de deuda**, los gestores pueden descargar un PDF
+informativo por inmueble o por propietario, limitado a la comunidad seleccionada.
+El certificado incluye todo ese ámbito, sin aplicar los filtros de la tabla.
+
+Las derramas admiten reparto **mixto**: importes fijos para determinados inmuebles
+y el resto por coeficiente. El borrador conserva qué importes son fijos. Los
+repartos mixtos antiguos sin ese detalle pueden editar textos y plazos conservando
+sus importes; cambiar el reparto requiere reconfigurarlo expresamente.
+
+Editar un acuerdo sin enviar recordatorios conserva los avisos guardados. Las
+nuevas emisiones y rectificaciones guardan la moneda en su snapshot; los recibos
+anteriores mantienen sus datos y la lectura heredada desde la comunidad. No se
+convierte ni se reetiqueta el histórico.
+
+La purga continúa disponible solo por API y con permiso `fee:purge`. No permite
+dejar rectificaciones apuntando a un recibo borrado. Una derrama completa puede
+purgarse si todos sus recibos están anulados y ninguna referencia queda fuera
+del conjunto eliminado.
+
 Los roles de administrador reciben ambos; el rol de usuario recibe consulta
 exclusiva de sus perfiles propietarios. Los inquilinos no reciben cuotas por su
 condición de inquilinos. Los titulares se conservan en cada recibo y no se puede

@@ -8,6 +8,7 @@ import { isTenantContractActive } from "../public/js/permissions.js";
 import { CREDIT_DESTINATIONS, legalConfigOf } from "./legal-config.js";
 import { formatMoney } from "./fees.js";
 import { queueUploadCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
+import { validateReceiptDeletion } from "./receipt-deletion.js";
 
 const TYPES = {
   owners: "owner",
@@ -1188,6 +1189,7 @@ function apply(g, plan, req) {
         ).run(now, "Liquidación final por borrado avanzado", g.root.id);
   }
   if (a.finance === "delete") {
+    validateReceiptDeletion(receiptIds);
     for (const r of g.financialChildren.fee_proofs.filter(
       (r) => receiptIds.includes(r.receiptId) || deletedOwners.includes(r.ownerId),
     )) {
