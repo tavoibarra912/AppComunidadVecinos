@@ -43,7 +43,10 @@ export function toast(message, tipo) {
   const tipoFinal = tipo && TOAST_ICONOS[tipo] ? tipo : detectarTipoToast(message);
   toastEl.dataset.tipo = tipoFinal;
   // aria-live: assertive para errores/advertencias, polite para info/Ã©xito
-  toastEl.setAttribute("aria-live", tipoFinal === "error" || tipoFinal === "warning" ? "assertive" : "polite");
+  toastEl.setAttribute(
+    "aria-live",
+    tipoFinal === "error" || tipoFinal === "warning" ? "assertive" : "polite",
+  );
   toastEl.replaceChildren();
   const icono = document.createElement("span");
   icono.className = "toast-icono";
@@ -446,7 +449,7 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscarâ
         select.value = option.value;
         input.value = selectedText();
         closeList();
-        select.dispatchEvent(new Event("change"));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
       });
       list.append(li);
     });
@@ -536,7 +539,7 @@ export function makeSelectSearchable(select, placeholder = "Escribe para buscarâ
         select.value = first.dataset.value;
         input.value = selectedText();
         closeList();
-        select.dispatchEvent(new Event("change"));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
       }
     }
   });

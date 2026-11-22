@@ -862,9 +862,10 @@ function plan(g, body, user, options = {}) {
       .trim()
       .slice(0, 300);
     // Si el borrado afecta a varias comunidades, el traslado debe cumplir la
-    // exigencia más estricta: basta que una pida acuerdo o documento, y la
-    // deuda se conserva en origen si alguna comunidad así lo exige. La
-    // comunidad de destino también puede exigir su propio acuerdo.
+    // exigencia más estricta: basta que una pida acuerdo o documento. La
+    // política de deuda se registra en el acta y la vista previa; la ejecución
+    // mueve el libro completo al destino porque la comunidad de origen
+    // desaparece. La comunidad de destino también puede exigir su acuerdo.
     const originCommunities = g.collection === "communities" ? [g.root] : g.communities;
     const destinationCommunity =
       p.destination && p.destination !== "temporary"

@@ -94,8 +94,7 @@ const getRenderAdministracion = () =>
 function getPuedeAdministrar() {
   if (typeof globalThis !== "undefined" && globalThis.puedeAdministrar)
     return globalThis.puedeAdministrar();
-  if (typeof window !== "undefined" && window.puedeAdministrar)
-    return window.puedeAdministrar();
+  if (typeof window !== "undefined" && window.puedeAdministrar) return window.puedeAdministrar();
   return puedeAdministrar();
 }
 
@@ -127,7 +126,10 @@ function getRouteFromPath(path) {
   const pathWithSlash = normalizedPath.startsWith("/") ? normalizedPath : "/" + normalizedPath;
   for (const [key, routePath] of Object.entries(ROUTES)) {
     const normalizedRoute = routePath === "/" ? "" : routePath;
-    if (pathWithSlash === normalizedRoute || (normalizedRoute && pathWithSlash.startsWith(normalizedRoute + "/"))) {
+    if (
+      pathWithSlash === normalizedRoute ||
+      (normalizedRoute && pathWithSlash.startsWith(normalizedRoute + "/"))
+    ) {
       return key;
     }
   }
@@ -268,8 +270,8 @@ export function applyRoleUI() {
       : "Comunidades de vecinos";
   if (comHeadingSubtitle)
     comHeadingSubtitle.textContent = isOwner
-      ? "Aquí aparecen las comunidades vinculadas a tus perfiles."
-      : "Consulta y gestiona las comunidades vinculadas a Peñarrubia.";
+      ? "Consulta las comunidades vinculadas a tu cuenta y sus datos principales."
+      : "Crea y mantén al día tus comunidades: datos fiscales, dirección, moneda y fondo de reserva.";
   if (newCommunityBtn)
     newCommunityBtn.style.display = isOwner || !hasPermission("community:create") ? "none" : "";
   if (comToolbar) comToolbar.style.display = isOwner ? "none" : "";
@@ -282,8 +284,8 @@ export function applyRoleUI() {
     ownersHeadingTitle.textContent = isOwner ? "Mi Perfil de Propietario" : "Propietarios";
   if (ownersHeadingSubtitle)
     ownersHeadingSubtitle.textContent = isOwner
-      ? "Consulta tu expediente de asociado, adjunta tus documentos requeridos y comprueba su estado de aprobación."
-      : "Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.";
+      ? "Consulta tu expediente de asociado, adjunta tus documentos y revisa su estado de aprobación."
+      : "Consulta y actualiza los datos de propietarios y socios: contacto, inmuebles y documentación.";
   if (newOwnerBtn)
     newOwnerBtn.style.display = isOwner || !hasPermission("owner:create") ? "none" : "";
   if (ownersToolbar) ownersToolbar.style.display = isOwner ? "none" : "";
@@ -445,7 +447,9 @@ export async function handleRouting() {
     }
     case "comunicacion": {
       showSection(commSection, [document.querySelector("#mobile-nav-comunicacion")]);
-      document.querySelectorAll('[href="#comunicacion"]').forEach((el) => el.classList.add("active"));
+      document
+        .querySelectorAll('[href="#comunicacion"]')
+        .forEach((el) => el.classList.add("active"));
       document.title = brandTitle();
       const renderComm = await getRenderCommunication();
       renderComm();

@@ -358,29 +358,49 @@ document.querySelectorAll("#administracion [data-admin-tab]").forEach((btn) => {
 
 // ---------- Sub-tabs de Configuración ----------
 let settingsTab = "asociacion";
+let estiloTab = "aplicacion";
 
 const SETTINGS_PANELS = {
   asociacion: "#settings-asociacion-panel",
   seguridad: "#settings-seguridad-panel",
   notificaciones: "#settings-notificaciones-panel",
   inquilinos: "#settings-inquilinos-panel",
-  comunidades: "#settings-comunidades-panel",
   sistema: "#settings-sistema-panel",
   estilo: "#settings-estilo-panel",
   textos: "#settings-textos-panel",
 };
 
+// Estilos reúne el estilo global de la app y la marca de cada comunidad.
+const ESTILO_PANELS = {
+  aplicacion: "#settings-estilo-aplicacion",
+  comunidades: "#settings-comunidades-panel",
+};
+
+function conPermisoEstiloTab(tab) {
+  if (tab === "comunidades") return puedeConfigurarComunidades();
+  return hasPermission("admin:settings") || hasPermission("admin:branding");
+}
+
 function conPermisoSettingsTab(tab) {
   if (tab === "proveedores") return hasPermission("admin:providers");
-  if (tab === "comunidades") return puedeConfigurarComunidades();
-  if (tab === "estilo") return hasPermission("admin:settings") || hasPermission("admin:branding");
+  if (tab === "estilo")
+    return conPermisoEstiloTab("aplicacion") || conPermisoEstiloTab("comunidades");
   return Object.hasOwn(SETTINGS_PANELS, tab) && hasPermission("admin:settings");
+}
+
+function prepararEstiloTabs() {
+  document.querySelectorAll("#settings-estilo-subtabs [data-estilo-tab]").forEach((btn) => {
+    btn.hidden = !conPermisoEstiloTab(btn.dataset.estiloTab);
+  });
+  if (!conPermisoEstiloTab(estiloTab))
+    estiloTab = Object.keys(ESTILO_PANELS).find(conPermisoEstiloTab) || "aplicacion";
 }
 
 function prepararSettings() {
   document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
     btn.hidden = !conPermisoSettingsTab(btn.dataset.settingsTab);
   });
+  prepararEstiloTabs();
   if (!conPermisoSettingsTab(settingsTab))
     settingsTab = [...Object.keys(SETTINGS_PANELS), "proveedores"].find(conPermisoSettingsTab);
   // Se vuelca el estado una sola vez al entrar: cambiar de pestaña no debe
@@ -399,9 +419,9 @@ async function switchSettingsTab(tab) {
   settingsTab = tab;
   if (settingsForm) {
     settingsForm.hidden = tab === "proveedores";
-    // Comunidades tiene su propio botón y guardado; no mostrar dos acciones distintas.
+    // La marca de comunidad tiene su propio botón y guardado: no duplicar acciones.
     const actions = settingsForm.querySelector(":scope > .dialog-actions");
-    if (actions) actions.hidden = tab === "comunidades";
+    if (actions) actions.hidden = tab === "estilo" && estiloTab === "comunidades";
   }
   document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
     const active = btn.dataset.settingsTab === tab;
@@ -422,11 +442,34 @@ async function switchSettingsTab(tab) {
       panelProveedores.innerHTML = `<p class="form-error">${error.message}</p>`;
     }
   }
+  if (tab === "estilo") switchEstiloTab(estiloTab);
+}
+
+function switchEstiloTab(tab) {
+  if (!conPermisoEstiloTab(tab)) return;
+  estiloTab = tab;
+  document.querySelectorAll("#settings-estilo-subtabs [data-estilo-tab]").forEach((btn) => {
+    const active = btn.dataset.estiloTab === tab;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", String(active));
+  });
+  for (const [name, selector] of Object.entries(ESTILO_PANELS)) {
+    const panel = document.querySelector(selector);
+    if (panel) panel.hidden = name !== tab;
+  }
+  if (settingsTab === "estilo") {
+    const actions = settingsForm?.querySelector(":scope > .dialog-actions");
+    if (actions) actions.hidden = tab === "comunidades";
+  }
   if (tab === "comunidades") initCommunitySettings();
 }
 
 document.querySelectorAll("#settings-subtabs [data-settings-tab]").forEach((btn) => {
   btn.addEventListener("click", () => switchSettingsTab(btn.dataset.settingsTab));
+});
+
+document.querySelectorAll("#settings-estilo-subtabs [data-estilo-tab]").forEach((btn) => {
+  btn.addEventListener("click", () => switchEstiloTab(btn.dataset.estiloTab));
 });
 
 window.addEventListener("admin:goto-proveedores", () => {
@@ -1597,7 +1640,7 @@ function readMarca() {
 
 settingsForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (settingsTab === "comunidades") {
+  if (settingsTab === "estilo" && estiloTab === "comunidades") {
     await saveCommunitySettings();
     return;
   }

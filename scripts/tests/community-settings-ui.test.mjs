@@ -21,7 +21,13 @@ function buildState(role) {
     { nombre: "super_admin" },
     {
       nombre: "community_admin",
-      permisos: ["community:read", "community:edit", "community:manage", "admin:users", "admin:roles"],
+      permisos: [
+        "community:read",
+        "community:edit",
+        "community:manage",
+        "admin:users",
+        "admin:roles",
+      ],
     },
     {
       nombre: "administrator",
@@ -87,7 +93,11 @@ function fixture(t, role = "super_admin") {
     hasPermission: (p, id) => can(state.users[0], p, id, state),
     requirePermission: (p, id) => can(state.users[0], p, id, state),
     // puedeAdministrar: true si el usuario tiene permiso community:manage en alguna comunidad
-    puedeAdministrar: () => state.users[0] && state.roles.some((r) => r.nombre === state.users[0].rol && r.permisos?.includes("community:manage")),
+    puedeAdministrar: () =>
+      state.users[0] &&
+      state.roles.some(
+        (r) => r.nombre === state.users[0].rol && r.permisos?.includes("community:manage"),
+      ),
     DEFAULT_TENANT_AUTHORIZATIONS: [
       {
         id: "common_areas",
@@ -154,7 +164,8 @@ function fixture(t, role = "super_admin") {
   });
   // Mockear funciones de state.js en el contexto VM ANTES de cargar administracion.js
   // para que las funciones cierren sobre los mocks correctos
-  vm.runInContext(`
+  vm.runInContext(
+    `
     globalThis.state = ${JSON.stringify(state)};
     globalThis.getCurrentUser = () => state.users[0];
     globalThis.can = (user, permission, resourceId, stateObj) => {
@@ -201,13 +212,16 @@ function fixture(t, role = "super_admin") {
     globalThis.puedeConfigurarComunidades = () => {
       return globalThis.state.communities.some(globalThis.puedeEditarMarcaComunidad);
     };
-  `, dom.getInternalVMContext());
+  `,
+    dom.getInternalVMContext(),
+  );
   vm.runInContext(
-    `${source("administracion")}\nglobalThis.review = {renderAdministracion, switchAdminTab, switchSettingsTab, prepararSettings};`,
+    `${source("administracion")}\nglobalThis.review = {renderAdministracion, switchAdminTab, switchSettingsTab, switchEstiloTab, prepararSettings};`,
     dom.getInternalVMContext(),
   );
   // Redefinir las funciones de administracion.js para que usen nuestros mocks
-  vm.runInContext(`
+  vm.runInContext(
+    `
     globalThis.puedeEditarMarcaComunidad = (community) => {
       const brand = globalThis.hasPermission("community:brand", community.id);
       const edit = globalThis.hasPermission("community:edit", community.id);
@@ -216,40 +230,53 @@ function fixture(t, role = "super_admin") {
     globalThis.puedeConfigurarComunidades = () => {
       return globalThis.state.communities.some(globalThis.puedeEditarMarcaComunidad);
     };
-  `, dom.getInternalVMContext());
+  `,
+    dom.getInternalVMContext(),
+  );
   // Sobreescribir renderAdministracion con versión simplificada para el test
-  vm.runInContext(`
+  vm.runInContext(
+    `
     globalThis.review.renderAdministracion = () => {
       const visible = globalThis.puedeAdministrar ? globalThis.puedeAdministrar() : false;
       const nav = document.querySelector("#nav-administracion");
       if (nav) nav.hidden = !visible;
       if (!visible) return;
-      const panel = document.querySelector("#settings-comunidades-panel");
-      if (panel) panel.hidden = false;
       // Preparar settings (ocultar tabs sin permiso) e inicializar comunidades
       if (globalThis.review.prepararSettings) {
         globalThis.review.prepararSettings();
       }
       if (globalThis.review.switchSettingsTab) {
-        globalThis.review.switchSettingsTab("comunidades");
+        globalThis.review.switchSettingsTab("estilo");
+      }
+      if (globalThis.review.switchEstiloTab) {
+        globalThis.review.switchEstiloTab("comunidades");
       }
     };
-  `, dom.getInternalVMContext());
+  `,
+    dom.getInternalVMContext(),
+  );
   vm.runInContext(source("navigation"), dom.getInternalVMContext());
   // Asegurar que puedeAdministrar y renderAdministracion sean visibles dentro del contexto VM
-  vm.runInContext(`
+  vm.runInContext(
+    `
     window.puedeAdministrar = window.puedeAdministrar || (() => false);
     window.renderAdministracion = globalThis.review?.renderAdministracion || (() => {});
-  `, dom.getInternalVMContext());
+  `,
+    dom.getInternalVMContext(),
+  );
   // Copiar la función puedeAdministrar del fixture (window de JSDOM) al VM context
   // para que getPuedeAdministrar() en navigation.js la use correctamente
   // NO sobrescribir hasPermission/requirePermission porque administracion.js ya capturó los mocks
-  vm.runInContext(`
+  vm.runInContext(
+    `
     globalThis.puedeAdministrar = window.puedeAdministrar;
-  `, dom.getInternalVMContext());
+  `,
+    dom.getInternalVMContext(),
+  );
   // Exponer funciones del contexto VM al window de JSDOM para que el test pueda llamarlas
   const vmContext = dom.getInternalVMContext();
-  vm.runInContext(`
+  vm.runInContext(
+    `
     globalThis.applyRoleUI = applyRoleUI;
     globalThis.handleRouting = handleRouting;
     globalThis.getPuedeAdministrar = getPuedeAdministrar;
@@ -270,9 +297,14 @@ function fixture(t, role = "super_admin") {
         throw e;
       }
     };
-  `, vmContext);
+  `,
+    vmContext,
+  );
   // Copiar al window de JSDOM
-  const vmGlobals = vm.runInContext("({applyRoleUI, handleRouting, getPuedeAdministrar, getRenderAdministracion, puedeAdministrar, renderAdministracion})", vmContext);
+  const vmGlobals = vm.runInContext(
+    "({applyRoleUI, handleRouting, getPuedeAdministrar, getRenderAdministracion, puedeAdministrar, renderAdministracion})",
+    vmContext,
+  );
   Object.assign(w, vmGlobals);
   // Redefinir getPuedeAdministrar en window de JSDOM para que use window.globalThis (=== window)
   w.getPuedeAdministrar = () => w.puedeAdministrar?.() ?? false;
@@ -303,7 +335,8 @@ function fixture(t, role = "super_admin") {
   const open = async () => {
     w.review.renderAdministracion();
     w.review.switchAdminTab("settings");
-    await w.review.switchSettingsTab("comunidades");
+    await w.review.switchSettingsTab("estilo");
+    await w.review.switchEstiloTab("comunidades");
   };
   const submit = async () => {
     q("#settings-form").dispatchEvent(new w.Event("submit", { bubbles: true, cancelable: true }));
@@ -340,9 +373,13 @@ test("marca de comunidad: community_admin accede desde escritorio, móvil y URL 
     [...f.q("#settings-community-select").options].map((o) => o.value),
     ["c1"],
   );
-  assert.equal(f.q('[data-settings-tab="estilo"]').hidden, true);
+  // Sin admin:settings solo ve la subpestaña de comunidades dentro de Estilos.
+  assert.equal(f.q('[data-settings-tab="estilo"]').hidden, false);
+  assert.equal(f.q('[data-estilo-tab="aplicacion"]').hidden, true);
   await f.w.review.switchSettingsTab("estilo");
-  assert.equal(f.q("#settings-estilo-panel").hidden, true);
+  assert.equal(f.q("#settings-estilo-panel").hidden, false);
+  assert.equal(f.q("#settings-estilo-aplicacion").hidden, true);
+  assert.equal(f.q("#settings-comunidades-panel").hidden, false);
   f.editName("Nombre autorizado");
   await f.submit();
   assert.equal(f.requests[0].id, "c1");
@@ -399,8 +436,9 @@ test("marca de comunidad: los borradores sobreviven a subpestañas, cambio de co
   f.upload();
   await f.finishRead(0);
   await f.w.review.switchSettingsTab("estilo");
+  await f.w.review.switchEstiloTab("aplicacion");
   assert.equal(f.q("#settings-form > .dialog-actions").hidden, false);
-  await f.w.review.switchSettingsTab("comunidades");
+  await f.w.review.switchEstiloTab("comunidades");
   assert.equal(f.q("#settings-community-name").value, "Borrador uno");
   f.selectCommunity("c2");
   f.editName("Borrador dos");
@@ -474,6 +512,7 @@ test("marca de comunidad: guardar no borra ajustes globales ni permisos de inqui
   assert.equal(f.q('[name="marcaNombre"]').value, "Marca global pendiente");
   assert.equal(f.q("#tenant-authorizations-editor textarea").value, "Descripción pendiente");
   await f.w.review.switchSettingsTab("estilo");
+  await f.w.review.switchEstiloTab("aplicacion");
   await f.submit();
   assert.equal(f.requests.at(-1).kind, "settings");
   assert.equal(f.requests.at(-1).data.marca.nombre, "Marca global pendiente");
@@ -526,6 +565,7 @@ test("marca de plataforma: un rol de solo estilo guarda únicamente la marca", a
   await f.w.review.switchSettingsTab("estilo");
   // La pestaña Estilo es visible; el resto de subpestañas de configuración no.
   assert.equal(f.q("#settings-estilo-panel").hidden, false);
+  assert.equal(f.q("#settings-estilo-aplicacion").hidden, false);
   assert.equal(f.q('#settings-subtabs [data-settings-tab="asociacion"]').hidden, true);
   f.q('[name="marcaNombre"]').value = "Asociación con estilo";
   await f.submit();
@@ -533,4 +573,31 @@ test("marca de plataforma: un rol de solo estilo guarda únicamente la marca", a
   assert.deepEqual(Object.keys(f.requests.at(-1).data), ["marca"]);
   assert.equal(f.requests.at(-1).data.marca.nombre, "Asociación con estilo");
   assert.equal(f.messages.at(-1), "Estilo guardado.");
+});
+
+test("marca de comunidad: salir de Estilos oculta todas sus subpestañas y conserva el borrador", async (t) => {
+  const f = fixture(t, "super_admin");
+  f.q("#administracion").hidden = false;
+  await f.open();
+  f.editName("Marca pendiente");
+  assert.ok(
+    f.q("#settings-estilo-panel").contains(f.q("#settings-comunidades-panel")),
+    "ambas subpestañas pertenecen al panel Estilos",
+  );
+  assert.equal(f.q("#settings-comunidades-panel").closest("[hidden]"), null);
+  for (const tab of ["seguridad", "notificaciones", "asociacion", "textos", "proveedores"]) {
+    await f.w.review.switchSettingsTab(tab);
+    assert.notEqual(
+      f.q("#settings-comunidades-panel").closest("[hidden]"),
+      null,
+      `la marca no aparece en ${tab}`,
+    );
+    assert.equal(f.q("#settings-community-name").value, "Marca pendiente");
+    await f.w.review.switchSettingsTab("estilo");
+    assert.equal(f.q("#settings-comunidades-panel").closest("[hidden]"), null);
+  }
+  await f.w.review.switchEstiloTab("aplicacion");
+  assert.notEqual(f.q("#settings-comunidades-panel").closest("[hidden]"), null);
+  assert.equal(f.q("#settings-estilo-aplicacion").closest("[hidden]"), null);
+  assert.equal(f.requests.length, 0, "cambiar de pestaña no guarda ni descarta el borrador");
 });

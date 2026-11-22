@@ -467,6 +467,16 @@ h1 {
   margin: 10px 0 0;
   color: var(--muted);
   font-size: 15px;
+  line-height: 1.55;
+}
+
+.page-heading > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-heading .subtitle {
+  margin: 12px 0 18px;
 }
 
 .primary-button,
@@ -4620,6 +4630,16 @@ select {
   flex-wrap: wrap;
 }
 
+/* Más aire entre el título de la pantalla y las pestañas de Administración */
+#administracion > .admin-tabs {
+  margin-top: 22px;
+}
+
+/* Subpestañas dentro de Estilos: estilo global de la app y marcas por comunidad */
+#settings-estilo-subtabs {
+  margin-bottom: 16px;
+}
+
 .community-editor-tab {
   border: 1px solid var(--line);
   background: #f8fafc;
@@ -4678,6 +4698,24 @@ select {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+}
+
+/* Selector de comunidad con sus acciones al lado derecho, a la misma altura */
+.settings-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.settings-inline-row > label {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.settings-inline-row .heading-actions {
+  align-items: center;
+  margin-left: auto;
 }
 
 .community-edit-link-panel {
@@ -5428,6 +5466,19 @@ input[type="radio"] {
   margin: 0;
 }
 
+/* Texto y explicación dentro de una casilla de verificación */
+.checkbox-line-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-weight: inherit;
+}
+
+.checkbox-line-text .field-hint {
+  font-weight: 500;
+  line-height: 1.45;
+}
+
 /* Perfiles vinculados en horizontal (2 columnas) */
 .admin-link-section {
   display: grid;
@@ -5452,6 +5503,12 @@ input[type="radio"] {
 #user-dialog .combo-box-input {
   min-height: 42px;
   box-sizing: border-box;
+}
+
+/* «Usuario activo» con el alto de un control, no el de la fila completa */
+#user-form .form-grid label.checkbox-line {
+  align-self: end;
+  height: 42px;
 }
 
 /* Modo vista: sin acciones de edición ni vinculación */
@@ -7292,9 +7349,18 @@ input.table-engine-search {
   margin: 0.25em 0;
 }
 
-.skeleton-text.sm { width: 40%; height: 0.9em; }
-.skeleton-text.md { width: 70%; height: 1em; }
-.skeleton-text.lg { width: 100%; height: 1.1em; }
+.skeleton-text.sm {
+  width: 40%;
+  height: 0.9em;
+}
+.skeleton-text.md {
+  width: 70%;
+  height: 1em;
+}
+.skeleton-text.lg {
+  width: 100%;
+  height: 1.1em;
+}
 
 .skeleton-avatar {
   width: 32px;
@@ -7319,15 +7385,32 @@ input.table-engine-search {
   border-radius: var(--radius);
   animation: skeleton-pulse 1.4s ease-in-out infinite;
 }
-.skeleton-col.w-25 { width: 25%; }
-.skeleton-col.w-50 { width: 50%; }
-.skeleton-col.w-75 { width: 75%; }
-.skeleton-col.w-100 { width: 100%; }
+.skeleton-col.w-25 {
+  width: 25%;
+}
+.skeleton-col.w-50 {
+  width: 50%;
+}
+.skeleton-col.w-75 {
+  width: 75%;
+}
+.skeleton-col.w-100 {
+  width: 100%;
+}
 
 @keyframes skeleton-pulse {
-  0% { opacity: 1; background: #e2e8f0; }
-  50% { opacity: 0.5; background: #cbd5e1; }
-  100% { opacity: 1; background: #e2e8f0; }
+  0% {
+    opacity: 1;
+    background: #e2e8f0;
+  }
+  50% {
+    opacity: 0.5;
+    background: #cbd5e1;
+  }
+  100% {
+    opacity: 1;
+    background: #e2e8f0;
+  }
 }
 
 /* ==========================================================================
