@@ -47,26 +47,9 @@
 .dashboard-toolbar {
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 18px;
-}
-.dashboard-toolbar label {
-  display: grid;
-  gap: 7px;
-  font-weight: 600;
-  font-size: 12px;
-  min-width: 220px;
-  max-width: 400px;
-}
-.dashboard-toolbar select {
-  font: inherit;
-  font-size: 14px;
-  border: 1px solid #cbd5e1;
-  border-radius: 7px;
-  padding: 10px 12px;
-  width: 100%;
-  background: var(--surface);
-  color: var(--ink);
 }
 .dashboard-toolbar > div {
   display: flex;
@@ -82,6 +65,24 @@
   color: var(--muted);
   font-size: 12px;
   margin: 0;
+}
+.dashboard-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.dashboard-filter select {
+  height: 38px;
+  min-width: 220px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
 }
 .dashboard-actions {
   display: flex;
@@ -523,11 +524,15 @@
     align-items: stretch;
     flex-direction: column;
   }
-  .dashboard-toolbar label {
-    max-width: none;
-  }
   .dashboard-toolbar > div {
     justify-content: space-between;
+  }
+  .dashboard-filter {
+    width: 100%;
+  }
+  .dashboard-filter select {
+    flex: 1;
+    min-width: 0;
   }
   .dashboard-toolbar > .dashboard-toolbar-actions {
     display: grid;

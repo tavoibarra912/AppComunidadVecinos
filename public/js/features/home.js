@@ -17,12 +17,12 @@ import { api } from "../api.js";
 import { toast } from "../utils.js";
 
 const root = document.querySelector("#home-dashboard");
-let selectedCommunity = "",
+let refreshing = false,
   lastUser = null,
-  refreshing = false,
   feeSummary = null,
   feeSummaryKey = "",
-  feeSummaryLoading = false;
+  feeSummaryLoading = false,
+  selectedCommunity = "";
 const number = (value) => new Intl.NumberFormat("es-ES").format(value);
 const money = (cents) =>
   new Intl.NumberFormat("es-ES", {
@@ -49,8 +49,7 @@ const ICONS = {
     '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
   owners:
     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-  posts:
-    '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  posts: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   fees: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
   eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
 };
@@ -100,7 +99,7 @@ function feeAccess() {
   return hasPermission("fee:read") || hasPermission("fee:manage");
 }
 function feeKey() {
-  return `${state.currentUserId || ""}|${selectedCommunity}|${state.loadedAt || ""}`;
+  return `${state.currentUserId || ""}|${state.loadedAt || ""}|${selectedCommunity}`;
 }
 function feeSummaryBody(personal) {
   if (!feeAccess()) return "";
@@ -151,9 +150,10 @@ function ensureFeeSummary() {
   const key = feeKey();
   if (feeSummaryKey === key) return;
   feeSummaryLoading = true;
-  const query = selectedCommunity ? `?communityId=${encodeURIComponent(selectedCommunity)}` : "";
   api
-    .fees(`/summary${query}`)
+    .fees(
+      `/summary${selectedCommunity ? `?communityId=${encodeURIComponent(selectedCommunity)}` : ""}`,
+    )
     .then((data) => {
       if (feeKey() === key) {
         feeSummary = data;
@@ -176,15 +176,18 @@ function ensureFeeSummary() {
 export function renderHomeDashboard() {
   if (!root || !state.currentUserId) return;
   if (lastUser !== state.currentUserId) {
-    selectedCommunity = "";
     lastUser = state.currentUserId;
+    selectedCommunity = "";
+    feeSummary = null;
+    feeSummaryKey = "";
   }
   const snapshot = getCommunicationSnapshot();
-  let d = dashboardData(state, snapshot, selectedCommunity);
-  if (selectedCommunity && !d.availableCommunities.some((c) => c.id === selectedCommunity)) {
+  const all = dashboardData(state, snapshot);
+  if (selectedCommunity && !all.communities.some((c) => c.id === selectedCommunity)) {
     selectedCommunity = "";
-    d = dashboardData(state, snapshot);
+    feeSummaryKey = "";
   }
+  const d = dashboardData(state, snapshot, selectedCommunity);
   const now = new Date(),
     brand = effectiveBrand(state.settings?.marca || readInjectedBrand(), state);
   const canManage = d.communities.some(
@@ -287,8 +290,12 @@ export function renderHomeDashboard() {
     ? hasPermission("owner_notification:read")
     : hasPermission("admin_notification:read");
   const inboxCount = d.personal ? d.ownerUnread : d.adminUnread;
+  const communityFilter =
+    all.communities.length > 1
+      ? `<label class="dashboard-filter"><span>Filtrar por comunidad</span><select id="dashboard-community"><option value="">Todas las comunidades</option>${all.communities.map((c) => `<option value="${h(c.id)}"${c.id === selectedCommunity ? " selected" : ""}>${h(c.name || c.nombre || "Comunidad")}</option>`).join("")}</select></label>`
+      : "";
   root.innerHTML = `<div class="dashboard-heading"><div><p class="eyebrow">${h(d.personal ? "MI ÁREA PERSONAL" : "PANEL DE GESTIÓN")}</p><div class="page-title-row"><span class="page-title-icon" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path><path d="M9 22V12h6v10"></path></svg></span><h1 id="home-greeting-title">${h(`Hola, ${d.user?.nombre || d.user?.usuario || "vecino"}`)}</h1></div><p>${h(brand.nombre)} · ${h(d.personal ? "Tus perfiles, documentación y novedades de comunidad." : "Registros y gestiones dentro de tu ámbito de acceso.")}</p></div><div class="dashboard-date"><strong>${now.getDate()}</strong><span>${h(now.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</span></div></div>
-    <div class="dashboard-toolbar"><label>Ámbito del panel<select id="dashboard-community"><option value="">${d.personal ? "Todas mis comunidades" : "Todas las comunidades visibles"}</option>${d.availableCommunities.map((c) => `<option value="${h(c.id)}" ${selectedCommunity === c.id ? "selected" : ""}>${h(c.name)}</option>`).join("")}</select></label><div class="dashboard-toolbar-actions"><p>Datos del servidor${state.loadedAt ? ` · ${h(date(state.loadedAt))}` : ""}</p><div class="dashboard-actions">${actions.join("")}</div>${iconAction(refreshing ? "Actualizando…" : "Actualizar datos", "refresh", "refresh")}</div></div>
+    <div class="dashboard-toolbar">${communityFilter}<div class="dashboard-toolbar-actions"><p>Datos del servidor${state.loadedAt ? ` · ${h(date(state.loadedAt))}` : ""}</p><div class="dashboard-actions">${actions.join("")}</div>${iconAction(refreshing ? "Actualizando…" : "Actualizar datos", "refresh", "refresh")}</div></div>
     ${d.personal && !d.ownOwners.length && !d.ownTenants.length ? '<div class="dashboard-callout"><strong>Tu perfil todavía está pendiente de vinculación</strong><p>Un administrador debe asociar tu cuenta con tu perfil de propietario o inquilino. Las métricas aparecerán cuando existan registros vinculados.</p></div>' : ""}
     <div class="dashboard-metrics">${metrics.join("")}</div>
     ${feeAccess() ? feeSection(d.personal) : ""}
@@ -298,12 +305,6 @@ export function renderHomeDashboard() {
   root.querySelector('[data-dashboard-action="refresh"]').disabled = refreshing;
   if (feeAccess()) ensureFeeSummary();
 }
-root?.addEventListener("change", (event) => {
-  if (event.target.id === "dashboard-community") {
-    selectedCommunity = event.target.value;
-    renderHomeDashboard();
-  }
-});
 root?.addEventListener("click", async (event) => {
   const control = event.target.closest("[data-dashboard-action]");
   if (!control || control.disabled) return;
@@ -345,7 +346,7 @@ root?.addEventListener("click", async (event) => {
         navigateToSection("#comunicacion");
         break;
       case "statutes": {
-        const community = d.communities.find((c) => c.id === selectedCommunity) || d.communities[0];
+        const community = d.communities[0];
         if (!community) navigateToSection("#comunidades");
         else if (hasPermission("community:manage", community.id))
           openCommunityEditor(community.id, "statutes");
@@ -392,6 +393,13 @@ root?.addEventListener("click", async (event) => {
   } catch (error) {
     toast(error.message);
   }
+});
+root?.addEventListener("change", (event) => {
+  if (event.target.id !== "dashboard-community") return;
+  selectedCommunity = event.target.value;
+  feeSummary = null;
+  feeSummaryKey = "";
+  renderHomeDashboard();
 });
 for (const name of ["communications:updated", "notifications:updated"])
   window.addEventListener(name, () => {

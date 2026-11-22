@@ -652,7 +652,8 @@
               <h1 id="comunidades-heading-title">Comunidades de vecinos</h1>
             </div>
             <p class="subtitle" id="comunidades-heading-subtitle">
-              Consulta y gestiona las comunidades vinculadas a Peñarrubia.
+              Crea y mantén al día tus comunidades: datos fiscales, dirección, moneda y fondo de
+              reserva.
             </p>
           </div>
           <button
@@ -718,7 +719,8 @@
               <h1>Inmuebles</h1>
             </div>
             <p class="subtitle">
-              Gestiona inmuebles vinculados a una comunidad, sus propietarios e inquilinos.
+              Consulta cada unidad con su coeficiente y superficie, y accede a sus propietarios,
+              inquilinos y documentos.
             </p>
           </div>
           <button
@@ -784,7 +786,8 @@
               <h1 id="owners-heading-title">Propietarios</h1>
             </div>
             <p class="subtitle" id="owners-heading-subtitle">
-              Consulta y gestiona los propietarios y asociados vinculados a Peñarrubia.
+              Consulta y actualiza los datos de propietarios y socios: contacto, inmuebles y
+              documentación.
             </p>
           </div>
           <button
@@ -842,7 +845,7 @@
               <h1>Inquilinos</h1>
             </div>
             <p class="subtitle">
-              Consulta y gestiona los inquilinos, sus unidades, contratos, contactos y
+              Consulta los contratos de alquiler y los datos de contacto de cada residente, con sus
               autorizaciones.
             </p>
           </div>
@@ -899,7 +902,6 @@
               </span>
               <h1>Administración</h1>
             </div>
-            <p class="subtitle">Usuarios, roles y configuración general de la plataforma.</p>
           </div>
         </div>
         <nav class="community-editor-tabs admin-tabs" aria-label="Secciones de administración">
@@ -917,7 +919,7 @@
             data-admin-tab="roles"
             aria-selected="false"
           >
-            Roles
+            Roles/Permisos
           </button>
           <button
             class="community-editor-tab"
@@ -938,35 +940,29 @@
         </nav>
 
         <section class="admin-pane" data-admin-pane="usuarios">
-          <div class="detail-section-heading">
-            <div>
-              <h3>Usuarios de la plataforma</h3>
-              <p class="detail-section-subtitle">Alta, edición y asignación de roles.</p>
-            </div>
-            <div class="heading-actions">
-              <button
-                class="icon-action-btn btn-add"
-                id="new-user"
-                type="button"
-                title="Nuevo usuario"
-                aria-label="Nuevo usuario"
+          <div class="heading-actions">
+            <button
+              class="icon-action-btn btn-add"
+              id="new-user"
+              type="button"
+              title="Nuevo usuario"
+              aria-label="Nuevo usuario"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-              </button>
-            </div>
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
           </div>
           <div class="toolbar">
             <label class="search-field" for="search-users">
@@ -978,37 +974,29 @@
         </section>
 
         <section class="admin-pane" data-admin-pane="roles" hidden>
-          <div class="detail-section-heading">
-            <div>
-              <h3>Roles y permisos</h3>
-              <p class="detail-section-subtitle">
-                Define qué puede hacer cada rol. Los roles del sistema no se pueden eliminar.
-              </p>
-            </div>
-            <div class="heading-actions">
-              <button
-                class="icon-action-btn btn-add"
-                id="new-role"
-                type="button"
-                title="Nuevo rol"
-                aria-label="Nuevo rol"
+          <div class="heading-actions">
+            <button
+              class="icon-action-btn btn-add"
+              id="new-role"
+              type="button"
+              title="Nuevo rol"
+              aria-label="Nuevo rol"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-              </button>
-            </div>
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
           </div>
           <div class="toolbar">
             <label class="search-field" for="search-roles">
@@ -1084,9 +1072,49 @@
           </form>
           <p id="audit-status" role="status" aria-live="polite"></p>
           <div id="audit-results" style="overflow-x: auto"></div>
-          <div class="dialog-actions">
-            <button type="button" class="secondary-button" id="audit-prev">Anterior</button>
-            <button type="button" class="secondary-button" id="audit-next">Siguiente</button>
+          <div class="dialog-actions audit-pagination">
+            <button
+              type="button"
+              class="pager-btn"
+              id="audit-prev"
+              title="Página anterior"
+              aria-label="Página anterior"
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="pager-btn"
+              id="audit-next"
+              title="Página siguiente"
+              aria-label="Página siguiente"
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
           </div>
           <section aria-labelledby="audit-cascade-title" class="audit-cascade-history">
             <h3 id="audit-cascade-title">Histórico de borrados</h3>
@@ -1137,14 +1165,6 @@
             <button
               type="button"
               class="community-editor-tab"
-              data-settings-tab="comunidades"
-              aria-selected="false"
-            >
-              Comunidades
-            </button>
-            <button
-              type="button"
-              class="community-editor-tab"
               data-settings-tab="sistema"
               aria-selected="false"
             >
@@ -1156,7 +1176,7 @@
               data-settings-tab="estilo"
               aria-selected="false"
             >
-              Estilo Aplicacion
+              Estilos
             </button>
             <button
               type="button"
@@ -1180,6 +1200,10 @@
             <div id="settings-asociacion-panel">
               <div class="form-grid">
                 <p class="form-section-title full">Datos de la asociación</p>
+                <p class="form-intro full">
+                  Estos datos se muestran en la pantalla de acceso y en los correos de la
+                  plataforma.
+                </p>
                 <label class="full"
                   >Nombre de la asociación *
                   <input name="nombreAsociacion" maxlength="120" required />
@@ -1192,10 +1216,6 @@
                   >Teléfono de contacto (opcional)
                   <input name="telefonoContacto" maxlength="20" inputmode="tel" />
                 </label>
-                <p class="form-intro full">
-                  Estos datos se muestran en la pantalla de acceso y en los correos de la
-                  plataforma.
-                </p>
               </div>
             </div>
             <div id="settings-seguridad-panel" hidden>
@@ -1208,11 +1228,23 @@
                 </p>
                 <label class="full checkbox-line">
                   <input type="checkbox" name="permitirRegistro" />
-                  Permitir que los vecinos creen su propia cuenta desde el login
+                  <span class="checkbox-line-text"
+                    >Permitir que los vecinos creen su propia cuenta desde el login
+                    <span class="field-hint"
+                      >Si está desactivado, solo un administrador puede crear cuentas desde la
+                      pestaña Usuarios.</span
+                    ></span
+                  >
                 </label>
                 <label class="full checkbox-line">
                   <input type="checkbox" name="permitirRecuperacion" />
-                  Permitir la recuperación de contraseña por email
+                  <span class="checkbox-line-text"
+                    >Permitir la recuperación de contraseña por email
+                    <span class="field-hint"
+                      >Muestra «Olvidé mi contraseña» en el acceso y envía un enlace temporal al
+                      email de la cuenta.</span
+                    ></span
+                  >
                 </label>
                 <label
                   >Duración de la sesión (horas) (opcional)
@@ -1223,6 +1255,10 @@
                     max="720"
                     inputmode="numeric"
                   />
+                  <span class="field-hint"
+                    >Horas que se mantiene la sesión iniciada antes de pedir de nuevo las
+                    credenciales. Vacío = 8 horas.</span
+                  >
                 </label>
                 <label
                   >Expiración del código OTP (minutos) (opcional)
@@ -1233,6 +1269,10 @@
                     max="60"
                     inputmode="numeric"
                   />
+                  <span class="field-hint"
+                    >Minutos que el código de verificación sigue siendo válido desde que se envía.
+                    Vacío = 10 minutos.</span
+                  >
                 </label>
                 <label
                   >Reenvío de OTP permitido cada (segundos) (opcional)
@@ -1243,6 +1283,10 @@
                     max="600"
                     inputmode="numeric"
                   />
+                  <span class="field-hint"
+                    >Espera mínima antes de poder pedir otro código al mismo destinatario. Vacío =
+                    60 segundos.</span
+                  >
                 </label>
               </div>
             </div>
@@ -1251,7 +1295,13 @@
                 <p class="form-section-title full">Avisos generales</p>
                 <label class="full checkbox-line">
                   <input type="checkbox" name="notificacionesEmail" />
-                  Enviar por email los avisos de comunidad a quien tenga el canal habilitado
+                  <span class="checkbox-line-text"
+                    >Enviar por email los avisos de comunidad a quien tenga el canal habilitado
+                    <span class="field-hint"
+                      >Si lo desactivas, la app deja de enviar estos correos; los avisos del buzón
+                      interno siguen funcionando.</span
+                    ></span
+                  >
                 </label>
                 <label class="full"
                   >Email(s) para avisar cambios de perfiles (opcional)
@@ -1260,6 +1310,10 @@
                     maxlength="300"
                     placeholder="asociacionpenarubia@gmail.com, otra@gmail.com"
                   />
+                  <span class="field-hint"
+                    >Recibe un correo cada vez que se crea o modifica un propietario o un inquilino.
+                    Separa varias direcciones con comas; vacío = desactivado.</span
+                  >
                 </label>
                 <p class="form-intro full">
                   Separa varias direcciones con comas. Vacío = desactivado. El envío usa el correo
@@ -1278,7 +1332,11 @@
                     min="0"
                     max="60"
                     step="1"
-                /></label>
+                  />
+                  <span class="field-hint"
+                    >Días antes del vencimiento en que se envía el recordatorio de la cuota.</span
+                  ></label
+                >
                 <label
                   >Aviso después del vencimiento (días)<input
                     name="feeAfterDays"
@@ -1286,7 +1344,11 @@
                     min="0"
                     max="365"
                     step="1"
-                /></label>
+                  />
+                  <span class="field-hint"
+                    >Días de margen tras el vencimiento para el primer aviso de impago.</span
+                  ></label
+                >
                 <label
                   >Repetición de vencidos (días; 0: una vez)<input
                     name="feeRepeatDays"
@@ -1294,14 +1356,28 @@
                     min="0"
                     max="365"
                     step="1"
-                /></label>
-                <label class="checkbox-line"
-                  ><input name="feeInternal" type="checkbox" />Avisos de cuotas en el buzón de la
-                  app</label
+                  />
+                  <span class="field-hint"
+                    >Cada cuántos días se repite el recordatorio mientras la cuota siga
+                    pendiente.</span
+                  ></label
                 >
                 <label class="checkbox-line"
-                  ><input name="feeEmail" type="checkbox" />Avisos de cuotas por email a
-                  destinatarios con el canal habilitado</label
+                  ><input name="feeInternal" type="checkbox" /><span class="checkbox-line-text"
+                    >Avisos de cuotas en el buzón de la app
+                    <span class="field-hint"
+                      >Añade el recordatorio al buzón interno de cada propietario afectado.</span
+                    ></span
+                  ></label
+                >
+                <label class="checkbox-line"
+                  ><input name="feeEmail" type="checkbox" /><span class="checkbox-line-text"
+                    >Avisos de cuotas por email a destinatarios con el canal habilitado
+                    <span class="field-hint"
+                      >Envía el recordatorio por correo a quien tenga activado el canal de
+                      email.</span
+                    ></span
+                  ></label
                 >
 
                 <p class="form-section-title full">Derramas</p>
@@ -1316,7 +1392,11 @@
                     min="0"
                     max="60"
                     step="1"
-                /></label>
+                  />
+                  <span class="field-hint"
+                    >Días antes del vencimiento del plazo en que se avisa de la derrama.</span
+                  ></label
+                >
                 <label
                   >Aviso después del vencimiento (días)<input
                     name="assessmentAfterDays"
@@ -1324,7 +1404,12 @@
                     min="0"
                     max="365"
                     step="1"
-                /></label>
+                  />
+                  <span class="field-hint"
+                    >Días de margen tras el vencimiento para el primer aviso de impago del
+                    plazo.</span
+                  ></label
+                >
                 <label
                   >Repetición de vencidos (días; 0: una vez)<input
                     name="assessmentRepeatDays"
@@ -1332,14 +1417,29 @@
                     min="0"
                     max="365"
                     step="1"
-                /></label>
-                <label class="checkbox-line"
-                  ><input name="assessmentInternal" type="checkbox" />Avisos de derramas en el buzón
-                  de la app</label
+                  />
+                  <span class="field-hint"
+                    >Cada cuántos días se repite el recordatorio mientras el plazo siga
+                    pendiente.</span
+                  ></label
                 >
                 <label class="checkbox-line"
-                  ><input name="assessmentEmail" type="checkbox" />Avisos de derramas por email a
-                  destinatarios con el canal habilitado</label
+                  ><input name="assessmentInternal" type="checkbox" /><span
+                    class="checkbox-line-text"
+                    >Avisos de derramas en el buzón de la app
+                    <span class="field-hint"
+                      >Añade el aviso del plazo de derrama al buzón interno.</span
+                    ></span
+                  ></label
+                >
+                <label class="checkbox-line"
+                  ><input name="assessmentEmail" type="checkbox" /><span class="checkbox-line-text"
+                    >Avisos de derramas por email a destinatarios con el canal habilitado
+                    <span class="field-hint"
+                      >Envía el aviso del plazo por correo a quien tenga activado el canal de
+                      email.</span
+                    ></span
+                  ></label
                 >
 
                 <p class="form-section-title full">Servicios y suministros</p>
@@ -1354,7 +1454,11 @@
                     min="0"
                     max="60"
                     step="1"
-                /></label>
+                  />
+                  <span class="field-hint"
+                    >Días antes del vencimiento del recibo del servicio en que se avisa.</span
+                  ></label
+                >
                 <label
                   >Aviso después del vencimiento (días)<input
                     name="serviceAfterDays"
@@ -1362,7 +1466,12 @@
                     min="0"
                     max="365"
                     step="1"
-                /></label>
+                  />
+                  <span class="field-hint"
+                    >Días de margen tras el vencimiento para el primer aviso de impago del
+                    servicio.</span
+                  ></label
+                >
                 <label
                   >Repetición de vencidos (días; 0: una vez)<input
                     name="serviceRepeatDays"
@@ -1370,26 +1479,48 @@
                     min="0"
                     max="365"
                     step="1"
-                /></label>
-                <label class="checkbox-line"
-                  ><input name="serviceInternal" type="checkbox" />Avisos de servicios en el buzón
-                  de la app</label
+                  />
+                  <span class="field-hint"
+                    >Cada cuántos días se repite el recordatorio mientras el recibo siga
+                    pendiente.</span
+                  ></label
                 >
                 <label class="checkbox-line"
-                  ><input name="serviceEmail" type="checkbox" />Avisos de servicios por email a
-                  destinatarios con el canal habilitado</label
+                  ><input name="serviceInternal" type="checkbox" /><span class="checkbox-line-text"
+                    >Avisos de servicios en el buzón de la app
+                    <span class="field-hint"
+                      >Añade el aviso del servicio al buzón interno de los propietarios.</span
+                    ></span
+                  ></label
+                >
+                <label class="checkbox-line"
+                  ><input name="serviceEmail" type="checkbox" /><span class="checkbox-line-text"
+                    >Avisos de servicios por email a destinatarios con el canal habilitado
+                    <span class="field-hint"
+                      >Envía el aviso del servicio por correo a quien tenga activado el canal de
+                      email.</span
+                    ></span
+                  ></label
                 >
 
                 <p class="form-section-title full">Plantilla de email de avisos de cobro</p>
                 <label class="full"
-                  >Asunto del email<input name="feeEmailSubject" maxlength="200"
-                /></label>
+                  >Asunto del email<input name="feeEmailSubject" maxlength="200" />
+                  <span class="field-hint"
+                    >Asunto del correo de aviso de cobro. Puedes usar las variables que se indican
+                    más abajo.</span
+                  ></label
+                >
                 <label class="full"
                   >Texto del email<textarea
                     name="feeEmailBody"
                     maxlength="3000"
                     rows="3"
                   ></textarea>
+                  <span class="field-hint"
+                    >Cuerpo del correo. {{titulo}}, {{mensaje}} y {{comunidad}} se sustituyen por
+                    los datos del aviso al enviarlo.</span
+                  >
                 </label>
                 <p class="form-intro full">
                   Se usa para cuotas, derramas y servicios. Variables: {{titulo}}, {{mensaje}},
@@ -1407,58 +1538,60 @@
                   ficha del inquilino. Si una comunidad no tiene una lista propia, se usan las
                   opciones predeterminadas.
                 </p>
-                <label class="full"
-                  >Comunidad
-                  <select id="tenant-authorization-community"></select>
-                </label>
+                <div class="full settings-inline-row">
+                  <label
+                    >Comunidad
+                    <select id="tenant-authorization-community"></select>
+                  </label>
+                  <div class="heading-actions">
+                    <button
+                      type="button"
+                      class="icon-action-btn btn-add btn-lg"
+                      id="add-tenant-authorization"
+                      title="Agregar autorización"
+                      aria-label="Agregar autorización"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-action-btn btn-info btn-lg"
+                      id="reset-tenant-authorizations"
+                      title="Restaurar predeterminadas"
+                      aria-label="Restaurar predeterminadas"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="3 3 3 8 8 8"></polyline>
+                        <path d="M3.2 8a9 9 0 1 1-.2 4"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
                 <input type="hidden" name="tenantAuthorizationsState" />
                 <div id="tenant-authorizations-editor" class="full"></div>
-                <div class="heading-actions full">
-                  <button
-                    type="button"
-                    class="icon-action-btn btn-add btn-lg"
-                    id="add-tenant-authorization"
-                    title="Agregar autorización"
-                    aria-label="Agregar autorización"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2.2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="icon-action-btn btn-info btn-lg"
-                    id="reset-tenant-authorizations"
-                    title="Restaurar predeterminadas"
-                    aria-label="Restaurar predeterminadas"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <polyline points="3 3 3 8 8 8"></polyline>
-                      <path d="M3.2 8a9 9 0 1 1-.2 4"></path>
-                    </svg>
-                  </button>
-                </div>
               </div>
             </div>
             <div id="settings-sistema-panel" hidden>
@@ -1562,150 +1695,31 @@
                 </label>
               </div>
             </div>
-            <div id="settings-comunidades-panel" hidden>
-              <div class="form-grid">
-                <p class="form-section-title full">Marca por comunidad</p>
-                <p class="form-intro full">
-                  Personaliza el nombre, el logo y el estilo (colores, tipografía y formato) de cada
-                  comunidad. Se aplican en la app solo para usuarios con sesión iniciada que tengan
-                  acceso a una única comunidad; el resto sigue viendo el estilo global de la pestaña
-                  Estilo Aplicacion.
-                </p>
-                <label class="full"
-                  >Comunidad
-                  <select id="settings-community-select"></select>
-                </label>
-                <label class="full"
-                  >Nombre visible de la comunidad *
-                  <input id="settings-community-name" maxlength="120" />
-                </label>
-                <label class="full"
-                  >Logo (PNG, JPG, SVG o WebP, máx. 225 KB) (opcional)
-                  <input
-                    id="settings-community-logo"
-                    type="file"
-                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                  />
-                </label>
-                <img
-                  id="settings-community-logo-preview"
-                  class="marca-logo-preview"
-                  alt="Vista previa del logo de la comunidad"
-                  hidden
-                />
-                <p class="form-section-title full">Colores de la interfaz</p>
-                <p class="form-intro full">
-                  Personaliza los colores de esta comunidad. Cada campo es opcional: si lo dejas sin
-                  cambiar, se usa el color global de la plataforma.
-                </p>
-                <label
-                  >Color principal (opcional)
-                  <input id="settings-community-colorPrimario" type="color" />
-                </label>
-                <label
-                  >Color de acento (opcional)
-                  <input id="settings-community-colorAcento" type="color" />
-                </label>
-                <label
-                  >Fondo general (opcional)
-                  <input id="settings-community-colorFondo" type="color" />
-                </label>
-                <label
-                  >Superficies y tarjetas (opcional)
-                  <input id="settings-community-colorSuperficie" type="color" />
-                </label>
-                <label
-                  >Color del texto (opcional)
-                  <input id="settings-community-colorTexto" type="color" />
-                </label>
-                <label
-                  >Texto secundario (opcional)
-                  <input id="settings-community-colorTextoSuave" type="color" />
-                </label>
-                <label
-                  >Bordes y separadores (opcional)
-                  <input id="settings-community-colorBorde" type="color" />
-                </label>
-
-                <p class="form-section-title full">Tipografía y formato</p>
-                <label
-                  >Tipografía
-                  <select id="settings-community-tipografia">
-                    <option value="inter">Inter (predeterminada)</option>
-                    <option value="system">Sistema</option>
-                    <option value="arial">Arial</option>
-                    <option value="verdana">Verdana</option>
-                    <option value="georgia">Georgia</option>
-                  </select>
-                </label>
-                <label
-                  >Tamaño base del texto (px)
-                  <input
-                    id="settings-community-tamanoBase"
-                    type="number"
-                    min="12"
-                    max="18"
-                    inputmode="numeric"
-                  />
-                </label>
-                <label
-                  >Radio de bordes (px)
-                  <input
-                    id="settings-community-radioBordes"
-                    type="number"
-                    min="0"
-                    max="16"
-                    inputmode="numeric"
-                  />
-                </label>
-                <label
-                  >Densidad de las tablas
-                  <select id="settings-community-densidad">
-                    <option value="compacta">Compacta</option>
-                    <option value="normal">Normal</option>
-                    <option value="amplia">Amplia</option>
-                  </select>
-                </label>
-
-                <div class="heading-actions full settings-community-actions">
-                  <p class="form-intro" id="settings-community-hint"></p>
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    id="settings-community-remove-logo"
-                  >
-                    Quitar logo
-                  </button>
-                  <button
-                    type="button"
-                    class="icon-action-btn btn-save btn-lg"
-                    id="settings-community-save"
-                    title="Guardar comunidad"
-                    aria-label="Guardar comunidad"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
-                      ></path>
-                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                      <polyline points="7 3 7 8 15 8"></polyline>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
             <div id="settings-estilo-panel" hidden>
-              <div class="form-grid">
+              <nav
+                class="community-editor-tabs settings-estilo-subtabs"
+                id="settings-estilo-subtabs"
+                role="tablist"
+                aria-label="Secciones de estilos"
+              >
+                <button
+                  type="button"
+                  class="community-editor-tab active"
+                  data-estilo-tab="aplicacion"
+                  aria-selected="true"
+                >
+                  Aplicación
+                </button>
+                <button
+                  type="button"
+                  class="community-editor-tab"
+                  data-estilo-tab="comunidades"
+                  aria-selected="false"
+                >
+                  Comunidades
+                </button>
+              </nav>
+              <div id="settings-estilo-aplicacion" class="form-grid">
                 <p class="form-section-title full">Marca de la plataforma</p>
                 <p class="form-intro full">
                   Este nombre y los colores representan a la plataforma completa (se ve en el login,
@@ -1803,6 +1817,148 @@
                     <option value="amplia">Amplia</option>
                   </select>
                 </label>
+              </div>
+              <div id="settings-comunidades-panel" hidden>
+                <div class="form-grid">
+                  <p class="form-section-title full">Marca por comunidad</p>
+                  <p class="form-intro full">
+                    Personaliza el nombre, el logo y el estilo (colores, tipografía y formato) de
+                    cada comunidad. Se aplican en la app solo para usuarios con sesión iniciada que
+                    tengan acceso a una única comunidad; el resto sigue viendo el estilo global de
+                    la subpestaña Aplicación.
+                  </p>
+                  <label class="full"
+                    >Comunidad
+                    <select id="settings-community-select"></select>
+                  </label>
+                  <label class="full"
+                    >Nombre visible de la comunidad *
+                    <input id="settings-community-name" maxlength="120" />
+                  </label>
+                  <label class="full"
+                    >Logo (PNG, JPG, SVG o WebP, máx. 225 KB) (opcional)
+                    <input
+                      id="settings-community-logo"
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    />
+                  </label>
+                  <img
+                    id="settings-community-logo-preview"
+                    class="marca-logo-preview"
+                    alt="Vista previa del logo de la comunidad"
+                    hidden
+                  />
+                  <p class="form-section-title full">Colores de la interfaz</p>
+                  <p class="form-intro full">
+                    Personaliza los colores de esta comunidad. Cada campo es opcional: si lo dejas
+                    sin cambiar, se usa el color global de la plataforma.
+                  </p>
+                  <label
+                    >Color principal (opcional)
+                    <input id="settings-community-colorPrimario" type="color" />
+                  </label>
+                  <label
+                    >Color de acento (opcional)
+                    <input id="settings-community-colorAcento" type="color" />
+                  </label>
+                  <label
+                    >Fondo general (opcional)
+                    <input id="settings-community-colorFondo" type="color" />
+                  </label>
+                  <label
+                    >Superficies y tarjetas (opcional)
+                    <input id="settings-community-colorSuperficie" type="color" />
+                  </label>
+                  <label
+                    >Color del texto (opcional)
+                    <input id="settings-community-colorTexto" type="color" />
+                  </label>
+                  <label
+                    >Texto secundario (opcional)
+                    <input id="settings-community-colorTextoSuave" type="color" />
+                  </label>
+                  <label
+                    >Bordes y separadores (opcional)
+                    <input id="settings-community-colorBorde" type="color" />
+                  </label>
+
+                  <p class="form-section-title full">Tipografía y formato</p>
+                  <label
+                    >Tipografía
+                    <select id="settings-community-tipografia">
+                      <option value="inter">Inter (predeterminada)</option>
+                      <option value="system">Sistema</option>
+                      <option value="arial">Arial</option>
+                      <option value="verdana">Verdana</option>
+                      <option value="georgia">Georgia</option>
+                    </select>
+                  </label>
+                  <label
+                    >Tamaño base del texto (px)
+                    <input
+                      id="settings-community-tamanoBase"
+                      type="number"
+                      min="12"
+                      max="18"
+                      inputmode="numeric"
+                    />
+                  </label>
+                  <label
+                    >Radio de bordes (px)
+                    <input
+                      id="settings-community-radioBordes"
+                      type="number"
+                      min="0"
+                      max="16"
+                      inputmode="numeric"
+                    />
+                  </label>
+                  <label
+                    >Densidad de las tablas
+                    <select id="settings-community-densidad">
+                      <option value="compacta">Compacta</option>
+                      <option value="normal">Normal</option>
+                      <option value="amplia">Amplia</option>
+                    </select>
+                  </label>
+
+                  <div class="heading-actions full settings-community-actions">
+                    <p class="form-intro" id="settings-community-hint"></p>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      id="settings-community-remove-logo"
+                    >
+                      Quitar logo
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-action-btn btn-save btn-lg"
+                      id="settings-community-save"
+                      title="Guardar comunidad"
+                      aria-label="Guardar comunidad"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+                        ></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div id="settings-textos-panel" hidden>
@@ -2726,10 +2882,10 @@
                   aria-describedby="legalTransferDebt-hint"
                 ></select
                 ><span class="field-hint" id="legalTransferDebt-hint"
-                  >Conservar en origen mantiene allí los recibos y cobros históricos. La opción de
-                  traslado permite documentar el movimiento completo del libro mediante el
-                  asistente, sujeto a sus comprobaciones. Cambiar la comunidad de una ficha o
-                  inmueble no mueve automáticamente su histórico financiero.</span
+                  >La política de deuda queda documentada en el acta del asistente, pero no divide
+                  el libro: al trasladar una comunidad, sus recibos y cobros históricos se mueven
+                  completos al destino porque el origen desaparece. Cambiar la comunidad de una
+                  ficha o inmueble no mueve automáticamente su histórico financiero.</span
                 ></label
               >
               <label

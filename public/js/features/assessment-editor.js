@@ -209,17 +209,33 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     [
       ["coefficient", "Por coeficiente de participación"],
       ["manual", "Importes manuales por inmueble"],
+      ["mixed", "Mixto: importes fijos y resto por coeficiente"],
     ],
   );
   mode.required = true;
   mode.dataset.noCombo = "";
   hint(
     mode,
-    "Por coeficiente: proporcional entre los inmuebles incluidos. Manual: la suma debe coincidir con el total aprobado.",
+    "Por coeficiente: proporcional entre los inmuebles incluidos. Manual: todos los importes son fijos. Mixto: marca los inmuebles con importe fijo; el resto del total se reparte por coeficiente entre los demás.",
   );
   const properties = ctx.data.properties || [];
   const selected = new Set(assessment?.propertyIds || []);
   const manualInputs = new Map();
+  const fixedInputs = new Map();
+  let preserveLegacyMixed = assessment?.mode === "mixed" && assessment.fixedAmounts === undefined;
+  const legacyNotice = el("div");
+  info(
+    legacyNotice,
+    "Este reparto mixto antiguo conserva sus importes, pero no indica cuáles eran fijos. Puedes editar los datos y plazos sin alterar el reparto. Para cambiarlo, reconfigúralo expresamente.",
+  );
+  legacyNotice.append(
+    button("Reconfigurar reparto mixto", () => {
+      preserveLegacyMixed = false;
+      dirty = true;
+      renderProperties();
+    }),
+  );
+  propertiesPane.append(legacyNotice);
   const selectedHeading = el("div", undefined, "detail-section-heading fee-included-heading");
   const selectedCopy = el("div");
   const selectedTitle = el("h4");
@@ -282,6 +298,8 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
   selectionSummary.setAttribute("aria-live", "polite");
   propertiesPane.append(propertyList, selectionSummary);
   function renderProperties() {
+    legacyNotice.hidden = !preserveLegacyMixed;
+    total.disabled = preserveLegacyMixed;
     propertyList.replaceChildren();
     selectedTitle.textContent = `Inmuebles incluidos (${selected.size}) *`;
     const available = properties.filter((p) => !selected.has(p.id));
@@ -297,8 +315,8 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
     select.value = "";
     select.dispatchEvent(new Event("change"));
     for (const node of [confirm, link, all]) {
-      node.disabled = !available.length;
-      node.dataset.feeDisabled = String(!available.length);
+      node.disabled = preserveLegacyMixed || !available.length;
+      node.dataset.feeDisabled = String(node.disabled);
     }
     for (const property of properties) {
       let input = manualInputs.get(property.id);
@@ -307,14 +325,33 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
         input = euroField(
           holder,
           `${property.plot} · importe (€) *`,
-          assessment?.allocations?.[property.id] ?? "",
+          (assessment?.mode === "mixed" && !preserveLegacyMixed
+            ? assessment.fixedAmounts?.[property.id]
+            : assessment?.allocations?.[property.id]) ?? "",
         );
         input.addEventListener("input", updateSummary);
         manualInputs.set(property.id, input);
+        const fixed = el("input");
+        fixed.type = "checkbox";
+        fixed.checked = assessment?.fixedAmounts?.[property.id] !== undefined;
+        fixed.setAttribute("aria-label", `${property.plot} · usar importe fijo`);
+        fixed.addEventListener("change", () => {
+          dirty = true;
+          renderProperties();
+        });
+        const label = el("label", undefined, "fee-check");
+        label.append(fixed, el("span", "Usar importe fijo"));
+        fixedInputs.set(property.id, fixed);
       }
-      input.disabled = !selected.has(property.id) || mode.value !== "manual";
+      const fixed = fixedInputs.get(property.id);
+      fixed.disabled = preserveLegacyMixed || !selected.has(property.id);
+      fixed.closest("label").hidden = mode.value !== "mixed" || preserveLegacyMixed;
+      input.disabled =
+        preserveLegacyMixed ||
+        !selected.has(property.id) ||
+        (mode.value !== "manual" && !(mode.value === "mixed" && fixed.checked));
       input.required = !input.disabled;
-      input.closest(".fee-field").hidden = mode.value !== "manual";
+      input.closest(".fee-field").hidden = mode.value !== "manual" && mode.value !== "mixed";
       if (!selected.has(property.id)) continue;
       const card = el("div", undefined, "community-property-card fee-property-card");
       const copy = el("div", undefined, "community-property-info");
@@ -329,6 +366,7 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
       );
       card.append(
         copy,
+        fixed.closest("label"),
         input.closest(".fee-field"),
         iconButton(
           `Quitar inmueble ${property.plot}`,
@@ -341,6 +379,8 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
           "remove",
         ),
       );
+      const remove = card.querySelector("button");
+      remove.disabled = preserveLegacyMixed;
       propertyList.append(card);
     }
     if (!selected.size)
@@ -350,7 +390,10 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
       );
     updateSummary();
   }
-  mode.addEventListener("change", renderProperties);
+  mode.addEventListener("change", () => {
+    preserveLegacyMixed = false;
+    renderProperties();
+  });
 
   const installmentsPane = panes.get("installments");
   const installmentHeading = el("div", undefined, "detail-section-heading");
@@ -462,10 +505,13 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
       (sum, id) => sum + (parseMoneyInput(manualInputs.get(id)?.value) || 0),
       0,
     );
-    selectionSummary.textContent =
-      mode.value === "manual"
-        ? `${selected.size} ${selected.size === 1 ? "inmueble" : "inmuebles"} · Repartido ${money(manualSum)} de ${money(expected)}`
-        : `${selected.size} ${selected.size === 1 ? "inmueble seleccionado" : "inmuebles seleccionados"} · Reparto proporcional por coeficiente`;
+    selectionSummary.textContent = preserveLegacyMixed
+      ? "Se conserva el reparto mixto histórico sin recalcular importes."
+      : mode.value === "mixed"
+        ? `${selected.size} inmuebles · Importes fijos ${money([...selected].filter((id) => fixedInputs.get(id)?.checked).reduce((sum, id) => sum + (parseMoneyInput(manualInputs.get(id)?.value) || 0), 0))} · El resto se reparte por coeficiente`
+        : mode.value === "manual"
+          ? `${selected.size} ${selected.size === 1 ? "inmueble" : "inmuebles"} · Repartido ${money(manualSum)} de ${money(expected)}`
+          : `${selected.size} ${selected.size === 1 ? "inmueble seleccionado" : "inmuebles seleccionados"} · Reparto proporcional por coeficiente`;
     footerSummary.textContent = `${money(expected)} · ${selected.size} ${selected.size === 1 ? "inmueble" : "inmuebles"} · ${rows.length} ${rows.length === 1 ? "plazo" : "plazos"}`;
   }
   total.addEventListener("input", () => {
@@ -494,6 +540,23 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
       return fail("El motivo no puede superar 2000 caracteres.", "general", editor);
     if (!selected.size) return fail("Elige al menos un inmueble.", "properties");
     const expected = parseMoneyInput(total.value);
+    if (mode.value === "mixed" && !preserveLegacyMixed) {
+      const fixed = [...selected].filter((id) => fixedInputs.get(id).checked);
+      const fixedTotal = fixed.reduce(
+        (sum, id) => sum + (parseMoneyInput(manualInputs.get(id).value) || 0),
+        0,
+      );
+      if (fixedTotal > expected || (fixed.length < selected.size && fixedTotal === expected))
+        return fail(
+          "Los importes fijos deben dejar un importe positivo para los inmuebles por coeficiente.",
+          "properties",
+        );
+      if (fixed.length === selected.size && fixedTotal !== expected)
+        return fail(
+          "La suma de los importes fijos debe coincidir con el total aprobado.",
+          "properties",
+        );
+    }
     const sum = rows.reduce((sum, row) => sum + (parseMoneyInput(row.amount.value) || 0), 0);
     if (sum !== expected)
       return fail(
@@ -528,8 +591,13 @@ export function buildAssessmentEditor(ctx, assessment, ui) {
           agreement: agreement.value,
           totalAmount: total.value,
           mode: mode.value,
+          preserveLegacyMixed,
           propertyIds: [...selected],
-          manual: Object.fromEntries([...selected].map((id) => [id, manualInputs.get(id).value])),
+          manual: Object.fromEntries(
+            [...selected]
+              .filter((id) => mode.value !== "mixed" || fixedInputs.get(id).checked)
+              .map((id) => [id, manualInputs.get(id).value]),
+          ),
           installments: rows.map((row) => ({
             amount: row.amount.value,
             dueDate: row.dueDate.value,

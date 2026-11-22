@@ -236,6 +236,31 @@ router.get(
         id,
       ),
       canManage: editable,
+      certificateTargets: editable
+        ? {
+            properties: db
+              .prepare(
+                "SELECT id,plot,address FROM properties WHERE communityId=? ORDER BY plot,id",
+              )
+              .all(id)
+              .map((property) => ({
+                id: property.id,
+                label: property.plot || property.address || property.id,
+              })),
+            owners: db
+              .prepare(
+                `SELECT o.id,o.name,o.surname FROM owners o WHERE
+          EXISTS (SELECT 1 FROM properties p,json_each(p.ownerIds) link WHERE p.communityId=? AND link.value=o.id)
+          OR EXISTS (SELECT 1 FROM fee_receipts r,json_each(r.snapshot,'$.owners') link WHERE r.communityId=? AND json_extract(link.value,'$.id')=o.id)
+          ORDER BY o.name,o.surname,o.id`,
+              )
+              .all(id, id)
+              .map((owner) => ({
+                id: owner.id,
+                label: `${owner.name} ${owner.surname || ""}`.trim(),
+              })),
+          }
+        : null,
       plans: editable ? plans(id) : [],
       assessments: editable ? assessments(id) : [],
       services: editable ? services(id) : [],
@@ -746,6 +771,7 @@ router.get(
       actor: req.user,
     });
     res.set("Content-Type", "application/pdf");
+    res.set("Cache-Control", "private, no-store");
     res.set(
       "Content-Disposition",
       `attachment; filename="certificado-deuda-${ownerId || propertyId}.pdf"`,

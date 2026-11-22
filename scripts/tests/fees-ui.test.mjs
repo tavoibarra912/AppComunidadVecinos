@@ -1403,3 +1403,194 @@ test("servicios UI: el recibo muestra proveedor y lecturas y descarga un CSV pro
     f.dom.window.close();
   }
 });
+
+test("certificados UI: selecciona ámbito y destinatarios de la comunidad y descarga el PDF", async () => {
+  const f = fixture();
+  try {
+    f.w.state.properties[0].plot = "Parcela 1";
+    f.w.state.properties.push({
+      id: "foreign-p",
+      communityId: "c2",
+      ownerIds: ["foreign-o"],
+      plot: "Ajeno",
+    });
+    f.w.state.owners.push({ id: "foreign-o", name: "Titular ajeno" });
+    const downloads = [];
+    f.w.URL.createObjectURL = () => "blob:certificate";
+    f.w.URL.revokeObjectURL = () => {};
+    f.w.document.addEventListener("click", (e) => {
+      const a = e.target.closest("a[download]");
+      if (a) {
+        e.preventDefault();
+        downloads.push({ href: a.href, name: a.download });
+      }
+    });
+    f.w.api.debtCertificate = async (...args) => {
+      f.calls.push(["certificate", ...args]);
+      return new f.w.Blob(["%PDF-test"], { type: "application/pdf" });
+    };
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    click(f.w, "Certificado de deuda");
+    assert.match(f.w.document.querySelector("#fee-dialog").textContent, /sin aplicar los filtros/);
+    const target = control(f.w, "Titular o inmueble");
+    assert.deepEqual(
+      [...target.options].map((o) => o.value),
+      ["", "p1"],
+    );
+    target.value = "p1";
+    click(f.w, "Descargar PDF");
+    await flush();
+    assert.deepEqual(
+      f.calls.find((c) => c[0] === "certificate"),
+      ["certificate", "c1", "propertyId", "p1"],
+    );
+    assert.equal(downloads.length, 1);
+    assert.match(downloads[0].name, /inmueble-p1/);
+    const scope = control(f.w, "Ámbito del certificado");
+    scope.value = "ownerId";
+    scope.dispatchEvent(new f.w.Event("change"));
+    assert.deepEqual(
+      [...target.options].map((o) => o.value),
+      ["", "o1"],
+    );
+    target.value = "o1";
+    click(f.w, "Descargar PDF");
+    await flush();
+    assert.deepEqual(f.calls.filter((c) => c[0] === "certificate").at(-1), [
+      "certificate",
+      "c1",
+      "ownerId",
+      "o1",
+    ]);
+    assert.equal(downloads.length, 2);
+  } finally {
+    f.dom.window.close();
+  }
+});
+test("certificados UI: sin gestión no ofrece certificados y los errores conservan la selección", async () => {
+  const reader = fixture(false);
+  try {
+    reader.w.feeTest.renderFeesPage();
+    await flush();
+    assert.doesNotMatch(
+      reader.w.document.querySelector("#fees-page").textContent,
+      /Certificado de deuda/,
+    );
+  } finally {
+    reader.dom.window.close();
+  }
+  const f = fixture();
+  try {
+    f.w.api.debtCertificate = async () => {
+      throw new Error("No tienes permiso para generar certificados.");
+    };
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    click(f.w, "Certificado de deuda");
+    control(f.w, "Titular o inmueble").value = "p1";
+    click(f.w, "Descargar PDF");
+    await flush();
+    assert.match(f.w.document.querySelector("[data-fee-error]").textContent, /No tienes permiso/);
+    assert.equal(control(f.w, "Titular o inmueble").value, "p1");
+    assert.equal(f.w.document.querySelector("[data-fee-close]").disabled, false);
+  } finally {
+    f.dom.window.close();
+  }
+});
+test("derramas mixtas UI: crear y editar conserva solo los importes marcados como fijos", async () => {
+  const f = assessmentFixture();
+  try {
+    f.data.properties.push({ id: "p2", plot: "Parcela 2", coefficient: "50" });
+    f.w.state.properties.push({ id: "p2", communityId: "c1", ownerIds: ["o1"] });
+    await openAssessments(f);
+    click(f.w, "Nueva derrama");
+    control(f.w, "Nombre de la derrama").value = "Mixta";
+    control(f.w, "Acuerdo de Junta que la aprueba").value = "Junta";
+    const total = control(f.w, "Importe total de la derrama (€)");
+    total.value = "100";
+    total.dispatchEvent(new f.w.Event("input"));
+    const mode = control(f.w, "Criterio de reparto");
+    mode.value = "mixed";
+    mode.dispatchEvent(new f.w.Event("change"));
+    click(f.w, "Agregar todos");
+    const fixed = f.w.document.querySelector('[aria-label="Parcela 1 · usar importe fijo"]');
+    fixed.checked = true;
+    fixed.dispatchEvent(new f.w.Event("change"));
+    control(f.w, "Parcela 1 · importe (€)").value = "20";
+    assert.equal(control(f.w, "Parcela 2 · importe (€)").disabled, true);
+    click(f.w, "Crear derrama");
+    await flush();
+    const created = f.calls.find((c) => c[0] === "/communities/c1/assessments" && c[1] === "POST");
+    assert.ok(created, f.w.document.querySelector("[data-fee-error]")?.textContent);
+    assert.equal(created[2].mode, "mixed");
+    assert.deepEqual(Object.keys(created[2].manual), ["p1"]);
+    assert.equal(created[2].manual.p1, "20");
+    Object.assign(f.assessment, {
+      mode: "mixed",
+      fixedAmounts: { p1: 2000 },
+      allocations: { p1: 2000, p2: 18000 },
+      propertyIds: ["p1", "p2"],
+    });
+    click(f.w, "Editar derrama");
+    await flush();
+    assert.equal(control(f.w, "Criterio de reparto").value, "mixed");
+    assert.equal(control(f.w, "Parcela 1 · importe (€)").value, "20.00");
+    assert.equal(control(f.w, "Parcela 2 · importe (€)").disabled, true);
+    click(f.w, "Guardar cambios");
+    await flush();
+    const edited = f.calls.findLast((c) => c[0] === "/assessments/a1" && c[1] === "PUT");
+    assert.equal(edited[2].manual.p1, "20.00");
+    assert.equal(edited[2].manual.p2, undefined);
+  } finally {
+    f.dom.window.close();
+  }
+});
+test("derramas mixtas UI: el borrador heredado se guarda conservando su reparto sin inventar importes fijos", async () => {
+  const f = assessmentFixture();
+  try {
+    Object.assign(f.assessment, { mode: "mixed", allocations: { p1: 20000 } });
+    await openAssessments(f);
+    click(f.w, "Abrir derrama");
+    await flush();
+    click(f.w, "Editar derrama");
+    await flush();
+    assert.equal(control(f.w, "Criterio de reparto").value, "mixed");
+    assert.equal(control(f.w, "Importe total de la derrama (€)").disabled, true);
+    assert.match(
+      f.w.document.querySelector(".fee-assessment-editor").textContent,
+      /no indica cuáles eran fijos/,
+    );
+    click(f.w, "Guardar cambios");
+    await flush();
+    const saved = f.calls.find((c) => c[0] === "/assessments/a1" && c[1] === "PUT");
+    assert.equal(saved[2].preserveLegacyMixed, true);
+    assert.deepEqual(Object.keys(saved[2].manual), []);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("certificados UI: usa las opciones financieras aunque el gestor no pueda leer las fichas del censo", async () => {
+  const f = fixture();
+  try {
+    f.w.state.properties = [];
+    f.w.state.owners = [];
+    f.data.certificateTargets = {
+      properties: [{ id: "p1", label: "Vivienda autorizada" }],
+      owners: [{ id: "historical-o", label: "Titular histórico autorizado" }],
+    };
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    click(f.w, "Certificado de deuda");
+    const scope = control(f.w, "Ámbito del certificado"),
+      target = control(f.w, "Titular o inmueble");
+    assert.equal(target.options[1].textContent, "Vivienda autorizada");
+    scope.value = "ownerId";
+    scope.dispatchEvent(new f.w.Event("change"));
+    assert.equal(target.options[1].value, "historical-o");
+    assert.equal(target.options[1].textContent, "Titular histórico autorizado");
+  } finally {
+    f.dom.window.close();
+  }
+});
