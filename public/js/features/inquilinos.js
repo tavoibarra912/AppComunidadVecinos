@@ -497,6 +497,7 @@ export function openTenantEditor(
   ownerId = state.ui.viewingOwnerId,
   readonly = false,
   initialTab = "general",
+  initialPropertyId = "",
 ) {
   const permission = readonly ? "tenant:read" : id ? "tenant:manage" : "tenant:create";
   if (!requirePermission(permission, id || ownerId || "")) return;
@@ -511,7 +512,7 @@ export function openTenantEditor(
   tenantForm.reset();
   tenantFormError.textContent = "";
   tenantEditingDocs = tenant?.documents ? JSON.parse(JSON.stringify(tenant.documents)) : {};
-  editingTenantPropertyId = tenant?.propertyId || null;
+  editingTenantPropertyId = tenant?.propertyId || initialPropertyId || null;
   tenantResetContactVerification(tenant);
 
   tenantOwnerSelect.disabled = !!tenant;

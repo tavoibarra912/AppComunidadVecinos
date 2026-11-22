@@ -54,6 +54,7 @@ const propertyNotes = createRichText({
   toolbar: document.querySelector("#property-notes-toolbar"),
 });
 const propertyFormError = document.querySelector("#property-form-error");
+const propertyInitialResidentStep = document.querySelector("#property-initial-resident");
 const propertyDocumentList = document.querySelector("#property-document-list");
 const propertyDetailDialog = document.querySelector("#property-detail-dialog");
 const propertyDetailDocuments = document.querySelector("#property-detail-documents");
@@ -716,6 +717,8 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   updatePropertyCommunitySelect();
   switchPropertyEditorTab(defaultTab);
   const property = state.properties.find((item) => item.id === id);
+  if (propertyInitialResidentStep)
+    propertyInitialResidentStep.hidden = !!property || readonly;
   populatePropertyCurrencySelect(property?.currency || "EUR");
   const ownerIds = propertyOwnerIds(property);
   const tenantIds = property?.tenantIds || (property?.tenantId ? [property.tenantId] : []);
@@ -1228,9 +1231,18 @@ propertyForm.addEventListener("submit", async (event) => {
     .replace(",", ".");
 
   const messages = [];
+  const createInitialTenant =
+    !state.ui.editingPropertyId && propertyForm.elements.initialResident?.value === "other";
   if (!community) messages.push("Selecciona una comunidad existente.");
   if (selectedOwnerIds.length === 0)
     messages.push("Debes asociar al menos un propietario al inmueble (1 o más).");
+  if (
+    createInitialTenant &&
+    selectedOwnerIds[0] &&
+    !hasPermission("tenant:create", selectedOwnerIds[0])
+  ) {
+    messages.push("No tienes permiso para crear un inquilino para el propietario seleccionado.");
+  }
   const linkedTenantRecords = state.owners.flatMap((owner) =>
     ownerTenants(owner)
       .filter((tenant) => selectedTenantIds.includes(tenant.id))
@@ -1305,6 +1317,7 @@ propertyForm.addEventListener("submit", async (event) => {
 
   const isEditing = !!state.ui.editingPropertyId;
   const propertyId = state.ui.editingPropertyId || crypto.randomUUID();
+  const initialTenantOwnerId = createInitialTenant ? selectedOwnerIds[0] : "";
   const payload = {
     id: propertyId,
     communityId: values.communityId,
@@ -1361,7 +1374,12 @@ propertyForm.addEventListener("submit", async (event) => {
   refreshCommunityEditorAfterPropertySave();
   if (state.ui.viewingOwnerId) openOwnerDetail(state.ui.viewingOwnerId);
   closePropertyEditor();
-  toast(isEditing ? "Inmueble actualizado." : "Inmueble creado.");
+  if (createInitialTenant) {
+    openTenantEditor(null, initialTenantOwnerId, false, "general", propertyId);
+    toast("Inmueble creado. Completa los datos de la otra persona.");
+  } else {
+    toast(isEditing ? "Inmueble actualizado." : "Inmueble creado.");
+  }
 });
 
 // --- Eliminación de inmuebles (API) ---

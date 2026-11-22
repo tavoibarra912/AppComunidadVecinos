@@ -5861,6 +5861,26 @@
               >Referencia Catastral (opcional)
               <input name="cadastralRef" maxlength="20" />
             </label>
+            <div
+              class="full"
+              id="property-initial-resident"
+              role="radiogroup"
+              aria-labelledby="property-initial-resident-title"
+            >
+              <p class="form-section-title" id="property-initial-resident-title">
+                ¿Quién vivirá en este inmueble?
+              </p>
+              <div class="property-residency-options">
+                <label class="checkbox-line">
+                  <input type="radio" name="initialResident" value="owner" checked />
+                  <span>El propietario (ya figura como habitante; no se crea un contrato).</span>
+                </label>
+                <label class="checkbox-line">
+                  <input type="radio" name="initialResident" value="other" />
+                  <span>Otra persona (se abrirá su alta al guardar el inmueble).</span>
+                </label>
+              </div>
+            </div>
             <div class="full rich-text-field">
               <span class="rich-text-label" id="property-notes-label"
                 >Observaciones (opcional)</span

@@ -5409,6 +5409,11 @@ dialog .toast {
   cursor: pointer;
 }
 
+.property-residency-options {
+  display: grid;
+  gap: 8px;
+}
+
 /* Los checkboxes y radios no deben heredar el padding ni el borde de los
    inputs de texto: de lo contrario se dibujan como cuadrados de ~38 px. */
 input[type="checkbox"],
