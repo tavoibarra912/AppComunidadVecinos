@@ -127,7 +127,9 @@ async function saveNewProperty(choice, tenantCreateAllowed = true) {
     f.ui.openPropertyEditor();
     const form = document.querySelector("#property-form");
     fillRequiredPropertyFields(form, document);
-    assert.equal(document.querySelector("#property-initial-resident").hidden, false);
+    const residentChoice = document.querySelector("#property-initial-resident");
+    assert.equal(residentChoice.hidden, false);
+    assert.equal(residentChoice.closest(".property-editor-pane").dataset.propertyPane, "owners");
     assert.equal(form.querySelector('input[name="initialResident"][value="owner"]').checked, true);
     form.querySelector(`input[name="initialResident"][value="${choice}"]`).checked = true;
     form.dispatchEvent(new f.window.Event("submit", { bubbles: true, cancelable: true }));
