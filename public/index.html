@@ -4684,6 +4684,19 @@
         <section class="community-editor-pane" id="tenant-tab-general" data-tenant-pane="general">
           <p class="form-intro">Los campos marcados con * son obligatorios.</p>
           <div class="form-grid">
+            <div class="full">
+              <button
+                class="secondary-button"
+                id="tenant-copy-owner-data"
+                type="button"
+                hidden
+              >
+                Copiar datos del propietario
+              </button>
+              <p class="field-hint">
+                Los datos copiados quedan editables para que puedas corregirlos.
+              </p>
+            </div>
             <label
               >Nombre *
               <input name="name" maxlength="60" required autocomplete="given-name" />

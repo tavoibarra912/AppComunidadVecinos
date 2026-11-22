@@ -35,6 +35,7 @@ import { createRichText } from "../rich-text.js";
 import { openPropertyDetail } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
 import { createDocumentLibrary } from "../document-library.js";
+import { copyOwnerDataToTenantForm, ownerHasSameDocument } from "../tenant-form.js";
 
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
@@ -64,6 +65,7 @@ const tenantResultCount = document.querySelector("#tenant-result-count");
 const newTenantBtn = document.querySelector("#new-tenant");
 const tenantDialog = document.querySelector("#tenant-dialog");
 const tenantForm = document.querySelector("#tenant-form");
+const copyOwnerDataBtn = document.querySelector("#tenant-copy-owner-data");
 // Observaciones con formato (mismo editor que usa la ficha de comunidad).
 const tenantNotes = createRichText({
   editor: document.querySelector("#tenant-notes-editor"),
@@ -484,6 +486,12 @@ function switchTenantDialogTab(tab) {
   }
 }
 
+function updateCopyOwnerDataButton() {
+  if (copyOwnerDataBtn)
+    copyOwnerDataBtn.hidden =
+      !!state.ui.editingTenantId || tenantDialogReadOnly || !tenantOwnerSelect.value;
+}
+
 export function openTenantEditor(
   id = null,
   ownerId = state.ui.viewingOwnerId,
@@ -518,6 +526,7 @@ export function openTenantEditor(
       tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)),
     );
   tenantOwnerSelect.value = editingOwner?.id || "";
+  updateCopyOwnerDataButton();
 
   if (tenant) {
     [
@@ -1109,10 +1118,22 @@ if (tenantBtnSampleContract)
 // Owner select change
 tenantOwnerSelect.addEventListener("change", () => {
   state.ui.viewingOwnerId = tenantOwnerSelect.value || null;
+  updateCopyOwnerDataButton();
   updateTenantPropertyOptions(tenantOwnerSelect.value);
   editingTenantPropertyId = null;
   renderTenantPropertyTab();
   renderTenantAuthorizations(selectedTenantAuthorizations());
+});
+
+copyOwnerDataBtn?.addEventListener("click", () => {
+  const owner = state.owners.find((item) => item.id === tenantOwnerSelect.value);
+  if (!owner) {
+    toast("Selecciona un propietario para copiar sus datos.", "warning");
+    return;
+  }
+  copyOwnerDataToTenantForm(owner, tenantForm);
+  tenantResetContactVerification(null);
+  tenantUpdateCanalOptions();
 });
 
 newTenantBtn.addEventListener("click", () => openTenantEditor(null, ""));
@@ -1249,7 +1270,15 @@ tenantForm.addEventListener("submit", async (event) => {
   await refreshState();
   limpiarGuardia(tenantForm);
   closeTenantEditor();
-  toast(isEditing ? "Inquilino actualizado." : "Inquilino creado.");
+  const sameOwnerDocument = !isEditing && ownerHasSameDocument(tenant.documentId, owner);
+  toast(
+    sameOwnerDocument
+      ? "Inquilino creado. El propietario ya figura como habitante del inmueble; no es necesario un contrato consigo mismo."
+      : isEditing
+        ? "Inquilino actualizado."
+        : "Inquilino creado.",
+    sameOwnerDocument ? "info" : undefined,
+  );
 });
 
 // openTenantDetail / closeTenantDetail unchanged
