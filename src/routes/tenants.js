@@ -2,7 +2,7 @@ import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
 import { db, tenantFromRow } from "../db.js";
-import { upsertTenant } from "../domain.js";
+import { normalizeStoredResidency, upsertTenant } from "../domain.js";
 import { contactError, dateError, identityDocumentError } from "../validation.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { removeEntityFiles } from "./documents.js";
@@ -102,15 +102,14 @@ router.delete("/:id", (req, res) => {
   if (!existing) return res.status(404).json({ error: "Inquilino no encontrado." });
   db.exec("BEGIN");
   try {
-    for (const property of db.prepare("SELECT id, tenantIds FROM properties").all()) {
-      const ids = JSON.parse(property.tenantIds || "[]").filter((id) => id !== existing.id);
-      db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?").run(
-        JSON.stringify(ids),
-        property.id,
-      );
-    }
+    const affectedProperties = db
+      .prepare("SELECT id FROM properties WHERE tenantIds LIKE ?")
+      .all(`%"${existing.id}"%`)
+      .map((property) => property.id);
     removeEntityFiles("tenant", existing.id);
     db.prepare("DELETE FROM tenants WHERE id = ?").run(existing.id);
+    // Sin el contrato, el inmueble recupera ocupación y contacto coherentes.
+    for (const propertyId of affectedProperties) normalizeStoredResidency(propertyId);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

@@ -221,7 +221,11 @@ export function resolveAudience(communityId, audience, data = policyData()) {
         ),
     );
     tenants = tenants.filter(
-      (t) => audience.tenantIds.includes(t.id) || audience.propertyIds.includes(t.propertyId),
+      // Un aviso dirigido a inmuebles va solo a sus propietarios; incluir a los
+      // residentes es una decisión explícita del autor.
+      (t) =>
+        audience.tenantIds.includes(t.id) ||
+        (audience.includeResidents === true && audience.propertyIds.includes(t.propertyId)),
     );
   }
   const ids = new Set([...owners, ...tenants].map((p) => p.userId).filter(Boolean));

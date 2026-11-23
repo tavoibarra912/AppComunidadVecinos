@@ -59,9 +59,9 @@ export function getCommunicationSnapshot() {
 export function openCommunicationPost(id) {
   return openPost(id);
 }
-export async function openCommunicationComposer() {
+export async function openCommunicationComposer(defaults = null) {
   await refreshCommunication();
-  if (metadata?.communities.some((c) => c.canManage)) openEditor();
+  if (metadata?.communities.some((c) => c.canManage)) openEditor(null, defaults);
 }
 let detailTab = "publication",
   editorPost = null,
@@ -409,14 +409,22 @@ function options(items, selected) {
 function taskRow(t = {}) {
   return `<div class="comm-task-row">${input("taskTitle", "Acuerdo o tarea", t.title || "", "text", 'maxlength="300"')}${input("taskResponsible", "Responsable", t.responsible || "", "text", 'maxlength="180"')}${input("taskDue", "Vencimiento", local(t.dueAt), "datetime-local")}${check("taskDone", "Realizada", t.done)}<button type="button" class="secondary-button" data-remove-task>Quitar</button></div>`;
 }
-function openEditor(post = null) {
+function openEditor(post = null, defaults = null) {
   editorPost = post;
   editorStep = 0;
   editorSnapshot = "";
   const communityId =
     post?.communityId ||
+    defaults?.communityId ||
     $("#comm-community").value ||
     metadata.communities.find((c) => c.canManage)?.id;
+  const initialAudience = post?.audience || {
+    mode: defaults?.audienceMode || "all",
+    ownerIds: [],
+    tenantIds: [],
+    propertyIds: defaults?.propertyIds || [],
+    includeResidents: defaults?.includeResidents === true,
+  };
   const association =
     metadata.communities.find((c) => c.id === communityId)?.regimen === "asociacion";
   const ownerTerm = association ? "Socios" : "Propietarios";
@@ -430,7 +438,7 @@ function openEditor(post = null) {
     <div data-editor-step="0"><div class="comm-form-grid"><label>Comunidad<select name="communityId" ${post ? "disabled" : ""}>${options(
       metadata.communities.filter((c) => c.canManage).map((c) => [c.id, c.name]),
       communityId,
-    )}</select></label><label>Tipo<select name="type">${options(Object.entries(types), post?.type || "notice")}</select></label>${input("title", "Título *", post?.title || "", "text", 'required maxlength="180"')}<label>Prioridad<select name="priority">${options(
+    )}</select></label><label>Tipo<select name="type">${options(Object.entries(types), post?.type || "notice")}</select></label>${input("title", "Título *", post?.title || defaults?.title || "", "text", 'required maxlength="180"')}<label>Prioridad<select name="priority">${options(
       [
         ["normal", "Normal"],
         ["important", "Importante"],
@@ -452,7 +460,7 @@ function openEditor(post = null) {
       ],
       post?.poll?.electorate || "recipients",
     )}</select></label></div>${input("pollQuestion", "Pregunta", post?.poll?.question || "", "text", 'maxlength="500"')}<label>Opciones (una por línea, entre 2 y 12)<textarea name="pollOptions" rows="4">${h(post?.poll?.options.join("\n") || "")}</textarea></label>${input("pollClosesAt", "Cierre de la consulta", local(post?.poll?.closesAt), "datetime-local")}<div class="comm-actions">${check("pollMultiple", "Permitir varias opciones", post?.poll?.multiple)}${check("pollResultsLive", "Mostrar resultados antes del cierre", post?.poll?.resultsLive)}${check("pollClosed", "Cerrar manualmente la consulta", post?.poll?.closed)}</div><p class="comm-muted">La regla de voto se congela al crear la consulta según el régimen de la comunidad; las encuestas informativas cuentan una respuesta por cuenta. Los resultados no muestran la identidad de quienes votaron. La pregunta, las opciones y la regla quedan fijadas al publicar. En asociaciones, «socios» se refiere al censo isMember y sus derechos estatutarios.</p></div></fieldset></div>
-    <div data-editor-step="1" hidden><label>Destinatarios<select name="audienceMode">${options(audienceOptions, post?.audience.mode || "all")}</select></label><div id="comm-audience-selectors"></div><fieldset><legend>Canales de aviso</legend><p>El aviso dentro de la app siempre está incluido.</p><div class="comm-actions">${check("channelEmail", "Correo electrónico", post?.channels.includes("email"))}${check("channelSms", "SMS", post?.channels.includes("sms"))}${check("channelWhatsapp", "WhatsApp", post?.channels.includes("whatsapp"))}</div><p class="comm-muted">Los canales externos requieren proveedor habilitado y consentimiento del destinatario en «Mis canales».</p></fieldset></div>
+    <div data-editor-step="1" hidden><label>Destinatarios<select name="audienceMode">${options(audienceOptions, initialAudience.mode)}</select></label><div id="comm-audience-selectors"></div><fieldset><legend>Canales de aviso</legend><p>El aviso dentro de la app siempre está incluido.</p><div class="comm-actions">${check("channelEmail", "Correo electrónico", post?.channels.includes("email"))}${check("channelSms", "SMS", post?.channels.includes("sms"))}${check("channelWhatsapp", "WhatsApp", post?.channels.includes("whatsapp"))}</div><p class="comm-muted">Los canales externos requieren proveedor habilitado y consentimiento del destinatario en «Mis canales».</p></fieldset></div>
     <div data-editor-step="2" hidden><div id="comm-preview" aria-live="polite"></div><label>Estado al guardar<select name="status">${options([["draft", "Guardar borrador"], ["published", "Publicar o programar"], ...(post && post.status !== "draft" ? [["cancelled", "Cancelar publicación"]] : [])], post?.status || "draft")}</select></label><p class="comm-muted">Las fechas futuras quedan programadas. Los envíos se procesan mientras el servidor está encendido.</p></div>
     <div class="comm-dialog-footer"><button type="button" class="secondary-button" id="comm-prev">Anterior</button><button type="button" class="primary-button" id="comm-next">Siguiente</button><button type="submit" class="primary-button" id="comm-save" hidden>Guardar publicación</button></div></form>`,
   );
@@ -475,7 +483,7 @@ function openEditor(post = null) {
   $("#comm-tasks").addEventListener("click", (e) =>
     e.target.closest("[data-remove-task]")?.closest(".comm-task-row").remove(),
   );
-  audienceSelectors(post?.audience);
+  audienceSelectors(initialAudience);
   syncCommunityTerms();
   if (post?.distributed) {
     form.elements.status.querySelector('option[value="draft"]').remove();
@@ -496,6 +504,8 @@ function openEditor(post = null) {
     form.querySelectorAll("[data-audience-list] input").forEach((el) => {
       el.disabled = true;
     });
+    if (form.elements.audienceIncludeResidents)
+      form.elements.audienceIncludeResidents.disabled = true;
   }
   toggleEditorFields();
   showStep(0);
@@ -545,7 +555,9 @@ function syncCommunityTerms() {
   const audience = form.elements.audienceMode?.querySelector('option[value="owners"]');
   if (audience) audience.textContent = association ? "Socios" : "Propietarios";
 }
-function audienceSelectors(a = { ownerIds: [], tenantIds: [], propertyIds: [] }) {
+function audienceSelectors(
+  a = { ownerIds: [], tenantIds: [], propertyIds: [], includeResidents: false },
+) {
   const selector = metadata.selectors.find(
     (s) => s.communityId === $("#comm-editor").elements.communityId.value,
   );
@@ -559,13 +571,13 @@ function audienceSelectors(a = { ownerIds: [], tenantIds: [], propertyIds: [] })
       selector?.owners || [],
     ],
     ["tenantIds", "Inquilinos", selector?.tenants || []],
-    ["propertyIds", "Inmuebles (propietarios e inquilinos)", selector?.properties || []],
+    ["propertyIds", "Inmuebles (avisar a sus propietarios)", selector?.properties || []],
   ]
     .map(
       ([key, label, rows]) =>
         `<fieldset data-audience-list="${key}"><legend>${label}</legend><div class="comm-selector-list">${rows.length ? rows.map((r) => `<label class="comm-check"><input type="checkbox" value="${h(r.id)}" ${a[key]?.includes(r.id) ? "checked" : ""}>${h(r.name)}${r.linked === false ? " · Sin cuenta" : ""}</label>`).join("") : '<p class="comm-muted">No hay registros.</p>'}</div></fieldset>`,
     )
-    .join("")}</div>`;
+    .join("")}</div><label class="comm-check"><input type="checkbox" name="audienceIncludeResidents" ${a.includeResidents ? "checked" : ""}>Incluir también a los inquilinos residentes de los inmuebles seleccionados</label>`;
   toggleEditorFields();
 }
 function toggleEditorFields() {
@@ -617,6 +629,7 @@ function editorData() {
     a[key] = [...f.querySelectorAll(`[data-audience-list="${key}"] input:checked`)].map(
       (el) => el.value,
     );
+  a.includeResidents = a.mode === "selected" && !!f.elements.audienceIncludeResidents?.checked;
   return {
     ...(editorPost ? { id: editorPost.id, version: editorPost.version } : {}),
     communityId: value("communityId"),

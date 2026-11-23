@@ -158,7 +158,7 @@ test("publicación general llega a propietarios e inquilinos sin filtrar partici
     assert.equal(JSON.stringify(r.data).includes("passwordHash"), false);
   }
 });
-test("destinatarios seleccionados: deduplica cuentas y no avisa a otros residentes", async () => {
+test("destinatarios seleccionados: un inmueble avisa a sus propietarios salvo que se incluyan residentes", async () => {
   const p = await create({
     audience: {
       mode: "selected",
@@ -169,7 +169,20 @@ test("destinatarios seleccionados: deduplica cuentas y no avisa a otros resident
   });
   assert.equal(p.recipients.filter((r) => r.userId === user("urucp1").id).length, 1);
   assert.equal((await owner(`/communications/posts/${p.id}`)).status, 200);
-  assert.equal((await tenant(`/communications/posts/${p.id}`)).status, 200);
+  assert.equal((await tenant(`/communications/posts/${p.id}`)).status, 404);
+  assert.equal(p.recipients.some((r) => r.userId === user("uruci1").id), false);
+  // Incluir residentes es una decisión explícita del autor del aviso.
+  const residents = await create({
+    audience: {
+      mode: "selected",
+      ownerIds: [],
+      tenantIds: [],
+      propertyIds: ["prop-seed-1"],
+      includeResidents: true,
+    },
+  });
+  assert.equal(residents.recipients.some((r) => r.userId === user("uruci1").id), true);
+  assert.equal((await tenant(`/communications/posts/${residents.id}`)).status, 200);
   const personal = await create({
     audience: {
       mode: "selected",

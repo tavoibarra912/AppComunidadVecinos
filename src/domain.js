@@ -1,4 +1,4 @@
-import { db } from "./db.js";
+import { db, normalizePropertyResidency } from "./db.js";
 
 export function getLocalDateInputValue(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -23,6 +23,52 @@ function propertyTenantIds(property) {
   return Array.isArray(property.tenantIds)
     ? property.tenantIds
     : JSON.parse(property.tenantIds || "[]");
+}
+
+function parseIds(value) {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Guarda ocupación y tenantIds en coherencia con los contratos vigentes. La
+ * titularidad y el cobro no cambian: solo quién ocupa el inmueble.
+ */
+export function normalizeStoredResidency(propertyId) {
+  const property = db.prepare("SELECT * FROM properties WHERE id = ?").get(propertyId);
+  if (!property) return;
+  const tenantIds = db
+    .prepare("SELECT * FROM tenants WHERE propertyId = ?")
+    .all(propertyId)
+    .filter((tenant) => getTenantContractStatus(tenant) === "Vigente")
+    .map((tenant) => tenant.id);
+  const fields = normalizePropertyResidency({
+    occupancy: property.occupancy,
+    ownerIds: propertyOwnerIds(property),
+    tenantIds,
+    residentOwnerIds: parseIds(property.residentOwnerIds),
+    primaryResidentId: property.primaryResidentId || "",
+  });
+  const next = {
+    tenantIds: JSON.stringify(tenantIds),
+    occupancy: fields.occupancy,
+    residentOwnerIds: JSON.stringify(fields.residentOwnerIds),
+    primaryResidentId: fields.primaryResidentId,
+  };
+  if (
+    property.tenantIds === next.tenantIds &&
+    property.occupancy === next.occupancy &&
+    property.residentOwnerIds === next.residentOwnerIds &&
+    property.primaryResidentId === next.primaryResidentId
+  )
+    return;
+  db.prepare(
+    "UPDATE properties SET tenantIds = ?, occupancy = ?, residentOwnerIds = ?, primaryResidentId = ? WHERE id = ?",
+  ).run(next.tenantIds, next.occupancy, next.residentOwnerIds, next.primaryResidentId, propertyId);
 }
 
 /**
@@ -90,9 +136,12 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
       .prepare("SELECT ownerIds, ownerPercentages FROM properties WHERE id = ?")
       .get(propId);
     const ids = JSON.parse(row.ownerIds || "[]").filter((x) => x !== ownerId);
-    if (!ids.length && db.prepare("SELECT 1 FROM tenants WHERE propertyId=? LIMIT 1").get(propId))
+    const tenants = db.prepare("SELECT * FROM tenants WHERE propertyId = ?").all(propId);
+    if (!ids.length && tenants.some((tenant) => getTenantContractStatus(tenant) === "Vigente"))
       throw Object.assign(
-        new Error("No se puede quitar el último titular de un inmueble con contratos vinculados."),
+        new Error(
+          "No se puede quitar el último titular de un inmueble con contratos vigentes. Finaliza o desvincula el contrato antes.",
+        ),
         { status: 400 },
       );
     const shares = JSON.parse(row.ownerPercentages || "{}");
@@ -227,9 +276,11 @@ export function syncPropertyTenantReferences(tenantId) {
   if (!tenant) return;
   const status = getTenantContractStatus(tenant);
 
+  const touched = new Set([tenant.propertyId]);
   const properties = db.prepare("SELECT id, tenantIds FROM properties").all();
   for (const property of properties) {
     const tenantIds = propertyTenantIds(property);
+    if (tenantIds.includes(tenantId)) touched.add(property.id);
     const isLinked = property.id === tenant.propertyId && status === "Vigente";
     const hasReference = tenantIds.includes(tenantId);
     if (hasReference && !isLinked) {
@@ -245,6 +296,9 @@ export function syncPropertyTenantReferences(tenantId) {
       );
     }
   }
+  // La ocupación guardada también se refresca: vincular o vencer un contrato
+  // no puede dejar el inmueble declarado como ocupado por el propietario.
+  for (const propertyId of touched) if (propertyId) normalizeStoredResidency(propertyId);
 }
 
 /**
@@ -364,11 +418,6 @@ export function rebuildPropertyTenantReferences() {
         tenant.ownerId = nextOwnerId;
       }
     }
-    db.prepare("UPDATE properties SET tenantIds = ? WHERE id = ?").run(
-      JSON.stringify(
-        linked.filter((t) => getTenantContractStatus(t) === "Vigente").map((t) => t.id),
-      ),
-      property.id,
-    );
+    normalizeStoredResidency(property.id);
   }
 }

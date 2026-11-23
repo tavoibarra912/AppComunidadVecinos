@@ -39,7 +39,14 @@ function fixture(tenantCreateAllowed = true) {
     settings: {},
     ui: { editingPropertyId: null, viewingOwnerId: null, ownerEditorPropertyContext: null },
   };
-  const calls = { tenantEditor: [], toasts: [], properties: [], validationErrors: [] };
+  const calls = {
+    tenantEditor: [],
+    toasts: [],
+    properties: [],
+    validationErrors: [],
+    notifications: [],
+    tableColumns: null,
+  };
   const ownerProperties = (owner) =>
     state.properties.filter((property) => property.ownerIds.includes(owner.id));
   const ownerTenants = (owner) => owner.tenants || [];
@@ -62,6 +69,7 @@ function fixture(tenantCreateAllowed = true) {
     openCommunityEditor: noop,
     refreshCommunityEditorAfterPropertySave: noop,
     openCascadeWizard: noop,
+    openCommunicationComposer: (...args) => calls.notifications.push(args),
     sanitizeHtml: (value) => value,
     richTextHtml: (value) => value,
     ownerProperties,
@@ -86,14 +94,17 @@ function fixture(tenantCreateAllowed = true) {
     setupTerritory: () => ({ set: noop, reset: noop }),
     getLocationById: (id) => (id ? { name: "Sevilla", province: "Sevilla" } : null),
     isValidPostalCode: () => true,
-    createDataTable: () => ({ refresh: noop }),
+    createDataTable: (options) => {
+      calls.tableColumns = options.columns;
+      return { refresh: noop };
+    },
     createExportDropdown: noop,
     createRichText: () => ({ setValue: noop }),
     __crypto: { randomUUID: () => "property-created" },
   });
 
   const ui = vm.runInContext(
-    `(() => { const crypto = window.__crypto; ${source}\nreturn { openPropertyEditor }; })()`,
+    `(() => { const crypto = window.__crypto; ${source}\nreturn { openPropertyEditor, openPropertyDetail, renderProperties }; })()`,
     dom.getInternalVMContext(),
   );
   return { dom, window: w, state, calls, ui };
@@ -130,10 +141,7 @@ async function saveNewProperty(choice, tenantCreateAllowed = true) {
     const residentChoice = document.querySelector("#property-initial-resident");
     assert.equal(residentChoice.hidden, false);
     assert.equal(residentChoice.closest(".property-editor-pane").dataset.propertyPane, "owners");
-    assert.equal(
-      residentChoice.closest(".property-editor-pane").firstElementChild,
-      residentChoice,
-    );
+    assert.equal(residentChoice.closest(".property-editor-pane").firstElementChild, residentChoice);
     assert.match(residentChoice.textContent, /Ocupación del inmueble/);
     assert.match(residentChoice.textContent, /No se crea ningún contrato/);
     assert.doesNotMatch(residentChoice.textContent, /primer propietario/);
@@ -159,11 +167,13 @@ test("el propietario es la opción inicial y deshabilita la pestaña Inquilinos"
     assert.equal(f.calls.properties.length, 1);
     assert.equal(f.calls.tenantEditor.length, 0);
     f.ui.openPropertyEditor("property-created");
-    assert.equal(f.window.document.querySelector("#property-initial-resident").hidden, true);
+    // La sección de ocupación sigue visible al editar un inmueble existente.
+    assert.equal(f.window.document.querySelector("#property-initial-resident").hidden, false);
     const tenantsTab = f.window.document.querySelector(
       '.community-editor-tab[data-property-tab="tenants"]',
     );
-    assert.equal(tenantsTab.disabled, false);
+    // Sin inquilinos vinculados, "Vive el propietario" deshabilita la pestaña Inquilinos.
+    assert.equal(tenantsTab.disabled, true);
   } finally {
     f.dom.window.close();
   }
@@ -186,6 +196,201 @@ test("elegir otra persona no exige permiso de inquilinos porque no crea ninguno"
     assert.equal(f.calls.properties.length, 1);
     assert.deepEqual(f.calls.validationErrors, []);
     assert.deepEqual(f.calls.tenantEditor, []);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("el alta ocupada por el propietario marca al titular como residente y principal", async () => {
+  const f = await saveNewProperty("owner");
+  try {
+    const payload = f.calls.properties[0];
+    assert.equal(payload.occupancy, "owner");
+    assert.equal(JSON.stringify(payload.residentOwnerIds), JSON.stringify(["o1"]));
+    assert.equal(payload.primaryResidentId, "o1");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("el alta sin ocupante se guarda como vacía y viaja en el payload", async () => {
+  const f = await saveNewProperty("vacant");
+  try {
+    const payload = f.calls.properties[0];
+    assert.equal(payload.occupancy, "vacant");
+    assert.equal(JSON.stringify(payload.residentOwnerIds), "[]");
+    assert.equal(payload.primaryResidentId, "");
+    assert.deepEqual(f.calls.validationErrors, []);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("la residencia es opcional y desmarcarla no inventa residentes", async () => {
+  const f = fixture();
+  const { document } = f.window;
+  try {
+    f.ui.openPropertyEditor();
+    const form = document.querySelector("#property-form");
+    fillRequiredPropertyFields(form, document);
+    const checkbox = document.querySelector(
+      "#property-owners-list .property-resident-toggle input[type=checkbox]",
+    );
+    assert.equal(checkbox.checked, true);
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new f.window.Event("change", { bubbles: true }));
+    form.dispatchEvent(new f.window.Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+    assert.equal(f.calls.properties.length, 1);
+    const payload = f.calls.properties[0];
+    assert.equal(payload.occupancy, "owner");
+    assert.equal(JSON.stringify(payload.residentOwnerIds), "[]");
+    assert.equal(payload.primaryResidentId, "");
+    assert.deepEqual(f.calls.validationErrors, []);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("el aviso del inmueble reutiliza Comunicación con la comunidad y el inmueble precargados", async () => {
+  const f = fixture();
+  const { document } = f.window;
+  try {
+    f.ui.openPropertyEditor();
+    assert.equal(document.querySelector("#btn-property-notify").hidden, true);
+    f.state.properties.push({
+      id: "p1",
+      version: 1,
+      communityId: "c1",
+      communityName: "Comunidad",
+      plot: "Piso 1",
+      propertyType: "vivienda",
+      address: "Calle Mayor, 1",
+      participationCoef: "100",
+      ownerIds: ["o1"],
+      ownerPercentages: { o1: 100 },
+      tenantIds: [],
+      occupancy: "owner",
+      residentOwnerIds: ["o1"],
+      primaryResidentId: "o1",
+      documents: [],
+    });
+    f.ui.openPropertyEditor("p1");
+    const notify = document.querySelector("#btn-property-notify");
+    assert.equal(notify.hidden, false);
+    notify.click();
+    await flush();
+    assert.equal(
+      JSON.stringify(f.calls.notifications.at(-1)),
+      JSON.stringify([
+        {
+          communityId: "c1",
+          title: "Aviso del inmueble Piso 1",
+          audienceMode: "selected",
+          propertyIds: ["p1"],
+          includeResidents: false,
+        },
+      ]),
+    );
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+function detailProperty(id, extra) {
+  return {
+    id,
+    communityId: "c1",
+    plot: "Piso 1",
+    propertyType: "vivienda",
+    address: "Calle Mayor, 1",
+    ownerIds: ["o1"],
+    tenantIds: [],
+    documents: [],
+    ...extra,
+  };
+}
+
+test("la ficha de lectura muestra la ocupación y el contacto principal declarados", () => {
+  const f = fixture();
+  const { document } = f.window;
+  try {
+    f.state.tenants.push({ id: "t1", name: "Luis", surname: "Inquilino" });
+    f.state.properties.push(
+      detailProperty("p-owner", {
+        occupancy: "owner",
+        residentOwnerIds: ["o1"],
+        primaryResidentId: "o1",
+      }),
+      detailProperty("p-tenant", {
+        occupancy: "tenant",
+        tenantIds: ["t1"],
+        primaryResidentId: "t1",
+      }),
+      detailProperty("p-vacant", { occupancy: "vacant", primaryResidentId: "" }),
+    );
+    const occupancy = () => document.querySelector("#property-detail-occupancy").textContent;
+    const contact = () => document.querySelector("#property-detail-primary-resident").textContent;
+    f.ui.openPropertyDetail("p-owner");
+    assert.equal(occupancy(), "Vive el propietario");
+    assert.equal(contact(), "Ana Prueba");
+    f.ui.openPropertyDetail("p-tenant");
+    assert.equal(occupancy(), "Vive otra persona");
+    assert.equal(contact(), "Luis Inquilino");
+    f.ui.openPropertyDetail("p-vacant");
+    assert.equal(occupancy(), "Sin ocupante");
+    assert.equal(contact(), "Sin contacto declarado");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("el editor marca al contacto principal en la tarjeta del residente", () => {
+  const f = fixture();
+  const { document } = f.window;
+  try {
+    f.state.properties.push(
+      detailProperty("p-owner", {
+        occupancy: "owner",
+        residentOwnerIds: ["o1"],
+        primaryResidentId: "o1",
+      }),
+    );
+    f.ui.openPropertyEditor("p-owner");
+    const cards = [...document.querySelectorAll("#property-owners-list .community-property-sub")];
+    assert.equal(cards.length, 1);
+    assert.match(cards[0].textContent, /Reside/);
+    assert.match(cards[0].textContent, /Contacto principal/);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("la grilla de inmuebles añade Ocupación con el contacto principal debajo", () => {
+  const f = fixture();
+  try {
+    f.state.properties.push(
+      detailProperty("p-owner", {
+        occupancy: "owner",
+        residentOwnerIds: ["o1"],
+        primaryResidentId: "o1",
+      }),
+      detailProperty("p-vacant", { occupancy: "vacant", primaryResidentId: "" }),
+    );
+    f.ui.renderProperties();
+    const column = f.calls.tableColumns.find((item) => item.key === "occupancy");
+    assert.equal(column.label, "Ocupación");
+    assert.equal(column.defaultVisible, true);
+    const [owner, vacant] = f.state.properties;
+    assert.equal(column.value(owner), "Vive el propietario · Ana Prueba");
+    const ownerCell = column.render(owner);
+    assert.match(ownerCell.textContent, /Vive el propietario/);
+    assert.match(ownerCell.textContent, /Ana Prueba/);
+    assert.match(ownerCell.querySelector(".status-badge").className, /doc-approved/);
+    const vacantCell = column.render(vacant);
+    assert.equal(vacantCell.textContent, "Sin ocupante");
+    assert.equal(vacantCell.querySelector("small"), null);
+    assert.match(vacantCell.querySelector(".status-badge").className, /doc-pending-admin/);
   } finally {
     f.dom.window.close();
   }

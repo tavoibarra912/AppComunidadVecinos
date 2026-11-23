@@ -195,6 +195,11 @@ export const state = {
     viewingTenantId: null,
     deletingTenantId: null,
     editingPropertyId: null,
+    // Contexto de retorno tras crear una entidad relacionada desde otro editor
+    // (ej: un inquilino dado de alta desde la pestaña Inquilinos del inmueble).
+    // Guarda a qué editor volver y qué vínculo aplicar al guardar, sin perder
+    // los datos del formulario padre.
+    editorReturnContext: null,
     // Inmueble creado desde la pestaña Inmueble del editor de propietario:
     // guarda el ownerId para vincularlo automáticamente al guardar el inmueble
     ownerEditorPropertyContext: null,

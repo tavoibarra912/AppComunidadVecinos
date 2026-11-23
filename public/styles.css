@@ -718,6 +718,14 @@ td {
   min-width: 120px;
 }
 
+/* Insignia y dato secundario en la misma celda: el detalle va en otra línea */
+.property-occupancy-cell {
+	  display: flex;
+	  flex-direction: column;
+	  align-items: flex-start;
+	  gap: 2px;
+}
+
 .table-engine-controls {
   display: flex;
   align-items: center;
@@ -5311,6 +5319,23 @@ th.th-drag-over {
   outline: 2px solid #9fd8cf;
   outline-offset: 1px;
   border-color: var(--brand);
+}
+
+/* Residencia declarada sobre las tarjetas de propietario e inquilino. */
+.property-resident-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  margin-right: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3f5873;
+  cursor: pointer;
+}
+
+.property-resident-toggle input {
+  cursor: pointer;
 }
 
 /* ==========================================

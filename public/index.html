@@ -3494,7 +3494,6 @@
 
         <!-- PESTAÑA: GENERAL (identificación) -->
         <section class="community-editor-pane" id="owner-tab-general" data-owner-pane="general">
-          <p class="form-intro">Los campos marcados con * son obligatorios.</p>
           <div class="form-grid">
             <p class="form-section-title full">Identificación</p>
             <label
@@ -3643,6 +3642,11 @@
                 <option value="true" selected>Sí (Asociado / Socio de Peñarrubia)</option>
                 <option value="false">No (Propietario no asociado)</option>
               </select>
+              <span class="field-hint"
+                >Indica si la persona es socia de la asociación. En las asociaciones el censo son
+                los socios: acceden a su comunidad y votan aunque no tengan inmuebles. Si no es
+                socia, su comunidad se toma de los inmuebles vinculados en la pestaña Inmueble.</span
+              >
             </label>
             <label
               >Comunidad (opcional)
@@ -4838,21 +4842,7 @@
         </nav>
 
         <section class="community-editor-pane" id="tenant-tab-general" data-tenant-pane="general">
-          <p class="form-intro">Los campos marcados con * son obligatorios.</p>
           <div class="form-grid">
-            <div class="full">
-              <button
-                class="secondary-button"
-                id="tenant-copy-owner-data"
-                type="button"
-                hidden
-              >
-                Copiar datos del propietario
-              </button>
-              <p class="field-hint">
-                Los datos copiados quedan editables para que puedas corregirlos.
-              </p>
-            </div>
             <label
               >Nombre *
               <input name="name" maxlength="60" required autocomplete="given-name" />
@@ -5084,6 +5074,11 @@
                 <option value="comercial">Uso distinto de vivienda (local)</option>
                 <option value="cesion">Cesión o comodato</option>
               </select>
+              <span class="field-hint"
+                >Marco legal del alquiler: vivienda habitual, temporada, uso distinto de vivienda
+                (local) o cesión/comodato. Determina las reglas y los avisos que se aplican al
+                contrato.</span
+              >
             </label>
             <label
               >Moneda (opcional)
@@ -5093,6 +5088,9 @@
                 <option value="GBP">Libra esterlina (GBP)</option>
                 <option value="CHF">Franco suizo (CHF)</option>
               </select>
+              <span class="field-hint"
+                >Divisa en la que se expresan la renta y la fianza de este contrato.</span
+              >
             </label>
             <label
               >Renta mensual (€) (opcional)
@@ -5102,10 +5100,18 @@
                 maxlength="10"
                 placeholder="Ej: 750.00"
               />
+              <span class="field-hint"
+                >Importe mensual pactado con el propietario. Se guarda en la ficha del contrato y se
+                usa en los informes; no genera recibos de cuota.</span
+              >
             </label>
             <label
               >Fianza legal (€) (opcional)
               <input name="deposit" inputmode="decimal" maxlength="10" placeholder="Ej: 750.00" />
+              <span class="field-hint"
+                >Cantidad entregada en concepto de fianza. Un importe cero equivale a no haberla
+                recibido, según la nota inferior.</span
+              >
             </label>
             <p class="field-hint full">
               Si el monto de la fianza es cero o nulo, se entenderá que no se entregó fianza.
@@ -5113,10 +5119,18 @@
             <label
               >Inicio del contrato *
               <input name="contractStart" type="date" required />
+              <span class="field-hint"
+                >Desde esta fecha el contrato cuenta como vigente y el inquilino accede a su
+                comunidad.</span
+              >
             </label>
             <label
               >Fin del contrato *
               <input name="contractEnd" type="date" required />
+              <span class="field-hint"
+                >Hasta esta fecha el contrato sigue vigente; después pasa al historial del
+                inquilino.</span
+              >
             </label>
           </div>
         </section>
@@ -5938,7 +5952,7 @@
             </svg>
           </button>
         </div>
-        <p class="form-intro">
+        <p class="form-intro" id="property-form-intro">
           La Comunidad, al menos un propietario y la dirección son obligatorios. Los inquilinos y
           documentos son opcionales.
         </p>
@@ -6012,6 +6026,11 @@
                 <option value="garaje">Plaza de garaje</option>
                 <option value="trastero">Trastero</option>
               </select>
+              <span class="field-hint"
+                >Clasifica la unidad: parcela (suelo), vivienda (piso o casa), local (comercio u
+                oficina), plaza de garaje o trastero. Se usa en la ficha, en los informes y en los
+                gráficos del panel de inicio.</span
+              >
             </label>
             <label
               >Referencia Catastral (opcional)
@@ -6187,6 +6206,11 @@
               <select name="currency">
                 <option value="">Cargando monedas…</option>
               </select>
+              <span class="field-hint"
+                >Divisa de los importes del inmueble. Debe coincidir con la moneda de su comunidad
+                para consolidar recibos y trasladar historial entre comunidades; si no gestionas
+                otra divisa, deja EUR.</span
+              >
             </label>
             <label
               >Coeficiente de participación (%) *
@@ -6197,6 +6221,12 @@
                 required
                 placeholder="Ej: 4.2500"
               />
+              <span class="field-hint"
+                >Porcentaje que esta unidad representa sobre el total de la comunidad (entre 0,0001
+                y 100). Se usa para repartir cuotas, derramas y gastos comunes, y para ponderar el
+                voto cuando la comunidad vota por coeficiente. La suma de todos los inmuebles suele
+                ser 100 %.</span
+              >
             </label>
             <label
               >Estado de recibos *
@@ -6214,9 +6244,9 @@
               Ocupación del inmueble
             </h3>
             <p class="property-residency-intro" id="property-initial-resident-help">
-              Indica quién vivirá en el inmueble al darlo de alta. Si vive el propietario no hay
-              contrato que registrar y la pestaña Inquilinos queda deshabilitada; si eliges otra
-              persona, se habilita para que puedas asociar o crear su ficha.
+              Indica quién ocupa el inmueble. La titularidad no cambia: los avisos del inmueble
+              van siempre a sus propietarios y, desde Comunicación, podés incluir también a quien
+              reside aquí.
             </p>
             <div
               class="property-residency-options"
@@ -6229,8 +6259,8 @@
                 <span class="property-residency-option-text">
                   <strong>Vive el propietario</strong>
                   <span class="field-hint"
-                    >Figura como habitante del inmueble. No se crea ningún contrato y no se pueden
-                    asociar inquilinos.</span
+                    >Marca en la pestaña Propietarios quién reside. No se crea ningún contrato y no
+                    se pueden asociar inquilinos.</span
                   >
                 </span>
               </label>
@@ -6244,16 +6274,22 @@
                   >
                 </span>
               </label>
+              <label class="property-residency-option">
+                <input type="radio" name="initialResident" value="vacant" />
+                <span class="property-residency-option-text">
+                  <strong>Sin ocupante</strong>
+                  <span class="field-hint"
+                    >El inmueble está vacío. No hay residente a quien enviar avisos del
+                    inmueble.</span
+                  >
+                </span>
+              </label>
             </div>
-            <p class="property-residency-note">
-              Solo se pregunta al crear el inmueble. Después puedes asociar o desvincular
-              inquilinos desde la pestaña Inquilinos.
-            </p>
           </div>
           <div class="detail-section-heading">
             <div>
               <h3>Propietarios asociados (<span id="property-owner-count">0</span>)</h3>
-              <p class="detail-section-subtitle">
+              <p class="detail-section-subtitle" id="property-owners-requirement">
                 Asocia propietarios existentes, crea nuevos o desvincula los que ya no correspondan.
                 Debe quedar al menos uno asociado.
               </p>
@@ -6493,6 +6529,30 @@
                 </p>
               </div>
             </div>
+            <div class="heading-actions">
+              <button
+                class="icon-action-btn btn-info"
+                id="btn-property-notify"
+                type="button"
+                title="Avisar a los propietarios del inmueble"
+                aria-label="Avisar a los propietarios del inmueble"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
+                </svg>
+              </button>
+            </div>
           </div>
           <div class="doc-library-host" id="property-document-list"></div>
         </section>
@@ -6637,6 +6697,14 @@
             <div class="detail-item">
               <span class="detail-label">Comunidad</span>
               <span class="detail-value" id="property-detail-community"></span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Ocupación</span>
+              <span class="detail-value" id="property-detail-occupancy">—</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Contacto principal</span>
+              <span class="detail-value" id="property-detail-primary-resident">—</span>
             </div>
             <div class="detail-item">
               <span class="detail-label">Referencia Catastral</span>

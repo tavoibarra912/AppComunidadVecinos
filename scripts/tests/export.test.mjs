@@ -488,3 +488,30 @@ test("finanzas: usa céntimos, cobros aplicados y repartos reales sin inventar e
     }
   }
 });
+
+test("exportación: la vista de inmuebles incluye ocupación y contacto principal", () => {
+  const owner = db.prepare("SELECT name, surname FROM owners WHERE id='own-seed-1'").get();
+  const fullName = `${owner.name} ${owner.surname}`.trim();
+  db.prepare(
+    "INSERT INTO properties(id,communityId,plot,ownerIds,participationCoef,occupancy,residentOwnerIds,primaryResidentId) VALUES(?,?,?,?,?,?,?,?)",
+  ).run(
+    "export-occ",
+    "export-c",
+    "Unidad con residente",
+    JSON.stringify(["own-seed-1"]),
+    "100",
+    "owner",
+    JSON.stringify(["own-seed-1"]),
+    "own-seed-1",
+  );
+  const view = previewDataset(input("properties"));
+  const labels = view.columns.map((column) => column.label);
+  assert.ok(labels.includes("Ocupación"));
+  assert.ok(labels.includes("Contacto principal"));
+  const occupied = view.rows.find((row) => row.id === "export-occ");
+  assert.equal(occupied.occupancy, "Vive el propietario");
+  assert.equal(occupied.primaryResident, fullName);
+  const undeclared = view.rows.find((row) => row.id === "export-p");
+  assert.equal(undeclared.occupancy, "Vive el propietario");
+  assert.equal(undeclared.primaryResident, "Sin contacto");
+});

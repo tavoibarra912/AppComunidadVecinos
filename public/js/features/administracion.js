@@ -137,6 +137,12 @@ const PERMISOS_CATALOGO = [
     hint: "Dar de alta nuevos inmuebles.",
   },
   {
+    key: "property:create:unassigned",
+    label: "Crear inmuebles sin propietarios",
+    grupo: "Inmuebles",
+    hint: "Permite guardar un inmueble nuevo sin ningún titular. Sin este permiso el alta exige asociar al menos un propietario.",
+  },
+  {
     key: "property:manage",
     label: "Gestionar inmuebles",
     grupo: "Inmuebles",

@@ -1,7 +1,13 @@
 import { versionedUpdate } from "../entity-version.js";
 import { Router } from "express";
 import crypto from "node:crypto";
-import { db, propertyFromRow, listProperties, listDocuments } from "../db.js";
+import {
+  db,
+  propertyFromRow,
+  listProperties,
+  listDocuments,
+  normalizePropertyResidency,
+} from "../db.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import {
   rebuildOwnersPropertyIds,
@@ -68,7 +74,7 @@ router.get("/:id", (req, res) => {
 
 function validatePropertyPayload(
   data,
-  { requireOwners = true, excludeId = "", existing = null } = {},
+  { requireOwners = true, excludeId = "", existing = null, occupancyProvided = false } = {},
 ) {
   trimEntityFields("property", data);
   const errorObligatorio = entityRequiredError("property", data);
@@ -150,11 +156,66 @@ function validatePropertyPayload(
     return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
   }
 
+  const residencyError = validatePropertyResidency(data, ownerIds, existing, occupancyProvided);
+  if (residencyError) return residencyError;
+
   const ownershipChanged =
     !existing ||
     existing.ownerIds.length !== ownerIds.length ||
     existing.ownerIds.some((id) => !ownerIds.includes(id));
   return normalizeOwnerPercentages(data, { requireAll: ownershipChanged }).error || null;
+}
+
+const OCCUPANCY_VALUES = new Set(["owner", "tenant", "vacant"]);
+
+/**
+ * La ocupación decide a quién se dirigen los avisos, pero no altera la
+ * titularidad ni el cobro. Se valida contra los vínculos que quedarán tras
+ * guardar, no contra los que había antes.
+ */
+function validatePropertyResidency(data, ownerIds, existing, occupancyProvided = false) {
+  const occupancy = data.occupancy || "";
+  if (occupancy && !OCCUPANCY_VALUES.has(occupancy))
+    return "La ocupación del inmueble no es válida.";
+  const residentOwnerIds = Array.isArray(data.residentOwnerIds)
+    ? [...new Set(data.residentOwnerIds.filter(Boolean))]
+    : [];
+  if (residentOwnerIds.some((ownerId) => !ownerIds.includes(ownerId)))
+    return "Solo los propietarios del inmueble pueden constar como residentes.";
+
+  const activeTenantIds = new Set(existing?.tenantIds || []);
+  for (const tenantId of data.unlinkTenantIds || []) activeTenantIds.delete(tenantId);
+  for (const tenantId of data.linkTenantIds || []) activeTenantIds.add(tenantId);
+  if (data.unlinkTenantIds === undefined && Array.isArray(data.tenantIds)) {
+    activeTenantIds.clear();
+    for (const tenantId of data.tenantIds) activeTenantIds.add(tenantId);
+  }
+
+  // Un cliente anterior puede vincular un contrato sin enviar la ocupación.
+  // En ese caso no se contradice su intención: la ocupación se deriva al guardar.
+  if (!occupancyProvided) return null;
+
+  if (occupancy === "owner") {
+    // Las fichas heredadas no declaran residente; se respeta ese estado hasta
+    // que el usuario lo marque desde la ficha del propietario.
+    if (activeTenantIds.size)
+      return "Un inmueble ocupado por el propietario no puede tener inquilinos vinculados.";
+  }
+  if (occupancy === "tenant") {
+    if (residentOwnerIds.length)
+      return "Si vive otra persona, ningún propietario puede constar como residente.";
+  }
+  if (occupancy === "vacant") {
+    if (residentOwnerIds.length || activeTenantIds.size)
+      return "Un inmueble sin ocupante no puede tener residentes ni inquilinos vinculados.";
+  }
+  const primaryResidentId = data.primaryResidentId || "";
+  if (
+    primaryResidentId &&
+    ![...residentOwnerIds, ...activeTenantIds].includes(primaryResidentId)
+  )
+    return "El contacto principal debe ser uno de los residentes del inmueble.";
+  return null;
 }
 
 /**
@@ -213,11 +274,25 @@ function storeProperty(id, data, community) {
       .map((tenant) => tenant.id),
   );
   const ownerPercentages = JSON.stringify(normalizeOwnerPercentages(data).percentages || {});
+  const tenantIdList = JSON.parse(tenantIds);
+  // Con contratos vigentes la ocupación real es del inquilino, aunque un
+  // cliente anterior no la haya enviado; nunca se guarda un estado imposible.
+  const residency = normalizePropertyResidency({
+    occupancy: data.occupancy || "",
+    ownerIds: Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [],
+    tenantIds: tenantIdList,
+    residentOwnerIds: Array.isArray(data.residentOwnerIds) ? data.residentOwnerIds : [],
+    primaryResidentId: data.primaryResidentId || "",
+  });
+  const { occupancy } = residency;
+  const residentOwnerIds = JSON.stringify(residency.residentOwnerIds);
+  const primaryResidentId = residency.primaryResidentId;
   return db
     .prepare(
       `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, communityFee, cadastralRef,
-       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province, currency, ownerPercentages)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province, currency, ownerPercentages,
+       occupancy, residentOwnerIds, primaryResidentId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        communityId = excluded.communityId,
        communityName = excluded.communityName,
@@ -242,7 +317,10 @@ function storeProperty(id, data, community) {
        city = excluded.city,
        province = excluded.province,
        currency = excluded.currency,
-       ownerPercentages = excluded.ownerPercentages`,
+       ownerPercentages = excluded.ownerPercentages,
+       occupancy = excluded.occupancy,
+       residentOwnerIds = excluded.residentOwnerIds,
+       primaryResidentId = excluded.primaryResidentId`,
     )
     .run(
       id,
@@ -270,6 +348,9 @@ function storeProperty(id, data, community) {
       data.province || "",
       data.currency || "",
       ownerPercentages,
+      occupancy,
+      residentOwnerIds,
+      primaryResidentId,
     );
 }
 
@@ -359,7 +440,19 @@ function syncAffectedOwners(ownerIds) {
 router.post("/", (req, res) => {
   const data = req.body || {};
   const id = data.id || crypto.randomUUID();
-  const error = validatePropertyPayload(data, { excludeId: id });
+  // Solo el permiso específico permite crear un inmueble sin titulares; el
+  // resto de roles debe asociar al menos un propietario.
+  const requireOwners = !allowed(
+    req.user,
+    "property:create:unassigned",
+    data.communityId || "",
+    policyData(),
+  );
+  const error = validatePropertyPayload(data, {
+    excludeId: id,
+    requireOwners,
+    occupancyProvided: data.occupancy !== undefined,
+  });
   if (error) return res.status(400).json({ error });
   const community = db
     .prepare("SELECT id, name FROM communities WHERE id = ?")
@@ -368,8 +461,10 @@ router.post("/", (req, res) => {
   db.exec("BEGIN IMMEDIATE");
   try {
     const changes = tenantLinkChanges(id, data, null, req.user);
-    storeProperty(id, data, community);
+    // Los contratos se mueven antes de guardar para que la ocupación refleje
+    // quién queda realmente en el inmueble.
     applyTenantLinkChanges(changes);
+    storeProperty(id, data, community);
     syncAffectedOwners(Array.isArray(data.ownerIds) ? data.ownerIds : []);
     rebuildOwnersPropertyIds();
     db.exec("COMMIT");
@@ -403,6 +498,7 @@ router.put(
       requireOwners: existing.ownerIds.length > 0,
       excludeId: existing.id,
       existing,
+      occupancyProvided: Object.prototype.hasOwnProperty.call(req.body || {}, "occupancy"),
     });
     if (error) return res.status(400).json({ error });
     const community = db
@@ -412,8 +508,8 @@ router.put(
     db.exec("SAVEPOINT entity_update");
     try {
       const changes = tenantLinkChanges(existing.id, data, existing, req.user);
-      storeProperty(existing.id, data, community);
       applyTenantLinkChanges(changes);
+      storeProperty(existing.id, data, community);
       const affectedOwners = [
         ...(Array.isArray(existing.ownerIds) ? existing.ownerIds : []),
         ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),
@@ -447,18 +543,25 @@ function deletePropertyNormal(req, res) {
       .json({ error: "No se puede eliminar un inmueble con historial de cuotas." });
   const existing = findProperty(req.params.id);
   if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
-  const inquilinos = db
-    .prepare("SELECT COUNT(*) AS n FROM tenants WHERE propertyId = ?")
-    .get(existing.id).n;
-  if (inquilinos > 0)
+  // Solo los contratos vigentes impiden el borrado; los finalizados se
+  // conservan desvinculados, igual que los ve la interfaz.
+  const vigentes = db
+    .prepare("SELECT * FROM tenants WHERE propertyId = ?")
+    .all(existing.id)
+    .filter((tenant) => isTenantContractActive(tenant));
+  if (vigentes.length > 0)
     return res.status(409).json({
-      error: `No se puede eliminar el inmueble: tiene ${inquilinos === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvincula primero al inquilino.`,
+      error: `No se puede eliminar el inmueble: tiene ${
+        vigentes.length === 1 ? "un contrato vigente" : `${vigentes.length} contratos vigentes`
+      }. Finaliza o desvincula el contrato antes de eliminarlo.`,
     });
   const affectedOwnerIds = Array.isArray(existing.ownerIds)
     ? existing.ownerIds
     : JSON.parse(existing.ownerIds || "[]");
   db.exec("BEGIN");
   try {
+    // Los contratos históricos se conservan sin inmueble: mantienen su ficha y
+    // sus fechas como historial, pero dejan de apuntar al inmueble borrado.
     db.prepare("UPDATE tenants SET propertyId = '' WHERE propertyId = ?").run(existing.id);
     removeEntityFiles("property", existing.id);
     db.prepare("DELETE FROM properties WHERE id = ?").run(existing.id);

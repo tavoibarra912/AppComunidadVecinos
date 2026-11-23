@@ -7,7 +7,6 @@ import { copyOwnerDataToTenantForm, ownerHasSameDocument } from "../../public/js
 test("copiar datos del propietario rellena los campos existentes y los deja editables", () => {
   const dom = new JSDOM(readFileSync("public/index.html", "utf8"));
   const form = dom.window.document.querySelector("#tenant-form");
-  const button = dom.window.document.querySelector("#tenant-copy-owner-data");
   const owner = {
     name: "Ana",
     surname: "García",
@@ -19,7 +18,6 @@ test("copiar datos del propietario rellena los campos existentes y los deja edit
 
   copyOwnerDataToTenantForm(owner, form);
 
-  assert.equal(button.type, "button");
   assert.equal(form.elements.name.value, "Ana");
   assert.equal(form.elements.surname.value, "García");
   assert.equal(form.elements.documentType.value, "NIE");

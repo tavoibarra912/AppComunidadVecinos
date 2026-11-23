@@ -93,6 +93,7 @@ export function validatePost(input, existing, data) {
     ownerIds: ids(a.ownerIds),
     tenantIds: ids(a.tenantIds),
     propertyIds: ids(a.propertyIds),
+    ...(a.includeResidents === true ? { includeResidents: true } : {}),
   };
   const members = profiles(p.communityId, data);
   for (const [field, rows] of [

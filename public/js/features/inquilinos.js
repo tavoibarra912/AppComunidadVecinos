@@ -32,14 +32,15 @@ import {
 import { createDataTable } from "../table.js";
 import { createExportDropdown } from "../export-client.js";
 import { createRichText } from "../rich-text.js";
-import { openPropertyDetail } from "./inmuebles.js";
+import { openPropertyDetail, applyEditorReturnContext } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
 import { createDocumentLibrary } from "../document-library.js";
-import { copyOwnerDataToTenantForm, ownerHasSameDocument } from "../tenant-form.js";
+import { ownerHasSameDocument } from "../tenant-form.js";
 
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
-const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+// Icono de "ver" real (ojo) para los botones de acción de inquilinos.
+const ICON_VIEW = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
 const ICON_CASCADE_DELETE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h12M13 6v3M5 6v14a1 1 0 0 0 1 1h4M7 6V4h4v2"/><path d="M8 10v7"/><path d="M15 12h7M17 10v4M12 18h10M19 16v4"/></svg>`;
@@ -65,7 +66,6 @@ const tenantResultCount = document.querySelector("#tenant-result-count");
 const newTenantBtn = document.querySelector("#new-tenant");
 const tenantDialog = document.querySelector("#tenant-dialog");
 const tenantForm = document.querySelector("#tenant-form");
-const copyOwnerDataBtn = document.querySelector("#tenant-copy-owner-data");
 // Observaciones con formato (mismo editor que usa la ficha de comunidad).
 const tenantNotes = createRichText({
   editor: document.querySelector("#tenant-notes-editor"),
@@ -325,7 +325,7 @@ export function renderTenants() {
               "btn-info",
               "Más info",
               `Ver información de ${tenant.name} ${tenant.surname}`,
-              ICON_INFO,
+              ICON_VIEW,
             );
             btnInfo.addEventListener("click", () => openTenantEditor(tenant.id, owner.id, true));
             wrap.append(btnInfo);
@@ -486,12 +486,6 @@ function switchTenantDialogTab(tab) {
   }
 }
 
-function updateCopyOwnerDataButton() {
-  if (copyOwnerDataBtn)
-    copyOwnerDataBtn.hidden =
-      !!state.ui.editingTenantId || tenantDialogReadOnly || !tenantOwnerSelect.value;
-}
-
 export function openTenantEditor(
   id = null,
   ownerId = state.ui.viewingOwnerId,
@@ -527,7 +521,6 @@ export function openTenantEditor(
       tenantOwnerSelect.add(new Option(`${owner.name} ${owner.surname}`, owner.id)),
     );
   tenantOwnerSelect.value = editingOwner?.id || "";
-  updateCopyOwnerDataButton();
 
   if (tenant) {
     [
@@ -649,14 +642,14 @@ function renderTenantPropertyTab() {
     "btn-info",
     "Ver inmueble",
     `Ver inmueble ${property.plot}`,
-    `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+    ICON_VIEW,
   );
   viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
   const unlinkBtn = iconBtn(
     "btn-delete",
     "Desvincular",
     `Desvincular ${property.plot}`,
-    `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path></svg>`,
+    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
   );
   unlinkBtn.addEventListener("click", () => {
     editingTenantPropertyId = null;
@@ -1119,22 +1112,10 @@ if (tenantBtnSampleContract)
 // Owner select change
 tenantOwnerSelect.addEventListener("change", () => {
   state.ui.viewingOwnerId = tenantOwnerSelect.value || null;
-  updateCopyOwnerDataButton();
   updateTenantPropertyOptions(tenantOwnerSelect.value);
   editingTenantPropertyId = null;
   renderTenantPropertyTab();
   renderTenantAuthorizations(selectedTenantAuthorizations());
-});
-
-copyOwnerDataBtn?.addEventListener("click", () => {
-  const owner = state.owners.find((item) => item.id === tenantOwnerSelect.value);
-  if (!owner) {
-    toast("Selecciona un propietario para copiar sus datos.", "warning");
-    return;
-  }
-  copyOwnerDataToTenantForm(owner, tenantForm);
-  tenantResetContactVerification(null);
-  tenantUpdateCanalOptions();
 });
 
 newTenantBtn.addEventListener("click", () => openTenantEditor(null, ""));
@@ -1271,6 +1252,7 @@ tenantForm.addEventListener("submit", async (event) => {
   await refreshState();
   limpiarGuardia(tenantForm);
   closeTenantEditor();
+  applyEditorReturnContext(tenant);
   const sameOwnerDocument = !isEditing && ownerHasSameDocument(tenant.documentId, owner);
   toast(
     sameOwnerDocument
