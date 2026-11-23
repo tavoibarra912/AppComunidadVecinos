@@ -6209,6 +6209,48 @@
         </section>
 
         <section class="property-editor-pane" data-property-pane="owners" hidden>
+          <div class="property-residency" id="property-initial-resident">
+            <h3 class="property-residency-title" id="property-initial-resident-title">
+              Ocupación del inmueble
+            </h3>
+            <p class="property-residency-intro" id="property-initial-resident-help">
+              Indica quién vivirá en el inmueble al darlo de alta. Lo habitual es que viva el
+              propietario, y en ese caso no se crea ningún contrato. Si eliges otra persona, al
+              guardar se abre el alta del inquilino con este inmueble y el primer propietario ya
+              seleccionados.
+            </p>
+            <div
+              class="property-residency-options"
+              role="radiogroup"
+              aria-labelledby="property-initial-resident-title"
+              aria-describedby="property-initial-resident-help"
+            >
+              <label class="property-residency-option">
+                <input type="radio" name="initialResident" value="owner" checked />
+                <span class="property-residency-option-text">
+                  <strong>Vive el propietario</strong>
+                  <span class="field-hint"
+                    >Figura como habitante del inmueble y no se crea ningún contrato de
+                    alquiler.</span
+                  >
+                </span>
+              </label>
+              <label class="property-residency-option">
+                <input type="radio" name="initialResident" value="other" />
+                <span class="property-residency-option-text">
+                  <strong>Vive otra persona</strong>
+                  <span class="field-hint"
+                    >Al guardar se abre el alta del inquilino con este inmueble y el primer
+                    propietario ya seleccionados.</span
+                  >
+                </span>
+              </label>
+            </div>
+            <p class="property-residency-note">
+              Solo se pregunta al crear el inmueble. Después puedes gestionar quién vive aquí desde
+              la pestaña Inquilinos.
+            </p>
+          </div>
           <div class="detail-section-heading">
             <div>
               <h3>Propietarios asociados (<span id="property-owner-count">0</span>)</h3>
@@ -6314,26 +6356,6 @@
             </button>
           </div>
           <div class="community-properties-list" id="property-owners-list"></div>
-          <div
-            class="full"
-            id="property-initial-resident"
-            role="radiogroup"
-            aria-labelledby="property-initial-resident-title"
-          >
-            <p class="form-section-title" id="property-initial-resident-title">
-              ¿Quién vivirá en este inmueble?
-            </p>
-            <div class="property-residency-options">
-              <label class="checkbox-line">
-                <input type="radio" name="initialResident" value="owner" checked />
-                <span>El propietario (ya figura como habitante; no se crea un contrato).</span>
-              </label>
-              <label class="checkbox-line">
-                <input type="radio" name="initialResident" value="other" />
-                <span>Otra persona (se abrirá su alta al guardar el inmueble).</span>
-              </label>
-            </div>
-          </div>
         </section>
         <section class="property-editor-pane" data-property-pane="tenants" hidden>
           <div class="detail-section-heading">

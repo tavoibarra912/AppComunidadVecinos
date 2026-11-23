@@ -130,6 +130,13 @@ async function saveNewProperty(choice, tenantCreateAllowed = true) {
     const residentChoice = document.querySelector("#property-initial-resident");
     assert.equal(residentChoice.hidden, false);
     assert.equal(residentChoice.closest(".property-editor-pane").dataset.propertyPane, "owners");
+    assert.equal(
+      residentChoice.closest(".property-editor-pane").firstElementChild,
+      residentChoice,
+    );
+    assert.match(residentChoice.textContent, /Ocupación del inmueble/);
+    assert.match(residentChoice.textContent, /no se crea ningún contrato/);
+    assert.match(residentChoice.textContent, /primer propietario/);
     assert.equal(form.querySelector('input[name="initialResident"][value="owner"]').checked, true);
     form.querySelector(`input[name="initialResident"][value="${choice}"]`).checked = true;
     form.dispatchEvent(new f.window.Event("submit", { bubbles: true, cancelable: true }));

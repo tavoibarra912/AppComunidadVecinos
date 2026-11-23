@@ -534,7 +534,7 @@ protección de sus copias de seguridad para producción.
 ### Inmuebles
 
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
-- En el alta se puede indicar quién vivirá en el inmueble: el propietario (opción predeterminada, sin crear un contrato) u otra persona. Con esta última opción, tras guardar se abre el alta del inquilino con el propietario y el inmueble ya seleccionados.
+- La pestaña **Propietarios** del alta empieza con la **ocupación del inmueble**: se indica si vivirá el propietario (opción predeterminada, sin crear ningún contrato) u otra persona. Con esta última, al guardar se abre el alta del inquilino con el inmueble y el primer propietario ya seleccionados.
 - Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
 ### Inquilinos
