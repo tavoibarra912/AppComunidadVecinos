@@ -17,6 +17,7 @@ import {
   resolveAudience,
   canRead,
   phase,
+  attendanceOpen,
   audit,
   getPreferences,
   queue,
@@ -290,11 +291,38 @@ router.put(
     if (req.body.version !== old.version)
       throw problem("La publicación cambió. Recárgala antes de guardar.", 409);
     transaction(() => {
+      const comparable = (post) => {
+        const { poll, ...content } = post;
+        const { closed, ...pollContent } = poll || {};
+        return JSON.stringify({ ...content, poll: poll ? pollContent : null });
+      };
+      // Compara únicamente los campos normalizados del payload, sin metadatos.
+      const previous = Object.fromEntries(Object.keys(p).map((key) => [key, old[key]]));
+      const contentChanged = comparable(previous) !== comparable(p);
+      const onlyPollState =
+        !!old.poll && !!p.poll && old.poll.closed !== p.poll.closed && !contentChanged;
       db.prepare(
         "UPDATE communication_posts SET data=?,updatedAt=?,version=version+1 WHERE id=?",
       ).run(JSON.stringify(p), new Date().toISOString(), old.id);
-      audit(old.id, req.user.id, p.status === "cancelled" ? "cancelled" : "updated");
+      if (!contentChanged)
+        db.prepare(
+          "UPDATE communication_outbox SET version=? WHERE postId=? AND version=? AND state IN ('pending','failed','skipped','uncertain')",
+        ).run(old.version + 1, old.id, old.version);
+      audit(
+        old.id,
+        req.user.id,
+        onlyPollState
+          ? p.poll.closed
+            ? "poll-closed"
+            : "poll-reopened"
+          : !contentChanged
+            ? "unchanged"
+            : p.status === "cancelled"
+              ? "cancelled"
+              : "updated",
+      );
       if (
+        contentChanged &&
         db
           .prepare("SELECT 1 FROM communication_audit WHERE postId=? AND action='published'")
           .get(old.id)
@@ -491,13 +519,20 @@ router.post(
     const p = find(req, true);
     if (p.type !== "meeting" || typeof req.body?.attended !== "boolean")
       throw problem("Asistencia no válida.");
-    if (
-      !db
-        .prepare("UPDATE communication_recipients SET attended=? WHERE postId=? AND userId=?")
-        .run(req.body.attended ? 1 : 0, p.id, req.body.userId || "").changes
-    )
-      throw problem("Participante no encontrado.", 404);
-    audit(p.id, req.user.id, "attendance-updated");
+    if (!attendanceOpen(p))
+      throw problem(
+        "Solo se puede registrar asistencia cuando la reunión publicada ya ha comenzado y no está cancelada.",
+        409,
+      );
+    transaction(() => {
+      if (
+        !db
+          .prepare("UPDATE communication_recipients SET attended=? WHERE postId=? AND userId=?")
+          .run(req.body.attended ? 1 : 0, p.id, req.body.userId || "").changes
+      )
+        throw problem("Participante no encontrado.", 404);
+      audit(p.id, req.user.id, "attendance-updated");
+    });
     res.json({ ok: true });
   }),
 );

@@ -669,6 +669,7 @@ export function previewService(id) {
       variable: item.variable ?? 0,
       reading,
       snapshot: {
+        currency: "EUR",
         property: entry.property.plot || entry.property.address,
         community: community.name,
         communityIban: community.iban || "",

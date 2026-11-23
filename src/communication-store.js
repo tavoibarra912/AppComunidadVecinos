@@ -263,6 +263,14 @@ export function phase(post, now = Date.now()) {
   if (post.startsAt && Date.parse(post.startsAt) > now) return "upcoming";
   return "active";
 }
+export function attendanceOpen(post, now = Date.now()) {
+  return (
+    post.type === "meeting" &&
+    post.status === "published" &&
+    Date.parse(post.publishAt) <= now &&
+    Date.parse(post.startsAt) <= now
+  );
+}
 export function audit(postId, userId, action) {
   db.prepare("INSERT INTO communication_audit VALUES (?,?,?,?,?)").run(
     crypto.randomUUID(),
@@ -554,6 +562,34 @@ export function ballotWeights(post, ballots) {
 }
 const roundWeight = (value) => Math.round(value * 100) / 100;
 
+function representationNotice(post, user, ballots) {
+  const rule = pollRule(post);
+  if (
+    post.poll.type !== "vote" ||
+    post.poll.electorate !== "owners" ||
+    rule.censo === "socios" ||
+    !["inmueble", "coeficiente"].includes(rule.unidad) ||
+    rule.copropiedad !== "representante"
+  )
+    return "";
+  const census = votingCensus(post);
+  if (!census) return "";
+  const owners = new Map(census.owners.map((owner) => [owner.id, owner.userId]));
+  const represented = census.properties.some((property) => {
+    const users = new Set(
+      parseList(property.ownerIds)
+        .map((id) => owners.get(id))
+        .filter(Boolean),
+    );
+    if (!users.has(user.id)) return false;
+    const first = ballots.find((ballot) => users.has(ballot.userId));
+    return first && first.userId !== user.id;
+  });
+  return represented
+    ? "Otro cotitular ya respondió por uno o varios de tus inmuebles. Tu respuesta queda registrada, pero no añade peso por esos inmuebles, que computan una sola vez."
+    : "";
+}
+
 export function summary(post, user, data = policyData()) {
   const manager = canPublish(user, post.communityId, data);
   const mine = db
@@ -563,6 +599,7 @@ export function summary(post, user, data = policyData()) {
     ...post,
     phase: phase(post),
     canManage: manager,
+    canRecordAttendance: manager && attendanceOpen(post),
     canModerate: canModerate(user, post.communityId, data),
     recipient: mine || null,
     canVote: mayVote(user, post, data),
@@ -616,6 +653,10 @@ export function detail(post, user) {
       ballots.map((ballot) => [ballot.userId, JSON.parse(ballot.choices || "[]")]),
     );
     result.ballot = choices.get(user.id) || [];
+    result.representationNotice =
+      allowed(user, "comm:participacion", post.communityId) && mayVote(user, post)
+        ? representationNotice(post, user, ballots)
+        : "";
     result.pollRule = votingRuleLabel(rule);
     // La mayoría solo se muestra en votaciones; en encuestas no decide nada.
     // Se toma la regla congelada de la consulta, no la versión que fuerza el

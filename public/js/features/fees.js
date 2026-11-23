@@ -393,6 +393,71 @@ function button(text, action, primary = false) {
   });
   return node;
 }
+function certificateDialog(ctx) {
+  const body = open("Certificado de deuda");
+  info(
+    body,
+    "Documento informativo a fecha de hoy. Incluye todos los recibos del ámbito elegido, sin aplicar los filtros de la tabla. No sustituye una certificación formal de la comunidad.",
+  );
+  const scope = field(body, "Ámbito del certificado *", "select", "propertyId", [
+    ["propertyId", "Inmueble"],
+    ["ownerId", "Propietario: todos sus inmuebles en esta comunidad"],
+  ]);
+  const target = field(body, "Titular o inmueble *", "select");
+  target.required = true;
+  const properties = state.properties.filter((property) => property.communityId === ctx.id);
+  const relatedOwners = new Set([
+    ...properties.flatMap((property) => property.ownerIds || []),
+    ...ctx.data.receipts.flatMap((receipt) => receipt.snapshot.owners.map((owner) => owner.id)),
+  ]);
+  const refreshTargets = () => {
+    const entries =
+      scope.value === "propertyId"
+        ? ctx.data.certificateTargets?.properties.map((property) => [
+            property.id,
+            property.label,
+          ]) ||
+          properties.map((property) => [
+            property.id,
+            property.plot || property.address || property.id,
+          ])
+        : ctx.data.certificateTargets?.owners.map((owner) => [owner.id, owner.label]) ||
+          state.owners
+            .filter((owner) => relatedOwners.has(owner.id))
+            .map((owner) => [owner.id, `${owner.name} ${owner.surname || ""}`.trim()]);
+    target.replaceChildren();
+    for (const [id, text] of [["", "Selecciona…"], ...entries]) {
+      const option = el("option", text);
+      option.value = id;
+      target.append(option);
+    }
+  };
+  scope.addEventListener("change", refreshTargets);
+  refreshTargets();
+  body.append(
+    button(
+      "Descargar PDF",
+      async () => {
+        const version = dialogVersion,
+          selectedScope = scope.value,
+          selectedId = target.value;
+        const blob = await api.debtCertificate(ctx.id, selectedScope, selectedId);
+        if (version !== dialogVersion || !dialog.open) return;
+        const url = URL.createObjectURL(blob),
+          link = el("a");
+        link.href = url;
+        link.download = `certificado-deuda-${selectedScope === "propertyId" ? "inmueble" : "propietario"}-${selectedId}.pdf`;
+        body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+        toast("Certificado generado.");
+      },
+      true,
+    ),
+  );
+}
+
 function ensureDialog() {
   if (dialog) return dialog;
   dialog = document.createElement("dialog");
@@ -762,6 +827,8 @@ function renderPanel(root, ctx) {
       el("h3", serviceTab ? "Servicios" : assessmentTab ? "Derramas" : "Cuotas ordinarias"),
     );
   const tools = el("div", undefined, "fee-toolbar");
+  if (ctx.kind === "community" && manage)
+    tools.append(button("Certificado de deuda", () => certificateDialog(ctx)));
   // En derramas y servicios el registro de cobros vive en la cabecera de la sección.
   let sectionPayment = null;
   if (!assessmentTab && !serviceTab && ctx.kind === "community" && canConfigure)
@@ -1268,7 +1335,7 @@ async function showAssessment(id) {
     overview.append(totals);
     info(
       overview,
-      `Reparto ${a.mode === "coefficient" ? "por coeficiente de participación" : "con importes manuales por inmueble"}, congelado al guardar la derrama.`,
+      `Reparto ${a.mode === "mixed" ? "mixto: importes fijos y resto por coeficiente" : a.mode === "coefficient" ? "por coeficiente de participación" : "con importes manuales por inmueble"}, congelado al guardar la derrama.`,
     );
     if (a.canEdit)
       overview.append(
@@ -1985,7 +2052,11 @@ function periodicityLabel(months) {
   );
 }
 function modeLabel(mode) {
-  return mode === "manual" ? "Importes por inmueble" : "Por coeficiente";
+  return mode === "mixed"
+    ? "Mixto: fijos y coeficiente"
+    : mode === "manual"
+      ? "Importes por inmueble"
+      : "Por coeficiente";
 }
 /** Resumen del acuerdo que se va a aplicar, para no tener que leer la tabla. */
 function planSummary(plan) {

@@ -131,3 +131,43 @@ test("comunicaciones: cambiar de cuenta descarta respuestas y contadores de la a
   assert.equal(f.badge().hidden, true);
   assert.equal(f.w.inboxTest.getCommunicationSnapshot().posts.length, 0);
 });
+
+test("copropiedad UI: muestra la advertencia sin exponer HTML ni bloquear el registro de respuesta", (t) => {
+  const f = fixture(t);
+  f.w.eval(
+    "window.inboxTest.participationView=participationView;window.inboxTest.meetingView=meetingView;",
+  );
+  const p = {
+    ...post(),
+    poll: {
+      type: "vote",
+      question: "¿Se aprueba?",
+      closesAt: "2099-01-01T00:00:00Z",
+      electorate: "owners",
+      options: ["Sí", "No"],
+    },
+    ballot: [],
+    pollOpen: true,
+    canVote: true,
+    comments: [],
+    commentsEnabled: false,
+    representationNotice: "Otro cotitular ya respondió. <img src=x onerror=alert(1)>",
+  };
+  const root = f.w.document.createElement("div");
+  root.innerHTML = f.w.inboxTest.participationView(p);
+  assert.match(root.querySelector("[role=status]").textContent, /Otro cotitular/);
+  assert.equal(root.querySelector("img"), null);
+  assert.ok(root.querySelector("#comm-ballot"));
+  const meeting = {
+    ...post(),
+    meeting: { location: "Salón", agenda: "Orden del día", tasks: [] },
+    files: [],
+    canManage: true,
+    canRecordAttendance: false,
+    recipients: [{ name: "Socia", userId: "u1", rsvp: "accepted", attended: 0 }],
+  };
+  root.innerHTML = f.w.inboxTest.meetingView(meeting);
+  assert.equal(root.querySelector("[data-attendance]").disabled, true);
+  root.innerHTML = f.w.inboxTest.meetingView({ ...meeting, canRecordAttendance: true });
+  assert.equal(root.querySelector("[data-attendance]").disabled, false);
+});

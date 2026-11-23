@@ -45,6 +45,26 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  debtCertificate: async (communityId, scope, id) => {
+    if (!["ownerId", "propertyId"].includes(scope) || !id)
+      throw new Error("Selecciona el ámbito del certificado.");
+    const response = await fetch(
+      `${API_BASE}/fees/communities/${encodeURIComponent(communityId)}/debt-certificate?${new URLSearchParams({ [scope]: id })}`,
+      {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      if (response.status === 401) window.dispatchEvent(new Event("auth:expired"));
+      throw new Error(result?.error || "No se pudo generar el certificado.");
+    }
+    if (!response.headers.get("content-type")?.includes("application/pdf"))
+      throw new Error("El servidor no devolvió un certificado PDF válido.");
+    return response.blob();
+  },
   cascadeArchives: (offset = 0) => request(`/cascade-archives?offset=${offset}`),
   cascadeReview: (collection, id, payload) =>
     request(`/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/cascade-preview`, {

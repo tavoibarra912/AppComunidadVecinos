@@ -10,6 +10,9 @@ const source = (file) =>
   readFileSync(file, "utf8")
     .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\r?\n/gm, "")
     .replace(/\bexport (?=(async )?function|const |let )/g, "");
+const comboSource = readFileSync("public/js/utils.js", "utf8")
+  .match(/export function makeSelectSearchable[\s\S]*?\r?\n}\r?\n/)[0]
+  .replace("export ", "");
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const noop = () => {};
 const escapeHtml = (value) =>
@@ -250,7 +253,7 @@ test("Comunidad Ver: nuevos controles también quedan bloqueados y Editar recupe
     f.dom.window.close();
   }
 });
-test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros reales", async () => {
+test("Inicio: renderiza recuentos y abre acciones de registros reales", async () => {
   const dom = domFixture(),
     w = dom.window,
     calls = [];
@@ -347,6 +350,10 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     },
     toast: noop,
   });
+  vm.runInContext(
+    `let comboSequence = 0;\n${comboSource}\nwindow.makeSelectSearchable = makeSelectSearchable;`,
+    dom.getInternalVMContext(),
+  );
   try {
     vm.runInContext(
       `${source("public/js/features/home.js")}\nrenderHomeDashboard();`,
@@ -361,11 +368,17 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     assert.match(root.textContent, /50% del emitido/);
     assert.doesNotMatch(root.textContent, /Sistema Operativo|cuotas y derechos al día/i);
     assert.equal(root.querySelector(".dashboard-metric strong").textContent, "2");
-    const select = root.querySelector("#dashboard-community");
-    select.value = "a";
-    select.dispatchEvent(new w.Event("change", { bubbles: true }));
+    const filter = root.querySelector("#dashboard-community");
+    assert.ok(filter, "Inicio muestra el filtro por comunidad");
+    assert.deepEqual(
+      [...filter.options].map((option) => option.textContent),
+      ["Todas las comunidades", "Comunidad A", "Comunidad B"],
+    );
+    filter.value = "a";
+    filter.dispatchEvent(new w.Event("change", { bubbles: true }));
+    await flush();
+    assert.equal(root.querySelector("#dashboard-community").value, "a");
     assert.equal(root.querySelector(".dashboard-metric strong").textContent, "1");
-    assert.equal(root.querySelector(".dashboard-bar strong").textContent, "1");
     root.querySelector('[data-dashboard-action="post"]').click();
     await flush();
     assert.ok(calls.includes("post"));
@@ -373,6 +386,27 @@ test("Inicio: renderiza recuentos, cambia ámbito y abre acciones de registros r
     await flush();
     assert.ok(calls.includes("refresh-state"));
     assert.ok(calls.includes("refresh-posts"));
+    // El desplegable se muestra como combo con buscador: elegir una opción en
+    // ese combo debe filtrar el panel, no solo asignar el valor del select.
+    w.makeSelectSearchable(root.querySelector("#dashboard-community"));
+    const search = root.querySelector(".dashboard-filter .combo-box-input");
+    search.focus();
+    search.value = "Comunidad B";
+    search.dispatchEvent(new w.Event("input"));
+    const comboOption = root.querySelector('.combo-box-options li[data-value="b"]');
+    assert.ok(comboOption);
+    comboOption.dispatchEvent(new w.MouseEvent("mousedown", { bubbles: true }));
+    await flush();
+    assert.equal(root.querySelector(".dashboard-metric strong").textContent, "1");
+    assert.equal(root.querySelector("#dashboard-community").value, "b");
+    // La selección de una cuenta no condiciona el panel de la siguiente,
+    // incluso si ambas tienen acceso a las mismas comunidades.
+    state.users.push({ id: "other-admin", nombre: "Beatriz", rol: "administrator" });
+    state.currentUserId = "other-admin";
+    vm.runInContext("renderHomeDashboard();", dom.getInternalVMContext());
+    await flush();
+    assert.equal(root.querySelector("#dashboard-community").value, "");
+    assert.equal(root.querySelector(".dashboard-metric strong").textContent, "2");
   } finally {
     w.close();
   }

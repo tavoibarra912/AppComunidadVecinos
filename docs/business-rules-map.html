@@ -1,0 +1,4241 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Mapa de negocio y reglas funcionales de AppComunidadVecinos: comunidades LPH y asociaciones, censo, inmuebles, contratos, cuotas, derramas, servicios, votaciones, documentos, permisos y borrado avanzado."
+    />
+    <title>Mapa de negocio — AppComunidadVecinos</title>
+    <style>
+      :root {
+        --ink: #0b1524;
+        --ink-soft: #243247;
+        --muted: #5d6b7e;
+        --paper: #f4f6f9;
+        --card: #ffffff;
+        --line: #dbe2ea;
+        --line-strong: #b9c5d3;
+        --navy: #0c2533;
+        --navy-2: #123b4b;
+        --brand: #0f766e;
+        --brand-soft: #e6f5f2;
+        --blue: #1d4ed8;
+        --blue-soft: #eef3ff;
+        --amber: #a16207;
+        --amber-soft: #fff8e6;
+        --red: #b42318;
+        --red-soft: #fff1f0;
+        --green: #166534;
+        --green-soft: #eefaf1;
+        --violet: #6d28d9;
+        --violet-soft: #f4f0ff;
+        --radius: 16px;
+        --radius-sm: 10px;
+        --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px rgba(15, 23, 42, 0.06);
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 22px;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 100% 0%, rgba(15, 118, 110, 0.07), transparent 34rem),
+          radial-gradient(circle at 0% 28%, rgba(29, 78, 216, 0.05), transparent 30rem),
+          var(--paper);
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        line-height: 1.62;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: var(--blue);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+      a:hover {
+        color: var(--navy);
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.86em;
+        background: #f0f3f7;
+        border: 1px solid #e2e8f0;
+        border-radius: 5px;
+        padding: 0.1em 0.34em;
+        white-space: nowrap;
+      }
+      strong {
+        color: #07111e;
+      }
+      .skip-link {
+        position: absolute;
+        left: -999px;
+        top: 8px;
+        background: var(--card);
+        color: var(--ink);
+        padding: 10px 14px;
+        border-radius: 8px;
+        z-index: 99;
+      }
+      .skip-link:focus {
+        left: 8px;
+      }
+      .shell {
+        display: grid;
+        grid-template-columns: 298px minmax(0, 1fr);
+        gap: 28px;
+        width: min(1480px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 24px 0 60px;
+        align-items: start;
+      }
+      .rail {
+        position: sticky;
+        top: 24px;
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        color: #dbe7ee;
+        background:
+          linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 38%), var(--navy);
+        border: 1px solid #1d4655;
+        border-radius: 20px;
+        padding: 22px 18px;
+        box-shadow: 0 22px 50px rgba(2, 20, 28, 0.18);
+        scrollbar-width: thin;
+        scrollbar-color: #356070 transparent;
+      }
+      .rail::-webkit-scrollbar {
+        width: 7px;
+      }
+      .rail::-webkit-scrollbar-thumb {
+        background: #356070;
+        border-radius: 99px;
+      }
+      .brand-kicker {
+        margin: 0 0 4px;
+        color: #8fd3c8;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .brand-title {
+        margin: 0;
+        font-size: 1.34rem;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        color: #fff;
+      }
+      .brand-sub {
+        margin: 8px 0 18px;
+        color: #a9bcc8;
+        font-size: 0.82rem;
+        line-height: 1.5;
+      }
+      .rail-meta {
+        display: grid;
+        gap: 7px;
+        padding: 12px 0 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        margin-bottom: 16px;
+        font-size: 0.76rem;
+        color: #b8cad5;
+      }
+      .rail-meta span {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .rail-meta b {
+        color: #eef7fa;
+        font-weight: 700;
+      }
+      .rail nav {
+        font-size: 0.84rem;
+      }
+      .rail nav p {
+        margin: 15px 0 6px;
+        color: #7fa4b4;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .rail nav a {
+        display: flex;
+        gap: 9px;
+        align-items: baseline;
+        color: #d8e5eb;
+        text-decoration: none;
+        padding: 5px 7px;
+        border-radius: 7px;
+        border-left: 2px solid transparent;
+      }
+      .rail nav a:hover,
+      .rail nav a:focus-visible {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.07);
+        border-left-color: #5eead4;
+        outline: none;
+      }
+      .rail nav a span {
+        min-width: 1.25rem;
+        color: #78a0b0;
+        font-family: var(--mono);
+        font-size: 0.7rem;
+      }
+      .rail-note {
+        margin: 18px 0 0;
+        padding-top: 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        color: #9fb5c1;
+        font-size: 0.72rem;
+        line-height: 1.5;
+      }
+      main {
+        min-width: 0;
+      }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        color: #eaf4f7;
+        background:
+          radial-gradient(circle at 86% 14%, rgba(45, 212, 191, 0.2), transparent 24rem),
+          linear-gradient(135deg, #0b2533 0%, #103e4d 55%, #155e63 100%);
+        border: 1px solid #1b5663;
+        border-radius: 24px;
+        padding: 38px 40px 32px;
+        box-shadow: 0 26px 60px rgba(5, 30, 40, 0.18);
+      }
+      .hero::after {
+        content: "";
+        position: absolute;
+        width: 360px;
+        height: 360px;
+        right: -150px;
+        bottom: -220px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50%;
+        box-shadow:
+          0 0 0 42px rgba(255, 255, 255, 0.035),
+          0 0 0 92px rgba(255, 255, 255, 0.025);
+        pointer-events: none;
+      }
+      .eyebrow {
+        margin: 0 0 10px;
+        color: #8de0d2;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        max-width: 18ch;
+        font-size: clamp(2rem, 4.4vw, 3.35rem);
+        line-height: 1.04;
+        letter-spacing: -0.045em;
+        color: #fff;
+      }
+      .hero-lead {
+        max-width: 68ch;
+        margin: 16px 0 22px;
+        color: #c7dde4;
+        font-size: 1rem;
+      }
+      .hero-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .hero-chips li {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.07);
+        color: #e8f4f7;
+        border-radius: 999px;
+        padding: 4px 11px;
+        font-size: 0.73rem;
+        font-weight: 600;
+      }
+      .hero-foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        justify-content: space-between;
+        margin-top: 26px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
+        color: #a9c5cf;
+        font-size: 0.72rem;
+      }
+      .section {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 26px 28px 28px;
+        margin-top: 20px;
+      }
+      .section-head {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding-bottom: 14px;
+        margin-bottom: 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .section-no {
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: var(--navy);
+        color: #9fe8dd;
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin-top: 2px;
+      }
+      h2 {
+        margin: 1px 0 3px;
+        font-size: clamp(1.2rem, 2vw, 1.55rem);
+        line-height: 1.22;
+        letter-spacing: -0.02em;
+      }
+      .section-sub {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+      h3 {
+        margin: 24px 0 8px;
+        font-size: 0.99rem;
+        letter-spacing: -0.005em;
+        color: var(--ink-soft);
+      }
+      h4 {
+        margin: 16px 0 6px;
+        font-size: 0.88rem;
+        color: var(--ink-soft);
+      }
+      p {
+        margin: 8px 0;
+      }
+      ul,
+      ol {
+        margin: 8px 0 10px;
+        padding-left: 1.35rem;
+      }
+      li {
+        margin: 4px 0;
+      }
+      li::marker {
+        color: #7d8da1;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .small {
+        font-size: 0.82rem;
+      }
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        display: grid;
+        gap: 12px;
+        margin: 12px 0;
+      }
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .mini-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 13px 14px;
+        background: #fcfdff;
+      }
+      .mini-card h4 {
+        margin: 0 0 4px;
+        font-size: 0.85rem;
+      }
+      .mini-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 0.68rem;
+        font-weight: 750;
+        line-height: 1.5;
+        vertical-align: middle;
+        white-space: nowrap;
+        border: 1px solid transparent;
+      }
+      .pill-lph {
+        background: var(--blue-soft);
+        color: #1e3a8a;
+        border-color: #cbd8fb;
+      }
+      .pill-assoc {
+        background: var(--violet-soft);
+        color: #5b21b6;
+        border-color: #ddd2fb;
+      }
+      .pill-money {
+        background: var(--green-soft);
+        color: #14532d;
+        border-color: #c8ead2;
+      }
+      .pill-legal {
+        background: var(--amber-soft);
+        color: #854d0e;
+        border-color: #f0e0b6;
+      }
+      .pill-risk {
+        background: var(--red-soft);
+        color: #991b1b;
+        border-color: #f3cfcb;
+      }
+      .pill-neutral {
+        background: #f2f5f8;
+        color: #334155;
+        border-color: #dde5ec;
+      }
+      .callout {
+        margin: 14px 0;
+        padding: 12px 14px 12px 15px;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--blue);
+        border-radius: 0 10px 10px 0;
+        background: #f8faff;
+        font-size: 0.84rem;
+      }
+      .callout strong:first-child {
+        display: block;
+        margin-bottom: 2px;
+      }
+      .callout.ok {
+        border-left-color: var(--green);
+        background: var(--green-soft);
+      }
+      .callout.warn {
+        border-left-color: var(--amber);
+        background: var(--amber-soft);
+      }
+      .callout.danger {
+        border-left-color: var(--red);
+        background: var(--red-soft);
+      }
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin: 12px 0;
+        background: #fff;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.79rem;
+        min-width: 620px;
+      }
+      caption {
+        caption-side: top;
+        text-align: left;
+        padding: 10px 12px 0;
+        color: var(--muted);
+        font-size: 0.75rem;
+      }
+      th,
+      td {
+        padding: 9px 11px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+        text-align: left;
+      }
+      th {
+        background: #f3f6f9;
+        color: #334155;
+        font-size: 0.69rem;
+        letter-spacing: 0.045em;
+        text-transform: uppercase;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      tbody tr:nth-child(even) {
+        background: #fcfdff;
+      }
+      td code {
+        white-space: normal;
+      }
+      .tight td,
+      .tight th {
+        padding: 7px 9px;
+      }
+      .figure {
+        margin: 16px 0 8px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: linear-gradient(#fff, #fbfdff);
+      }
+      .figure svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      figcaption {
+        margin: 8px 4px 0;
+        color: var(--muted);
+        font-size: 0.75rem;
+        line-height: 1.5;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        margin: 10px 0 0;
+        font-size: 0.74rem;
+        color: var(--muted);
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .dot-lph {
+        background: #2f5fd0;
+      }
+      .dot-assoc {
+        background: #7c3aed;
+      }
+      .dot-money {
+        background: #15803d;
+      }
+      .dot-risk {
+        background: #b42318;
+      }
+      .flow {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin: 14px 0;
+        overflow-x: auto;
+        padding: 2px 1px 8px;
+      }
+      .flow-step {
+        position: relative;
+        flex: 1 0 150px;
+        min-width: 150px;
+        margin-right: 19px;
+        padding: 12px 12px 11px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #fbfdff;
+      }
+      .flow-step::after {
+        content: "→";
+        position: absolute;
+        right: -17px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #8a9aab;
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      .flow-step:last-child {
+        margin-right: 0;
+      }
+      .flow-step:last-child::after {
+        display: none;
+      }
+      .flow-step b {
+        display: block;
+        font-size: 0.8rem;
+        line-height: 1.3;
+        margin-bottom: 2px;
+      }
+      .flow-step span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.72rem;
+        line-height: 1.42;
+      }
+      .flow-step .n {
+        display: inline-block;
+        margin-bottom: 5px;
+        color: var(--brand);
+        font-family: var(--mono);
+        font-size: 0.65rem;
+        font-weight: 800;
+      }
+      .rule-list {
+        list-style: none;
+        padding-left: 0;
+        margin: 10px 0;
+      }
+      .rule-list li {
+        position: relative;
+        padding: 9px 0 9px 26px;
+        border-bottom: 1px dashed #e5eaf0;
+      }
+      .rule-list li:last-child {
+        border-bottom: 0;
+      }
+      .rule-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        top: 9px;
+        width: 17px;
+        height: 17px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 0.65rem;
+        font-weight: 900;
+      }
+      .risk-list {
+        list-style: none;
+        padding-left: 0;
+      }
+      .risk-list li {
+        position: relative;
+        padding: 8px 0 8px 25px;
+        border-bottom: 1px dashed #e5eaf0;
+      }
+      .risk-list li:last-child {
+        border-bottom: 0;
+      }
+      .risk-list li::before {
+        content: "!";
+        position: absolute;
+        left: 0;
+        top: 8px;
+        width: 17px;
+        height: 17px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--red-soft);
+        color: var(--red);
+        font-size: 0.68rem;
+        font-weight: 900;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 14px;
+        align-items: start;
+      }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 13px 14px;
+        background: #fbfdff;
+      }
+      .panel h4 {
+        margin-top: 0;
+      }
+      .panel p:last-child,
+      .panel ul:last-child {
+        margin-bottom: 0;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: minmax(120px, 0.4fr) 1fr;
+        gap: 0;
+        margin: 10px 0;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .kv dt,
+      .kv dd {
+        margin: 0;
+        padding: 8px 11px;
+        border-bottom: 1px solid var(--line);
+        font-size: 0.8rem;
+      }
+      .kv dt {
+        background: #f6f8fb;
+        color: #475569;
+        font-weight: 700;
+      }
+      .kv dd {
+        border-left: 1px solid var(--line);
+      }
+      .kv dt:last-of-type,
+      .kv dd:last-of-type {
+        border-bottom: 0;
+      }
+      .anchor-link {
+        color: #94a3b8;
+        text-decoration: none;
+        font-size: 0.72rem;
+        margin-left: 6px;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      h2:hover .anchor-link,
+      h3:hover .anchor-link {
+        opacity: 1;
+      }
+      .source {
+        display: inline-block;
+        margin-top: 2px;
+        color: #64748b;
+        font-size: 0.7rem;
+      }
+      .footer {
+        margin-top: 24px;
+        padding: 22px 4px 8px;
+        color: #64748b;
+        font-size: 0.75rem;
+      }
+      .footer strong {
+        color: #334155;
+      }
+      .backtop {
+        display: inline-flex;
+        margin-top: 8px;
+        font-size: 0.75rem;
+        text-decoration: none;
+      }
+      .checklist {
+        columns: 2;
+        column-gap: 32px;
+        margin: 10px 0;
+      }
+      .checklist li {
+        break-inside: avoid;
+        margin: 5px 0;
+      }
+      .mono {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+      }
+      .nowrap {
+        white-space: nowrap;
+      }
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 7px 0;
+      }
+      @media (max-width: 1080px) {
+        .shell {
+          grid-template-columns: 250px minmax(0, 1fr);
+          gap: 20px;
+          width: calc(100% - 28px);
+        }
+        .rail {
+          padding: 18px 14px;
+        }
+        .hero {
+          padding: 30px 26px 26px;
+        }
+        .section {
+          padding: 22px;
+        }
+      }
+      @media (max-width: 820px) {
+        .shell {
+          display: block;
+          width: calc(100% - 24px);
+          padding-top: 12px;
+        }
+        .rail {
+          position: static;
+          max-height: none;
+          margin-bottom: 14px;
+          border-radius: 16px;
+        }
+        .rail nav {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0 10px;
+        }
+        .rail nav p {
+          grid-column: 1/-1;
+        }
+        .rail-meta {
+          grid-template-columns: 1fr 1fr;
+        }
+        .rail-meta span {
+          display: block;
+        }
+        .rail-meta b {
+          display: block;
+        }
+        .hero {
+          border-radius: 18px;
+        }
+        .grid-2,
+        .grid-3,
+        .grid-4 {
+          grid-template-columns: 1fr 1fr;
+        }
+        .split {
+          grid-template-columns: 1fr;
+        }
+        .checklist {
+          columns: 1;
+        }
+      }
+      @media (max-width: 560px) {
+        h1 {
+          max-width: none;
+        }
+        .hero {
+          padding: 26px 20px 22px;
+        }
+        .section {
+          padding: 18px 16px 20px;
+        }
+        .grid-2,
+        .grid-3,
+        .grid-4 {
+          grid-template-columns: 1fr;
+        }
+        .rail nav {
+          grid-template-columns: 1fr;
+        }
+        .section-head {
+          gap: 10px;
+        }
+        .section-no {
+          width: 30px;
+          height: 30px;
+        }
+        .kv {
+          grid-template-columns: 1fr;
+        }
+        .kv dd {
+          border-left: 0;
+        }
+        .kv dt {
+          border-bottom: 0;
+          padding-bottom: 2px;
+        }
+      }
+      @media print {
+        :root {
+          --paper: #fff;
+          --shadow: none;
+        }
+        body {
+          background: #fff;
+          font-size: 10pt;
+        }
+        .shell {
+          display: block;
+          width: 100%;
+          padding: 0;
+        }
+        .rail,
+        .hero-chips,
+        .anchor-link,
+        .backtop {
+          display: none !important;
+        }
+        .hero {
+          color: #111;
+          background: #fff;
+          border: 0;
+          box-shadow: none;
+          padding: 0 0 12px;
+        }
+        h1 {
+          color: #111;
+          font-size: 26pt;
+        }
+        .hero-lead,
+        .hero-foot {
+          color: #444;
+        }
+        .hero-foot {
+          border-top-color: #ddd;
+        }
+        .section {
+          break-inside: avoid;
+          border: 1px solid #ddd;
+          box-shadow: none;
+          margin: 12px 0;
+          padding: 14px;
+        }
+        .table-wrap {
+          overflow: visible;
+        }
+        table {
+          min-width: 0;
+          font-size: 8pt;
+        }
+        .flow {
+          overflow: visible;
+          flex-wrap: wrap;
+        }
+        .flow-step {
+          flex: 1 0 28%;
+          margin-right: 0;
+        }
+        .flow-step::after {
+          display: none;
+        }
+        a {
+          color: #111;
+          text-decoration: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <div class="shell">
+      <aside class="rail" aria-label="Índice y metadatos del documento">
+        <p class="brand-kicker">Documentación funcional</p>
+        <p class="brand-title">Mapa de negocio</p>
+        <p class="brand-sub">AppComunidadVecinos · comunidades, censo, cobros y convivencia</p>
+        <div class="rail-meta">
+          <span><b>Revisión</b> 2.2</span>
+          <span><b>Fecha</b> 22/11/2026</span>
+          <span><b>Alcance</b> Cambios del PR #215</span>
+          <span><b>Uso</b> Producto · soporte · QA</span>
+        </div>
+        <nav aria-label="Contenido">
+          <p>Enfoque</p>
+          <a href="#como-leer"><span>00</span>Cómo leer este mapa</a>
+          <a href="#principios"><span>01</span>Principios e invariantes</a>
+          <a href="#actores"><span>02</span>Actores y permisos</a>
+
+          <p>Modelo</p>
+          <a href="#dominio"><span>03</span>Entidades y relaciones</a>
+          <a href="#comunidades"><span>04</span>Comunidad y estatutos</a>
+          <a href="#propietarios"><span>05</span>Propietarios y censo</a>
+          <a href="#inmuebles"><span>06</span>Inmuebles y titularidad</a>
+          <a href="#inquilinos"><span>07</span>Inquilinos y contratos</a>
+
+          <p>Operación</p>
+          <a href="#finanzas"><span>08</span>Núcleo financiero</a>
+          <a href="#cuotas"><span>09</span>Cuotas ordinarias</a>
+          <a href="#derramas"><span>10</span>Derramas</a>
+          <a href="#servicios"><span>11</span>Servicios</a>
+          <a href="#comunicacion"><span>12</span>Comunicación y voto</a>
+          <a href="#documentos"><span>13</span>Documentos y estatutos</a>
+
+          <p>Control</p>
+          <a href="#borrado"><span>14</span>Borrado normal y avanzado</a>
+          <a href="#trazabilidad"><span>15</span>Trazabilidad y exportación</a>
+          <a href="#limites"><span>16</span>Límites y checklist</a>
+
+          <p>Práctica</p>
+          <a href="#escenarios"><span>17</span>Escenarios operativos</a>
+        </nav>
+        <p class="rail-note">
+          Las reglas jurídicas son configurables y orientativas. No sustituyen estatutos, títulos,
+          actas ni asesoría legal.
+        </p>
+      </aside>
+
+      <main id="contenido">
+        <header class="hero">
+          <p class="eyebrow">Mapa de reglas · edición completa</p>
+          <h1>El negocio, sus reglas y sus límites</h1>
+          <p class="hero-lead">
+            Una lectura funcional del sistema real: qué representa cada entidad, quién puede actuar,
+            cómo se genera y conserva una deuda, cómo se vota y qué ocurre cuando se borra algo que
+            tiene dependencias.
+          </p>
+          <ul class="hero-chips" aria-label="Cobertura del documento">
+            <li>LPH y asociación</li>
+            <li>Censo y copropiedad</li>
+            <li>Cuotas · derramas · servicios</li>
+            <li>Votaciones ponderadas</li>
+            <li>Borrado con acta</li>
+            <li>Permisos por ámbito</li>
+          </ul>
+          <div class="hero-foot">
+            <span
+              >Fuente: código de <code>src/</code>, <code>public/js/</code> y README del
+              proyecto.</span
+            >
+            <span>Documento autocontenido · sin dependencias externas.</span>
+          </div>
+        </header>
+
+        <section class="section" id="como-leer">
+          <div class="section-head">
+            <div class="section-no">00</div>
+            <div>
+              <h2>
+                Cómo leer este mapa<a
+                  class="anchor-link"
+                  href="#como-leer"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Tres capas: modelo, reglas y operación. Cada regla indica su efecto y, cuando
+                importa, su excepción.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="mini-card">
+              <h4>1. Modelo</h4>
+              <p>
+                Qué es una comunidad, un inmueble, un titular, un socio, un contrato, un recibo y
+                una cuenta de acceso. Evita confundir “persona” con “titularidad” o “voto”.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>2. Reglas</h4>
+              <p>
+                Qué se valida en servidor, qué valores son configurables, qué se congela y qué no se
+                puede cambiar después de emitir o publicar.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>3. Operación</h4>
+              <p>
+                Cómo se ejecuta una emisión, un cobro, una votación o un borrado; qué permisos y
+                confirmaciones se exigen y qué queda en el histórico.
+              </p>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            <strong>Este documento no es asesoría jurídica</strong>
+            La aplicación modela y conserva decisiones; no sustituye la interpretación de la LPH,
+            los estatutos de una asociación, los títulos de propiedad ni un acuerdo válidamente
+            adoptado. Las referencias legales del producto son orientativas y deben revisarse antes
+            de emitir certificados formales o declarar mayorías.
+          </div>
+
+          <div class="legend" aria-label="Leyenda de etiquetas">
+            <span><i class="dot dot-lph"></i>LPH</span>
+            <span><i class="dot dot-assoc"></i>Asociación</span>
+            <span><i class="dot dot-money"></i>Regla financiera</span>
+            <span><i class="dot dot-risk"></i>Restricción o riesgo</span>
+            <span
+              ><span class="pill pill-neutral">Servidor</span> validación que no depende de la
+              UI</span
+            >
+          </div>
+
+          <p class="source">
+            Fuentes principales: <code>README.md</code>, <code>src/legal-config.js</code>,
+            <code>src/cascade-delete.js</code>, <code>src/fees.js</code>,
+            <code>src/communication-store.js</code> y las rutas de <code>src/routes/</code>.
+          </p>
+        </section>
+
+        <section class="section" id="principios">
+          <div class="section-head">
+            <div class="section-no">01</div>
+            <div>
+              <h2>
+                Principios e invariantes<a
+                  class="anchor-link"
+                  href="#principios"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Lo que el sistema promete sostener aunque cambie la interfaz, el rol o el orden de
+                las operaciones.
+              </p>
+            </div>
+          </div>
+
+          <ul class="rule-list">
+            <li>
+              <strong>El servidor es la autoridad.</strong> La UI puede ocultar botones, pero cada
+              ruta vuelve a comprobar sesión, permiso, ámbito, versión y reglas de negocio.
+            </li>
+            <li>
+              <strong>No se inventa dinero.</strong> Un recibo, un pago, una imputación y un saldo a
+              favor son registros distintos. Un justificante no convierte automáticamente un recibo
+              en pagado; un borrado no crea un cobro ni un movimiento bancario.
+            </li>
+            <li>
+              <strong>Lo emitido conserva su fotografía.</strong> Los recibos guardan titulares,
+              importes y origen; las derramas y servicios congelan inmuebles y reparto; las
+              votaciones congelan regla, censo y peso del voto.
+            </li>
+            <li>
+              <strong>Todo cambio relevante es explícito.</strong> Cambiar titularidad exige
+              porcentajes completos; borrar historial financiero exige una casilla; mover un libro
+              entre comunidades exige acuerdo o documento cuando la política lo pide.
+            </li>
+            <li>
+              <strong>Los valores por defecto son conservadores.</strong> LPH, deuda del inmueble,
+              crédito bloqueado hasta conciliar, constancia de la política de deuda en los
+              traslados, voto por coeficiente y exigencia de documento para traslados.
+            </li>
+            <li>
+              <strong>La asociación no se trata como una LPH.</strong> Su censo son los socios, no
+              los propietarios; una persona socia puede no tener inmueble y no se le aplican
+              coeficientes.
+            </li>
+            <li>
+              <strong>El borrado normal no es una herramienta de limpieza encubierta.</strong> Si
+              hay historial, dependencias o personas vinculadas, se bloquea y se deriva al asistente
+              avanzado, que exige un plan, confirmaciones y deja acta.
+            </li>
+            <li>
+              <strong>La trazabilidad es parte del producto.</strong> Auditoría, versiones
+              optimistas, archivo de borrados y exportaciones limitadas permiten reconstruir qué
+              pasó sin exponer datos de más.
+            </li>
+          </ul>
+
+          <div class="split">
+            <div class="panel">
+              <h4>Reglas que nunca deben romperse</h4>
+              <ul class="small">
+                <li>
+                  Un inmueble no se cobra dos veces por tener varios copropietarios: se emite un
+                  recibo por inmueble y se conserva el reparto interno.
+                </li>
+                <li>Un recibo cancelado no genera recordatorios ni deuda viva.</li>
+                <li>
+                  Una cuenta con una ficha de propietario suspendida no vota en una consulta de
+                  propietarios, aunque tenga otra ficha activa.
+                </li>
+                <li>Un traslado financiero no mezcla monedas.</li>
+                <li>
+                  Un borrado con dependencias no se ejecuta si el plan cambió entre la vista previa
+                  y la confirmación.
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Qué significa “configurable”</h4>
+              <p class="small">
+                La configuración jurídica vive en <code>communities.legalConfig</code> y se edita en
+                <strong>Comunidades → Editar → Estatutos → Reglas</strong>. Se normaliza y valida en
+                servidor; un valor desconocido no se guarda silenciosamente. No todas las opciones
+                cambian el mismo flujo: algunas afectan al certificado de deuda, otras al borrado,
+                otras solo a la etiqueta de mayoría y la política de traslado de deuda solo deja
+                constancia en el acta.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="actores">
+          <div class="section-head">
+            <div class="section-no">02</div>
+            <div>
+              <h2>
+                Actores, roles y ámbitos<a
+                  class="anchor-link"
+                  href="#actores"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                La misma persona puede ser titular, socio, inquilino y usuario. Los permisos se
+                aplican por rol y por recurso, no por “pantalla”.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Roles base y alcance efectivo
+              </caption>
+              <thead>
+                <tr>
+                  <th>Rol</th>
+                  <th>Qué puede hacer</th>
+                  <th>Qué no debe asumirse</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Superadministrador</strong></td>
+                  <td>
+                    Acceso total, usuarios, roles, configuración, proveedores, auditoría y todas las
+                    comunidades.
+                  </td>
+                  <td>No se puede eliminar ni desactivar al último superadministrador activo.</td>
+                </tr>
+                <tr>
+                  <td><strong>Administrador</strong></td>
+                  <td>
+                    Los permisos configurados en su rol; puede administrar todas las comunidades si
+                    su rol lo permite.
+                  </td>
+                  <td>
+                    Tener el rol no concede automáticamente borrado avanzado, auditoría ni
+                    exportación.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Administrador de comunidad</strong></td>
+                  <td>
+                    Solo las comunidades asignadas. Puede revisar fichas de socios sin inmueble de
+                    su comunidad.
+                  </td>
+                  <td>
+                    No accede a administración global, proveedores ni auditoría aunque marque el
+                    permiso en el editor.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Usuario</strong></td>
+                  <td>
+                    Sus fichas de propietario, sus contratos activos, sus inmuebles y su comunidad.
+                    En una asociación, el socio sin inmueble accede por su censo.
+                  </td>
+                  <td>
+                    No ve datos de otros titulares ni finanzas ajenas; el histórico de inquilino
+                    finalizado requiere <code>tenant:history:read</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Rol personalizado</strong></td>
+                  <td>Los permisos expresamente configurados, con el ámbito que corresponda.</td>
+                  <td>
+                    No cambia la identidad ni el ámbito por el hecho de tener un nombre distinto.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Grupos de permisos que cambian el negocio</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Grupo</th>
+                  <th>Permisos clave</th>
+                  <th>Efecto</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Comunidad</td>
+                  <td>
+                    <code>community:read</code>, <code>:create</code>, <code>:edit</code>,
+                    <code>:manage</code>, <code>:delete</code>, <code>:brand</code>
+                  </td>
+                  <td>
+                    Ver, editar datos, administrar, personalizar marca y eliminar. El borrado normal
+                    sigue teniendo sus propias restricciones.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Propietarios e inmuebles</td>
+                  <td><code>owner:*</code>, <code>property:*</code></td>
+                  <td>
+                    Lectura, alta, edición, gestión y baja. El vínculo inmueble-titular y los
+                    porcentajes se guardan en transacción.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Inquilinos</td>
+                  <td><code>tenant:*</code>, <code>tenant:history:read</code></td>
+                  <td>
+                    Contratos activos y, si se concede, consulta del historial propio una vez
+                    finalizado.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Finanzas</td>
+                  <td><code>fee:read</code>, <code>fee:manage</code>, <code>fee:purge</code></td>
+                  <td>
+                    Consultar, emitir/cobrar/anular y purgar recibos anulados. Cambiar finanzas en
+                    un borrado exige <code>fee:manage</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Borrado avanzado</td>
+                  <td>
+                    <code>cascade-delete</code> + permiso de la entidad + permisos de dependencias
+                  </td>
+                  <td>
+                    Habilita el asistente. No basta con el permiso del botón: se comprueban
+                    comunidad, inmuebles, titulares, contratos y finanzas afectadas.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Comunicación</td>
+                  <td>
+                    <code>comm:participacion</code>, <code>:publicar</code>, <code>:moderar</code>,
+                    <code>:eliminar</code>
+                  </td>
+                  <td>
+                    Comentar/votar/confirmar, publicar, moderar o eliminar. La lectura de una
+                    publicación también exige ser destinatario.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Documentos</td>
+                  <td>
+                    <code>document:read</code>, <code>:upload</code>, <code>:approve</code>,
+                    <code>:delete</code>
+                  </td>
+                  <td>
+                    Consultar, subir, aprobar y borrar. Los estatutos requieren además gestión de la
+                    comunidad.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Administración</td>
+                  <td>
+                    <code>admin:users</code>, <code>admin:roles</code>, <code>admin:settings</code>,
+                    <code>admin:providers</code>, <code>admin:branding</code>
+                  </td>
+                  <td>
+                    Usuarios, permisos, configuración, credenciales de envío y marca. Nunca se
+                    devuelven contraseñas, tokens ni hashes.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Auditoría y exportación</td>
+                  <td><code>audit:read</code>, <code>export:read</code> + permiso de la vista</td>
+                  <td>
+                    La lectura no concede exportación. Auditoría no se habilita para
+                    <code>user</code> ni <code>community_admin</code>.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid-2">
+            <div class="callout">
+              <strong>Regla de alcance</strong>
+              Un permiso sin recurso solo indica “puede existir”; la operación concreta comprueba el
+              inmueble, la comunidad, el propietario o el contrato. Un administrador de comunidad no
+              puede tocar una ficha de otra comunidad aunque conozca su ID.
+            </div>
+            <div class="callout">
+              <strong>Sesión y concurrencia</strong>
+              Cookie HttpOnly y SameSite Strict, sesión de 8 horas por defecto (configurable de 1 a
+              720) y revocación al cerrar sesión o cambiar contraseña. Los <code>PUT</code> exigen
+              versión: sin ella, <code>428</code>; si cambió, <code>409 EDIT_CONFLICT</code>. No se
+              pisa un cambio ajeno en silencio.
+            </div>
+          </div>
+
+          <p class="source">
+            Implementación: <code>public/js/permissions.js</code>, <code>src/security.js</code>,
+            <code>src/entity-version.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="dominio">
+          <div class="section-head">
+            <div class="section-no">03</div>
+            <div>
+              <h2>
+                Entidades y relaciones<a
+                  class="anchor-link"
+                  href="#dominio"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                El dominio tiene dos planos que se cruzan: la titularidad/censo y el libro
+                financiero. No son lo mismo y no deben mezclarse.
+              </p>
+            </div>
+          </div>
+
+          <figure class="figure">
+            <svg viewBox="0 0 1020 620" role="img" aria-labelledby="domain-title domain-desc">
+              <title id="domain-title">Mapa de entidades y relaciones principales</title>
+              <desc id="domain-desc">
+                La comunidad agrupa inmuebles; el inmueble tiene copropietarios y contratos;
+                propietarios e inquilinos pueden vincularse a cuentas; la comunidad mantiene
+                configuración jurídica, finanzas, documentos y comunicación.
+              </desc>
+              <defs>
+                <marker
+                  id="arrow"
+                  viewBox="0 0 10 10"
+                  refX="8.5"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7f91" />
+                </marker>
+                <marker
+                  id="arrow-brand"
+                  viewBox="0 0 10 10"
+                  refX="8.5"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f766e" />
+                </marker>
+                <style>
+                  .box {
+                    fill: #fff;
+                    stroke: #c8d3df;
+                    stroke-width: 1.5;
+                  }
+                  .box-core {
+                    fill: #0c2533;
+                    stroke: #0c2533;
+                  }
+                  .box-soft {
+                    fill: #f7fafc;
+                    stroke: #c8d3df;
+                    stroke-width: 1.4;
+                  }
+                  .box-legal {
+                    fill: #fffaf0;
+                    stroke: #e8d7ae;
+                    stroke-width: 1.4;
+                  }
+                  .box-money {
+                    fill: #f3fbf5;
+                    stroke: #bfe3c8;
+                    stroke-width: 1.4;
+                  }
+                  .t {
+                    font-family: Inter, system-ui, sans-serif;
+                    font-size: 15px;
+                    font-weight: 750;
+                    fill: #152435;
+                  }
+                  .t-core {
+                    fill: #fff;
+                  }
+                  .s {
+                    font-family: Inter, system-ui, sans-serif;
+                    font-size: 11.5px;
+                    fill: #5d6b7e;
+                  }
+                  .s-core {
+                    fill: #b8d4dc;
+                  }
+                  .r {
+                    font-family: Inter, system-ui, sans-serif;
+                    font-size: 10.5px;
+                    fill: #6b7f91;
+                  }
+                  .line {
+                    stroke: #6b7f91;
+                    stroke-width: 1.4;
+                    fill: none;
+                    marker-end: url(#arrow);
+                  }
+                  .line-brand {
+                    stroke: #0f766e;
+                    stroke-width: 1.6;
+                    fill: none;
+                    marker-end: url(#arrow-brand);
+                  }
+                  .dash {
+                    stroke: #9aabba;
+                    stroke-width: 1.2;
+                    fill: none;
+                    stroke-dasharray: 5 5;
+                    marker-end: url(#arrow);
+                  }
+                </style>
+              </defs>
+
+              <rect x="70" y="24" width="205" height="72" rx="12" class="box" />
+              <text x="88" y="53" class="t">Cuenta de acceso</text>
+              <text x="88" y="71" class="s">usuario · rol · sesiones</text>
+              <text x="88" y="86" class="s">una cuenta, varias fichas</text>
+
+              <rect x="405" y="24" width="215" height="72" rx="12" class="box-core" />
+              <text x="425" y="53" class="t t-core">Comunidad</text>
+              <text x="425" y="71" class="s s-core">LPH o asociación</text>
+              <text x="425" y="86" class="s s-core">una configuración jurídica</text>
+
+              <rect x="765" y="24" width="190" height="72" rx="12" class="box-legal" />
+              <text x="783" y="53" class="t">Estatutos</text>
+              <text x="783" y="71" class="s">deuda · crédito</text>
+              <text x="783" y="86" class="s">traslados · votación</text>
+
+              <rect x="405" y="205" width="215" height="82" rx="12" class="box" />
+              <text x="425" y="235" class="t">Inmueble</text>
+              <text x="425" y="254" class="s">una comunidad · coeficiente</text>
+              <text x="425" y="270" class="s">ownerIds + tenantIds</text>
+
+              <rect x="70" y="360" width="215" height="82" rx="12" class="box" />
+              <text x="88" y="390" class="t">Propietario / socio</text>
+              <text x="88" y="409" class="s">persona y ficha</text>
+              <text x="88" y="425" class="s">isMember · comunidad de censo</text>
+
+              <rect x="405" y="360" width="215" height="82" rx="12" class="box" />
+              <text x="425" y="390" class="t">Inquilino</text>
+              <text x="425" y="409" class="s">contrato · fechas · estado</text>
+              <text x="425" y="425" class="s">arrendador derivado</text>
+
+              <rect x="760" y="360" width="205" height="82" rx="12" class="box-money" />
+              <text x="778" y="390" class="t">Libro financiero</text>
+              <text x="778" y="409" class="s">recibos · pagos · imputaciones</text>
+              <text x="778" y="425" class="s">saldo a favor · justificantes</text>
+
+              <rect x="70" y="520" width="215" height="70" rx="12" class="box-soft" />
+              <text x="88" y="549" class="t">Documentos</text>
+              <text x="88" y="567" class="s">carpetas · estatutos · adjuntos</text>
+
+              <rect x="405" y="520" width="215" height="70" rx="12" class="box-soft" />
+              <text x="425" y="549" class="t">Comunicación</text>
+              <text x="425" y="567" class="s">avisos · reuniones · votaciones</text>
+
+              <rect x="760" y="520" width="205" height="70" rx="12" class="box-soft" />
+              <text x="778" y="549" class="t">Auditoría / archivo</text>
+              <text x="778" y="567" class="s">eventos · borrados · exportaciones</text>
+
+              <path d="M 405 60 L 275 60" class="line" />
+              <text x="292" y="49" class="r">administra</text>
+
+              <path d="M 620 60 L 765 60" class="line-brand" />
+              <text x="650" y="49" class="r">configura</text>
+
+              <path d="M 512 96 L 512 205" class="line" />
+              <text x="523" y="138" class="r">1:N · communityId</text>
+
+              <path d="M 405 245 L 285 380" class="line" />
+              <text x="295" y="305" class="r">N:M · ownerIds + %</text>
+
+              <path d="M 405 245 L 405 360" class="line" />
+              <text x="416" y="304" class="r">1:N · propertyId</text>
+
+              <path d="M 177 360 L 177 323 L 405 323" class="dash" />
+              <text x="193" y="313" class="r">userId (opcional)</text>
+
+              <path d="M 405 323 L 512 323 L 512 360" class="dash" />
+              <text x="522" y="313" class="r">userId (opcional)</text>
+
+              <path d="M 620 246 L 862 360" class="line-brand" />
+              <text x="690" y="300" class="r">genera recibos</text>
+
+              <path d="M 285 401 L 405 401" class="line" />
+              <text x="305" y="391" class="r">arrendador</text>
+
+              <path d="M 512 287 L 512 520" class="dash" />
+              <text x="523" y="493" class="r">publicaciones y votos</text>
+
+              <path d="M 177 442 L 177 520" class="dash" />
+              <text x="188" y="486" class="r">archivos</text>
+
+              <path d="M 620 246 L 760 520" class="dash" />
+              <text x="652" y="495" class="r">histórico</text>
+            </svg>
+            <figcaption>
+              Mapa conceptual. Las líneas discontinuas son relaciones opcionales o derivadas; las
+              continuas, vínculos estructurales. El libro financiero no posee al inmueble: conserva
+              una fotografía de quién era titular al emitir.
+            </figcaption>
+          </figure>
+
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Entidades y cardinalidades que importan al negocio
+              </caption>
+              <thead>
+                <tr>
+                  <th>Entidad</th>
+                  <th>Relación</th>
+                  <th>Regla que se deriva</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Comunidad</strong></td>
+                  <td>1:N inmuebles; 1 configuración jurídica; 0..1 cuenta administradora</td>
+                  <td>
+                    El inmueble pertenece a una sola comunidad. La configuración no se comparte
+                    entre comunidades.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Inmueble</strong></td>
+                  <td>N:M propietarios; 1:N contratos; 1 coeficiente</td>
+                  <td>
+                    La copropiedad no duplica el recibo. El coeficiente se usa para repartos, no
+                    para crear titulares.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Propietario</strong></td>
+                  <td>N:M inmuebles; 0..1 comunidad de censo si es socio; 0..1 cuenta</td>
+                  <td>
+                    Una persona puede tener inmuebles en varias comunidades. Su ficha conserva una
+                    comunidad de censo cuando es socio sin inmueble.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Inquilino</strong></td>
+                  <td>0..1 inmueble; 0..1 arrendador; contrato con fechas</td>
+                  <td>
+                    El arrendador debe ser titular del inmueble. Un contrato puede quedar
+                    desvinculado al resolver la relación, conservando su historial.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Cuenta</strong></td>
+                  <td>1:N fichas de propietario o inquilino</td>
+                  <td>
+                    Registrar una cuenta no crea una ficha ni asigna comunidad. El vínculo lo hace
+                    un administrador.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Recibo</strong></td>
+                  <td>N:1 comunidad; N:1 inmueble; snapshot de titulares</td>
+                  <td>
+                    El recibo conserva a los titulares del momento. Un cambio posterior de propiedad
+                    no reescribe el histórico.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Pago</strong></td>
+                  <td>N:1 pagador; N:M recibos mediante imputaciones</td>
+                  <td>
+                    Un pago puede cubrir varios recibos del mismo pagador y comunidad; el sobrante
+                    es saldo a favor.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong>Dos planos, una sola verdad</strong>
+            El censo responde “quién es socio o titular y con qué derecho”. El libro financiero
+            responde “quién debe, quién pagó y qué saldo queda”. El borrado avanzado conecta ambos:
+            una ficha puede desaparecer y el recibo histórico conservar su nombre, importe y
+            reparto.
+          </div>
+        </section>
+
+        <section class="section" id="comunidades">
+          <div class="section-head">
+            <div class="section-no">04</div>
+            <div>
+              <h2>
+                Comunidad y configuración jurídica<a
+                  class="anchor-link"
+                  href="#comunidades"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                La comunidad es la unidad de ámbito, moneda y régimen. Sus estatutos no son un
+                adorno: cambian el certificado, el crédito, el voto y la constancia del traslado.
+              </p>
+            </div>
+          </div>
+
+          <h3>Datos e identidad</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Campo</th>
+                  <th>Regla</th>
+                  <th>Consecuencia</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Nombre, NIF, dirección y localidad</td>
+                  <td>
+                    Obligatorios. NIF/DNI/NIE/CIF español con dígito de control; se normaliza y no
+                    puede repetirse.
+                  </td>
+                  <td>
+                    La comunidad no se crea con identificadores fiscales inválidos o duplicados.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Email, teléfonos, CP</td>
+                  <td>
+                    Si se informan: email válido, teléfono de 9 dígitos que empiece por 6–9 y CP de
+                    5 dígitos.
+                  </td>
+                  <td>Los datos de contacto no se guardan a medias.</td>
+                </tr>
+                <tr>
+                  <td>IBAN</td>
+                  <td>Opcional; se normaliza y se valida con MOD-97.</td>
+                  <td>Se usa para cobros/devoluciones, no para ejecutar cargos bancarios.</td>
+                </tr>
+                <tr>
+                  <td>Año de constitución</td>
+                  <td>Entre 1000 y el año actual.</td>
+                  <td>No se admiten años futuros ni texto libre.</td>
+                </tr>
+                <tr>
+                  <td>Fondo de reserva</td>
+                  <td>Cero o positivo, hasta dos decimales.</td>
+                  <td>Es un dato financiero informativo, no un movimiento contable automático.</td>
+                </tr>
+                <tr>
+                  <td>Logo</td>
+                  <td>PNG, JPG, SVG o WebP; hasta 225 KB.</td>
+                  <td>Se guarda como data URL y se aplica a la marca de la comunidad.</td>
+                </tr>
+                <tr>
+                  <td>Cuenta administradora</td>
+                  <td>
+                    Si se asigna, debe estar activa y tener <code>community:manage</code> (o ser
+                    superadministrador).
+                  </td>
+                  <td>No se puede delegar la gestión en una cuenta sin permiso efectivo.</td>
+                </tr>
+                <tr>
+                  <td>Moneda</td>
+                  <td>
+                    Código ISO de tres letras. La emisión de cuotas, derramas y servicios exige EUR.
+                  </td>
+                  <td>
+                    La moneda de la comunidad y la moneda de emisión no son lo mismo: no se
+                    convierten importes históricos.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout warn">
+            <strong>Moneda: matiz importante</strong>
+            El campo de comunidad acepta un código ISO, pero la emisión de cuotas, derramas y
+            servicios solo admite comunidades en <strong>EUR</strong>. Los recibos nuevos y las
+            rectificaciones congelan la moneda en su snapshot. Solo los recibos antiguos sin moneda
+            guardada mantienen la lectura heredada desde la comunidad; no se reescriben sus
+            snapshots. Los traslados de histórico entre monedas distintas se rechazan y un saldo a
+            favor en varias monedas obliga a conciliar por comunidad.
+          </div>
+
+          <h3>Configuración jurídica por comunidad</h3>
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Opciones guardadas en
+                <code>legalConfig</code
+                >. La primera opción es el valor conservador por defecto.
+              </caption>
+              <thead>
+                <tr>
+                  <th>Bloque</th>
+                  <th>Valores</th>
+                  <th>Dónde se aplica</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Régimen</strong></td>
+                  <td>
+                    <span class="pill pill-lph">LPH</span> Comunidad de propietarios ·
+                    <span class="pill pill-assoc">Asociación</span>
+                  </td>
+                  <td>
+                    Determina censo, unidad de voto, mayoría y etiquetas. En asociación no se usan
+                    coeficientes ni inmuebles para votar.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Deuda de copropietarios</strong></td>
+                  <td>Deuda del inmueble (recomendado) · cuota individual proporcional</td>
+                  <td>
+                    Certificado de deuda y forma de expresar la afección. No cambia el importe
+                    histórico del recibo.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Reparto interno</strong></td>
+                  <td>Mostrar el desglose entre cotitulares (por defecto) u ocultarlo</td>
+                  <td>
+                    Certificado y comunicación de la deuda. No altera la obligación del inmueble.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Porcentajes históricos</strong></td>
+                  <td>Indicar “no consta” · usar el último conocido · omitir el reparto interno</td>
+                  <td>
+                    Si el certificado necesita explicar la copropiedad y no hay porcentaje histórico
+                    fiable, se opta por no inventarlo.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Crédito al borrar un titular</strong></td>
+                  <td>
+                    Bloquear hasta conciliar (recomendado) · advertir y dejar constancia · permitir
+                    sin conciliación
+                  </td>
+                  <td>
+                    Saldo a favor que queda sin titular en un borrado. La política más estricta de
+                    las comunidades afectadas manda.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Destino del crédito</strong></td>
+                  <td>
+                    Devolución · compensación con deudas vencidas, líquidas y exigibles · cesión
+                    documentada · fondo de reserva · otro documentado
+                  </td>
+                  <td>
+                    Se documenta en el acta. No crea un pago, una devolución bancaria ni un asiento
+                    contable.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Traslado de deuda</strong></td>
+                  <td>
+                    Dejar constancia: conservar en origen (recomendado) · dejar constancia:
+                    trasladar al destino
+                  </td>
+                  <td>
+                    Se registra en el acta al mover el libro financiero de una comunidad. No divide
+                    el libro: la ejecución mueve planes, recibos, pagos, derramas y servicios al
+                    destino porque la comunidad de origen desaparece. También puede exigirse un
+                    documento o acuerdo.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Votaciones</strong></td>
+                  <td>
+                    Unidad: coeficiente · inmueble · propietario · cuenta. Copropiedad:
+                    representante común · voto separado. Mayoría: simple · absoluta · tres quintos ·
+                    unanimidad.
+                  </td>
+                  <td>
+                    Se congela al crear la consulta. En asociación la unidad se fuerza a socio (o
+                    cuenta) y la copropiedad a representante.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Estatutos</strong></td>
+                  <td>Referencia de hasta 200 caracteres y fecha de aprobación ISO válida.</td>
+                  <td>
+                    Queda como evidencia documental de la configuración; no convierte la app en
+                    intérprete jurídica.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong>Validación y versionado</strong>
+            El parche de estatutos se valida antes de fusionarse con la configuración vigente. Un
+            valor desconocido devuelve error, no se degrada silenciosamente al default. El bloque
+            normalizado tiene un límite de tamaño para evitar configuraciones infladas. La edición
+            de comunidad usa versión optimista.
+          </div>
+
+          <h3>Borrado normal de una comunidad</h3>
+          <p>
+            El borrado normal solo procede si la comunidad no tiene <strong>inmuebles</strong>,
+            <strong>socios o titulares vinculados</strong> ni
+            <strong>historial financiero</strong> (acuerdos, recibos, pagos, derramas o servicios).
+            Si hay cualquiera de esas dependencias, responde <code>409</code> y deriva al borrado
+            avanzado. Esto evita dejar fichas de socios apuntando a una comunidad inexistente.
+          </p>
+
+          <p class="source">
+            Implementación: <code>src/routes/communities.js</code>,
+            <code>src/legal-config.js</code>, <code>src/validation.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="propietarios">
+          <div class="section-head">
+            <div class="section-no">05</div>
+            <div>
+              <h2>
+                Propietarios, copropietarios y censo<a
+                  class="anchor-link"
+                  href="#propietarios"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                “Propietario” es una ficha de persona; “socio” es una condición de censo. La misma
+                ficha puede ser titular de varios inmuebles y no ser socio.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel">
+              <h4>Identidad y contacto</h4>
+              <ul class="small">
+                <li>
+                  Obligatorios: nombre, apellidos, documento, email, teléfono, dirección y
+                  localidad.
+                </li>
+                <li>
+                  Documento de identidad DNI/NIE con formato y dígito de control; único sin
+                  distinguir mayúsculas.
+                </li>
+                <li>
+                  Email válido; teléfonos de 9 dígitos comenzando por 6, 7, 8 o 9; CP de 5 dígitos.
+                </li>
+                <li>IBAN opcional validado por MOD-97. Moneda de la ficha, por defecto EUR.</li>
+                <li>Preferencia de notificación: email, correo postal o teléfono.</li>
+                <li>Datos LPH: derechos de voto activos o suspendidos y representante legal.</li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Condición de socio</h4>
+              <ul class="small">
+                <li>
+                  <code>isMember = true</code> exige una comunidad existente y la guarda como
+                  comunidad de censo.
+                </li>
+                <li>
+                  En una asociación, un socio sin inmueble conserva su comunidad y puede
+                  acceder/votar según sus derechos estatutarios.
+                </li>
+                <li>
+                  Si deja de ser socio y no tiene inmuebles, se limpian los datos denormalizados del
+                  inmueble.
+                </li>
+                <li>
+                  Si sigue siendo socio pero se queda sin inmuebles, conserva su comunidad de censo;
+                  no se convierte en huérfano.
+                </li>
+                <li>
+                  El vínculo con una cuenta de acceso es explícito; registrar una cuenta no crea la
+                  ficha.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Titularidad y porcentajes</h3>
+          <ul class="rule-list">
+            <li>
+              <strong>Un inmueble puede tener varios titulares.</strong> La relación es N:M y se
+              guarda en el inmueble; la ficha conserva una lista derivada de inmuebles.
+            </li>
+            <li>
+              <strong>Cada titular tiene un porcentaje positivo.</strong> La suma de porcentajes de
+              un inmueble no puede superar el 100 %. Al cambiar la titularidad, se exigen
+              explícitamente los porcentajes de todos los titulares; no se reparte automáticamente
+              un porcentaje ausente.
+            </li>
+            <li>
+              <strong>La ficha guarda datos del inmueble principal.</strong> Comunidad, planta,
+              puerta, superficie, coeficiente, referencia catastral y uso se sincronizan desde el
+              inmueble principal. Si el titular se queda sin inmuebles, se limpian salvo la
+              comunidad de censo del socio.
+            </li>
+            <li>
+              <strong>El vínculo se guarda en transacción.</strong> Ficha, titularidades y
+              porcentajes se confirman juntos; un error no deja media relación.
+            </li>
+            <li>
+              <strong>Alta, edición y baja normal de inmuebles resincronizan al titular.</strong> No
+              queda una comunidad o un coeficiente “viejo” apuntando a un inmueble que ya no existe.
+            </li>
+          </ul>
+
+          <div class="callout ok">
+            <strong>Excepción útil para asociaciones</strong>
+            Un socio sin inmueble no desaparece de su censo al editar su ficha o al desvincular su
+            último inmueble. Sí se limpia cuando se borra la comunidad o cuando el propio borrado
+            avanzado elimina su condición. Esto permite que un
+            <code>community_admin</code> encuentre y revise su ficha aunque no haya inmueble que la
+            conecte.
+          </div>
+
+          <div class="callout">
+            <strong>Verificación y alertas de cambio</strong>
+            El teléfono y el email de contacto se verifican con un código OTP de 6 dígitos (véase
+            «Verificación de contacto» en Trazabilidad). Si la comunidad configuró destinatarios en
+            <strong>Configuración → General</strong>, cada edición de ficha notifica por email qué
+            campos cambiaron, sin bloquear la operación.
+          </div>
+
+          <h3>Baja normal de un propietario</h3>
+          <p>
+            Se bloquea si tiene <strong>historial de cuotas o cobros</strong> o si es titular de un
+            inmueble con <strong>inquilino asociado</strong>. Si no hay esas dependencias, se
+            desvincula de sus inmuebles, se reasignan referencias de contratos y se elimina la
+            ficha. Para conservar historial, reasignar inmuebles o resolver contratos se usa el
+            borrado avanzado.
+          </p>
+
+          <p class="source">
+            Implementación: <code>src/routes/owners.js</code>,
+            <code>src/owner-property-shares.js</code>, <code>src/domain.js</code>,
+            <code>src/routes/properties.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="inmuebles">
+          <div class="section-head">
+            <div class="section-no">06</div>
+            <div>
+              <h2>
+                Inmuebles, coeficiente y cambios de comunidad<a
+                  class="anchor-link"
+                  href="#inmuebles"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                El inmueble es la unidad de cobro y de afección. La copropiedad se resuelve dentro
+                de él, no creando recibos paralelos.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Regla</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pertenencia</td>
+                  <td>
+                    Un inmueble pertenece a una sola comunidad. El identificador de parcela/unidad
+                    es obligatorio, junto con tipo, dirección y localidad.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Titulares</td>
+                  <td>
+                    El alta normal exige al menos un titular. Una ficha heredada sin titulares puede
+                    actualizarse, pero no se pueden vincular contratos nuevos a un inmueble sin
+                    titulares.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Coeficiente</td>
+                  <td>
+                    Porcentaje entre 0,0001 y 100, hasta cuatro decimales. Se usa para repartos por
+                    coeficiente y para el peso del voto cuando la regla lo indica.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Referencia catastral</td>
+                  <td>
+                    Exactamente 20 caracteres alfanuméricos y única entre todos los inmuebles; se
+                    normaliza.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Datos registrales</td>
+                  <td>
+                    Número de registro, planta, puerta, metros, uso y certificado energético son
+                    opcionales y enriquecen la ficha.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Estado de recibos</td>
+                  <td>
+                    Se calcula desde el libro financiero cuando existe; no es un campo que se pueda
+                    “marcar” a mano para ocultar deuda.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Contratos</td>
+                  <td>
+                    Puede tener varios inquilinos, pero el índice de contratos activos solo incluye
+                    los que están vigentes por fecha.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Cambio de comunidad</td>
+                  <td>
+                    Se bloquea si el inmueble está incluido en una derrama o servicio no anulado
+                    (aunque siga en borrador). El traslado normal con titulares ya vinculados a otra
+                    comunidad también puede rechazarse; el flujo avanzado permite mover inmuebles,
+                    titulares y deuda con un plan explícito.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Qué se sincroniza al guardar</h3>
+          <div class="flow" aria-label="Sincronización de datos del inmueble">
+            <div class="flow-step">
+              <span class="n">01</span><b>Se guarda el inmueble</b
+              ><span>Comunidad, identificación, coeficiente y titulares.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">02</span><b>Se actualizan titulares</b
+              ><span>Se recalculan inmuebles del propietario y su inmueble principal.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">03</span><b>Se copian datos derivados</b
+              ><span>Comunidad, planta, puerta, coeficiente, referencia y uso.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">04</span><b>Se preserva el censo</b
+              ><span>Un socio sin inmueble conserva su comunidad; un no socio se limpia.</span>
+            </div>
+          </div>
+
+          <div class="callout danger">
+            <strong>Restricciones de baja normal</strong>
+            No se puede eliminar un inmueble con inquilinos, con historial de cuotas o incluido en
+            una derrama/servicio no anulado (aunque siga en borrador). El borrado avanzado permite
+            decidir qué ocurre con contratos, recibos, repartos y documentos, pero no reescribe el
+            pasado financiero.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/routes/properties.js</code>, <code>src/domain.js</code>,
+            <code>src/fees.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="inquilinos">
+          <div class="section-head">
+            <div class="section-no">07</div>
+            <div>
+              <h2>
+                Inquilinos, contratos y arrendador<a
+                  class="anchor-link"
+                  href="#inquilinos"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                El inquilino no es un propietario ni un votante por defecto. Es una relación
+                contractual con un inmueble y un arrendador derivado.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Aspecto</th>
+                  <th>Regla</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Datos obligatorios</td>
+                  <td>
+                    Nombre, apellidos, documento, teléfono y email. El documento se valida con
+                    formato y dígito de control cuando se informa.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Inmueble y arrendador</td>
+                  <td>
+                    En el flujo normal se elige el inmueble y el arrendador se deduce de sus
+                    titulares. Si se cambia a un inmueble de otro titular, cambia el arrendador.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Contrato</td>
+                  <td>
+                    Fecha de inicio obligatoria; fin opcional. El fin no puede ser anterior al
+                    inicio. Estado calculado: <strong>Próximo</strong>, <strong>Vigente</strong> o
+                    <strong>Finalizado</strong>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Actividad</td>
+                  <td>
+                    Un contrato es activo si la fecha de hoy está entre inicio y fin (o si no hay
+                    fin). Solo los activos entran en el índice del inmueble, en destinatarios y en
+                    accesos ordinarios.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Varios contratos</td>
+                  <td>
+                    Un inmueble puede tener varios inquilinos. El índice <code>tenantIds</code> se
+                    reconstruye con los contratos activos.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Datos adicionales</td>
+                  <td>
+                    Tipo de contrato, renta, fianza, teléfono de emergencia, autorizaciones y
+                    documentación multiarchivo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Historial</td>
+                  <td>
+                    Un antiguo inquilino solo conserva acceso a su historial si su rol tiene
+                    <code>tenant:history:read</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Baja normal</td>
+                  <td>
+                    Desvincula el perfil de los inmuebles y lo elimina. No es el flujo para
+                    conservar contrato, reasignarlo o finalizarlo con acta: eso corresponde al
+                    borrado avanzado.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Resolución de contratos en el borrado avanzado</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Acción</th>
+                  <th>Efecto</th>
+                  <th>Validación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>keep</code></td>
+                  <td>Conserva el contrato y su inmueble.</td>
+                  <td>
+                    Si el arrendador se elimina, debe sobrevivir otro titular o reasignarse el
+                    inmueble.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>reassign_tenant</code></td>
+                  <td>Mueve el contrato a otro inmueble.</td>
+                  <td>
+                    El destino debe existir y tener al menos un titular válido; no puede ser un
+                    inmueble que también se borra.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>orphan_tenant</code></td>
+                  <td>Desvincula inmueble y arrendador; conserva el perfil.</td>
+                  <td>
+                    El contrato deja de generar pertenencia; el historial queda sin vínculo
+                    operativo.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>end_contract</code></td>
+                  <td>Finaliza el contrato y lo desvincula.</td>
+                  <td>
+                    No se puede finalizar antes de su inicio ni uno que ya terminó; en ese caso se
+                    desvincula sin cambiar la fecha histórica.
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>remove_tenant</code></td>
+                  <td>Elimina el perfil de inquilino.</td>
+                  <td>
+                    Un inmueble que se elimina obliga a resolver cada contrato; no puede quedar
+                    apuntando a un inmueble borrado.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout warn">
+            <strong>Un contrato sin arrendador no es válido operativamente</strong>
+            Si se elimina al titular que figuraba como arrendador, el plan exige reasignar el
+            inmueble a otro titular, mover el contrato o desvincularlo. No se deja silenciosamente
+            un contrato apuntando a una ficha eliminada.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/routes/tenants.js</code>, <code>src/domain.js</code>,
+            <code>src/cascade-delete.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="finanzas">
+          <div class="section-head">
+            <div class="section-no">08</div>
+            <div>
+              <h2>
+                Núcleo financiero: un solo libro<a
+                  class="anchor-link"
+                  href="#finanzas"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Cuotas ordinarias, derramas y servicios comparten recibos, pagos, imputaciones,
+                saldos y justificantes. Cambia el origen del cargo, no la mecánica del cobro.
+              </p>
+            </div>
+          </div>
+
+          <div class="flow" aria-label="Ciclo de vida de un cargo">
+            <div class="flow-step">
+              <span class="n">01</span><b>Acuerdo / factura</b
+              ><span>Se define el importe, el reparto y la base documental.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">02</span><b>Vista previa</b
+              ><span>Se muestran importes, avisos y errores antes de emitir.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">03</span><b>Emisión</b
+              ><span
+                >Nace un recibo por inmueble con snapshot de titulares y moneda de emisión (solo
+                EUR).</span
+              >
+            </div>
+            <div class="flow-step">
+              <span class="n">04</span><b>Cobro</b
+              ><span>Se registra un pago; no se ejecuta ningún cargo bancario.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">05</span><b>Imputación</b
+              ><span>El pago cubre uno o varios recibos del mismo pagador y comunidad.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">06</span><b>Saldo</b
+              ><span
+                >El sobrante queda a favor; la devolución revierte aplicaciones posteriores.</span
+              >
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="mini-card">
+              <h4>Recibo</h4>
+              <p>
+                Conserva número, comunidad, inmueble, titulares del momento, importe, vencimiento,
+                estado y origen (cuota, derrama o servicio). Las nuevas emisiones guardan la moneda
+                en el snapshot; los recibos antiguos sin ese dato la leen desde la comunidad.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Pago</h4>
+              <p>
+                Pertenece a un pagador y a una comunidad. Puede cubrir varios recibos; el remanente
+                no aplicado es saldo a favor.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Justificante</h4>
+              <p>
+                PDF, JPG, PNG o WebP hasta 10 MB; máximo 20 por recibo y titular. Solo lo aporta un
+                titular vinculado a la cuenta y el recibo debe seguir pendiente. Se revisa o acepta,
+                pero <strong>no</strong> marca el recibo como pagado por sí solo.
+              </p>
+            </div>
+          </div>
+
+          <h3>Estados y reglas de cobro</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Elemento</th>
+                  <th>Regla</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Estados del recibo</td>
+                  <td>
+                    Cancelado, pagado, pagado parcialmente, pendiente o vencido. Un cobro devuelto
+                    se marca aparte (<code>returned</code>) y devuelve el saldo a pendiente. Un
+                    cancelado no genera recordatorios ni deuda viva. Cada recibo expone además
+                    <code>canRectify</code> (si admite rectificación) y <code>rectifiedBy</code>
+                    (el identificador de su sucesor, si ya se rectificó).
+                  </td>
+                </tr>
+                <tr>
+                  <td>Aplicación</td>
+                  <td>
+                    Un pago se imputa a recibos del mismo pagador y comunidad, no anulados y con
+                    pendiente, en el orden elegido y como máximo por el importe pendiente de cada
+                    recibo. No se mezclan monedas ni se aplica a recibos de otra comunidad.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Saldo a favor</td>
+                  <td>
+                    Queda disponible para aplicarlo a recibos pendientes del mismo pagador y
+                    comunidad, presentes o futuros. No es un movimiento bancario ni un ingreso
+                    contable nuevo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Devolución</td>
+                  <td>
+                    Revierte también las aplicaciones posteriores realizadas con ese saldo; no se
+                    permite dejar el libro inconsistente.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Recordatorios</td>
+                  <td>
+                    Por defecto 3 días antes y 7 después del vencimiento, sin repetición. Cada
+                    acuerdo de cuotas, derrama o servicio fija los suyos (0–60 días antes, 0–365
+                    después, repetición cada 0–365) y el recibo hereda los de su origen. Se
+                    materializan con el servidor encendido para vencimientos a 60 días vista, en
+                    Europe/Madrid, sin duplicados y sin reclamar recibos pagados o anulados.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Canales</td>
+                  <td>
+                    Aviso interno en la app y, si se activa, email. El email de cuotas empieza
+                    desactivado; solo se envía si el propietario tiene cuenta activa con dirección,
+                    el canal general de email está habilitado y el recibo sigue siendo legible. No
+                    hay SMS ni WhatsApp para cuotas.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Entrega</td>
+                  <td>
+                    “Aceptado por el proveedor” no confirma entrega ni lectura. Los fallos quedan en
+                    auditoría y no se reintentan solos.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Justificantes</td>
+                  <td>
+                    Privados: los descarga su autor y los gestores autorizados de la comunidad. No
+                    OCR ni validación bancaria automática.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Registro de un cobro</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Control</th>
+                  <th>Regla</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Identificador único</td>
+                  <td>
+                    Todo cobro trae un <code>requestId</code> de 16 a 80 caracteres. Repetirlo
+                    devuelve <code>409</code>: la operación es idempotente y no se registra dos
+                    veces.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Duplicado sospechoso</td>
+                  <td>
+                    Coincidir pagador, importe, fecha y referencia con un cobro vigente exige
+                    confirmación expresa; sin ella, <code>409</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Fecha y método</td>
+                  <td>
+                    La fecha no puede ser futura. Métodos admitidos: transferencia, ingreso en
+                    cuenta o domiciliación. Referencia de hasta 120 caracteres.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Pagador</td>
+                  <td>
+                    Debe ser titular actual de un inmueble de la comunidad o haber figurado como
+                    titular en algún recibo emitido: el histórico sigue cobrando a quien se fue.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Imputación</td>
+                  <td>
+                    Hasta 1.000 recibos por operación, sin duplicados, del mismo pagador y
+                    comunidad. Cada recibo recibe como máximo su pendiente y el cobro solo aporta
+                    hasta su saldo disponible.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Rectificar y purgar: el ciclo completo del recibo</h3>
+          <div class="split">
+            <div class="panel">
+              <h4>Rectificación (recibo sucesor)</h4>
+              <ul class="small">
+                <li>
+                  Solo se rectifica un recibo <strong>anulado</strong> que aún no tenga sucesor.
+                  Nace un recibo nuevo que conserva comunidad, inmueble, periodo, fotografía y
+                  origen (cuota, derrama o servicio).
+                </li>
+                <li>
+                  De derrama o servicio: la derrama, el plazo y el servicio deben seguir activos y
+                  no debe existir otro recibo activo para ese inmueble y plazo/servicio. El importe
+                  está fijado por el reparto aprobado y se conserva.
+                </li>
+                <li>
+                  De cuota: no puede solaparse con otra cuota activa del mismo inmueble; aquí el
+                  importe sí puede ajustarse.
+                </li>
+                <li>
+                  El vencimiento puede moverse; el motivo (máximo 500 caracteres) es obligatorio.
+                </li>
+                <li>
+                  Como en la emisión, hay vista previa con token: si los datos cambian, hay que
+                  repetirla. Notifica a los titulares y queda en auditoría con original, importes,
+                  vencimiento y motivo.
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Purga (borrado definitivo)</h4>
+              <ul class="small">
+                <li>
+                  Exige el permiso <code>fee:purge</code>: gestionar cuotas no basta para borrar
+                  histórico.
+                </li>
+                <li>
+                  La purga continúa disponible <strong>solo por API</strong>. Solo elimina recibos
+                  <strong>anulados</strong> o derramas anuladas cuyos recibos también estén
+                  anulados. El lote se valida dentro de la transacción: se bloquea si alguna
+                  rectificación que se conserva apunta a un recibo del lote. Una cadena anulada
+                  completa puede retirarse con su derrama. No hay purga específica del reparto de
+                  servicio; sus recibos anulados sí admiten la purga individual con las mismas
+                  comprobaciones.
+                </li>
+                <li>
+                  Elimina el recibo, sus asignaciones, justificantes (incluidos los archivos
+                  físicos, en cola de limpieza), notificaciones y eventos.
+                </li>
+                <li>
+                  El plazo de una derrama purgada consta como <strong>purged</strong>, no como
+                  pendiente: el reparto existió y no se reemite.
+                </li>
+                <li>
+                  A diferencia de la anulación, la purga no deja el registro visible en el libro; la
+                  evidencia queda solo en auditoría.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Certificado de deuda</h3>
+          <p>
+            Disponible para gestores desde <strong>Cuotas → Certificado de deuda</strong>. Se elige
+            un inmueble o un propietario de la comunidad seleccionada y se descarga un PDF
+            informativo. Incluye todo ese ámbito, sin aplicar los filtros de la tabla. Las opciones
+            se resuelven con permisos financieros, aunque el gestor no pueda leer las fichas del
+            censo; solo se ofrecen identificadores y nombres del ámbito autorizado.
+          </p>
+          <div class="split">
+            <div class="panel">
+              <h4>Qué certifica</h4>
+              <ul class="small">
+                <li>
+                  Se emite para un propietario o para un inmueble de una comunidad, no para ambos a
+                  la vez. Reúne recibos pendientes de cuotas, derramas y servicios, y el histórico
+                  pagado del ámbito.
+                </li>
+                <li>
+                  Por defecto la deuda se expresa como deuda del inmueble: la obligación es del
+                  inmueble y el titular responde frente a la comunidad (LPH 9.1.e). La cuota
+                  individual proporcional es una opción que muestra solo la parte imputable.
+                </li>
+                <li>
+                  El reparto interno entre cotitulares es informativo y separado: no crea recibos
+                  paralelos ni limita la responsabilidad frente a la comunidad.
+                </li>
+                <li>
+                  En el certificado del propietario, el saldo a favor sin asignar se muestra aparte;
+                  no se atribuye al inmueble ni se suma a la deuda certificada.
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Porcentajes históricos</h4>
+              <ul class="small">
+                <li>
+                  Cada recibo guarda el porcentaje acreditado al emitirse; el certificado usa ese
+                  dato y no el porcentaje actual del inmueble.
+                </li>
+                <li>
+                  Si falta, la comunidad decide: indicar «no consta» (por defecto), usar el último
+                  porcentaje conocido —marcándolo como actual, no acreditado al emitir— u omitir el
+                  reparto interno.
+                </li>
+                <li>
+                  Nunca se inventa un porcentaje: sin dato fiable, el importe queda como deuda del
+                  inmueble y se advierte.
+                </li>
+                <li>
+                  En una asociación el certificado cambia de fundamento: estatutos y acuerdos
+                  sociales, no coeficientes ni afección del inmueble.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout danger">
+            <strong>Lo que la app no hace</strong>
+            No emite mandatos SEPA, no presenta remesas, no cobra bancariamente, no calcula
+            intereses de demora, no lleva contabilidad de gastos y no convierte monedas. Cualquier
+            operación bancaria ocurre fuera del sistema; aquí solo se registra su evidencia.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/fees.js</code>, <code>src/services.js</code>,
+            <code>src/routes/fees.js</code>, <code>src/fee-worker.js</code>,
+            <code>src/fee-proof-cleanup.js</code>. La base de datos exige además índices únicos: un
+            solo recibo activo por inmueble y periodo (cuotas), por inmueble y plazo (derramas) y
+            por inmueble y factura (servicios).
+          </p>
+        </section>
+
+        <section class="section" id="cuotas">
+          <div class="section-head">
+            <div class="section-no">09</div>
+            <div>
+              <h2>
+                Cuotas ordinarias<a
+                  class="anchor-link"
+                  href="#cuotas"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Un acuerdo anual versionado se convierte en recibos periódicos por inmueble, con
+                reparto por coeficiente o importes aprobados.
+              </p>
+            </div>
+          </div>
+
+          <div class="split">
+            <div>
+              <h3>Acuerdo de cuotas</h3>
+              <ul class="small">
+                <li>
+                  Importe anual aprobado, periodicidad (mensual, trimestral, semestral o anual),
+                  primer día del mes de aplicación y vencimiento del 1 al 28.
+                </li>
+                <li>
+                  Criterio de reparto: coeficiente de participación o importes anuales aprobados por
+                  inmueble.
+                </li>
+                <li>
+                  Referencia al acuerdo de la Junta. Los importes se corrigen en la versión vigente;
+                  un cambio de fecha de aplicación crea otra versión y no altera recibos ya
+                  emitidos.
+                </li>
+                <li>
+                  No se puede cambiar la fecha de aplicación si hay recibos vigentes (no anulados)
+                  emitidos desde esa fecha.
+                </li>
+                <li>
+                  No se puede eliminar un acuerdo con recibos vigentes (no anulados) emitidos.
+                </li>
+                <li>
+                  No pueden coexistir dos acuerdos con la misma fecha de aplicación: la corrección
+                  de importes se hace en la versión vigente y el cambio de fecha crea otra versión.
+                </li>
+                <li>
+                  Un acuerdo nuevo no puede solaparse con lo ya emitido: su fecha debe ser posterior
+                  al último periodo emitido no anulado. El ejercicio está acotado a 2000–2099.
+                </li>
+                <li>
+                  El acuerdo guarda sus propios avisos (días y canales) y sus recibos los heredan;
+                  priman sobre los valores generales del tipo «cuota».
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3>Reparto y emisión</h3>
+              <ul class="small">
+                <li>
+                  Por coeficiente: los coeficientes de todos los inmuebles de la comunidad deben
+                  sumar exactamente 100 %.
+                </li>
+                <li>
+                  Manual: los importes anuales por inmueble deben sumar exactamente el total anual.
+                </li>
+                <li>
+                  Editar un acuerdo sin enviar recordatorios conserva sus avisos guardados. Los
+                  acuerdos nuevos toman los valores generales; un envío explícito permite
+                  modificarlos. Esto no añade controles de avisos por acuerdo a la interfaz.
+                </li>
+                <li>
+                  La emisión exige un mes inicial coherente con la periodicidad y no permite solapar
+                  periodos ya emitidos.
+                </li>
+                <li>
+                  Un inmueble con copropietarios genera un solo recibo; el reparto interno no
+                  duplica el cargo.
+                </li>
+                <li>
+                  Los céntimos se reparten de forma justa para cuadrar el periodo y el ciclo anual
+                  completo.
+                </li>
+                <li>
+                  La vista previa es obligatoria y debe seguir vigente al confirmar; si cambian los
+                  datos, se invalida.
+                </li>
+                <li>
+                  La vista previa avisa (no bloquea) si cambiaron los titulares de un inmueble con
+                  deuda viva del periodo anterior o si sube el importe por mes respecto al último
+                  recibo.
+                </li>
+                <li>
+                  Un importe que resulte de cero euros bloquea la emisión: no hay recibos vacíos.
+                </li>
+                <li>
+                  La base de datos garantiza un único recibo activo por inmueble y periodo: el
+                  solape se rechaza aunque dos operadores emitieran a la vez.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout ok">
+            <strong>Resultado esperado</strong>
+            Un recibo por inmueble y periodo, con titulares congelados, importe que suma exactamente
+            lo aprobado y estado inicial pendiente. El propietario lo ve en
+            <strong>Mis cuotas</strong>; el inquilino no recibe cuotas por ser inquilino.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/fees.js</code>, <code>src/routes/fees.js</code>; pruebas de
+            cuotas y UI en <code>scripts/tests/</code>.
+          </p>
+        </section>
+
+        <section class="section" id="derramas">
+          <div class="section-head">
+            <div class="section-no">10</div>
+            <div>
+              <h2>
+                Derramas y cuotas extraordinarias<a
+                  class="anchor-link"
+                  href="#derramas"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Un acuerdo con importe total, inmuebles afectados y plazos. La fotografía del
+                reparto queda congelada al guardar.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel">
+              <h4>Constitución</h4>
+              <ul class="small">
+                <li>
+                  Nombre, acuerdo de Junta, importe total y motivo opcional con texto enriquecido
+                  saneado.
+                </li>
+                <li>
+                  Inmuebles afectados: todos o una selección; todos deben tener titulares
+                  identificados.
+                </li>
+                <li>
+                  Reparto por coeficiente (si son todos, deben sumar 100 %; una selección se reparte
+                  proporcionalmente), mixto (importes fijos más coeficiente) o importes manuales que
+                  sumen el total. Los tres criterios se pueden crear y editar desde la interfaz. El
+                  modo mixto conserva qué inmuebles tienen importe fijo y reparte el resto por
+                  coeficiente entre los demás.
+                </li>
+                <li>
+                  De 1 a 36 plazos, cada uno con importe y vencimiento propios. Vencimientos
+                  crecientes e importes que suman el total.
+                </li>
+                <li>Cada plazo debe asignar al menos un céntimo a cada inmueble incluido.</li>
+                <li>
+                  Los borradores mixtos antiguos sin detalle de importes fijos conservan el reparto
+                  al editar textos y plazos. Para cambiar el total o los inmuebles se exige
+                  reconfigurarlo expresamente; no se deducen importes fijos del reparto final.
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Congelamiento y ciclo de vida</h4>
+              <ul class="small">
+                <li>
+                  Al guardar se congelan reparto e inmuebles: altas o cambios de coeficiente
+                  posteriores no recalculan.
+                </li>
+                <li>
+                  Se puede editar solo el borrador: sin ningún recibo (ni siquiera anulado) y sin
+                  plazos anulados. Después de la primera emisión no se permite editar, aunque se
+                  anulen todos los recibos.
+                </li>
+                <li>
+                  Se pueden anular plazos pendientes o emitidos con motivo. Un plazo anulado no se
+                  reemite: se crea otra derrama.
+                </li>
+                <li>Si un plazo tiene cobros aplicados, no se anula hasta revertirlos.</li>
+                <li>Los recibos conservan los titulares históricos de cada emisión.</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Estados de la derrama y de cada plazo</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Estado</th>
+                  <th>Cuándo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Borrador</strong></td>
+                  <td>
+                    Sin recibos emitidos: editable. Para retirarla, se anula (y se purga si
+                    procede).
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Activa</strong></td>
+                  <td>Con plazos emitidos y deuda viva; notifica y genera recordatorios.</td>
+                </tr>
+                <tr>
+                  <td><strong>Cobrada</strong></td>
+                  <td>
+                    Todos los plazos pagados, anulados o purgados; si alguno se purgó, el estado
+                    global pasa a «purgada».
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Rectificación</strong></td>
+                  <td>
+                    Algún recibo anulado admite rectificación: la derrama o el plazo siguen activos
+                    y no hay sucesor.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Purgada</strong></td>
+                  <td>
+                    Se emitieron recibos y se purgaron tras anular; el plazo no vuelve a pendiente.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Anulada</strong></td>
+                  <td>
+                    La derrama completa o todos sus plazos, anulados con motivo; los recibos activos
+                    se anulan con ella.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong>Rectificar y purgar recibos de derrama</strong>
+            Un recibo de derrama anulado puede rectificarse si la derrama y su plazo siguen activos
+            y no existe otro recibo activo para ese inmueble y plazo; el importe viene fijado por el
+            reparto aprobado y se conserva. Si se anula el plazo, sus recibos ya no son
+            rectificables: para volver a cobrar hay que constituir otra derrama. Una derrama anulada
+            completa puede purgarse con <code>fee:purge</code>: desaparece con sus recibos anulados,
+            justificantes, eventos y notificaciones. Los avisos se guardan con la derrama: las
+            existentes conservan los que tenían y las nuevas heredan los generales si no se indican.
+          </div>
+
+          <div class="callout danger">
+            <strong>Bloqueos sobre el inmueble</strong>
+            Un inmueble incluido en una derrama o servicio no anulado (aunque siga en borrador) no
+            se puede eliminar ni mover a otra comunidad. En el borrado avanzado, el reparto puede
+            cerrarse para nuevas emisiones, pero los recibos ya emitidos conservan su saldo y su
+            fotografía; no se redistribuyen importes a otros titulares.
+          </div>
+
+          <div class="callout">
+            <strong>Fuera de alcance</strong>
+            El adjunto del acta a la derrama, los mandatos y remesas SEPA, los intereses, otros
+            cargos y la contabilidad de gastos no forman parte de esta versión.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/fees.js</code>, <code>src/routes/fees.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="servicios">
+          <div class="section-head">
+            <div class="section-no">11</div>
+            <div>
+              <h2>
+                Servicios y suministros<a
+                  class="anchor-link"
+                  href="#servicios"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Facturas de luz, agua, gas o gasóleo repartidas por coeficiente, lecturas, mixto o
+                importes manuales. Pueden generar deuda o ser solo informativas.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Métodos de reparto y controles
+              </caption>
+              <thead>
+                <tr>
+                  <th>Método</th>
+                  <th>Cómo reparte</th>
+                  <th>Control principal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Coeficiente</strong></td>
+                  <td>
+                    Por coeficiente de cada inmueble. Si se elige un subconjunto, se renormaliza
+                    entre los incluidos y se muestra el coeficiente efectivo.
+                  </td>
+                  <td>Coeficientes válidos; la fotografía queda congelada al guardar.</td>
+                </tr>
+                <tr>
+                  <td><strong>Lecturas</strong></td>
+                  <td>
+                    Por consumo del periodo, en milésimos de m³. La lectura actual no puede ser
+                    menor que la anterior.
+                  </td>
+                  <td>Inmuebles sin consumo no reciben recibo y se avisa.</td>
+                </tr>
+                <tr>
+                  <td><strong>Mixto</strong></td>
+                  <td>Parte fija por coeficiente y parte variable por lecturas.</td>
+                  <td>
+                    Para calefacción/refrigeración centralizada se recomienda una parte variable del
+                    60–75 % (RD 736/2020); si queda fuera, se advierte.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Manual</strong></td>
+                  <td>Importe por inmueble.</td>
+                  <td>La suma debe coincidir exactamente con el total de la factura.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel">
+              <h4>Datos de la factura</h4>
+              <ul class="small">
+                <li>
+                  Proveedor, número, periodo, fecha de factura, vencimiento (no anterior a la
+                  factura) e importe total.
+                </li>
+                <li>Tipo: luz, agua, gas o gasóleo.</li>
+                <li>
+                  Modo: emitir recibo por inmueble o solo reparto informativo (no crea deuda ni
+                  recibos).
+                </li>
+                <li>
+                  Base legal o acuerdo de Junta cuando el reparto no es por coeficiente (LPH arts.
+                  9.1.e y 9.2; RD 736/2020 arts. 6.1 y 6.4).
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Adjuntos y consulta</h4>
+              <ul class="small">
+                <li>
+                  PDF, PNG, JPG o WebP; hasta 10 MB y máximo 10 adjuntos de factura por servicio.
+                </li>
+                <li>
+                  Los adjuntos de factura (PDF, PNG, JPG o WebP hasta 10 MB; máximo 10) solo se
+                  pueden eliminar mientras el servicio no se ha emitido: después «se conservan como
+                  justificante». Tampoco se suben adjuntos a un servicio anulado.
+                </li>
+                <li>
+                  Las fotos de contador son otra cosa: PNG, JPG o WebP de hasta 10 MB, máximo 6 por
+                  inmueble y servicio, y sirven de referencia de la lectura. Solo la gestión
+                  (<code>fee:manage</code>) puede subirlas o quitarlas: los propietarios y titulares
+                  solo pueden verlas y descargarlas, no aportarlas. Subir exige un servicio vigente
+                  (no anulado) y un inmueble incluido en el reparto; eliminar está permitido en
+                  cualquier momento, incluso después de emitir o anular.
+                </li>
+                <li>
+                  El propietario ve su parte, lecturas y factura en <strong>Servicios</strong> de
+                  <strong>Mis cuotas</strong>.
+                </li>
+                <li>
+                  La descarga se permite a gestión, titulares de recibos del servicio y propietarios
+                  actuales de inmuebles incluidos.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Estados del servicio</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Estado</th>
+                  <th>Cuándo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Borrador</strong></td>
+                  <td>Sin emitir: editable; para retirarlo, se anula con motivo.</td>
+                </tr>
+                <tr>
+                  <td><strong>Emitido</strong></td>
+                  <td>
+                    Repartido con recibos por inmueble, pendientes hasta su vencimiento. Si el
+                    vencimiento ya pasó, los recibos nacen vencidos (la vista previa avisa).
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Informativo</strong></td>
+                  <td>
+                    Emitido sin recibos: reparto visible para los incluidos, sin deuda ni
+                    notificaciones de cobro.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Parcial · pagado · vencido</strong></td>
+                  <td>Según los recibos activos del servicio.</td>
+                </tr>
+                <tr>
+                  <td><strong>Rectificación</strong></td>
+                  <td>Algún recibo anulado admite rectificación.</td>
+                </tr>
+                <tr>
+                  <td><strong>Anulado</strong></td>
+                  <td>
+                    Con motivo; sus recibos activos se anulan con él. Solo sin cobros aplicados.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong>Rectificar recibos de servicio</strong>
+            Un recibo de servicio anulado puede rectificarse si el servicio no está anulado y no
+            existe otro recibo activo para ese inmueble; el importe está fijado por el reparto de la
+            factura y se conserva, aunque el vencimiento puede moverse con motivo obligatorio. La
+            lectura anterior de un contador se propone desde el último servicio emitido del mismo
+            tipo, y la actual nunca puede ser menor que la anterior.
+          </div>
+
+          <div class="callout">
+            <strong>Después de emitir</strong>
+            Una factura emitida o repartida no se puede editar: se anula y se crea otra. No se anula
+            si hay cobros aplicados: primero se revierten. El reparto y los inmuebles quedan
+            congelados; un cambio posterior de censo o coeficientes no los recalcula. Solo se
+            admiten comunidades en EUR.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/services.js</code>, <code>src/fees.js</code>,
+            <code>src/routes/fees.js</code>; adjuntos en <code>uploads/service-bills/</code>.
+          </p>
+        </section>
+
+        <section class="section" id="comunicacion">
+          <div class="section-head">
+            <div class="section-no">12</div>
+            <div>
+              <h2>
+                Comunicación, reuniones y votaciones<a
+                  class="anchor-link"
+                  href="#comunicacion"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Publicar no es lo mismo que leer, votar no es lo mismo que comentar y una encuesta
+                informativa no es un acuerdo. El sistema separa cada acto.
+              </p>
+            </div>
+          </div>
+
+          <h3>Publicaciones y destinatarios</h3>
+          <div class="grid-3">
+            <div class="mini-card">
+              <h4>Tipos</h4>
+              <p>
+                Aviso, evento o reunión. Pueden ser borrador, publicarse, programarse, archivarse,
+                fijarse y llevar recordatorio.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Audiencia</h4>
+              <p>
+                Toda la comunidad, propietarios, inquilinos o selección de perfiles/unidades. Una
+                unidad incluye propietarios e inquilinos vigentes; las cuentas se deduplican.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Distribución</h4>
+              <p>
+                Se guarda una lista de cuentas destinatarias al publicar. Un vecino nuevo no recibe
+                publicaciones históricas; desvincular o finalizar un contrato revoca el acceso.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Edición</h4>
+              <p>
+                Cambiar el contenido de una publicación enviada incrementa su versión, restablece
+                lecturas y acuses y genera aviso de actualización. Cerrar o reabrir únicamente la
+                consulta conserva lecturas, acuses y avisos pendientes, sin duplicar envíos;
+                mantiene el control de versión y la auditoría. Una enviada no vuelve a borrador ni
+                se reprograma.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Lectura y recepción</h4>
+              <p>
+                Leer y confirmar recepción son acciones separadas. Abrir el listado no marca todo
+                como leído.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Reuniones y actas</h4>
+              <p>
+                Lugar o videollamada HTTPS, orden del día, asistencia, acuerdos y tareas. La
+                asistencia real solo se registra para participantes invitados cuando la reunión
+                publicada ya ha comenzado y no está cancelada. Se admiten correcciones posteriores
+                con auditoría; la confirmación de invitación se conserva por separado. Las actas se
+                publican como versión habilitada para destinatarios; las correcciones son versiones
+                nuevas.
+              </p>
+            </div>
+          </div>
+
+          <h3>Reglas de votación</h3>
+          <div class="table-wrap">
+            <table>
+              <caption>
+                La regla se congela al crear la consulta. El peso se congela al emitir cada voto.
+              </caption>
+              <thead>
+                <tr>
+                  <th>Régimen</th>
+                  <th>Censo</th>
+                  <th>Unidad</th>
+                  <th>Copropiedad / mayoría</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="pill pill-lph">LPH</span></td>
+                  <td>
+                    Propietarios de la comunidad; el censo de titularidades y coeficientes se
+                    conserva al publicar.
+                  </td>
+                  <td>Coeficiente, inmueble, propietario o cuenta.</td>
+                  <td>
+                    Representante común o voto separado de cotitulares. Mayoría simple, absoluta,
+                    tres quintos o unanimidad.
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="pill pill-assoc">Asociación</span></td>
+                  <td>
+                    Socios (<code>isMember</code>) y sus derechos estatutarios, aunque no tengan
+                    inmueble.
+                  </td>
+                  <td>
+                    Un voto por socio o una respuesta por cuenta. No se usan coeficientes ni
+                    inmuebles.
+                  </td>
+                  <td>
+                    Representante común por defecto. Mayoría de socios: simple, absoluta, tres
+                    quintos o unanimidad.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <ul class="rule-list">
+            <li>
+              <strong>Consulta y voto.</strong> De 2 a 12 opciones, pregunta obligatoria, respuesta
+              simple o múltiple, cierre por fecha o manual, resultados en vivo o al cerrar. Una
+              cuenta emite una respuesta inmutable por consulta.
+            </li>
+            <li>
+              <strong>Electorado.</strong> Una votación puede abrirse a destinatarios o solo a
+              propietarios/socios. Si el electorado es de propietarios, se aplica el censo y el
+              peso; si es abierto a destinatarios, cada cuenta computa una vez.
+            </li>
+            <li>
+              <strong>Derechos suspendidos.</strong> Si cualquiera de las fichas de propietario de
+              la cuenta tiene derechos suspendidos, esa cuenta no vota en una consulta de
+              propietarios. La regla se aplica igual en la vista y en la API.
+            </li>
+            <li>
+              <strong>Peso.</strong> En LPH se pondera por identidad, inmueble o coeficiente; la
+              copropiedad representada computa una sola vez. En asociación, una persona socia
+              equivale a un voto y la cuenta no se duplica aunque tenga varias fichas. En
+              representación común, se avisa si otro cotitular ya respondió por uno o varios
+              inmuebles: la respuesta se registra, pero no añade peso por esos inmuebles, incluso si
+              el peso total de esa respuesta es cero. No se revelan identidades ni elecciones
+              ajenas.
+            </li>
+            <li>
+              <strong>Consultas antiguas.</strong> Sin regla guardada, se interpretan por cuenta.
+              Las votaciones ponderadas antiguas sin censo se fijan antes de la primera respuesta;
+              si ya tienen votos, deben cerrarse y crearse de nuevo para no mezclar repartos
+              históricos.
+            </li>
+            <li>
+              <strong>Mayoría.</strong> La app muestra la regla y el resultado agregado; no
+              sustituye la adopción formal del acuerdo, el acta ni la verificación de quórum cuando
+              los estatutos lo exijan.
+            </li>
+          </ul>
+
+          <div class="callout warn">
+            <strong>Una encuesta no es un acuerdo</strong>
+            Las encuestas informativas cuentan una respuesta por cuenta y no activan la mayoría. Las
+            votaciones de propietarios/socios muestran la mayoría configurada, pero la validez
+            jurídica del acuerdo depende de la convocatoria, el quórum, la representación y el acta.
+          </div>
+
+          <h3>Notificaciones externas</h3>
+          <p>
+            Email, SMS y WhatsApp requieren proveedor configurado, canal elegido por el autor y
+            consentimiento del destinatario. Los proveedores vienen desactivados. Las credenciales
+            se cifran y no se devuelven al navegador. Una cola SQLite procesa programación,
+            recordatorios y envíos cada 30 segundos mientras el servidor está encendido; los fallos
+            no se reintentan automáticamente y “aceptado” no equivale a entregado.
+          </p>
+
+          <p class="source">
+            Implementación: <code>src/communication-validation.js</code>,
+            <code>src/communication-store.js</code>, <code>src/routes/communications.js</code>,
+            <code>src/legal-config.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="documentos">
+          <div class="section-head">
+            <div class="section-no">13</div>
+            <div>
+              <h2>
+                Documentos, estatutos y biblioteca<a
+                  class="anchor-link"
+                  href="#documentos"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Cada entidad tiene su biblioteca. Los estatutos son una categoría separada y una
+                comunidad puede conservar varias versiones vigentes o históricas.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel">
+              <h4>Organización</h4>
+              <ul class="small">
+                <li>Bibliotecas para comunidad, inmueble, propietario e inquilino.</li>
+                <li>
+                  Carpetas con hasta cinco niveles de anidamiento (la raíz no cuenta), 20 iconos y
+                  10 colores.
+                </li>
+                <li>
+                  Nombres únicos por nivel/carpeta sin distinguir mayúsculas ni acentos; se puede
+                  repetir el mismo nombre en carpetas distintas.
+                </li>
+                <li>
+                  Mover con arrastrar y soltar o “Mover a…”. Una carpeta no puede moverse dentro de
+                  sí misma ni de una subcarpeta.
+                </li>
+                <li>
+                  Eliminar una carpeta con contenido muestra el recuento de carpetas y archivos
+                  afectados; tras confirmar, borra en cascada y elimina los archivos físicos.
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Archivos y estatutos</h4>
+              <ul class="small">
+                <li>
+                  Formatos: PDF, JPG, PNG, WebP, DOC y DOCX. Word solo se descarga, sin vista
+                  previa.
+                </li>
+                <li>
+                  Límites de tamaño y cantidad configurados en Administración; validación de
+                  contenido en servidor.
+                </li>
+                <li>Los estatutos no admiten carpetas y se separan de la documentación general.</li>
+                <li>
+                  Consultar requiere <code>document:read</code>; subir o borrar exige gestión de la
+                  entidad más <code>document:upload</code> o <code>:delete</code>.
+                </li>
+                <li>
+                  La revisión documental es humana: no hay OCR ni certificación automática de
+                  identidad o titularidad.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout">
+            <strong>Borrado avanzado y documentos</strong>
+            Al eliminar una entidad se puede conservar su documentación en el histórico de borrados
+            o eliminarla. Si se conserva, los documentos y carpetas se reasignan al archivo; si se
+            elimina, se borran también los archivos físicos. Los adjuntos de comunicación
+            conservados se pueden recuperar desde el histórico con los permisos correspondientes.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/routes/documents.js</code>,
+            <code>src/document-library.js</code>, <code>public/js/document-library.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="borrado">
+          <div class="section-head">
+            <div class="section-no">14</div>
+            <div>
+              <h2>
+                Borrado normal y borrado avanzado<a
+                  class="anchor-link"
+                  href="#borrado"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                El borrado normal protege la integridad. El avanzado permite resolver dependencias
+                con un plan explícito, confirmaciones y acta; no es un “borrar todo” sin
+                consecuencias.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Qué permite y qué bloquea el borrado normal
+              </caption>
+              <thead>
+                <tr>
+                  <th>Entidad</th>
+                  <th>Restricción normal</th>
+                  <th>Qué hace el flujo avanzado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Comunidad</strong></td>
+                  <td>
+                    Inmuebles, socios/titulares vinculados o historial financiero (acuerdos,
+                    recibos, pagos, derramas, servicios).
+                  </td>
+                  <td>
+                    Mueve, desvincula o elimina inmuebles; decide finanzas, publicaciones,
+                    documentos y cuentas; puede crear una comunidad temporal.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Inmueble</strong></td>
+                  <td>
+                    Inquilinos, historial de cuotas, derrama/servicio no anulado (incluido
+                    borrador).
+                  </td>
+                  <td>Resuelve contratos, conserva o elimina historial y decide documentos.</td>
+                </tr>
+                <tr>
+                  <td><strong>Propietario</strong></td>
+                  <td>Historial de cuotas/cobros o inmueble con inquilino asociado.</td>
+                  <td>
+                    Reasigna o elimina inmuebles, resuelve contratos, conserva/liquida/elimina
+                    finanzas y decide el saldo a favor.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Inquilino</strong></td>
+                  <td>
+                    Sin bloqueo específico: desvincula el perfil de los inmuebles y lo elimina. No
+                    conserva contrato ni historial operativo.
+                  </td>
+                  <td>
+                    Conserva, traslada, desvincula, finaliza o elimina el perfil y decide documentos
+                    y cuenta.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>El plan de borrado, paso a paso</h3>
+          <div class="flow" aria-label="Flujo del borrado avanzado">
+            <div class="flow-step">
+              <span class="n">01</span><b>Selección</b
+              ><span>Entidad raíz y alcance global si tiene vínculos en varias comunidades.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">02</span><b>Dependencias</b
+              ><span
+                >Inmuebles, titulares, contratos, recibos, pagos, repartos, documentos, avisos y
+                publicaciones.</span
+              >
+            </div>
+            <div class="flow-step">
+              <span class="n">03</span><b>Opciones</b
+              ><span>Qué conservar, mover, reasignar, liquidar o eliminar en cada rama.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">04</span><b>Revisión</b
+              ><span>Resumen financiero, crédito, traslado y banderas de confirmación.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">05</span><b>Ejecución</b
+              ><span>Token firmado, transacción, acta, auditoría y limpieza posterior.</span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Acciones disponibles por dependencia
+              </caption>
+              <thead>
+                <tr>
+                  <th>Dependencia</th>
+                  <th>Acciones</th>
+                  <th>Regla de oro</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Inmuebles</td>
+                  <td>
+                    <code>keep</code>, <code>orphan</code>, <code>reassign_owner</code>,
+                    <code>delete_property</code>, <code>reassign_community</code>,
+                    <code>create_temp_community</code>
+                  </td>
+                  <td>
+                    Al borrar una comunidad no se pueden conservar sin más: hay que moverlos,
+                    desvincularlos o eliminarlos. La comunidad temporal exige nombre y NIF válidos y
+                    moneda única.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Inquilinos</td>
+                  <td>
+                    <code>keep</code>, <code>reassign_tenant</code>, <code>orphan_tenant</code>,
+                    <code>end_contract</code>, <code>remove_tenant</code>
+                  </td>
+                  <td>
+                    Un inmueble que se elimina exige resolver cada contrato. El destino de una
+                    reasignación debe tener titulares válidos.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Finanzas</td>
+                  <td>
+                    <code>keep_historical</code>, <code>liquidate_final</code>, <code>delete</code>,
+                    <code>reassign_community</code>
+                  </td>
+                  <td>
+                    Conservar por defecto: nada se toca y el archivo del borrado guarda una copia de
+                    recibos, pagos y repartos. Liquidar anula y perdona pendiente, libera cobros
+                    como saldo y borra las asignaciones. Eliminar borra recibos, pagos, aplicaciones
+                    y justificantes (con sus archivos físicos en cola de limpieza) y, al borrar una
+                    comunidad, también planes, derramas, servicios y adjuntos; exige confirmación
+                    expresa.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Documentos</td>
+                  <td><code>keep</code>, <code>delete</code></td>
+                  <td>
+                    Conservar los mueve al archivo del borrado; eliminar borra metadatos y archivos
+                    físicos.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Notificaciones</td>
+                  <td><code>keep</code>, <code>delete</code></td>
+                  <td>
+                    Las conservadas quedan en el histórico, no en el buzón vivo del perfil
+                    eliminado.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Publicaciones</td>
+                  <td>
+                    <code>keep_historical</code>, <code>delete</code>,
+                    <code>reassign_community</code>
+                  </td>
+                  <td>
+                    Solo al borrar una comunidad. Se conservan completas en el archivo, se eliminan
+                    o se trasladan a otra comunidad con el histórico financiero.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Cuenta de acceso</td>
+                  <td><code>unlink</code>, <code>delete_user</code></td>
+                  <td>
+                    Se conserva por defecto. Eliminar exige <code>admin:users</code>, no permite
+                    cuentas administrativas ni la propia, y comprueba que no queden otros perfiles o
+                    comunidades.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Saldo a favor: la regla más delicada</h3>
+          <div class="split">
+            <div>
+              <ul class="rule-list">
+                <li>
+                  Se calcula el saldo no aplicado del titular y, en una liquidación, los cobros que
+                  se liberan de sus recibos. No se crea dinero: se documenta el destino de un
+                  crédito existente.
+                </li>
+                <li>
+                  Solo cuenta el saldo del titular que se elimina. En un recibo compartido, el cobro
+                  de un cotitular que conserva ficha sigue siendo crédito de ese cotitular y no
+                  entra en la conciliación de este borrado. La excepción es la comunidad completa:
+                  al borrarla con liquidación final se liberan también los cobros de quienes
+                  conservan ficha, porque dejan de tener una comunidad donde aplicarse, y al
+                  borrarla con eliminación total desaparecen con ella.
+                </li>
+                <li>
+                  Si el borrado afecta a varias comunidades, se aplica la
+                  <strong>política más estricta</strong>: <code>bloquear</code> &gt;
+                  <code>advertir</code> &gt; <code>permitir</code>.
+                </li>
+                <li>
+                  Con política <code>bloquear</code>, eliminar el historial financiero se rechaza;
+                  conservar o liquidar exige confirmar la conciliación y una referencia.
+                </li>
+                <li>
+                  El destino se elige entre devolución, compensación, cesión documentada, fondo de
+                  reserva u otro. La referencia de conciliación es obligatoria al ejecutar cuando la
+                  política lo exige; no se exige en la vista previa. Completarla o la referencia del
+                  traslado después de la vista previa no invalida la revisión: son evidencia, no un
+                  cambio de alcance.
+                </li>
+                <li>
+                  Si hay saldo en varias monedas, la operación se rechaza y debe conciliarse por
+                  comunidad.
+                </li>
+              </ul>
+            </div>
+            <div class="callout danger">
+              <strong>Qué hace la liquidación final, paso a paso</strong>
+              (1) Anula cada recibo afectado del titular/inmueble que se borra, con un motivo que
+              documenta el destino del saldo; (2) perdona el importe pendiente de esos recibos; (3)
+              libera los cobros aplicados —borra las asignaciones— y quedan como saldo a favor; (4)
+              si se borra una comunidad, anula además todas sus derramas y servicios vivos. El acta
+              guarda cantidades perdonadas y liberadas por moneda, política, destino, referencia y
+              confirmaciones.
+              <strong>Qué no hace:</strong> no registra un pago, no devuelve dinero por
+              transferencia, no crea un asiento contable ni borra la deuda de un cotitular que
+              conserva su ficha.
+            </div>
+          </div>
+
+          <h3>Traslado del libro financiero</h3>
+          <p>
+            Solo está disponible al eliminar una comunidad. Exige mover <strong>todos</strong> los
+            inmuebles al mismo destino (o a una comunidad temporal) y que la moneda coincida. Si la
+            comunidad de origen o la de destino exige documento, se pide confirmación y una
+            referencia al ejecutar. La política de deuda se limita a dejar constancia en el acta: la
+            ejecución mueve el libro completo (planes, recibos, pagos, derramas y servicios) al
+            destino, porque la comunidad de origen desaparece. No se divide la deuda ni se conserva
+            una copia en origen, aunque cada recibo mantiene en su fotografía el nombre de la
+            comunidad de origen. Los recibos compartidos requieren confirmación adicional porque
+            afectan a cotitulares que no se eliminan.
+          </p>
+
+          <h3>Matriz de borrado del libro financiero</h3>
+          <div class="table-wrap">
+            <table>
+              <caption>
+                Qué se puede borrar, cuándo y por qué vía. Anular conserva rastro; purgar elimina;
+                el borrado avanzado mueve.
+              </caption>
+              <thead>
+                <tr>
+                  <th>Elemento</th>
+                  <th>Se borra cuando…</th>
+                  <th>Se bloquea si…</th>
+                  <th>Alternativa</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Acuerdo de cuotas</td>
+                  <td>No hay recibos vigentes emitidos desde su fecha.</td>
+                  <td>Hay recibos vigentes: los importes se corrigen en la versión vigente.</td>
+                  <td>Crear un acuerdo nuevo con fecha posterior al último periodo emitido.</td>
+                </tr>
+                <tr>
+                  <td>Recibo</td>
+                  <td>
+                    Anulación con motivo si no tiene cobros; purga (<code>fee:purge</code>) una vez
+                    anulado, siempre que no deje una rectificación conservada sin su original.
+                  </td>
+                  <td>Tiene cobros aplicados: se revierten primero.</td>
+                  <td>
+                    Rectificar (sucesor) para corregir importe o vencimiento sin perder la cadena.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Cobro</td>
+                  <td>
+                    Se devuelve con motivo en cualquier momento; el pendiente reaparece en los
+                    recibos que cubría.
+                  </td>
+                  <td>Ya está devuelto.</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Derrama</td>
+                  <td>
+                    Borrador: anulación para retirarla. Activa: anulación completa o por plazo.
+                    Anulada: purga completa de recibos también anulados, sin dejar sucesores fuera
+                    del lote.
+                  </td>
+                  <td>
+                    Algún recibo activo tiene cobros: se revierten primero. Un plazo anulado no se
+                    reemite ni rectifica.
+                  </td>
+                  <td>Rectificar recibos del plazo si este sigue activo.</td>
+                </tr>
+                <tr>
+                  <td>Servicio</td>
+                  <td>Anulación con motivo; el borrador además se puede editar.</td>
+                  <td>Hay cobros aplicados a sus recibos activos.</td>
+                  <td>
+                    Rectificar recibos anulados del servicio activo. No existe purga de servicios:
+                    lo anulado queda en el histórico.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Justificante de pago</td>
+                  <td>
+                    Se sube con el recibo pendiente y se revisa una sola vez (aceptar o rechazar con
+                    motivo). Desaparece con la purga del recibo.
+                  </td>
+                  <td>El recibo está pagado o anulado para subir uno nuevo; ya revisado (409).</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Adjunto de factura · foto de contador</td>
+                  <td>La factura, antes de emitir; la foto del contador, en cualquier momento.</td>
+                  <td>La factura emitida «se conserva como justificante».</td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Garantías de ejecución</h3>
+          <div class="grid-3">
+            <div class="mini-card">
+              <h4>Vista previa</h4>
+              <p>
+                <code>previewToken</code> detecta cambios de dependencias. Si el grafo cambió, hay
+                que volver a evaluar.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Token firmado</h4>
+              <p>
+                <code>executionToken</code> incluye plan, destinos, cuentas y día. No se puede
+                ejecutar con un resumen viejo.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Transacción</h4>
+              <p>
+                <code>BEGIN IMMEDIATE</code>: o se aplica todo el plan o no se aplica nada. La
+                limpieza de archivos ocurre después del commit.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Acta</h4>
+              <p>
+                Se guarda un histórico con entidades afectadas, acciones, liquidación, traslado,
+                crédito y permisos requeridos.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Auditoría</h4>
+              <p>
+                Se registra el borrado con actor, recurso, plan, totales, liquidación y referencias,
+                sin exponer secretos.
+              </p>
+            </div>
+            <div class="mini-card">
+              <h4>Cierre de repartos</h4>
+              <p>
+                Derramas y servicios que dejan de poder emitir se cierran para nuevas emisiones; los
+                recibos ya emitidos se conservan.
+              </p>
+            </div>
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/cascade-delete.js</code>; API
+            <code>GET/POST /api/:collection/:id/cascade-preview</code> y
+            <code>DELETE /api/:collection/:id?cascade=true</code> para <code>owners</code>,
+            <code>tenants</code>, <code>properties</code> y <code>communities</code>.
+          </p>
+        </section>
+
+        <section class="section" id="trazabilidad">
+          <div class="section-head">
+            <div class="section-no">15</div>
+            <div>
+              <h2>
+                Trazabilidad, exportación y administración<a
+                  class="anchor-link"
+                  href="#trazabilidad"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                La confianza del sistema depende de poder reconstruir lo ocurrido y de no filtrar
+                datos al exportar o al consultar.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel">
+              <h4>Auditoría</h4>
+              <ul class="small">
+                <li>
+                  Registra logins correctos y fallidos, cierres de sesión, accesos denegados y
+                  altas/cambios/bajas de usuarios y roles.
+                </li>
+                <li>
+                  Incluye actor, recurso, resultado, IP, fecha y valores anteriores/posteriores
+                  permitidos.
+                </li>
+                <li>
+                  No guarda contraseñas, cookies, tokens, cuerpos completos ni parámetros de
+                  consulta sensibles.
+                </li>
+                <li>
+                  Consultar exige <code>audit:read</code>; no está disponible para
+                  <code>user</code> ni <code>community_admin</code>. No existe API para modificar o
+                  borrar el historial.
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Exportación</h4>
+              <ul class="small">
+                <li>
+                  PDF, XLSX y CSV; conserva filtros, orden, agrupaciones y columnas visibles, no
+                  solo la página actual.
+                </li>
+                <li>
+                  Exige <code>export:read</code> y el permiso de la vista; la lectura por sí sola no
+                  autoriza exportar.
+                </li>
+                <li>
+                  Límites por formato: PDF 500 filas, XLSX/CSV 5.000; 10 MiB por archivo; tiempo de
+                  generación de 15 segundos (PDF/XLSX) y 10 (CSV); máx. 3 exportaciones simultáneas
+                  (429 si se excede). Generación con worker y sin archivos temporales.
+                </li>
+                <li>
+                  Los documentos exportan metadatos, nunca el contenido ni las rutas físicas. Los
+                  importes se convierten de céntimos a euros.
+                </li>
+                <li>
+                  Cada intento deja auditoría con usuario, rol, listado, formato, filtros y
+                  resultado.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Verificación de contacto y avisos de cambios</h3>
+          <div class="grid-2">
+            <div class="panel">
+              <h4>Verificación OTP de teléfono y email</h4>
+              <ul class="small">
+                <li>
+                  Un código de 6 dígitos enviado por SMS o email confirma el contacto de un
+                  propietario. El código se guarda con hash, no en claro.
+                </li>
+                <li>
+                  Expira por defecto a los 10 minutos (configurable) y es de un solo uso: cada envío
+                  invalida el código anterior de esa cuenta y destino.
+                </li>
+                <li>
+                  El reenvío tiene enfriamiento configurable (responde <code>429</code> con los
+                  segundos restantes) y la confirmación admite como máximo 5 intentos.
+                </li>
+                <li>
+                  Un código expirado o un reto ya confirmado se elimina; el canal acepta teléfono
+                  móvil español (formato 6–9 + 8 dígitos, E.164) y email válido.
+                </li>
+              </ul>
+            </div>
+            <div class="panel">
+              <h4>Avisos de cambios en perfiles de propietario</h4>
+              <ul class="small">
+                <li>
+                  Al editar una ficha, se envía por email un resumen legible de los campos que
+                  cambiaron (nombre, documento, condición de socio, teléfonos, email, IBAN,
+                  dirección, notas, etc.) a la lista de direcciones configurada en
+                  <strong>Configuración → General</strong>.
+                </li>
+                <li>
+                  Vacío = apagado. El envío <strong>no bloquea</strong> la edición: si el correo
+                  falla, se registra en el log del servidor y el cambio ya está aplicado.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Qué queda congelado y dónde</h3>
+          <div class="table-wrap">
+            <table class="tight">
+              <thead>
+                <tr>
+                  <th>Elemento</th>
+                  <th>Qué conserva</th>
+                  <th>Por qué</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Recibo</td>
+                  <td>
+                    Titulares, importe, vencimiento y origen; las nuevas emisiones también conservan
+                    la moneda. El histórico sin moneda mantiene su lectura heredada.
+                  </td>
+                  <td>Una transferencia posterior no reescribe la deuda histórica.</td>
+                </tr>
+                <tr>
+                  <td>Derrama</td>
+                  <td>Inmuebles incluidos y reparto por plazo.</td>
+                  <td>Altas o cambios de coeficiente posteriores no redistribuyen.</td>
+                </tr>
+                <tr>
+                  <td>Servicio</td>
+                  <td>Inmuebles, método, lecturas y parte informativa.</td>
+                  <td>La factura original debe poder explicarse.</td>
+                </tr>
+                <tr>
+                  <td>Votación</td>
+                  <td>Regla, censo de titularidades, opciones y peso del voto.</td>
+                  <td>Evita duplicar peso si cambia la titularidad después.</td>
+                </tr>
+                <tr>
+                  <td>Borrado</td>
+                  <td>Plan, acta, liquidación, traslado y referencias.</td>
+                  <td>Permite auditar una operación irreversible.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/audit.js</code>, <code>src/export-inventory.js</code>,
+            <code>src/export-views.js</code>, <code>src/export-service.js</code>,
+            <code>src/routes/verification.js</code>, <code>src/avisos-cambios.js</code>,
+            <code>src/security.js</code>.
+          </p>
+        </section>
+
+        <section class="section" id="limites">
+          <div class="section-head">
+            <div class="section-no">16</div>
+            <div>
+              <h2>
+                Límites conocidos y checklist de cambio<a
+                  class="anchor-link"
+                  href="#limites"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Un mapa honesto también dice qué no cubre. Estos límites deben revisarse antes de
+                prometer una funcionalidad o de cambiar una regla jurídica.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <h3>Límites funcionales</h3>
+              <ul class="risk-list">
+                <li>
+                  La configuración jurídica es orientativa: no sustituye estatutos, títulos,
+                  convocatoria, quórum ni acta.
+                </li>
+                <li>
+                  El modelo guarda una comunidad principal por titular y una comunidad de censo por
+                  socio; no representa simultáneamente pertenencias plenas a varias asociaciones en
+                  una sola ficha.
+                </li>
+                <li>
+                  La emisión financiera está limitada a EUR aunque el campo de comunidad acepte
+                  otros códigos ISO. No hay conversión de moneda.
+                </li>
+                <li>
+                  No hay SEPA, remesas, cobro bancario, intereses, OCR, contabilidad de gastos ni
+                  firma electrónica.
+                </li>
+                <li>
+                  Un titular puede vincularse por primera vez a un inmueble de otra comunidad
+                  mediante la edición del inmueble, con porcentajes explícitos y los permisos
+                  correspondientes. Esto no traslada contratos ni mueve el histórico financiero;
+                  esos cambios tienen sus propios flujos y validaciones.
+                </li>
+                <li>
+                  La app no declara automáticamente un acuerdo vinculante ni calcula quórum: muestra
+                  la regla y el resultado agregado.
+                </li>
+                <li>
+                  Los límites de autenticación son locales al proceso; varias instancias requieren
+                  un almacén compartido o límites equivalentes en el proxy.
+                </li>
+                <li>
+                  La entrega de email/SMS/WhatsApp no tiene webhook de confirmación; “aceptado” no
+                  equivale a “entregado”.
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3>Checklist antes de cambiar una regla</h3>
+              <ul class="checklist small">
+                <li>¿La regla se valida en servidor y no solo en la UI?</li>
+                <li>¿Se aplica por comunidad y por ámbito de rol?</li>
+                <li>
+                  ¿Afecta a recibos, votos o repartos ya emitidos? Si sí, ¿se congela o se versiona?
+                </li>
+                <li>¿Puede dejar una ficha, un contrato o una publicación huérfana?</li>
+                <li>¿Qué ocurre si el borrado afecta a varias comunidades o monedas?</li>
+                <li>¿Se exige confirmación y referencia cuando hay crédito o traslado?</li>
+                <li>¿Queda registro en auditoría y en el acta?</li>
+                <li>¿La exportación respeta el mismo permiso y ámbito que la lectura?</li>
+                <li>
+                  ¿Hay una prueba de dominio y una de ruta/UI para el caso feliz y el bloqueo?
+                </li>
+                <li>¿El README y este mapa siguen siendo ciertos?</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout ok">
+            <strong>Regla de mantenimiento</strong>
+            Si cambia una regla de negocio, actualizá en el mismo cambio: la validación del
+            servidor, la UI que la explica, la prueba que la protege, el README y este mapa. Un
+            documento que no se actualiza se convierte en una promesa falsa.
+          </div>
+
+          <div class="callout">
+            <strong>Archivos de referencia</strong>
+            <span class="mono">src/legal-config.js</span> ·
+            <span class="mono">src/domain.js</span> · <span class="mono">src/fees.js</span> ·
+            <span class="mono">src/cascade-delete.js</span> ·
+            <span class="mono">src/communication-store.js</span> ·
+            <span class="mono">src/routes/</span> ·
+            <span class="mono">public/js/permissions.js</span> ·
+            <span class="mono">scripts/tests/</span>
+          </div>
+        </section>
+
+        <section class="section" id="escenarios">
+          <div class="section-head">
+            <div class="section-no">17</div>
+            <div>
+              <h2>
+                Escenarios operativos<a
+                  class="anchor-link"
+                  href="#escenarios"
+                  aria-label="Enlace a esta sección"
+                  >#</a
+                >
+              </h2>
+              <p class="section-sub">
+                Las reglas anteriores, aplicadas de principio a fin: cómo se cobra una cuota, cómo
+                se corrige un error, cómo se anula lo que ya entró en el libro y qué pasa cuando el
+                censo cambia con derramas vivas.
+              </p>
+            </div>
+          </div>
+
+          <h3>1 · Cómo se cobra una cuota, de principio a fin</h3>
+          <div class="flow" aria-label="Cobro completo de una cuota">
+            <div class="flow-step">
+              <span class="n">01</span><b>Acuerdo</b
+              ><span
+                >Importe anual, periodicidad, vencimiento y referencia de Junta; avisos
+                propios.</span
+              >
+            </div>
+            <div class="flow-step">
+              <span class="n">02</span><b>Vista previa</b
+              ><span
+                >Importes por inmueble, avisos de titulares o importe y errores de cuadre.</span
+              >
+            </div>
+            <div class="flow-step">
+              <span class="n">03</span><b>Emisión</b
+              ><span>Un recibo por inmueble, titulares congelados y estado pendiente.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">04</span><b>Notificación</b
+              ><span>Aviso interno y, si se activa, email con importe, vencimiento e IBAN.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">05</span><b>Pago externo</b
+              ><span>Transferencia, ingreso o domiciliación fuera de la app.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">06</span><b>Registro</b
+              ><span
+                >Fecha no futura, método, referencia e identificador único anti duplicados.</span
+              >
+            </div>
+            <div class="flow-step">
+              <span class="n">07</span><b>Imputación</b
+              ><span>El cobro cubre recibos del mismo pagador y comunidad hasta agotarse.</span>
+            </div>
+            <div class="flow-step">
+              <span class="n">08</span><b>Saldo</b
+              ><span>El sobrante queda a favor para recibos presentes o futuros.</span>
+            </div>
+          </div>
+          <ul class="rule-list">
+            <li>
+              <strong>El justificante es opcional y no paga.</strong> El titular puede aportarlo
+              mientras el recibo esté pendiente (hasta 20 por titular, PDF o imagen de 10 MB); la
+              gestión lo acepta «para revisión bancaria» o lo rechaza con motivo. Solo un cobro
+              registrado cambia el estado del recibo.
+            </li>
+            <li>
+              <strong>Los recordatorios siguen hasta que el pendiente sea cero.</strong> Antes del
+              vencimiento según los días configurados y después con la repetición acordada; los
+              pagados, anulados y purgados no se reclaman.
+            </li>
+            <li>
+              <strong>El inquilino no interviene.</strong> Recibos, avisos y justificantes van a los
+              titulares congelados en el recibo.
+            </li>
+          </ul>
+
+          <h3>2 · Corregir un recibo mal emitido</h3>
+          <ul class="rule-list">
+            <li>
+              <strong>Si ya tiene cobros, revertirlos primero.</strong> La devolución con motivo
+              restaura el pendiente de los recibos que cubría y notifica a los titulares.
+            </li>
+            <li>
+              <strong>Anular el recibo con motivo.</strong> Deja de contar como deuda viva, no
+              genera recordatorios y queda visible en el histórico.
+            </li>
+            <li>
+              <strong>Rectificar en lugar de reemitir a mano.</strong> El sucesor conserva periodo,
+              fotografía y origen; en derramas y servicios el importe es el del reparto y solo
+              cambian vencimiento y motivo, mientras que en cuotas el importe puede ajustarse.
+            </li>
+            <li>
+              <strong>Cuándo no se puede rectificar:</strong> el recibo ya tiene sucesor, el plazo o
+              la derrama/servicio de origen está anulado, o ya existe otro recibo activo equivalente
+              para el mismo inmueble.
+            </li>
+          </ul>
+
+          <h3>3 · Anular una derrama que ya tiene cobros</h3>
+          <ul class="rule-list">
+            <li>
+              <strong>Paso 1: revertir los cobros</strong> aplicados a los recibos activos de los
+              plazos afectados, con motivo obligatorio.
+            </li>
+            <li>
+              <strong>Paso 2: anular los plazos o la derrama completa</strong> con motivo. Los
+              recibos activos se anulan con ella y se notifica a los titulares.
+            </li>
+            <li>
+              <strong>Paso 3, opcional: purgar</strong> con <code>fee:purge</code> si la derrama
+              anulada debe desaparecer del libro; arrastra sus recibos anulados, justificantes,
+              eventos y notificaciones.
+            </li>
+            <li>
+              <strong>Para volver a cobrar:</strong> rectificar un recibo anulado si su plazo sigue
+              activo, o constituir otra derrama con nuevo acuerdo. Un plazo anulado no se reemite.
+            </li>
+          </ul>
+
+          <h3>4 · El censo cambia con una derrama viva</h3>
+          <ul class="rule-list">
+            <li>
+              <strong>La derrama está congelada:</strong> inmuebles y reparto se guardaron al
+              crearla; altas, bajas y cambios de coeficiente posteriores no recalculan lo ya
+              repartido.
+            </li>
+            <li>
+              <strong>Cada recibo congela a sus titulares:</strong> quien aparece en el próximo
+              plazo sin emitir es el titular vigente en ese momento; los ya emitidos conservan su
+              fotografía.
+            </li>
+            <li>
+              <strong>El inmueble sigue bloqueado</strong> para borrado o traslado mientras la
+              derrama no se anule; el borrado avanzado solo cierra el reparto para nuevas emisiones.
+            </li>
+            <li>
+              <strong>La deuda es del inmueble:</strong> el cambio de titularidad no extingue los
+              recibos emitidos; el certificado usa los porcentajes acreditados al emitir y, si no
+              constan, la comunidad decide entre «no consta», último conocido u omitir el reparto
+              interno.
+            </li>
+          </ul>
+
+          <h3>5 · Servicio informativo o con recibos</h3>
+          <ul class="rule-list">
+            <li>
+              <strong>Informativo:</strong> al repartir marca la factura como emitida pero no crea
+              recibos ni deuda; los propietarios incluidos ven su parte, lecturas y factura en
+              <strong>Mis cuotas → Servicios</strong>.
+            </li>
+            <li>
+              <strong>Con recibos:</strong> un recibo por inmueble con el vencimiento de la factura;
+              notifica, reclama y alimenta el certificado de deuda.
+            </li>
+            <li>
+              <strong>Comparten ciclo:</strong> edición solo antes de emitir, anulación solo sin
+              cobros, reparto congelado, adjuntos de factura inmutables tras emitir y fotos de
+              contador siempre disponibles.
+            </li>
+          </ul>
+
+          <h3>6 · Anular o purgar: cuándo usar cada una</h3>
+          <div class="grid-2">
+            <div class="callout ok">
+              <strong>Anular</strong>
+              Es la vía para corregir errores dejando evidencia: el recibo o la derrama queda
+              visible con su motivo, notifica a los afectados, admite rectificación (recibos) y
+              sigue en los listados e histórico como anulado. Los certificados de deuda excluyen los
+              recibos anulados de sus importes pendientes y pagados.
+            </div>
+            <div class="callout danger">
+              <strong>Purgar</strong>
+              Elimina del libro lo ya anulado (recibos y sus justificantes; derramas anuladas
+              completas). Exige <code>fee:purge</code>, solo opera sobre lo anulado y es definitiva:
+              fuera de la auditoría no queda rastro. Apta para datos de prueba o registros inválidos
+              sin valor probatorio, nunca para «arreglar» deuda real.
+            </div>
+          </div>
+          <div class="callout warn">
+            <strong>La purga no sustituye al borrado avanzado</strong>
+            Para eliminar entidades con historial (propietarios, inmuebles, comunidades) o mover el
+            libro financiero entre comunidades sigue siendo obligatorio el asistente con plan,
+            confirmaciones y acta. La purga solo limpia recibos y derramas ya anulados dentro de una
+            comunidad viva.
+          </div>
+
+          <p class="source">
+            Implementación: <code>src/fees.js</code>, <code>src/services.js</code>,
+            <code>src/routes/fees.js</code> y <code>src/receipt-deletion.js</code>; interfaz en
+            <code>public/js/features/fees.js</code> y
+            <code>public/js/features/service-editor.js</code>.
+          </p>
+        </section>
+
+        <footer class="footer">
+          <p>
+            <strong>Mapa de negocio — AppComunidadVecinos</strong> · Revisión 2.2 · PR #215 ·
+            22/11/2026
+          </p>
+          <p>
+            Documento funcional autocontenido. Las referencias legales son orientativas y deben
+            validarse con los estatutos y títulos de cada comunidad. No es asesoría jurídica.
+          </p>
+          <a class="backtop" href="#contenido">Volver al inicio ↑</a>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>
