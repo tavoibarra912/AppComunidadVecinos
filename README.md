@@ -534,7 +534,7 @@ protección de sus copias de seguridad para producción.
 ### Inmuebles
 
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
-- La pestaña **Propietarios** del alta empieza con la **ocupación del inmueble**: se indica si vivirá el propietario (opción predeterminada, sin crear ningún contrato) u otra persona. Con esta última, al guardar se abre el alta del inquilino con el inmueble y el primer propietario ya seleccionados.
+- La pestaña **Propietarios** del alta empieza con la **ocupación del inmueble**: se indica si vivirá el propietario (opción predeterminada, sin contrato y con la pestaña Inquilinos deshabilitada) u otra persona (se habilita la pestaña Inquilinos para asociar o crear su ficha). En un inmueble ya creado la pregunta no se muestra y la pestaña Inquilinos está siempre disponible.
 - Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
 ### Inquilinos

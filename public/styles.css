@@ -4663,6 +4663,21 @@ select {
   color: #fff;
 }
 
+/* Pestaña deshabilitada por la ocupación del inmueble (por ejemplo, Inquilinos
+   cuando vive el propietario). */
+.community-editor-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--line);
+  background: #f1f5f9;
+  color: var(--muted);
+}
+
+.community-editor-tab:disabled:hover {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
 .community-editor-pane,
 .property-editor-pane {
   display: block;

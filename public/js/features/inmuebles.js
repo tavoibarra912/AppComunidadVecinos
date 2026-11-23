@@ -198,6 +198,29 @@ document.querySelectorAll(".community-editor-tab[data-property-tab]").forEach((b
   btn.addEventListener("click", () => switchPropertyEditorTab(btn.dataset.propertyTab));
 });
 
+/**
+ * La pestaña Inquilinos solo tiene sentido cuando el inmueble lo ocupa otra persona: si vive
+ * el propietario no hay contrato que asociar. En inmuebles ya creados la pregunta no se
+ * muestra, así que la pestaña queda siempre disponible.
+ */
+function syncPropertyResidencyTab() {
+  const tab = document.querySelector('.community-editor-tab[data-property-tab="tenants"]');
+  if (!tab) return;
+  const asksResident = !!propertyInitialResidentStep && !propertyInitialResidentStep.hidden;
+  const ownerLives = propertyForm.elements.initialResident?.value !== "other";
+  const disabled = asksResident && ownerLives;
+  tab.disabled = disabled;
+  tab.setAttribute("aria-disabled", String(disabled));
+  tab.title = disabled
+    ? "El inmueble lo ocupa el propietario. Elige «Vive otra persona» para asociar inquilinos."
+    : "";
+  if (disabled && tab.classList.contains("active")) switchPropertyEditorTab("owners");
+}
+
+propertyForm.addEventListener("change", (event) => {
+  if (event.target?.matches?.('input[name="initialResident"]')) syncPropertyResidencyTab();
+});
+
 const ICON_UNLINK_SM = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 const ICON_VIEW_SM = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 
@@ -719,6 +742,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   const property = state.properties.find((item) => item.id === id);
   if (propertyInitialResidentStep)
     propertyInitialResidentStep.hidden = !!property || readonly;
+  syncPropertyResidencyTab();
   populatePropertyCurrencySelect(property?.currency || "EUR");
   const ownerIds = propertyOwnerIds(property);
   const tenantIds = property?.tenantIds || (property?.tenantId ? [property.tenantId] : []);
@@ -1231,18 +1255,9 @@ propertyForm.addEventListener("submit", async (event) => {
     .replace(",", ".");
 
   const messages = [];
-  const createInitialTenant =
-    !state.ui.editingPropertyId && propertyForm.elements.initialResident?.value === "other";
   if (!community) messages.push("Selecciona una comunidad existente.");
   if (selectedOwnerIds.length === 0)
     messages.push("Debes asociar al menos un propietario al inmueble (1 o más).");
-  if (
-    createInitialTenant &&
-    selectedOwnerIds[0] &&
-    !hasPermission("tenant:create", selectedOwnerIds[0])
-  ) {
-    messages.push("No tienes permiso para crear un inquilino para el propietario seleccionado.");
-  }
   const linkedTenantRecords = state.owners.flatMap((owner) =>
     ownerTenants(owner)
       .filter((tenant) => selectedTenantIds.includes(tenant.id))
@@ -1317,7 +1332,6 @@ propertyForm.addEventListener("submit", async (event) => {
 
   const isEditing = !!state.ui.editingPropertyId;
   const propertyId = state.ui.editingPropertyId || crypto.randomUUID();
-  const initialTenantOwnerId = createInitialTenant ? selectedOwnerIds[0] : "";
   const payload = {
     id: propertyId,
     communityId: values.communityId,
@@ -1374,12 +1388,7 @@ propertyForm.addEventListener("submit", async (event) => {
   refreshCommunityEditorAfterPropertySave();
   if (state.ui.viewingOwnerId) openOwnerDetail(state.ui.viewingOwnerId);
   closePropertyEditor();
-  if (createInitialTenant) {
-    openTenantEditor(null, initialTenantOwnerId, false, "general", propertyId);
-    toast("Inmueble creado. Completa los datos de la otra persona.");
-  } else {
-    toast(isEditing ? "Inmueble actualizado." : "Inmueble creado.");
-  }
+  toast(isEditing ? "Inmueble actualizado." : "Inmueble creado.");
 });
 
 // --- Eliminación de inmuebles (API) ---

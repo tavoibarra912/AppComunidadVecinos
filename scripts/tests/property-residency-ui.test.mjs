@@ -135,10 +135,15 @@ async function saveNewProperty(choice, tenantCreateAllowed = true) {
       residentChoice,
     );
     assert.match(residentChoice.textContent, /Ocupación del inmueble/);
-    assert.match(residentChoice.textContent, /no se crea ningún contrato/);
-    assert.match(residentChoice.textContent, /primer propietario/);
+    assert.match(residentChoice.textContent, /No se crea ningún contrato/);
+    assert.doesNotMatch(residentChoice.textContent, /primer propietario/);
     assert.equal(form.querySelector('input[name="initialResident"][value="owner"]').checked, true);
-    form.querySelector(`input[name="initialResident"][value="${choice}"]`).checked = true;
+    const tenantsTab = document.querySelector('.community-editor-tab[data-property-tab="tenants"]');
+    assert.equal(tenantsTab.disabled, true);
+    const radio = form.querySelector(`input[name="initialResident"][value="${choice}"]`);
+    radio.checked = true;
+    radio.dispatchEvent(new f.window.Event("change", { bubbles: true }));
+    assert.equal(tenantsTab.disabled, choice !== "other");
     form.dispatchEvent(new f.window.Event("submit", { bubbles: true, cancelable: true }));
     await flush();
     return f;
@@ -148,35 +153,39 @@ async function saveNewProperty(choice, tenantCreateAllowed = true) {
   }
 }
 
-test("el propietario es la opción inicial y no genera automáticamente un inquilino", async () => {
+test("el propietario es la opción inicial y deshabilita la pestaña Inquilinos", async () => {
   const f = await saveNewProperty("owner");
   try {
     assert.equal(f.calls.properties.length, 1);
     assert.equal(f.calls.tenantEditor.length, 0);
     f.ui.openPropertyEditor("property-created");
     assert.equal(f.window.document.querySelector("#property-initial-resident").hidden, true);
+    const tenantsTab = f.window.document.querySelector(
+      '.community-editor-tab[data-property-tab="tenants"]',
+    );
+    assert.equal(tenantsTab.disabled, false);
   } finally {
     f.dom.window.close();
   }
 });
 
-test("otra persona abre el alta de inquilino con propietario e inmueble preseleccionados", async () => {
+test("otra persona habilita la pestaña Inquilinos sin abrir el alta de inquilino", async () => {
   const f = await saveNewProperty("other");
   try {
     assert.equal(f.calls.properties.length, 1);
-    assert.deepEqual(f.calls.tenantEditor[0], [null, "o1", false, "general", "property-created"]);
-    assert.match(f.calls.toasts[f.calls.toasts.length - 1], /Inmueble creado/);
+    assert.deepEqual(f.calls.tenantEditor, []);
+    assert.equal(f.calls.toasts[f.calls.toasts.length - 1], "Inmueble creado.");
   } finally {
     f.dom.window.close();
   }
 });
 
-test("no guarda la opción de otra persona si falta permiso para crear inquilinos", async () => {
+test("elegir otra persona no exige permiso de inquilinos porque no crea ninguno", async () => {
   const f = await saveNewProperty("other", false);
   try {
-    assert.equal(f.calls.properties.length, 0);
+    assert.equal(f.calls.properties.length, 1);
+    assert.deepEqual(f.calls.validationErrors, []);
     assert.deepEqual(f.calls.tenantEditor, []);
-    assert.match(f.calls.validationErrors[0][0], /No tienes permiso para crear un inquilino/);
   } finally {
     f.dom.window.close();
   }
