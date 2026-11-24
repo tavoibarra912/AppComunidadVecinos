@@ -416,6 +416,52 @@ function votingCensus(post) {
   return saved ? JSON.parse(saved.data) : null;
 }
 
+/**
+ * Una votación ponderada por coeficiente solo puede abrirse si el censo que
+ * se usará para el reparto tiene coeficientes completos. Se comprueba el
+ * censo congelado si existe; si la consulta es nueva o antigua, los datos
+ * vivos. Devuelve el mensaje de error o una cadena vacía.
+ */
+export function votingCoefficientProblem(post) {
+  const rule = pollRule(post);
+  if (
+    post?.poll?.type !== "vote" ||
+    post.poll.electorate !== "owners" ||
+    rule.unidad !== "coeficiente" ||
+    rule.censo === "socios"
+  )
+    return "";
+  const census = votingCensus(post);
+  const properties =
+    census?.properties ||
+    db
+      .prepare("SELECT plot,participationCoef FROM properties WHERE communityId=?")
+      .all(post.communityId);
+  if (!properties.length)
+    return "No se puede abrir la votación por coeficiente: la comunidad no tiene inmuebles con coeficiente de participación.";
+  const invalid = properties.filter((property) => {
+    const coefficient = Number(property.participationCoef);
+    return !Number.isFinite(coefficient) || coefficient <= 0 || coefficient > 100;
+  });
+  if (invalid.length) {
+    const names = invalid
+      .map((property) => property.plot)
+      .filter(Boolean)
+      .slice(0, 3);
+    const detalle = names.length
+      ? ` (${names.join(", ")}${invalid.length > names.length ? "…" : ""})`
+      : "";
+    return `No se puede abrir la votación por coeficiente: hay ${invalid.length === 1 ? "un inmueble" : `${invalid.length} inmuebles`} sin coeficiente válido${detalle}. Corrige los coeficientes antes de continuar.`;
+  }
+  const sum = properties.reduce(
+    (total, property) => total + Math.round(Number(property.participationCoef) * 10000),
+    0,
+  );
+  if (sum !== 1000000)
+    return `No se puede abrir la votación por coeficiente: los coeficientes suman ${(sum / 10000).toFixed(4).replace(".", ",")} % y deben sumar 100 %. Corrige los coeficientes de la comunidad antes de continuar.`;
+  return "";
+}
+
 // Se guarda aparte de la publicación para no exponer el censo en su DTO público.
 export function ensureVotingCensus(post) {
   const rule = pollRule(post);
@@ -522,9 +568,14 @@ export function ballotWeights(post, ballots) {
     }
     if (!voters.size) continue;
     const coefficient = Number(property.participationCoef);
+    // Un coeficiente ausente nunca debe convertirse en un voto con peso 1.
+    // La validación de la consulta lo impide; este cero es la última defensa
+    // para datos históricos incoherentes.
     const value =
-      rule.unidad === "coeficiente" && Number.isFinite(coefficient) && coefficient > 0
-        ? coefficient
+      rule.unidad === "coeficiente"
+        ? Number.isFinite(coefficient) && coefficient > 0
+          ? coefficient
+          : 0
         : 1;
     if (rule.copropiedad === "todos") {
       // Cada cotitular computa su cuota; si no consta, se reparte por igual.

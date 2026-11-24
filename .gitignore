@@ -142,3 +142,8 @@ uploads/
 
 # Transferencias, copias y credenciales privadas del despliegue
 .deploy-private/
+
+# Auditorías, evidencias y artefactos de revisión local
+/.audit-*/
+/docs/auditoria-qa-*
+/audits/

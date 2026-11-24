@@ -12,6 +12,28 @@ process.env.NODE_ENV = "test";
 const { db } = await import("../../src/db.js");
 const { seedIfEmpty } = await import("../../src/seed.js");
 seedIfEmpty();
+// El censo de la demo debe sumar 100 %: sin esto las votaciones LPH nuevas
+// se rechazan correctamente y las pruebas de pesos partirían de datos inválidos.
+function balanceSeedCoefficients() {
+  const properties = db
+    .prepare(
+      "SELECT id,participationCoef FROM properties WHERE communityId='com-seed-1' ORDER BY id",
+    )
+    .all();
+  const total = properties.reduce(
+    (sum, property) => sum + (Number(property.participationCoef) || 0),
+    0,
+  );
+  if (Math.abs(total - 100) <= 0.0001 || !properties.length) return;
+  const last = properties.at(-1);
+  const adjusted = Number(last.participationCoef) + (100 - total);
+  if (adjusted > 0 && adjusted <= 100)
+    db.prepare("UPDATE properties SET participationCoef=? WHERE id=?").run(
+      adjusted.toFixed(4),
+      last.id,
+    );
+}
+balanceSeedCoefficients();
 db.prepare("UPDATE tenants SET contractStart='',contractEnd=''").run();
 const { default: router } = await import("../../src/routes/index.js");
 const { materialize, postById, queue, getPreferences } =
@@ -170,7 +192,10 @@ test("destinatarios seleccionados: un inmueble avisa a sus propietarios salvo qu
   assert.equal(p.recipients.filter((r) => r.userId === user("urucp1").id).length, 1);
   assert.equal((await owner(`/communications/posts/${p.id}`)).status, 200);
   assert.equal((await tenant(`/communications/posts/${p.id}`)).status, 404);
-  assert.equal(p.recipients.some((r) => r.userId === user("uruci1").id), false);
+  assert.equal(
+    p.recipients.some((r) => r.userId === user("uruci1").id),
+    false,
+  );
   // Incluir residentes es una decisión explícita del autor del aviso.
   const residents = await create({
     audience: {
@@ -181,7 +206,10 @@ test("destinatarios seleccionados: un inmueble avisa a sus propietarios salvo qu
       includeResidents: true,
     },
   });
-  assert.equal(residents.recipients.some((r) => r.userId === user("uruci1").id), true);
+  assert.equal(
+    residents.recipients.some((r) => r.userId === user("uruci1").id),
+    true,
+  );
   assert.equal((await tenant(`/communications/posts/${residents.id}`)).status, 200);
   const personal = await create({
     audience: {

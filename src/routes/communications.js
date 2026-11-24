@@ -25,6 +25,7 @@ import {
   mayVote,
   ballotWeights,
   ensureVotingCensus,
+  votingCoefficientProblem,
   pollOpen,
   summary,
   detail,
@@ -449,6 +450,10 @@ router.post(
         403,
       );
     if (!pollOpen(p)) throw problem("La consulta está cerrada.", 409);
+    // Defensa para votaciones antiguas: se comprueba el censo congelado (o los
+    // datos vivos si aún no existe) antes de aceptar el primer voto.
+    const coefficientProblem = votingCoefficientProblem(p);
+    if (coefficientProblem) throw problem(coefficientProblem, 409);
     const choices = req.body?.choices;
     if (
       !Array.isArray(choices) ||

@@ -35,6 +35,11 @@ import {
   intentarCerrar,
 } from "../utils.js";
 import { setupTerritory, getLocationById, isValidPostalCode } from "../territory.js";
+import {
+  ownerPropertyEditingLocked,
+  ownershipChanged,
+  ownerSavedMessage,
+} from "../owner-self-service.js";
 import { createDataTable } from "../table.js";
 import { createExportDropdown } from "../export-client.js";
 import { createDocumentLibrary } from "../document-library.js";
@@ -61,6 +66,7 @@ let ownerTable = null;
 let editingOwnerProperties = [];
 let editingOwnerPropertyVersions = new Map();
 let editingOwnerOriginalPropertyIds = [];
+let editingOwnerOriginalPropertyPercentages = {};
 let editingOwnerPropertyPercentages = {};
 
 // Icono de "ver" real (ojo) para los botones de acción de propietarios.
@@ -477,6 +483,10 @@ function ownerTabForField(name) {
 // --- Pestaña Inmueble: badges como en comunidad (mismo UX) ---
 function renderOwnerPropertiesTab() {
   if (!ownerPropertiesList) return;
+  const propertyLocked = ownerPropertyEditingLocked({
+    readOnly: ownerDialogReadOnly,
+    activeRole: state.activeRole,
+  });
   if (ownerPropertyCount) ownerPropertyCount.textContent = String(editingOwnerProperties.length);
   ownerPropertiesList.replaceChildren();
   if (ownerPropertyLinkPanel) ownerPropertyLinkPanel.hidden = true;
@@ -484,7 +494,7 @@ function renderOwnerPropertiesTab() {
   if (editingOwnerProperties.length === 0) {
     const empty = document.createElement("p");
     empty.className = "form-intro";
-    empty.textContent = ownerDialogReadOnly
+    empty.textContent = propertyLocked
       ? "Este propietario aún no tiene inmuebles asociados."
       : "Este propietario aún no tiene inmuebles asociados. Asocia uno existente o crea uno nuevo.";
     ownerPropertiesList.append(empty);
@@ -525,9 +535,9 @@ function renderOwnerPropertiesTab() {
     pctInput.value = String(currentPct);
     pctInput.title = "Porcentaje de titularidad de este propietario sobre el inmueble";
     pctInput.setAttribute("aria-label", `Porcentaje de titularidad en ${property.plot}`);
-    pctInput.readOnly = ownerDialogReadOnly;
+    pctInput.readOnly = propertyLocked;
     pctInput.addEventListener("change", () => {
-      if (ownerDialogReadOnly) return;
+      if (propertyLocked) return;
       let value = Number(pctInput.value.replace(",", "."));
       const previous = editingOwnerPropertyPercentages[propertyId] ?? capacity;
       if (!Number.isFinite(value) || value <= 0) {
@@ -552,16 +562,11 @@ function renderOwnerPropertiesTab() {
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
-    const viewBtn = iconBtn(
-      "btn-info",
-      "Ver inmueble",
-      `Ver inmueble ${property.plot}`,
-      ICON_VIEW,
-    );
+    const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${property.plot}`, ICON_VIEW);
     viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
 
     actions.append(viewBtn);
-    if (!ownerDialogReadOnly) {
+    if (!propertyLocked) {
       const unlinkBtn = iconBtn(
         "btn-delete",
         "Desvincular de este propietario",
@@ -593,6 +598,8 @@ function ownerPropertyCapacity(property) {
 
 function openOwnerPropertyLinkPanel() {
   if (!ownerPropertyLinkPanel || !ownerPropertyLinkSelect) return;
+  if (ownerPropertyEditingLocked({ readOnly: ownerDialogReadOnly, activeRole: state.activeRole }))
+    return;
   ownerPropertyLinkPanel.hidden = !ownerPropertyLinkPanel.hidden;
   if (!ownerPropertyLinkPanel.hidden) {
     ownerPropertyLinkSelect.replaceChildren();
@@ -631,6 +638,8 @@ function openOwnerPropertyLinkPanel() {
 /** Llamado desde inmuebles.js cuando se guarda un inmueble creado desde esta pestaña. */
 export function addPropertyToOwnerEditor(ownerId, propertyId) {
   if (state.ui.editingOwnerId !== ownerId) return;
+  if (ownerPropertyEditingLocked({ readOnly: ownerDialogReadOnly, activeRole: state.activeRole }))
+    return;
   if (!editingOwnerProperties.includes(propertyId)) {
     editingOwnerProperties.push(propertyId);
   }
@@ -769,14 +778,18 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     editingDocs.current = o.documents ? JSON.parse(JSON.stringify(o.documents)) : {};
     editingOwnerProperties = ownerProperties(o).map((property) => property.id);
     editingOwnerPropertyPercentages = {};
+    editingOwnerOriginalPropertyPercentages = {};
     ownerProperties(o).forEach((property) => {
-      editingOwnerPropertyPercentages[property.id] = property.ownerPercentages?.[o.id] ?? 100;
+      const percentage = property.ownerPercentages?.[o.id] ?? 100;
+      editingOwnerPropertyPercentages[property.id] = percentage;
+      editingOwnerOriginalPropertyPercentages[property.id] = percentage;
     });
     updateOwnerCommunitySelect(o.communityId || "");
   } else {
     editingDocs.current = {};
     editingOwnerProperties = [];
     editingOwnerPropertyPercentages = {};
+    editingOwnerOriginalPropertyPercentages = {};
     updateOwnerCommunitySelect("");
     ownerTerritory?.reset();
   }
@@ -846,6 +859,10 @@ export function closeOwnerEditor() {
  * Reutiliza el mismo formulario y las mismas pestañas que la edición.
  */
 function applyOwnerDialogReadOnly(readOnly) {
+  const propertyLocked = ownerPropertyEditingLocked({
+    readOnly,
+    activeRole: state.activeRole,
+  });
   ownerDialog.classList.toggle("is-readonly", readOnly);
   ownerForm.querySelectorAll("input, select, textarea").forEach((control) => {
     if (control.closest(".fee-panel")) return;
@@ -888,7 +905,13 @@ function applyOwnerDialogReadOnly(readOnly) {
     cancelBtn.title = readOnly ? "Cerrar" : "Cancelar";
     cancelBtn.setAttribute("aria-label", readOnly ? "Cerrar" : "Cancelar");
   }
-  if (readOnly && ownerPropertyLinkPanel) ownerPropertyLinkPanel.hidden = true;
+  if (propertyLocked && ownerPropertyLinkPanel) ownerPropertyLinkPanel.hidden = true;
+  const addPropertyBtn = document.querySelector("#btn-owner-add-property");
+  const linkPropertyBtn = document.querySelector("#btn-owner-link-property");
+  if (addPropertyBtn) addPropertyBtn.hidden = propertyLocked;
+  if (linkPropertyBtn) linkPropertyBtn.hidden = propertyLocked;
+  const propertyLockNote = document.querySelector("#owner-property-lock-note");
+  if (propertyLockNote) propertyLockNote.hidden = !(state.activeRole === "owner" && !readOnly);
   if (ownerForm.elements.userId)
     ownerForm.elements.userId.disabled = readOnly || !hasPermission("admin:users");
 }
@@ -1605,6 +1628,21 @@ export function collectOwnerErrors() {
 ownerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (ownerDialogReadOnly) return;
+  const isSelfService = state.activeRole === "owner";
+  if (
+    isSelfService &&
+    ownershipChanged({
+      originalIds: editingOwnerOriginalPropertyIds,
+      currentIds: editingOwnerProperties,
+      originalPercentages: editingOwnerOriginalPropertyPercentages,
+      currentPercentages: editingOwnerPropertyPercentages,
+    })
+  ) {
+    ownerError.textContent =
+      "La titularidad y los vínculos de inmuebles solo los puede cambiar la administración.";
+    switchOwnerDialogTab("property");
+    return;
+  }
   if (
     !requirePermission(
       state.ui.editingOwnerId
@@ -1684,20 +1722,23 @@ ownerForm.addEventListener("submit", async (event) => {
   const isCompleteDocs =
     uploadedCount === 3 && JSON.stringify(previousDocs) !== JSON.stringify(editingDocs.current);
 
-  // El backend resuelve la vinculación N:M de los inmuebles (pestaña Inmueble)
-  data.propertyIds = editingOwnerProperties.slice();
-  data.propertyVersions = Object.fromEntries(
-    [...new Set([...editingOwnerOriginalPropertyIds, ...editingOwnerProperties])]
+  // El autoservicio no envía titularidad: el servidor la ignora y la interfaz
+  // ya no debe sugerir que se guardó. La administración conserva esta vía.
+  if (!isSelfService) {
+    data.propertyIds = editingOwnerProperties.slice();
+    data.propertyVersions = Object.fromEntries(
+      [...new Set([...editingOwnerOriginalPropertyIds, ...editingOwnerProperties])]
+        .filter((propertyId) => hasPermission("property:manage", propertyId))
+        .map((propertyId) => [propertyId, editingOwnerPropertyVersions.get(propertyId)]),
+    );
+    data.propertyShares = editingOwnerProperties
       .filter((propertyId) => hasPermission("property:manage", propertyId))
-      .map((propertyId) => [propertyId, editingOwnerPropertyVersions.get(propertyId)]),
-  );
-  data.propertyShares = editingOwnerProperties
-    .filter((propertyId) => hasPermission("property:manage", propertyId))
-    .map((propertyId) => ({
-      propertyId,
-      version: editingOwnerPropertyVersions.get(propertyId),
-      percentage: Number(editingOwnerPropertyPercentages[propertyId] ?? 100),
-    }));
+      .map((propertyId) => ({
+        propertyId,
+        version: editingOwnerPropertyVersions.get(propertyId),
+        percentage: Number(editingOwnerPropertyPercentages[propertyId] ?? 100),
+      }));
+  }
   data.userId = ownerForm.elements.userId?.value || "";
   data.phoneVerified = contactVerify.phone.verified;
   data.phoneVerifiedAt = contactVerify.phone.verifiedAt;
@@ -1719,7 +1760,7 @@ ownerForm.addEventListener("submit", async (event) => {
 
   limpiarGuardia(ownerForm);
   closeOwnerEditor();
-  toast(isEditing ? "Propietario actualizado." : "Propietario creado.");
+  toast(ownerSavedMessage({ isEditing, isOwner: isSelfService }));
 
   // Si se han subido y validado los documentos requeridos:
   if (isCompleteDocs) {
@@ -1881,6 +1922,8 @@ makeSelectSearchable(ownerDetailPropertySelect, "Buscar inmueble…");
 const btnOwnerAddProperty = document.querySelector("#btn-owner-add-property");
 if (btnOwnerAddProperty) {
   btnOwnerAddProperty.addEventListener("click", () => {
+    if (ownerPropertyEditingLocked({ readOnly: ownerDialogReadOnly, activeRole: state.activeRole }))
+      return;
     // Abre el editor de inmueble sobre el editor de propietario; al guardar se vincula aquí
     if (state.ui.editingOwnerId) {
       state.ui.ownerEditorPropertyContext = state.ui.editingOwnerId;
@@ -1895,6 +1938,8 @@ if (btnOwnerLinkProperty) {
 const btnOwnerConfirmProperty = document.querySelector("#btn-owner-confirm-property");
 if (btnOwnerConfirmProperty) {
   btnOwnerConfirmProperty.addEventListener("click", () => {
+    if (ownerPropertyEditingLocked({ readOnly: ownerDialogReadOnly, activeRole: state.activeRole }))
+      return;
     const propertyId = ownerPropertyLinkSelect?.value;
     if (!propertyId) {
       toast("Selecciona un inmueble para asociar.");
