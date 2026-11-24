@@ -515,3 +515,25 @@ test("exportación: la vista de inmuebles incluye ocupación y contacto principa
   assert.equal(undeclared.occupancy, "Vive el propietario");
   assert.equal(undeclared.primaryResident, "Sin contacto");
 });
+
+test("H-06: las observaciones del propietario van en su propia columna y no contaminan el nombre", async () => {
+  const view = previewDataset(input("owners"));
+  const labels = view.columns.map((column) => column.label);
+  assert.ok(labels.includes("Observaciones"));
+  const noted = view.rows.find((row) => row.notes?.trim());
+  assert.ok(noted, "la semilla debe tener un propietario con observaciones");
+  assert.equal(noted.name.includes("\n"), false);
+  assert.doesNotMatch(noted.name, /Vocal|comunicaciones preferentes/i);
+  assert.match(noted.notes, /Vocal|comunicaciones preferentes/i);
+
+  const file = await exportDataset(
+    input("owners", {
+      format: "csv",
+      itemIds: [noted.id],
+      columns: ["name", "notes"],
+    }),
+  );
+  const text = file.buffer.toString("utf8");
+  assert.match(text, /"Propietario";"Observaciones"/);
+  assert.ok(text.includes(noted.name));
+});

@@ -30,9 +30,7 @@ const OCCUPANCY_LABELS = {
 };
 const residentName = (visible, id) =>
   id
-    ? name(
-        visible.owners.find((o) => o.id === id) || visible.tenants.find((t) => t.id === id),
-      )
+    ? name(visible.owners.find((o) => o.id === id) || visible.tenants.find((t) => t.id === id))
     : "";
 const col = (key, label, type = "string") => ({ key, label, type });
 const fields = (spec) => spec.map(([key, label, type]) => col(key, label, type));
@@ -219,6 +217,7 @@ export const TABLE_VIEWS = {
       ["community", "Comunidad"],
       ["properties", "Inmueble"],
       ["name", "Propietario"],
+      ["notes", "Observaciones"],
       ["dni", "DNI / NIE / CIF"],
       ["address", "Dirección"],
       ["city", "Municipio"],
@@ -249,7 +248,8 @@ export const TABLE_VIEWS = {
                 ),
               ].join(", ") || "Sin comunidad",
             properties: props.map((p) => p.plot).join(", ") || "Sin inmuebles",
-            name: name(o) + (o.notes ? "\n" + richTextToPlainText(o.notes) : ""),
+            name: name(o),
+            notes: o.notes ? richTextToPlainText(o.notes) : "",
             dni: o.dni,
             address: o.address,
             city: o.city,

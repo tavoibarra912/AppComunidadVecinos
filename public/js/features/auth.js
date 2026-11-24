@@ -64,12 +64,10 @@ async function startSession(user) {
   limpiarGuardia(document.querySelector("#owner-form"));
   hideLoginScreen();
   applyRoleUI();
-  // Tras autenticar, la pantalla a mostrar es Inicio.
-  if (window.location.hash !== "#home") {
-    window.location.hash = "#home";
-  } else {
-    handleRouting();
-  }
+  // Tras autenticar, la URL debe corresponder a la pantalla de Inicio del
+  // nuevo rol. No se conserva la ruta de la sesión anterior.
+  window.history.replaceState({ route: "home" }, "", "/");
+  await handleRouting();
 }
 
 // Navegación entre vistas

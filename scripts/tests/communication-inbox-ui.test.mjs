@@ -62,7 +62,10 @@ function fixture(t) {
     communication: async (route, method, payload) => {
       calls.push({ route, method, payload, user: w.state.currentUserId });
       if (route === "/metadata")
-        return { communities: [{ id: "c1", name: "Comunidad", canManage: false }] };
+        return {
+          communities: [{ id: "c1", name: "Comunidad", canManage: true }],
+          selectors: [],
+        };
       if (route === "/posts") return load ? load() : structuredClone(rows);
       if (route === "/inbox/read-all") {
         rows = rows.map((p) => ({ ...p, recipient: { readAt: "2026-11-18T12:30:00Z" } }));
@@ -71,7 +74,7 @@ function fixture(t) {
       throw new Error(`Ruta inesperada: ${route}`);
     },
   };
-  w.eval(source + "\nwindow.inboxTest={refreshCommunication,getCommunicationSnapshot};");
+  w.eval(source + "\nwindow.inboxTest={refreshCommunication,getCommunicationSnapshot,openEditor};");
   return {
     w,
     calls,
@@ -170,4 +173,20 @@ test("copropiedad UI: muestra la advertencia sin exponer HTML ni bloquear el reg
   assert.equal(root.querySelector("[data-attendance]").disabled, true);
   root.innerHTML = f.w.inboxTest.meetingView({ ...meeting, canRecordAttendance: true });
   assert.equal(root.querySelector("[data-attendance]").disabled, false);
+});
+
+test("comunicación UI: la consulta anuncia como obligatorios los campos que bloquean el avance", async (t) => {
+  const f = fixture(t);
+  await f.refresh();
+  f.w.inboxTest.openEditor();
+  const form = f.w.document.querySelector("#comm-editor");
+  form.elements.hasPoll.checked = true;
+  form.elements.hasPoll.dispatchEvent(new f.w.Event("change"));
+  for (const name of ["pollQuestion", "pollOptions", "pollClosesAt"]) {
+    const control = form.elements[name];
+    const label = control.closest("label")?.textContent || "";
+    assert.equal(control.required, true, `${name} debe ser obligatorio`);
+    assert.match(label, /\*/, `${name} debe mostrar el asterisco de obligatorio`);
+    assert.doesNotMatch(label, /opcional/i, `${name} no debe anunciarse opcional`);
+  }
 });

@@ -864,6 +864,8 @@ function applyOwnerDialogReadOnly(readOnly) {
     activeRole: state.activeRole,
   });
   ownerDialog.classList.toggle("is-readonly", readOnly);
+  ownerDialog.classList.toggle("is-property-locked", propertyLocked);
+  ownerNotes?.setReadOnly?.(readOnly);
   ownerForm.querySelectorAll("input, select, textarea").forEach((control) => {
     if (control.closest(".fee-panel")) return;
     if (readOnly) {

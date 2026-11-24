@@ -99,5 +99,11 @@ export function createRichText({ editor, input, toolbar }) {
     /* Navegadores sin execCommand: el editor sigue funcionando en texto plano. */
   }
 
-  return { setValue, sync, focus: () => editor.focus() };
+  function setReadOnly(value) {
+    editor.setAttribute("contenteditable", String(!value));
+    editor.setAttribute("aria-readonly", String(!!value));
+    if (toolbar) toolbar.hidden = !!value;
+  }
+
+  return { setValue, sync, setReadOnly, focus: () => editor.focus() };
 }
