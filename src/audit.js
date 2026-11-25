@@ -66,6 +66,10 @@ export function auditRequests(req, res, next) {
     "export",
     "link-owner",
     "link-tenant",
+    "deletion-request",
+    "deletion-requests",
+    "approve",
+    "reject",
   ]);
   req.auditRoute = path
     .split("/")

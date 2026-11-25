@@ -31,6 +31,7 @@ export function createAuthRateLimit({ now = Date.now, maxEntries = 20_000 } = {}
       "/forgot-password": [5, req.body?.email, false],
       "/reset-password": [15, req.body?.token, true],
       "/change-password": [15, req.user?.id || "", true],
+      "/deletion-request": [15, req.user?.id || "", true],
     };
     const rule = rules[operation];
     if (!rule) return next();

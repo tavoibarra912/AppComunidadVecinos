@@ -7,6 +7,12 @@ import { passwordError, validEmail } from "../validation.js";
 import { PERMISSIONS } from "../../public/js/permissions.js";
 import { validateBrand } from "../branding.js";
 import { validateFeeDefaults } from "../fees.js";
+import {
+  deleteAccount,
+  listDeletionRequests,
+  approveDeletionRequest,
+  rejectDeletionRequest,
+} from "../account-deletion.js";
 export const PERMISOS_VALIDOS = PERMISSIONS;
 const router = Router();
 const roleFor = (value) =>
@@ -27,15 +33,6 @@ function lastAdmin(user, nextRole, active) {
 }
 function lastAdminMessage(role) {
   return `Debe quedar al menos un ${ROLE_LABELS[role] || "administrador"} activo.`;
-}
-/** Perfiles de propietario o inquilino vinculados a una cuenta. */
-function linkedProfiles(userId) {
-  const parts = [];
-  if (db.prepare("SELECT 1 FROM owners WHERE userId=? LIMIT 1").get(userId))
-    parts.push("propietario");
-  if (db.prepare("SELECT 1 FROM tenants WHERE userId=? LIMIT 1").get(userId))
-    parts.push("inquilino");
-  return parts;
 }
 function userError(data, id) {
   if (typeof data.usuario !== "string" || !/^[\p{L}\p{N}._-]{2,60}$/u.test(data.usuario.trim()))
@@ -113,31 +110,37 @@ router.put("/users/:id", (req, res) => {
   if (!data.activo) db.prepare("DELETE FROM sessions WHERE userId=?").run(existing.id);
   res.json(publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(existing.id)));
 });
-router.delete("/users/:id", (req, res) => {
-  const user = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
-  if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
-  if (lastAdmin(user, "", false))
-    return res.status(409).json({ error: lastAdminMessage(user.rol) });
-  // Un perfil de propietario o inquilino no debe quedar huérfano: se exige
-  // desvincularlo antes de eliminar la cuenta.
-  const profiles = linkedProfiles(user.id);
-  if (profiles.length)
-    return res.status(409).json({
-      error: `No se puede eliminar un usuario con perfil de ${profiles.join(" y ")} asociado. Desvincula el perfil antes de borrar la cuenta.`,
-    });
-  db.exec("BEGIN");
+router.delete("/users/:id", async (req, res, next) => {
   try {
-    db.prepare("DELETE FROM sessions WHERE userId=?").run(user.id);
-    for (const table of ["owners", "tenants"])
-      db.prepare(`UPDATE ${table} SET userId='' WHERE userId=?`).run(user.id);
-    db.prepare("UPDATE communities SET adminUserId='' WHERE adminUserId=?").run(user.id);
-    db.prepare("DELETE FROM users WHERE id=?").run(user.id);
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
+    await deleteAccount(req.params.id, { actor: req.user });
+    res.json({ ok: true });
+  } catch (error) {
+    if (error.status) res.status(error.status).json({ error: error.message });
+    else next(error);
   }
-  res.json({ ok: true });
+});
+// Solicitudes de baja (RGPD). Comparten el permiso admin:users de la sección.
+router.get("/users/deletion-requests", (_req, res) =>
+  res.json({ requests: listDeletionRequests() }),
+);
+router.post("/users/deletion-requests/:id/approve", async (req, res, next) => {
+  try {
+    res.json(await approveDeletionRequest(req.params.id, req.user));
+  } catch (error) {
+    if (error.status) res.status(error.status).json({ error: error.message });
+    else next(error);
+  }
+});
+router.post("/users/deletion-requests/:id/reject", (req, res, next) => {
+  const note = req.body?.note;
+  if (note !== undefined && (typeof note !== "string" || note.length > 500))
+    return res.status(400).json({ error: "La nota no puede superar los 500 caracteres." });
+  try {
+    res.json({ request: rejectDeletionRequest(req.params.id, req.user, note) });
+  } catch (error) {
+    if (error.status) res.status(error.status).json({ error: error.message });
+    else next(error);
+  }
 });
 for (const [kind, table] of [
   ["owner", "owners"],
@@ -303,12 +306,10 @@ router.put("/settings", (req, res) => {
       ),
     ];
     if (!tipos.length || tipos.some((tipo) => !DOCUMENT_TYPES.includes(tipo)))
-      return res
-        .status(400)
-        .json({
-          error:
-            "Elige al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG, WebP, DOC o DOCX).",
-        });
+      return res.status(400).json({
+        error:
+          "Elige al menos un tipo de archivo permitido (PDF, JPG, JPEG, PNG, WebP, DOC o DOCX).",
+      });
     data.documentosTiposPermitidos = tipos;
   }
   if (
@@ -342,8 +343,7 @@ router.put("/settings", (req, res) => {
       for (const item of list) {
         const id = typeof item?.id === "string" ? item.id.trim() : "";
         const label = typeof item?.label === "string" ? item.label.trim() : "";
-        const description =
-          typeof item?.description === "string" ? item.description.trim() : "";
+        const description = typeof item?.description === "string" ? item.description.trim() : "";
         if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id))
           return res.status(400).json({
             error: "El identificador de una autorización no es válido.",

@@ -54,6 +54,17 @@ test("F10 · recuperación, registro y cambio tienen presupuestos independientes
   assert.ok(attempt(limit, { path: "/logout", status: 200 }).reached);
 });
 
+test("F10 · la solicitud de baja cuenta sus fallos de contraseña como el cambio de contraseña", () => {
+  const limit = createAuthRateLimit();
+  for (let i = 0; i < 14; i++) assert.ok(attempt(limit, { path: "/deletion-request" }).reached);
+  // Una solicitud válida no consume intentos y limpia el contador de la cuenta.
+  assert.ok(attempt(limit, { path: "/deletion-request", status: 201 }).reached);
+  for (let i = 0; i < 15; i++) assert.ok(attempt(limit, { path: "/deletion-request" }).reached);
+  assert.equal(attempt(limit, { path: "/deletion-request" }).status, 429);
+  // El presupuesto es independiente del resto de operaciones de la cuenta.
+  assert.ok(attempt(limit, { path: "/change-password" }).reached);
+});
+
 test("F10 · barridos de credenciales tienen un límite agregado solo de fallos", () => {
   let time = 1000;
   const limit = createAuthRateLimit({ now: () => time });

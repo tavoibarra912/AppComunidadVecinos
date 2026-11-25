@@ -111,6 +111,15 @@ CREATE TABLE IF NOT EXISTS fee_plans (
   CREATE INDEX IF NOT EXISTS fee_assessments_community ON fee_assessments(communityId,createdAt);
 
 CREATE TABLE IF NOT EXISTS password_recovery_requests (emailHash TEXT PRIMARY KEY, requestedAt INTEGER NOT NULL);
+
+CREATE TABLE IF NOT EXISTS account_deletion_requests (
+  id TEXT PRIMARY KEY, userId TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '',
+  state TEXT NOT NULL DEFAULT 'pending', requestedAt TEXT NOT NULL,
+  resolvedAt TEXT NOT NULL DEFAULT '', resolvedBy TEXT NOT NULL DEFAULT '',
+  resolutionNote TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS account_deletion_requests_user ON account_deletion_requests(userId, requestedAt);
+CREATE UNIQUE INDEX IF NOT EXISTS account_deletion_requests_pending ON account_deletion_requests(userId) WHERE state = 'pending';
   CREATE TABLE IF NOT EXISTS password_recovery_mail (
     id TEXT PRIMARY KEY, userId TEXT NOT NULL, tokenHash TEXT NOT NULL, payload TEXT NOT NULL,
     state TEXT NOT NULL DEFAULT 'pending', createdAt INTEGER NOT NULL

@@ -439,6 +439,34 @@ En desarrollo no hace falta configurar el origen: el enlace se construye con
 el origen HTTPS de la aplicación (por ejemplo, `https://vecinos.example.org`).
 Nunca se usa el encabezado Host para construir enlaces.
 
+### Derecho de supresión (RGPD)
+
+Cualquier titular puede pedir la baja de su cuenta desde **Mi perfil → Privacidad y
+datos**. La solicitud no borra nada por sí sola: queda pendiente para que la
+administración la revise, y el motivo es opcional (máx. 500 caracteres). Para
+enviarla hay que confirmar la contraseña actual, igual que en el cambio de
+contraseña, y los intentos fallidos consumen el mismo limitador por cuenta
+(15 fallos cada 15 minutos). Mientras siga pendiente, el titular puede cancelarla
+y también puede volver a solicitarla si se rechaza.
+
+Quien tenga el permiso `admin:users` ve la cola en **Administración → Usuarios →
+Solicitudes de baja (RGPD)**. Puede aprobar, lo que elimina la cuenta en el mismo
+acto, o rechazar con una nota que el titular verá en su perfil. Al aprobar se
+borran las sesiones, los enlaces de recuperación de contraseña, las preferencias
+de aviso y los avisos aún no enviados de esa cuenta; los perfiles de propietario e
+inquilino y las comunidades que administraba quedan desvinculados. También se
+borra el historial de «Reportar un error» en Postgres y se anonimiza la autoría de
+los documentos, carpetas y comentarios que hubiera creado, que se conservan sin
+nombre porque forman parte de la documentación y de los hilos de la comunidad. Si
+el historial de reportes no se puede purgar, el borrado no se ejecuta y la
+administración puede reintentarlo. Se conservan los recibos, cobros, derramas,
+actas y la auditoría de seguridad, que son registro contable y de seguridad, sin
+datos de acceso. El motivo y la nota se descartan al
+ejecutar el borrado. Nunca se puede eliminar un usuario con ficha de propietario o
+inquilino vinculada ni el último superadministrador activo. Cada paso queda en la
+auditoría (`users.deletion-requested`, `users.deletion-cancelled`,
+`users.deletion-rejected`, `users.deleted`).
+
 ### Recuperación de contraseña
 
 Desde «Olvidé mi contraseña», indica el email de la cuenta. La respuesta es igual
@@ -508,6 +536,8 @@ protección de sus copias de seguridad para producción.
 - `POST /api/documents/folders` · `PATCH /api/documents/folders/:id` (renombrar o mover) · `DELETE /api/documents/folders/:id?confirm=1` (cascada con confirmación).
 - `POST /api/owners/contact/{phone|email}/{send|confirm}` — responde con un aviso de servicio no configurado; no genera códigos de prueba.
 - `GET /api/notifications/*`, `POST /api/notifications/*` — buzones.
+- `GET/POST/DELETE /api/auth/deletion-request` — baja de cuenta del propio titular (RGPD).
+- `GET /api/admin/users/deletion-requests` · `POST /api/admin/users/deletion-requests/:id/{approve|reject}` — revisión de bajas (`admin:users`).
 - `GET/POST /api/issues` — configuración y creación de reportes de error con adjuntos en GitHub.
 - `GET /api/health`.
 

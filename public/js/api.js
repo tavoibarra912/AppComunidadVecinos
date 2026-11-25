@@ -36,6 +36,7 @@ async function request(path, options = {}) {
       response.status === 401 &&
       path !== "/auth/me" &&
       path !== "/auth/change-password" &&
+      path !== "/auth/deletion-request" &&
       !path.startsWith("/auth/sign")
     )
       window.dispatchEvent(new Event("auth:expired"));
@@ -96,6 +97,12 @@ export const api = {
   getCurrentUser: () => request("/auth/me"),
   auth: (path, body) =>
     request(`/auth/${path}`, { method: "POST", body: JSON.stringify(body || {}) }),
+
+  // --- Baja de cuenta (RGPD) ---
+  getDeletionRequest: () => request("/auth/deletion-request"),
+  requestDeletion: (payload) =>
+    request("/auth/deletion-request", { method: "POST", body: JSON.stringify(payload || {}) }),
+  cancelDeletion: () => request("/auth/deletion-request", { method: "DELETE" }),
   getBootstrap: () => request("/bootstrap"),
 
   // --- Reportes de errores enviados a GitHub ---
@@ -162,6 +169,14 @@ export const api = {
   updateUser: (id, payload) =>
     request(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteUser: (id) => request(`/admin/users/${id}`, { method: "DELETE" }),
+  deletionRequests: () => request("/admin/users/deletion-requests"),
+  approveDeletionRequest: (id) =>
+    request(`/admin/users/deletion-requests/${id}/approve`, { method: "POST" }),
+  rejectDeletionRequest: (id, note) =>
+    request(`/admin/users/deletion-requests/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note: note || "" }),
+    }),
   linkOwner: (userId, ownerId) =>
     request(`/admin/users/${userId}/link-owner`, {
       method: "PUT",

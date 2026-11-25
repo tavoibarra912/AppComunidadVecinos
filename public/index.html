@@ -964,6 +964,19 @@
               </svg>
             </button>
           </div>
+          <section
+            class="deletion-requests"
+            id="deletion-requests-panel"
+            aria-labelledby="deletion-requests-title"
+            hidden
+          >
+            <h3 id="deletion-requests-title">Solicitudes de baja (RGPD)</h3>
+            <p class="form-intro">
+              Revisa cada solicitud. Si la cuenta conserva una ficha de propietario o inquilino,
+              desvincula la ficha antes de eliminar la cuenta.
+            </p>
+            <ul class="deletion-request-list" id="deletion-requests-list"></ul>
+          </section>
           <div class="toolbar">
             <label class="search-field" for="search-users">
               <span class="sr-only">Buscar usuarios</span>
@@ -7127,6 +7140,113 @@
       </form>
     </dialog>
 
+    <!-- Diálogo de aprobación de una solicitud de baja (RGPD) -->
+    <dialog id="deletion-approve-dialog" class="dialog-sm" aria-labelledby="deletion-approve-title">
+      <form id="deletion-approve-form" class="dialog-content" novalidate>
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">RGPD · BAJA DE CUENTA</p>
+            <h2 id="deletion-approve-title">Eliminar la cuenta</h2>
+          </div>
+          <button
+            class="icon-action-btn btn-cancel btn-lg"
+            type="button"
+            aria-label="Cerrar"
+            data-close-deletion-dialog="deletion-approve-dialog"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <p class="form-intro" id="deletion-approve-message"></p>
+        <p class="form-error" id="deletion-approve-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button
+            class="secondary-button"
+            type="button"
+            data-close-deletion-dialog="deletion-approve-dialog"
+          >
+            Cancelar
+          </button>
+          <button class="danger-button" type="submit" id="deletion-approve-submit">
+            Eliminar cuenta
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Diálogo de rechazo de una solicitud de baja (RGPD) -->
+    <dialog id="deletion-reject-dialog" class="dialog-sm" aria-labelledby="deletion-reject-title">
+      <form id="deletion-reject-form" class="dialog-content" novalidate>
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">RGPD · BAJA DE CUENTA</p>
+            <h2 id="deletion-reject-title">Rechazar la solicitud</h2>
+          </div>
+          <button
+            class="icon-action-btn btn-cancel btn-lg"
+            type="button"
+            aria-label="Cerrar"
+            data-close-deletion-dialog="deletion-reject-dialog"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <p class="form-intro" id="deletion-reject-message"></p>
+        <div class="form-grid">
+          <label class="full"
+            >Motivo del rechazo (opcional)<textarea
+              id="deletion-reject-note"
+              rows="3"
+              maxlength="500"
+              aria-describedby="deletion-reject-help"
+            ></textarea>
+          </label>
+        </div>
+        <p class="form-intro" id="deletion-reject-help">
+          La nota se muestra al titular en Mi perfil → Privacidad y datos. Puedes dejarla vacía.
+        </p>
+        <p class="form-error" id="deletion-reject-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button
+            class="secondary-button"
+            type="button"
+            data-close-deletion-dialog="deletion-reject-dialog"
+          >
+            Cancelar
+          </button>
+          <button class="btn-reject-danger" type="submit" id="deletion-reject-submit">
+            Rechazar solicitud
+          </button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- Diálogo de confirmación de cierre con cambios pendientes -->
     <dialog id="confirm-close-dialog" class="dialog-sm">
       <div class="dialog-content">
@@ -7974,6 +8094,11 @@
         </dl>
         <p class="form-intro" id="account-profile-hint"></p>
         <div class="account-profile-links" id="account-profile-links"></div>
+        <section class="account-privacy" aria-labelledby="account-privacy-title">
+          <h3 id="account-privacy-title">Privacidad y datos</h3>
+          <p class="form-intro" id="account-privacy-status">Cargando tu situación de baja…</p>
+          <div class="account-profile-links" id="account-privacy-actions"></div>
+        </section>
         <div class="dialog-actions">
           <button
             class="primary-button"
@@ -8049,6 +8174,63 @@
           </button>
           <button class="primary-button" type="submit" id="account-password-submit">
             Guardar contraseña
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      id="account-deletion-dialog"
+      class="dialog-sm account-dialog"
+      aria-labelledby="account-deletion-title"
+    >
+      <form id="account-deletion-form" class="dialog-content" novalidate>
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">RGPD · DERECHO DE SUPRESIÓN</p>
+            <h2 id="account-deletion-title">Solicitar baja de mi cuenta</h2>
+          </div>
+          <button
+            class="icon-action-btn btn-cancel btn-lg"
+            type="button"
+            aria-label="Cerrar solicitud de baja"
+            data-close-account-dialog="account-deletion-dialog"
+          >
+            ×
+          </button>
+        </div>
+        <p class="form-intro" id="account-deletion-help">
+          La administración revisará tu solicitud y responderá en el menor plazo posible. Se
+          eliminarán tu cuenta, tus datos de acceso, tus preferencias de aviso y tu historial de
+          reportes de error; los documentos, carpetas y comentarios que hayas creado quedan sin tu
+          nombre. Los recibos, cobros, actas y registros de auditoría se conservan mientras la ley
+          obligue a ello, y si tienes una ficha de propietario o inquilino, se desvincula antes de
+          borrar la cuenta.
+        </p>
+        <div class="form-grid">
+          <label class="full"
+            >Motivo (opcional)<textarea name="reason" rows="3" maxlength="500"></textarea>
+          </label>
+          <label class="full"
+            >Contraseña actual<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              maxlength="128"
+              aria-describedby="account-deletion-help"
+              required
+          /></label>
+        </div>
+        <p class="form-error" id="account-deletion-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button
+            class="secondary-button"
+            type="button"
+            data-close-account-dialog="account-deletion-dialog"
+          >
+            Cancelar
+          </button>
+          <button class="danger-button" type="submit" id="account-deletion-submit">
+            Enviar solicitud de baja
           </button>
         </div>
       </form>

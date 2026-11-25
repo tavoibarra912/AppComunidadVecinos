@@ -12,11 +12,51 @@ import {
 import { createSession, publicUser, requireSession, endSession } from "../security.js";
 import { validEmail, passwordError } from "../validation.js";
 import { requestRecovery, resetRecoveredPassword } from "../password-recovery.js";
+import {
+  latestDeletionRequest,
+  requestAccountDeletion,
+  cancelAccountDeletion,
+} from "../account-deletion.js";
 
 const router = Router();
 router.use("/change-password", requireSession);
+// La baja se limita por cuenta, así que la sesión debe resolverse antes del
+// limitador (que si no vería un usuario anónimo).
+router.use("/deletion-request", requireSession);
 router.use(createAuthRateLimit());
 router.get("/me", requireSession, (req, res) => res.json(publicUser(req.user)));
+// Baja de cuenta (RGPD): el titular pide la supresión y la administración la
+// revisa. La última solicitud queda consultable para mostrar el estado en la app.
+router.get("/deletion-request", (req, res) =>
+  res.json({ request: latestDeletionRequest(req.user.id) }),
+);
+router.post("/deletion-request", (req, res, next) => {
+  const { password, reason } = req.body || {};
+  // La sesión sola no basta: se confirma con la contraseña actual, igual que
+  // en el cambio de contraseña.
+  if (
+    typeof password !== "string" ||
+    password.length > 128 ||
+    !verifyPassword(password, req.user.passwordHash)
+  )
+    return res.status(401).json({ error: "La contraseña actual es incorrecta." });
+  if (reason !== undefined && (typeof reason !== "string" || reason.length > 500))
+    return res.status(400).json({ error: "El motivo no puede superar los 500 caracteres." });
+  try {
+    res.status(201).json({ request: requestAccountDeletion({ user: req.user, reason }) });
+  } catch (error) {
+    if (error.status) res.status(error.status).json({ error: error.message });
+    else next(error);
+  }
+});
+router.delete("/deletion-request", (req, res, next) => {
+  try {
+    res.json({ request: cancelAccountDeletion({ user: req.user }) });
+  } catch (error) {
+    if (error.status) res.status(error.status).json({ error: error.message });
+    else next(error);
+  }
+});
 router.post("/logout", requireSession, (req, res) => {
   endSession(req, res);
   res.json({ ok: true });
