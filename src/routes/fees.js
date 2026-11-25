@@ -644,7 +644,7 @@ router.get(
     res.set("Content-Type", attachment.mime);
     res.set(
       "Content-Disposition",
-      `attachment; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
+      `${req.query.preview === "1" && ["image/jpeg", "image/png", "image/webp"].includes(attachment.mime) ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
     );
     res.sendFile(file);
   }),

@@ -241,9 +241,7 @@ function syncPropertyResidencyTab() {
   const disabled = asksResident && editingOccupancy !== "tenant";
   tab.disabled = disabled;
   tab.setAttribute("aria-disabled", String(disabled));
-  tab.title = disabled
-    ? "Marca «Vive otra persona» para asociar inquilinos al inmueble."
-    : "";
+  tab.title = disabled ? "Marca «Vive otra persona» para asociar inquilinos al inmueble." : "";
   if (disabled && tab.classList.contains("active")) switchPropertyEditorTab("owners");
 }
 
@@ -270,9 +268,7 @@ function setPropertyOccupancy(value) {
   } else {
     editingResidentOwnerIds = [];
     editingPrimaryResidentId =
-      editingOccupancy === "tenant"
-        ? editingPropertyPeople.tenantIds[0] || ""
-        : "";
+      editingOccupancy === "tenant" ? editingPropertyPeople.tenantIds[0] || "" : "";
   }
   renderPropertyOwnersTab();
   renderPropertyTenantsTab();
@@ -290,9 +286,7 @@ const ICON_VIEW = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" s
  */
 function propertyOwnerAssignmentOptional() {
   if (hasPermission("property:create:unassigned")) return true;
-  const editing = state.properties.find(
-    (property) => property.id === state.ui.editingPropertyId,
-  );
+  const editing = state.properties.find((property) => property.id === state.ui.editingPropertyId);
   return !!editing && propertyOwnerIds(editing).length === 0;
 }
 
@@ -318,10 +312,12 @@ function renderPropertyOwnersTab() {
   const ownerIds = editingPropertyPeople.ownerIds;
   // Un titular desvinculado deja de ser residente sin conservar marcas huérfanas.
   editingResidentOwnerIds = editingResidentOwnerIds.filter((id) => ownerIds.includes(id));
-  if (editingPrimaryResidentId && ![
-    ...editingResidentOwnerIds,
-    ...editingPropertyPeople.tenantIds,
-  ].includes(editingPrimaryResidentId))
+  if (
+    editingPrimaryResidentId &&
+    ![...editingResidentOwnerIds, ...editingPropertyPeople.tenantIds].includes(
+      editingPrimaryResidentId,
+    )
+  )
     editingPrimaryResidentId = editingResidentOwnerIds[0] || "";
   if (countEl) countEl.textContent = String(ownerIds.length);
   listEl.replaceChildren();
@@ -334,12 +330,11 @@ function renderPropertyOwnersTab() {
   // hacer lugar (bajando el % de los propietarios actuales)
   for (const note of listEl.parentElement.querySelectorAll(".property-owners-capacity-note"))
     note.remove();
-  const assigned = Math.round(
-    ownerIds.reduce(
-      (sum, ownerId) => sum + (Number(editingOwnerPercentages[ownerId]) || 0),
-      0,
-    ) * 10000,
-  ) / 10000;
+  const assigned =
+    Math.round(
+      ownerIds.reduce((sum, ownerId) => sum + (Number(editingOwnerPercentages[ownerId]) || 0), 0) *
+        10000,
+    ) / 10000;
   // La titularidad parcial es válida, pero debe verse: el porcentaje sin
   // asignar no se reparte entre los titulares ni cambia la cuota del inmueble.
   if (ownerIds.length && assigned > 0 && assigned < 100) {
@@ -433,8 +428,9 @@ function renderPropertyOwnersTab() {
     pctWrap.append(pctInput, document.createTextNode("%"));
     info.append(pctWrap);
 
+    let residentToggle = null;
     if (!propertyDialogReadOnly && editingOccupancy === "owner") {
-      const residentToggle = document.createElement("label");
+      residentToggle = document.createElement("label");
       residentToggle.className = "property-resident-toggle";
       const residentInput = document.createElement("input");
       residentInput.type = "checkbox";
@@ -455,8 +451,10 @@ function renderPropertyOwnersTab() {
         }
         renderPropertyOwnersTab();
       });
-      residentToggle.append(residentInput, document.createTextNode("Reside aquí"));
-      info.append(residentToggle);
+      residentToggle.append(
+        residentInput,
+        document.createTextNode("Este propietario vive en el inmueble"),
+      );
 
       if (isResident && editingResidentOwnerIds.length > 1) {
         const primaryToggle = document.createElement("label");
@@ -519,6 +517,7 @@ function renderPropertyOwnersTab() {
       renderPropertyTenantsTab();
     });
 
+    if (residentToggle) actions.append(residentToggle);
     actions.append(viewBtn, unlinkBtn);
     card.append(info, actions);
     listEl.append(card);
@@ -530,7 +529,12 @@ function renderPropertyTenantsTab() {
   const countEl = document.querySelector("#property-tenant-count");
   if (!listEl) return;
   const tenantIds = editingPropertyPeople.tenantIds;
-  if (editingOccupancy === "tenant" && editingPrimaryResidentId && !tenantIds.includes(editingPrimaryResidentId) && !editingResidentOwnerIds.includes(editingPrimaryResidentId))
+  if (
+    editingOccupancy === "tenant" &&
+    editingPrimaryResidentId &&
+    !tenantIds.includes(editingPrimaryResidentId) &&
+    !editingResidentOwnerIds.includes(editingPrimaryResidentId)
+  )
     editingPrimaryResidentId = tenantIds[0] || "";
   if (countEl) countEl.textContent = String(tenantIds.length);
   listEl.replaceChildren();
@@ -921,9 +925,7 @@ function applyPropertyEditorReadOnly(readonly) {
     const communityId =
       state.properties.find((item) => item.id === state.ui.editingPropertyId)?.communityId || "";
     notifyBtn.hidden =
-      readonly ||
-      !state.ui.editingPropertyId ||
-      !hasPermission("comm:publicar", communityId);
+      readonly || !state.ui.editingPropertyId || !hasPermission("comm:publicar", communityId);
   }
 }
 
@@ -966,11 +968,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   editingOccupancy = property?.occupancy || (tenantIds.length ? "tenant" : "owner");
   if (propertyForm.elements.initialResident) {
     propertyForm.elements.initialResident.value =
-      editingOccupancy === "tenant"
-        ? "other"
-        : editingOccupancy === "vacant"
-          ? "vacant"
-          : "owner";
+      editingOccupancy === "tenant" ? "other" : editingOccupancy === "vacant" ? "vacant" : "owner";
   }
   editingResidentOwnerIds =
     editingOccupancy === "owner" ? [...(property?.residentOwnerIds || [])] : [];
@@ -1149,12 +1147,6 @@ export function renderProperties() {
             const wrap = document.createElement("span");
             wrap.className = "community-name";
             wrap.textContent = `${property.plot || "Inmueble"} · ${PROPERTY_TYPE_LABELS[property.propertyType] || "Inmueble"}`;
-            if (!propertyOwnerIds(property).length) {
-              const pending = document.createElement("small");
-              pending.className = "status-badge doc-pending-admin";
-              pending.textContent = "Sin propietario";
-              wrap.append(" ", pending);
-            }
             return wrap;
           },
         },

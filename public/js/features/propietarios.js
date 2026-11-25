@@ -68,6 +68,9 @@ let editingOwnerPropertyVersions = new Map();
 let editingOwnerOriginalPropertyIds = [];
 let editingOwnerOriginalPropertyPercentages = {};
 let editingOwnerPropertyPercentages = {};
+// Inmuebles vinculados al propietario en edición en los que este propietario reside (vive).
+let editingOwnerResidentPropertyIds = new Set();
+let editingOwnerOriginalResidentPropertyIds = new Set();
 
 // Icono de "ver" real (ojo) para los botones de acción de propietarios.
 const ICON_VIEW = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -576,13 +579,58 @@ function renderOwnerPropertiesTab() {
     pctWrap.append(pctInput, document.createTextNode("%"));
     info.append(pctWrap);
 
+    // ¿Este propietario reside en este inmueble? Es la misma marca que la
+    // ocupación del editor de inmueble, vista desde el propietario.
+    const isResident = editingOwnerResidentPropertyIds.has(propertyId);
+    const locked =
+      propertyLocked ||
+      !hasPermission("property:manage", propertyId) ||
+      property.occupancy === "tenant";
+    const residentLabel = document.createElement("label");
+    residentLabel.className = "property-resident-toggle owner-property-resident";
+    const residentInput = document.createElement("input");
+    residentInput.type = "checkbox";
+    residentInput.name = "residentPropertyIds";
+    residentInput.value = propertyId;
+    residentInput.checked = isResident;
+    residentInput.disabled = locked;
+    residentInput.setAttribute(
+      "aria-label",
+      `${property.plot || "Inmueble"}: ¿reside este propietario aquí?`,
+    );
+    if (locked) {
+      const motivo =
+        property.occupancy === "tenant"
+          ? "Tiene un inquilino vinculado. Revisa primero la ocupación y los contratos desde Inmuebles."
+          : "Necesitas permiso para gestionar este inmueble y editar la residencia.";
+      residentLabel.title = motivo;
+      residentInput.title = motivo;
+    }
+    residentInput.addEventListener("change", () => {
+      if (locked) return;
+      if (residentInput.checked) editingOwnerResidentPropertyIds.add(propertyId);
+      else editingOwnerResidentPropertyIds.delete(propertyId);
+      renderOwnerPropertiesTab();
+    });
+    residentLabel.append(
+      residentInput,
+      document.createTextNode("Este propietario vive en este inmueble"),
+    );
+    if (property.occupancy === "tenant") {
+      const hint = document.createElement("small");
+      hint.className = "field-hint";
+      hint.textContent =
+        "Tiene un inquilino vinculado. Revisa su ocupación desde Inmuebles para cambiarla.";
+      info.append(hint);
+    }
+
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
     const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver inmueble ${property.plot}`, ICON_VIEW);
     viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
 
-    actions.append(viewBtn);
+    actions.append(residentLabel, viewBtn);
     if (!propertyLocked) {
       const unlinkBtn = iconBtn(
         "btn-delete",
@@ -600,6 +648,18 @@ function renderOwnerPropertiesTab() {
     card.append(info, actions);
     ownerPropertiesList.append(card);
   });
+
+  // Nota explicativa de la marca de residencia: es la misma ocupación del
+  // editor de inmueble, vista desde el propietario.
+  for (const hint of ownerPropertiesList.querySelectorAll(".owner-property-residence-hint"))
+    hint.remove();
+  if (editingOwnerProperties.length > 0) {
+    const hint = document.createElement("p");
+    hint.className = "form-intro owner-property-residence-hint";
+    hint.textContent =
+      "Marca los inmuebles en los que vive este propietario. Al guardar se actualiza también su residencia en la ficha del inmueble, sin cambiar la titularidad ni crear un alquiler. Si estaba vacío, pasará a «Vive el propietario». Desmarcar solo quita a este residente; no declara el inmueble vacío ni quita a otros residentes.";
+    ownerPropertiesList.prepend(hint);
+  }
 }
 
 /**
@@ -798,6 +858,13 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     ownerTerritory?.set(o.city, o.province, o.postalCode);
     editingDocs.current = o.documents ? JSON.parse(JSON.stringify(o.documents)) : {};
     editingOwnerProperties = ownerProperties(o).map((property) => property.id);
+    editingOwnerOriginalResidentPropertyIds = new Set(
+      editingOwnerProperties.filter((propertyId) => {
+        const property = state.properties.find((p) => p.id === propertyId);
+        return property && (property.residentOwnerIds || []).includes(state.ui.editingOwnerId);
+      }),
+    );
+    editingOwnerResidentPropertyIds = new Set(editingOwnerOriginalResidentPropertyIds);
     editingOwnerPropertyPercentages = {};
     editingOwnerOriginalPropertyPercentages = {};
     ownerProperties(o).forEach((property) => {
@@ -809,6 +876,8 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
   } else {
     editingDocs.current = {};
     editingOwnerProperties = [];
+    editingOwnerOriginalResidentPropertyIds = new Set();
+    editingOwnerResidentPropertyIds = new Set();
     editingOwnerPropertyPercentages = {};
     editingOwnerOriginalPropertyPercentages = {};
     updateOwnerCommunitySelect("");
@@ -1716,6 +1785,9 @@ ownerForm.addEventListener("submit", async (event) => {
 
   const formData = new FormData(ownerForm);
   const data = Object.fromEntries(formData);
+  // Las casillas participan en el aviso de cambios sin guardar; la API recibe
+  // las diferencias tipadas, con la versión de cada inmueble, más abajo.
+  delete data.residentPropertyIds;
 
   [
     "name",
@@ -1757,6 +1829,17 @@ ownerForm.addEventListener("submit", async (event) => {
   // El autoservicio no envía titularidad: el servidor la ignora y la interfaz
   // ya no debe sugerir que se guardó. La administración conserva esta vía.
   if (!isSelfService) {
+    data.propertyResidencies = editingOwnerProperties
+      .filter(
+        (propertyId) =>
+          editingOwnerOriginalResidentPropertyIds.has(propertyId) !==
+          editingOwnerResidentPropertyIds.has(propertyId),
+      )
+      .map((propertyId) => ({
+        propertyId,
+        version: editingOwnerPropertyVersions.get(propertyId),
+        resides: editingOwnerResidentPropertyIds.has(propertyId),
+      }));
     data.propertyIds = editingOwnerProperties.slice();
     data.propertyVersions = Object.fromEntries(
       [...new Set([...editingOwnerOriginalPropertyIds, ...editingOwnerProperties])]

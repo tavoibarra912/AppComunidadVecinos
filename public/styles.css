@@ -8018,3 +8018,23 @@ input[type="reset"],
 .community-editor-tab {
   font-family: var(--font-button);
 }
+
+/* La residencia acompaña a las acciones de cada propietario del inmueble. */
+:is(#property-owners-list, #owner-properties-list) .community-property-card {
+  align-items: center;
+  flex-wrap: wrap;
+}
+:is(#property-owners-list, #owner-properties-list) .community-property-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  margin-left: auto;
+  max-width: 100%;
+}
+:is(#property-owners-list, #owner-properties-list) .property-resident-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 0 10px 0 0;
+  gap: 6px;
+  min-height: 30px;
+}
