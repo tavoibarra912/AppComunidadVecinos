@@ -136,6 +136,8 @@ uploads/
 
 # Scratch local de desarrollo
 .kimchi/
+.freebuff/
+.cursor/
 .tmp-*/
 /.tmp-*
 /.tmp-rules.txt

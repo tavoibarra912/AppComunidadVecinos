@@ -545,6 +545,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   )
     return;
   editingCommunityId = id;
+  clearCommunityValidationMarks();
   communityForm.dataset.editVersion =
     state.communities.find((item) => item.id === id)?.version || "";
   communityReadonly = readonly;
@@ -653,6 +654,88 @@ function switchCommunityEditorTab(tab) {
   document.querySelectorAll(".community-editor-pane[data-community-pane]").forEach((pane) => {
     pane.hidden = pane.dataset.communityPane !== tab;
   });
+}
+
+/** Pestaña del editor que contiene un control del formulario. */
+function communityTabForField(element) {
+  return element?.closest("[data-community-pane]")?.dataset.communityPane || "details";
+}
+
+/** Quita las marcas de una validación anterior del editor de comunidad. */
+function clearCommunityValidationMarks() {
+  document.querySelectorAll("#community-dialog .community-editor-tab.has-error").forEach((tab) => {
+    tab.classList.remove("has-error");
+    tab.removeAttribute("aria-invalid");
+  });
+  communityForm.querySelectorAll("label.field-error").forEach((label) => {
+    label.classList.remove("field-error");
+    label.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+      field.removeAttribute("aria-invalid");
+    });
+  });
+}
+
+/** Control visible y enfocable de un campo (los combos usan un buscador). */
+function communityFieldFocusTarget(element) {
+  if (!element) return null;
+  const combo = element.closest?.(".combo-box");
+  const search = combo?.querySelector(".combo-box-input");
+  if (search && !search.disabled && !search.hidden) return search;
+  if (!element.disabled && !element.hidden) return element;
+  const label = element.closest?.("label");
+  return (
+    label?.querySelector("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)") ||
+    null
+  );
+}
+
+/**
+ * Abre la primera pestaña con error, marca todas las pestañas afectadas y sus
+ * campos, enfoca el primer campo inválido y mantiene el resumen habitual.
+ */
+function revealCommunityValidationProblems(problems) {
+  clearCommunityValidationMarks();
+  const tabs = [
+    ...document.querySelectorAll("#community-dialog .community-editor-tab[data-community-tab]"),
+  ];
+  const problemsByTab = new Map();
+  problems.forEach((problem) => {
+    const tab = communityTabForField(problem.element);
+    if (!problemsByTab.has(tab)) problemsByTab.set(tab, []);
+    problemsByTab.get(tab).push(problem);
+  });
+  tabs.forEach((tab) => {
+    if (!problemsByTab.has(tab.dataset.communityTab)) return;
+    tab.classList.add("has-error");
+    tab.setAttribute("aria-invalid", "true");
+  });
+  const firstTab = tabs.find((tab) => problemsByTab.has(tab.dataset.communityTab))?.dataset
+    .communityTab;
+  if (firstTab) switchCommunityEditorTab(firstTab);
+
+  const marked = new Set();
+  problems.forEach(({ element }) => {
+    if (!element || marked.has(element)) return;
+    marked.add(element);
+    const label = element.closest("label");
+    if (!label) return;
+    label.classList.add("field-error");
+    element.setAttribute("aria-invalid", "true");
+  });
+
+  const firstProblem = firstTab
+    ? problems.find((problem) => communityTabForField(problem.element) === firstTab)
+    : problems[0];
+  const focusTarget = communityFieldFocusTarget(firstProblem?.element);
+  if (focusTarget) focusTarget.focus();
+  showValidationErrors(
+    problems.map((problem) => problem.message),
+    "Revisa los datos de la comunidad",
+  );
+  const summary = document.querySelector("#validation-dialog");
+  if (summary?.open && focusTarget) {
+    summary.addEventListener("close", () => focusTarget.focus(), { once: true });
+  }
 }
 
 /** Lista de inmuebles vinculados dentro del diálogo de EDICIÓN (tab Inmuebles). */
@@ -1274,13 +1357,15 @@ communityForm.addEventListener("submit", async (event) => {
  */
 async function persistCommunityDraft() {
   if (communityReadonly) return null;
+  clearCommunityValidationMarks();
   validateCommunityFields();
 
   const citySelect = communityForm.elements.city;
   const provinceSelect = communityForm.elements.province;
   const selectedLocation = getLocationById(citySelect.value);
 
-  const messages = [];
+  const problems = [];
+  const addProblem = (message, element) => problems.push({ message, element });
   const existingCommunity = state.communities.find(
     (community) => community.id === editingCommunityId,
   );
@@ -1293,18 +1378,19 @@ async function persistCommunityDraft() {
     nextCurrency !== "EUR" &&
     nextCurrency !== currentCurrency
   )
-    messages.push(
+    addProblem(
       "Moneda: la comunidad tiene actividad financiera registrada y no admite cambiar a una moneda distinta de EUR.",
+      communityForm.elements.currency,
     );
   [...communityForm.elements].forEach((element) => {
     if (element.willValidate && !element.checkValidity()) {
-      messages.push(`${fieldLabel(element)}: ${mensajeDeValidez(element)}.`);
+      addProblem(`${fieldLabel(element)}: ${mensajeDeValidez(element)}.`, element);
     }
   });
   if (!selectedLocation) {
-    messages.push("Municipio: selecciona un municipio válido del listado.");
+    addProblem("Municipio: selecciona un municipio válido del listado.", citySelect);
   } else if (selectedLocation.province !== provinceSelect.value) {
-    messages.push("Municipio: debe pertenecer a la provincia seleccionada.");
+    addProblem("Municipio: debe pertenecer a la provincia seleccionada.", citySelect);
   }
   if (
     state.communities.some(
@@ -1314,11 +1400,11 @@ async function persistCommunityDraft() {
         c.id !== editingCommunityId,
     )
   ) {
-    messages.push("NIF: ya existe una comunidad registrada con ese NIF.");
+    addProblem("NIF: ya existe una comunidad registrada con ese NIF.", communityForm.elements.nif);
   }
 
-  if (messages.length > 0) {
-    showValidationErrors(messages, "Revisa los datos de la comunidad");
+  if (problems.length > 0) {
+    revealCommunityValidationProblems(problems);
     return null;
   }
 
