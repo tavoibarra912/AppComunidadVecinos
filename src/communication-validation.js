@@ -1,4 +1,4 @@
-import { problem, profiles, pollRule } from "./communication-store.js";
+import { problem, profiles, pollRule, votingCoefficientProblem } from "./communication-store.js";
 import { votingRuleOf } from "./legal-config.js";
 
 const text = (value, max, label, required = false) => {
@@ -93,6 +93,7 @@ export function validatePost(input, existing, data) {
     ownerIds: ids(a.ownerIds),
     tenantIds: ids(a.tenantIds),
     propertyIds: ids(a.propertyIds),
+    ...(a.includeResidents === true ? { includeResidents: true } : {}),
   };
   const members = profiles(p.communityId, data);
   for (const [field, rows] of [
@@ -172,6 +173,16 @@ export function validatePost(input, existing, data) {
       throw problem("El cierre de consulta debe ser posterior a su publicación.");
     if (p.archiveAt && p.poll.closesAt > p.archiveAt)
       throw problem("La consulta debe cerrar antes de archivar la publicación.");
+    // Una publicación ya distribuida conserva su censo y no debe quedar
+    // atrapada si fue creada antes de esta validación. Las consultas nuevas,
+    // los borradores y las programadas sí deben nacer con coeficientes completos.
+    if (!existing?.distributed) {
+      const coefficientProblem = votingCoefficientProblem({
+        communityId: p.communityId,
+        poll: p.poll,
+      });
+      if (coefficientProblem) throw problem(coefficientProblem);
+    }
   }
   if (existing?.distributed) {
     const withoutClosed = (poll) =>

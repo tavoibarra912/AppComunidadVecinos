@@ -1594,3 +1594,19 @@ test("certificados UI: usa las opciones financieras aunque el gestor no pueda le
     f.dom.window.close();
   }
 });
+
+test("H-08: el atajo de cuotas usa una ruta real y conserva el filtro del propietario", () => {
+  const f = fixture();
+  try {
+    const root = f.w.document.querySelector("#owner-editor-fees");
+    f.w.feeTest.mountFeeShortcut(root, "owner", "o1");
+    const link = root.querySelector("a");
+    assert.equal(link.getAttribute("href"), "/cuotas?propietario=o1");
+    link.click();
+    assert.equal(f.w.location.pathname, "/cuotas");
+    assert.equal(f.w.location.search, "?propietario=o1");
+    assert.equal(f.w.location.hash, "");
+  } finally {
+    f.dom.window.close();
+  }
+});

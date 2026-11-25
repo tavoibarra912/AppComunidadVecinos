@@ -452,3 +452,78 @@ test("F07 · refrescar estado no cambia la versión del formulario ni borra un c
     f.dom.window.close();
   }
 });
+
+function fillValidCommunityForm(w, form) {
+  form.elements.name.value = "Comunidad Nueva";
+  form.elements.nif.value = "H10000016";
+  form.elements.phone.value = "612345678";
+  form.elements.email.value = "comunidad@example.test";
+  form.elements.address.value = "Calle Prueba 1";
+  form.elements.province.replaceChildren(new w.Option("Madrid", "Madrid", true, true));
+  form.elements.city.replaceChildren(new w.Option("Madrid", "madrid-id", true, true));
+  form.elements.postalCode.replaceChildren(new w.Option("28001", "28001", true, true));
+}
+
+test("R-02: un error en General abre esa pestaña y enfoca el primer campo inválido", async () => {
+  const f = communityFixture();
+  try {
+    f.w.communityUI.openCommunityEditor();
+    await flush();
+    const form = f.w.document.querySelector("#community-form");
+    fillValidCommunityForm(f.w, form);
+    form.elements.name.value = "";
+    const summaries = [];
+    f.w.showValidationErrors = (messages) => summaries.push(...messages);
+    form.elements.president.focus();
+
+    form.dispatchEvent(new f.w.Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+    await flush();
+
+    const detailsTab = form.querySelector('[data-community-tab="details"]');
+    const contactTab = form.querySelector('[data-community-tab="contact"]');
+    assert.equal(detailsTab.classList.contains("has-error"), true);
+    assert.equal(detailsTab.getAttribute("aria-invalid"), "true");
+    assert.equal(contactTab.classList.contains("has-error"), false);
+    assert.equal(f.w.document.querySelector("#community-tab-details").hidden, false);
+    assert.equal(f.w.document.querySelector("#community-tab-contact").hidden, true);
+    assert.equal(f.w.document.activeElement, form.elements.name);
+    assert.equal(form.elements.name.getAttribute("aria-invalid"), "true");
+    assert.ok(summaries.some((message) => /name/.test(message)));
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("R-02: un error en Contacto y Domicilio abre esa pestaña y enfoca el primer campo inválido", async () => {
+  const f = communityFixture();
+  try {
+    f.w.communityUI.openCommunityEditor();
+    await flush();
+    const form = f.w.document.querySelector("#community-form");
+    fillValidCommunityForm(f.w, form);
+    form.elements.phone.value = "";
+    f.w.mensajeDeValidez = () => "Inválido.";
+    const summaries = [];
+    f.w.showValidationErrors = (messages) => summaries.push(...messages);
+    form.elements.name.focus();
+
+    form.dispatchEvent(new f.w.Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+    await flush();
+
+    const detailsTab = form.querySelector('[data-community-tab="details"]');
+    const contactTab = form.querySelector('[data-community-tab="contact"]');
+    assert.equal(contactTab.classList.contains("has-error"), true);
+    assert.equal(contactTab.getAttribute("aria-invalid"), "true");
+    assert.equal(detailsTab.classList.contains("has-error"), false);
+    assert.equal(f.w.document.querySelector("#community-tab-contact").hidden, false);
+    assert.equal(f.w.document.querySelector("#community-tab-details").hidden, true);
+    assert.equal(f.w.document.activeElement, form.elements.phone);
+    assert.equal(form.elements.phone.getAttribute("aria-invalid"), "true");
+    assert.ok(summaries.some((message) => /phone/.test(message)));
+    assert.equal(summaries.some((message) => message.includes("..")), false);
+  } finally {
+    f.dom.window.close();
+  }
+});

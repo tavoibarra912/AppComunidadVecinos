@@ -5,3 +5,6 @@ public/js/municipios-ine.js
 package-lock.json
 .kimchi
 .deploy-private
+.audit-*
+audits
+docs/auditoria-qa-*

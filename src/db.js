@@ -1,11 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
 import { DDL_APP } from "./ddl.js";
-import { legalConfigFromValue } from "./legal-config.js";
+import { LEGAL_REGIMES, legalConfigFromValue } from "./legal-config.js";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_BRAND } from "./branding.js";
+import { isTenantContractActive, localDateISO } from "../public/js/permissions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = process.env.APP_DATA_DIR || path.join(__dirname, "..", "data");
@@ -511,6 +512,29 @@ db.exec(`CREATE TABLE IF NOT EXISTS sessions (
   tokenHash TEXT PRIMARY KEY, userId TEXT NOT NULL, expiresAt INTEGER NOT NULL
 ); CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(userId);`);
 db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY)");
+// Régimen jurídico explícito (v1): las comunidades existentes conservan el
+// criterio LPH que ya aplicaban, pero guardado de forma explícita. Desde ahora
+// un certificado o una votación no pueden apoyarse en un régimen supuesto.
+if (
+  !db.prepare("SELECT id FROM schema_migrations WHERE id = 'explicit-legal-regime-v1'").get()
+) {
+  for (const row of db.prepare("SELECT id, legalConfig FROM communities").all()) {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(row.legalConfig || "{}");
+    } catch {
+      parsed = null;
+    }
+    const config =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    if (Object.hasOwn(LEGAL_REGIMES, config.regimen)) continue;
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+      JSON.stringify({ ...config, regimen: "lph" }),
+      row.id,
+    );
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('explicit-legal-regime-v1')").run();
+}
 if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'scoped-permissions-v1'").get()) {
   for (const [name, additions] of [
     ["user", ["tenant:manage", "tenant:delete", "document:read"]],
@@ -1000,6 +1024,9 @@ ensureColumns("properties", {
   province: "TEXT NOT NULL DEFAULT ''",
   currency: "TEXT NOT NULL DEFAULT ''",
   ownerPercentages: "TEXT NOT NULL DEFAULT '{}'",
+  occupancy: "TEXT NOT NULL DEFAULT ''",
+  residentOwnerIds: "TEXT NOT NULL DEFAULT '[]'",
+  primaryResidentId: "TEXT NOT NULL DEFAULT ''",
 });
 
 ensureColumns("tenants", {
@@ -1176,17 +1203,79 @@ function propertyFinancialState() {
   return { latest, withReceipts, pending };
 }
 
-export function propertyFromRow(row, financial = propertyFinancialState()) {
+/**
+ * Deja ocupación, residentes y contacto principal en un estado posible: un
+ * inquilino vigente ocupa el inmueble y un contrato vencido no cuenta.
+ */
+export function normalizePropertyResidency({
+  occupancy = "",
+  ownerIds = [],
+  tenantIds = [],
+  residentOwnerIds = [],
+  primaryResidentId = "",
+} = {}) {
+  const owners = [...new Set(ownerIds.filter(Boolean))];
+  const tenants = [...new Set(tenantIds.filter(Boolean))];
+  const value = tenants.length
+    ? "tenant"
+    : occupancy === "vacant"
+      ? "vacant"
+      : owners.length
+        ? "owner"
+        : "vacant";
+  const residents =
+    value === "owner" ? [...new Set(residentOwnerIds)].filter((id) => owners.includes(id)) : [];
+  const candidates = value === "tenant" ? tenants : residents;
+  return {
+    occupancy: value,
+    residentOwnerIds: residents,
+    primaryResidentId: candidates.includes(primaryResidentId) ? primaryResidentId : "",
+  };
+}
+
+/** Contratos con pertenencia hoy, por inmueble y por ficha. */
+function propertyResidencyState() {
+  const today = localDateISO();
+  const activeByProperty = new Map();
+  const contractStatus = new Map();
+  for (const tenant of db
+    .prepare("SELECT id, propertyId, contractStart, contractEnd FROM tenants")
+    .all()) {
+    const isActive = isTenantContractActive(tenant, today);
+    contractStatus.set(tenant.id, isActive);
+    if (!isActive || !tenant.propertyId) continue;
+    if (!activeByProperty.has(tenant.propertyId)) activeByProperty.set(tenant.propertyId, []);
+    activeByProperty.get(tenant.propertyId).push(tenant.id);
+  }
+  return { activeByProperty, contractStatus };
+}
+
+export function propertyFromRow(
+  row,
+  financial = propertyFinancialState(),
+  residency = propertyResidencyState(),
+) {
   const latestFee = financial.latest.get(row.id) || null;
   const hasFeeReceipts = financial.withReceipts.has(row.id);
   const pendingFee = hasFeeReceipts && financial.pending.has(row.id);
+  const ownerIds = parseJson(row.ownerIds, []);
+  // Un contrato vencido deja de ocupar aunque su id siga guardado, y un
+  // contrato vigente ocupa aunque falte en el índice.
+  const tenantIds = [...(residency.activeByProperty.get(row.id) || [])];
+  const { occupancy, residentOwnerIds, primaryResidentId } = normalizePropertyResidency({
+    occupancy: row.occupancy,
+    ownerIds,
+    tenantIds,
+    residentOwnerIds: parseJson(row.residentOwnerIds, []),
+    primaryResidentId: row.primaryResidentId || "",
+  });
   return {
     id: row.id,
     version: row.version,
     communityId: row.communityId,
     communityName: row.communityName,
-    ownerIds: parseJson(row.ownerIds, []),
-    tenantIds: parseJson(row.tenantIds, []),
+    ownerIds,
+    tenantIds,
     propertyType: row.propertyType,
     plot: row.plot,
     address: row.address,
@@ -1210,6 +1299,9 @@ export function propertyFromRow(row, financial = propertyFinancialState()) {
     province: row.province || "",
     currency: row.currency || "",
     ownerPercentages: parseJson(row.ownerPercentages, {}),
+    occupancy,
+    residentOwnerIds,
+    primaryResidentId,
     documents: [],
   };
 }
@@ -1329,10 +1421,11 @@ export function listOwners() {
 
 export function listProperties() {
   const financial = propertyFinancialState();
+  const residency = propertyResidencyState();
   return db
     .prepare("SELECT * FROM properties ORDER BY plot")
     .all()
-    .map((row) => propertyFromRow(row, financial));
+    .map((row) => propertyFromRow(row, financial, residency));
 }
 
 export function listTenants() {

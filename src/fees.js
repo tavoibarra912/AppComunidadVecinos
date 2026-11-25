@@ -5,7 +5,7 @@ import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
 import { sanitizeRichText } from "./rich-text.js";
 import { queueFeeProofCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
-import { legalConfigOf } from "./legal-config.js";
+import { explicitLegalRegime, legalConfigOf } from "./legal-config.js";
 import { validateReceiptDeletion } from "./receipt-deletion.js";
 
 for (const table of ["owner_notifications", "admin_emails"])
@@ -633,10 +633,8 @@ function monthIndex(value) {
 function monthString(index) {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
 }
-/** Porcentaje de titularidad acreditado al emitir, o null si no consta. */
-function ownerPercentage(property, ownerId) {
-  // La fila cruda guarda los porcentajes como JSON; las vistas ya lo traen
-  // mapeado. Se aceptan ambas formas para no perder el porcentaje actual.
+/** La fila cruda guarda los porcentajes como JSON; las vistas ya lo traen mapeado. */
+function ownerPercentagesOf(property) {
   let percentages = property?.ownerPercentages || {};
   if (typeof percentages === "string") {
     try {
@@ -645,8 +643,25 @@ function ownerPercentage(property, ownerId) {
       percentages = {};
     }
   }
-  const value = Number(percentages?.[ownerId]);
+  return percentages && typeof percentages === "object" ? percentages : {};
+}
+
+/** Porcentaje de titularidad acreditado al emitir, o null si no consta. */
+function ownerPercentage(property, ownerId) {
+  const value = Number(ownerPercentagesOf(property)[ownerId]);
   return Number.isFinite(value) && value > 0 && value <= 100 ? value : null;
+}
+
+/**
+ * Total asignado del inmueble. Puede ser menor que 100: la titularidad
+ * parcial es válida y el porcentaje restante no se reparte entre los titulares.
+ */
+function assignedOwnershipTotal(property) {
+  const total = Object.values(ownerPercentagesOf(property)).reduce((sum, value) => {
+    const percentage = Number(value);
+    return sum + (Number.isFinite(percentage) && percentage > 0 && percentage <= 100 ? percentage : 0);
+  }, 0);
+  return total > 0 ? Math.round(total * 10000) / 10000 : 0;
 }
 
 export function distribute(total, entries) {
@@ -1629,6 +1644,13 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
     throw problem("Debe indicar un único propietario o inmueble para definir el ámbito.");
   const community = db.prepare("SELECT * FROM communities WHERE id=?").get(communityId);
   if (!community) throw problem("Comunidad no encontrada.", 404);
+  // Un certificado invoca un régimen jurídico concreto; no se emite con el
+  // valor por defecto mientras la comunidad no lo haya declarado.
+  if (!explicitLegalRegime(community))
+    throw problem(
+      "Configura el régimen jurídico de la comunidad (LPH o asociación) antes de emitir certificados.",
+      409,
+    );
   const legal = legalConfigOf(community);
   const debtRule = legal.deudaCopropietarios;
   const propertyRows = new Map(
@@ -1637,9 +1659,20 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
       .all(communityId)
       .map((row) => [row.id, row]),
   );
+  // Un inmueble trasladado ya no figura en esta comunidad, pero sus recibos
+  // históricos sí. Se incorpora para no perder el porcentaje que la comunidad
+  // eligió usar como «último conocido» al certificar su deuda.
+  for (const row of db
+    .prepare(
+      `SELECT * FROM properties p WHERE EXISTS
+       (SELECT 1 FROM fee_receipts r WHERE r.propertyId=p.id AND r.communityId=?)`,
+    )
+    .all(communityId))
+    propertyRows.set(row.id, row);
 
   let owners = [];
   let property = null;
+  let propertyHasLocalHistory = false;
   let receipts = [];
   const certificateProperties = new Map();
 
@@ -1674,10 +1707,16 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
       )
       .all(communityId, ownerId);
   } else if (propertyId) {
-    property = db
-      .prepare("SELECT * FROM properties WHERE id=? AND communityId=?")
-      .get(propertyId, communityId);
-    if (!property) throw problem("Inmueble no encontrado.", 404);
+    property = db.prepare("SELECT * FROM properties WHERE id=?").get(propertyId);
+    // El histórico financiero pertenece a la comunidad donde se emitió. Un
+    // inmueble trasladado conserva sus recibos en origen, así que el
+    // certificado se resuelve por esos recibos aunque la ficha ya apunte a otra
+    // comunidad. Solo un inmueble sin pertenencia ni historial queda fuera.
+    propertyHasLocalHistory = !!db
+      .prepare("SELECT 1 FROM fee_receipts WHERE communityId=? AND propertyId=? LIMIT 1")
+      .get(communityId, propertyId);
+    if (!property || (property.communityId !== communityId && !propertyHasLocalHistory))
+      throw problem("Inmueble no encontrado.", 404);
     owners = db
       .prepare(
         "SELECT * FROM owners WHERE id IN (SELECT value FROM json_each(?)) ORDER BY name, surname, id",
@@ -1691,6 +1730,19 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
   } else {
     throw problem("Debe indicar propietario o inmueble.", 400);
   }
+
+  // Comunidad donde quedó el historial de un inmueble que ya no pertenece a
+  // esta: permite que el certificado de destino no presente la deuda como ajena
+  // ni oculte dónde consta.
+  const originCommunityName =
+    property && property.communityId === communityId && !propertyHasLocalHistory
+      ? db
+          .prepare(
+            `SELECT c.name FROM fee_receipts r JOIN communities c ON c.id=r.communityId
+             WHERE r.propertyId=? AND r.communityId<>? ORDER BY r.createdAt DESC LIMIT 1`,
+          )
+          .get(propertyId, communityId)?.name || ""
+      : "";
 
   const payments = ownerId
     ? db
@@ -1841,6 +1893,25 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
       doc.text("Inmuebles incluidos (actuales e históricos con recibos):");
       for (const label of certificateProperties.values()) doc.text(`Inmueble: ${label}`);
     }
+    // El traslado de un inmueble no borra su historial: se declara en qué
+    // comunidad se emitieron los recibos para no inducir a error en origen ni
+    // en destino.
+    const assigned = property ? assignedOwnershipTotal(property) : 0;
+    doc.font("Helvetica-Oblique").fontSize(9).fillColor("#444444");
+    if (property && property.communityId !== communityId)
+      doc.text(
+        "El inmueble pertenece actualmente a otra comunidad. Este certificado recoge el historial de recibos emitidos en esta comunidad.",
+      );
+    else if (property && originCommunityName)
+      doc.text(
+        `Este inmueble no tiene recibos emitidos en esta comunidad. Su historial financiero consta en la comunidad de origen: ${originCommunityName}.`,
+      );
+    if (property && assigned > 0 && assigned < 100)
+      doc.text(
+        `Titularidad asignada: ${assigned} %. Queda ${
+          Math.round((100 - assigned) * 10000) / 10000
+        } % sin asignar; la cuota del inmueble no se redistribuye.`,
+      );
     doc.moveDown(1);
 
     // Outstanding receipts table

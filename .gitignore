@@ -136,9 +136,16 @@ uploads/
 
 # Scratch local de desarrollo
 .kimchi/
+.freebuff/
+.cursor/
 .tmp-*/
 /.tmp-*
 /.tmp-rules.txt
 
 # Transferencias, copias y credenciales privadas del despliegue
 .deploy-private/
+
+# Auditorías, evidencias y artefactos de revisión local
+/.audit-*/
+/docs/auditoria-qa-*
+/audits/

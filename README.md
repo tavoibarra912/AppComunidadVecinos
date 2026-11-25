@@ -112,6 +112,8 @@ Antes de confirmar, el servidor valida el plan y calcula su alcance financiero e
 - Al eliminar una comunidad se puede trasladar también su histórico financiero y sus
   publicaciones si todos los inmuebles se trasladan al mismo destino y moneda.
   El traslado de un inmueble por separado conserva los cargos en la comunidad original.
+  El certificado de deuda del inmueble sigue disponible en la comunidad de origen aunque la
+  ficha ya apunte a otra, y el certificado de destino indica dónde consta ese historial.
   Los repartos de derramas y servicios conservan su fotografía histórica: no se recalculan
   automáticamente al retirar inmuebles ni se redistribuyen importes a otros titulares.
   Si ya no permiten emitir por la retirada, traslado o pérdida de titulares de un inmueble,
@@ -522,7 +524,7 @@ protección de sus copias de seguridad para producción.
 - Año de constitución mediante selector y fondo de reserva numérico no negativo con hasta dos decimales. El servidor valida ambos campos, incluido el importe cero.
 - CRUD con validaciones estrictas (NIF de comunidad/CIF `H` + 7 dígitos + dígito numérico de control, teléfonos de 9 dígitos, correo electrónico, CP contra catálogo INE con autocompletado de municipio y provincia). El NIF se normaliza antes de validar y guardar: admite minúsculas y separadores habituales (espacios, puntos y guiones), y conserva la comprobación del dígito de control.
 - Documentación adjunta y ficha con propietarios censados. La gestión de archivos y estatutos se describe en [Estatutos y biblioteca documental](#estatutos-y-biblioteca-documental).
-- La pestaña **Estatutos** permite configurar el régimen jurídico (comunidad de propietarios LPH o asociación) y las reglas de deuda de copropietarios, crédito al borrar un titular, traslados y votaciones. Se guardan con la comunidad y se aplican al certificado de deuda, al crédito del borrado avanzado, al traslado documentado y a las consultas nuevas; el destino del crédito y su referencia de conciliación, y el criterio de traslado de deuda con su referencia quedan en el acta, pero el asistente sigue exigiendo elegir expresamente si mueve el libro financiero. Son criterios orientativos que deben validarse con los estatutos y títulos antes de emitir certificados formales o votaciones vinculantes.
+- La pestaña **Estatutos** permite configurar el régimen jurídico (comunidad de propietarios LPH o asociación) y las reglas de deuda de copropietarios, crédito al borrar un titular, traslados y votaciones. Se guardan con la comunidad y se aplican al certificado de deuda, al crédito del borrado avanzado, al traslado documentado y a las consultas nuevas; el destino del crédito y su referencia de conciliación, y el criterio de traslado de deuda con su referencia quedan en el acta, pero el asistente sigue exigiendo elegir expresamente si mueve el libro financiero. Son criterios orientativos que deben validarse con los estatutos y títulos antes de emitir certificados formales o votaciones vinculantes. El régimen jurídico debe estar declarado de forma explícita: los certificados de deuda y las votaciones nuevas se bloquean si la comunidad no lo tiene configurado, y la migración convierte el antiguo valor implícito en LPH para las comunidades existentes.
 
 ### Propietarios
 
@@ -534,6 +536,7 @@ protección de sus copias de seguridad para producción.
 ### Inmuebles
 
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
+- La pestaña **Propietarios** del alta empieza con la **ocupación del inmueble**: se indica si vivirá el propietario (opción predeterminada, sin contrato y con la pestaña Inquilinos deshabilitada) u otra persona (se habilita la pestaña Inquilinos para asociar o crear su ficha). En un inmueble ya creado la pregunta no se muestra y la pestaña Inquilinos está siempre disponible.
 - Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
 ### Inquilinos

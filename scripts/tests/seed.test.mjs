@@ -75,6 +75,22 @@ test("arranque desde cero: siembra sin duplicar roles y crea perfiles con contra
   );
 });
 
+test("demo de cuotas: los coeficientes suman 100 y todos los inmuebles tienen titular", () => {
+  const properties = db
+    .prepare(
+      "SELECT id, plot, participationCoef, ownerIds FROM properties WHERE communityId='com-seed-1' ORDER BY id",
+    )
+    .all();
+  const total = properties.reduce((sum, property) => sum + Number(property.participationCoef), 0);
+  assert.equal(Math.round(total * 10000) / 10000, 100);
+  for (const property of properties)
+    assert.ok(
+      JSON.parse(property.ownerIds).length > 0,
+      `${property.plot} queda sin titular y bloquea la emisión de cuotas`,
+    );
+  assert.ok(db.prepare("SELECT 1 FROM owners WHERE id='own-seed-9'").get());
+});
+
 test("reinicio: preserva los datos y las contraseñas existentes", () => {
   db.prepare("UPDATE communities SET name = 'Nombre editado' WHERE id = 'com-seed-1'").run();
   const hash = db

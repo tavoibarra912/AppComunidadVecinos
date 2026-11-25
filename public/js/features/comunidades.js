@@ -39,7 +39,7 @@ let deletingCommunityId = null;
 let communityTable = null;
 let communityReadonly = false;
 
-const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+const ICON_VIEW = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
 const ICON_CASCADE_DELETE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h12M13 6v3M5 6v14a1 1 0 0 0 1 1h4M7 6V4h4v2"/><path d="M8 10v7"/><path d="M15 12h7M17 10v4M12 18h10M19 16v4"/></svg>`;
@@ -459,7 +459,7 @@ export function renderCommunities() {
               "btn-info",
               isOwner ? "Ver datos de mi comunidad" : "Ver comunidad",
               `Ver ${community.name}`,
-              ICON_INFO,
+              ICON_VIEW,
             );
             btnInfo.addEventListener("click", () =>
               openCommunityEditor(community.id, "details", true),
@@ -545,6 +545,7 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   )
     return;
   editingCommunityId = id;
+  clearCommunityValidationMarks();
   communityForm.dataset.editVersion =
     state.communities.find((item) => item.id === id)?.version || "";
   communityReadonly = readonly;
@@ -655,6 +656,88 @@ function switchCommunityEditorTab(tab) {
   });
 }
 
+/** Pestaña del editor que contiene un control del formulario. */
+function communityTabForField(element) {
+  return element?.closest("[data-community-pane]")?.dataset.communityPane || "details";
+}
+
+/** Quita las marcas de una validación anterior del editor de comunidad. */
+function clearCommunityValidationMarks() {
+  document.querySelectorAll("#community-dialog .community-editor-tab.has-error").forEach((tab) => {
+    tab.classList.remove("has-error");
+    tab.removeAttribute("aria-invalid");
+  });
+  communityForm.querySelectorAll("label.field-error").forEach((label) => {
+    label.classList.remove("field-error");
+    label.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+      field.removeAttribute("aria-invalid");
+    });
+  });
+}
+
+/** Control visible y enfocable de un campo (los combos usan un buscador). */
+function communityFieldFocusTarget(element) {
+  if (!element) return null;
+  const combo = element.closest?.(".combo-box");
+  const search = combo?.querySelector(".combo-box-input");
+  if (search && !search.disabled && !search.hidden) return search;
+  if (!element.disabled && !element.hidden) return element;
+  const label = element.closest?.("label");
+  return (
+    label?.querySelector("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)") ||
+    null
+  );
+}
+
+/**
+ * Abre la primera pestaña con error, marca todas las pestañas afectadas y sus
+ * campos, enfoca el primer campo inválido y mantiene el resumen habitual.
+ */
+function revealCommunityValidationProblems(problems) {
+  clearCommunityValidationMarks();
+  const tabs = [
+    ...document.querySelectorAll("#community-dialog .community-editor-tab[data-community-tab]"),
+  ];
+  const problemsByTab = new Map();
+  problems.forEach((problem) => {
+    const tab = communityTabForField(problem.element);
+    if (!problemsByTab.has(tab)) problemsByTab.set(tab, []);
+    problemsByTab.get(tab).push(problem);
+  });
+  tabs.forEach((tab) => {
+    if (!problemsByTab.has(tab.dataset.communityTab)) return;
+    tab.classList.add("has-error");
+    tab.setAttribute("aria-invalid", "true");
+  });
+  const firstTab = tabs.find((tab) => problemsByTab.has(tab.dataset.communityTab))?.dataset
+    .communityTab;
+  if (firstTab) switchCommunityEditorTab(firstTab);
+
+  const marked = new Set();
+  problems.forEach(({ element }) => {
+    if (!element || marked.has(element)) return;
+    marked.add(element);
+    const label = element.closest("label");
+    if (!label) return;
+    label.classList.add("field-error");
+    element.setAttribute("aria-invalid", "true");
+  });
+
+  const firstProblem = firstTab
+    ? problems.find((problem) => communityTabForField(problem.element) === firstTab)
+    : problems[0];
+  const focusTarget = communityFieldFocusTarget(firstProblem?.element);
+  if (focusTarget) focusTarget.focus();
+  showValidationErrors(
+    problems.map((problem) => problem.message),
+    "Revisa los datos de la comunidad",
+  );
+  const summary = document.querySelector("#validation-dialog");
+  if (summary?.open && focusTarget) {
+    summary.addEventListener("close", () => focusTarget.focus(), { once: true });
+  }
+}
+
 /** Lista de inmuebles vinculados dentro del diálogo de EDICIÓN (tab Inmuebles). */
 function renderCommunityEditorProperties(c) {
   const commProps = state.properties.filter((p) => p.communityId === c.id);
@@ -708,28 +791,9 @@ function renderCommunityEditorProperties(c) {
     const actions = document.createElement("div");
     actions.className = "community-property-actions";
 
-    const viewBtn = document.createElement("button");
-    viewBtn.type = "button";
-    viewBtn.className = "icon-action-btn btn-info";
-    viewBtn.title = "Ver inmueble";
-    viewBtn.innerHTML = sanitizeHtml(
-      `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
-    );
+    const viewBtn = iconBtn("btn-info", "Ver inmueble", `Ver ${prop.plot}`, ICON_VIEW);
     viewBtn.addEventListener("click", () => {
-      communityDialog.close();
       openPropertyDetail(prop.id);
-    });
-
-    const docsBtn = document.createElement("button");
-    docsBtn.type = "button";
-    docsBtn.className = "icon-action-btn btn-docs";
-    docsBtn.title = "Documentación del inmueble";
-    docsBtn.innerHTML = sanitizeHtml(
-      `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path></svg>`,
-    );
-    docsBtn.addEventListener("click", () => {
-      communityDialog.close();
-      openPropertyEditor(prop.id, "docs", !hasPermission("property:manage", prop.id));
     });
 
     const unlinkBtn = document.createElement("button");
@@ -752,7 +816,7 @@ function renderCommunityEditorProperties(c) {
       toast(`Inmueble ${prop.plot} desvinculado de la comunidad.`);
     });
 
-    actions.append(viewBtn, docsBtn, unlinkBtn);
+    actions.append(viewBtn, unlinkBtn);
     card.append(info, actions);
     listEl.append(card);
   });
@@ -1293,13 +1357,15 @@ communityForm.addEventListener("submit", async (event) => {
  */
 async function persistCommunityDraft() {
   if (communityReadonly) return null;
+  clearCommunityValidationMarks();
   validateCommunityFields();
 
   const citySelect = communityForm.elements.city;
   const provinceSelect = communityForm.elements.province;
   const selectedLocation = getLocationById(citySelect.value);
 
-  const messages = [];
+  const problems = [];
+  const addProblem = (message, element) => problems.push({ message, element });
   const existingCommunity = state.communities.find(
     (community) => community.id === editingCommunityId,
   );
@@ -1312,18 +1378,23 @@ async function persistCommunityDraft() {
     nextCurrency !== "EUR" &&
     nextCurrency !== currentCurrency
   )
-    messages.push(
+    addProblem(
       "Moneda: la comunidad tiene actividad financiera registrada y no admite cambiar a una moneda distinta de EUR.",
+      communityForm.elements.currency,
     );
   [...communityForm.elements].forEach((element) => {
     if (element.willValidate && !element.checkValidity()) {
-      messages.push(`${fieldLabel(element)}: ${mensajeDeValidez(element)}.`);
+      const detalle = mensajeDeValidez(element);
+      addProblem(
+        `${fieldLabel(element)}: ${/[.!?]$/.test(detalle) ? detalle : `${detalle}.`}`,
+        element,
+      );
     }
   });
   if (!selectedLocation) {
-    messages.push("Municipio: selecciona un municipio válido del listado.");
+    addProblem("Municipio: selecciona un municipio válido del listado.", citySelect);
   } else if (selectedLocation.province !== provinceSelect.value) {
-    messages.push("Municipio: debe pertenecer a la provincia seleccionada.");
+    addProblem("Municipio: debe pertenecer a la provincia seleccionada.", citySelect);
   }
   if (
     state.communities.some(
@@ -1333,11 +1404,11 @@ async function persistCommunityDraft() {
         c.id !== editingCommunityId,
     )
   ) {
-    messages.push("NIF: ya existe una comunidad registrada con ese NIF.");
+    addProblem("NIF: ya existe una comunidad registrada con ese NIF.", communityForm.elements.nif);
   }
 
-  if (messages.length > 0) {
-    showValidationErrors(messages, "Revisa los datos de la comunidad");
+  if (problems.length > 0) {
+    revealCommunityValidationProblems(problems);
     return null;
   }
 

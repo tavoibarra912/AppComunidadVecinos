@@ -145,6 +145,16 @@ export function feeNavigation() {
     title: staff ? "Cuotas" : "Mis cuotas",
   };
 }
+function feeRoute(params) {
+  return `/cuotas${params.size ? `?${params}` : ""}`;
+}
+function currentFeeParams() {
+  return new URLSearchParams(window.location.search || window.location.hash.split("?")[1]);
+}
+function navigateFeeRoute(params = new URLSearchParams()) {
+  window.history.pushState({ route: "cuotas" }, "", feeRoute(params));
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
 export function mountFeeShortcut(root, kind, id) {
   if (!root) return;
   root.replaceChildren();
@@ -168,7 +178,7 @@ export function mountFeeShortcut(root, kind, id) {
   const params = new URLSearchParams({
     [kind === "community" ? "comunidad" : "propietario"]: id,
   });
-  link.href = `#cuotas?${params}`;
+  link.href = feeRoute(params);
   link.addEventListener("click", (event) => {
     event.preventDefault();
     const parent = root.closest("dialog");
@@ -178,7 +188,7 @@ export function mountFeeShortcut(root, kind, id) {
       return;
     }
     parent?.close();
-    window.location.hash = link.hash;
+    navigateFeeRoute(params);
   });
   row.append(link);
   root.append(row);
@@ -193,7 +203,7 @@ export function renderFeesPage() {
     pageKey = "";
     return;
   }
-  const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
+  const params = currentFeeParams();
   const communities = access.staff
     ? state.communities.filter(
         (c) => hasPermission("fee:read", c.id) || hasPermission("fee:manage", c.id),
@@ -218,6 +228,7 @@ export function renderFeesPage() {
     user.id,
     kind,
     id,
+    window.location.search,
     window.location.hash,
     communities.map((c) => [c.id, c.name]),
     access,
@@ -281,7 +292,11 @@ export function renderFeesPage() {
       ],
     );
     view.addEventListener("change", () => {
-      window.location.hash = view.value === "personal" ? "#cuotas?vista=personal" : "#cuotas";
+      navigateFeeRoute(
+        view.value === "personal"
+          ? new URLSearchParams({ vista: "personal" })
+          : new URLSearchParams(),
+      );
     });
   }
   if (access.staff && kind !== "mine") {
@@ -293,8 +308,7 @@ export function renderFeesPage() {
       [["", "Elige una comunidad para gestionar"], ...communities.map((c) => [c.id, c.name])],
     );
     select.addEventListener("change", () => {
-      if (select.value)
-        window.location.hash = `#cuotas?comunidad=${encodeURIComponent(select.value)}`;
+      if (select.value) navigateFeeRoute(new URLSearchParams({ comunidad: select.value }));
     });
   }
   if (!id) {

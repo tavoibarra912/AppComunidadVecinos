@@ -4,7 +4,7 @@ import { db, UPLOADS_DIR } from "./db.js";
 import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
 import { communityNifError } from "./validation.js";
-import { isTenantContractActive } from "../public/js/permissions.js";
+import { normalizeStoredResidency } from "./domain.js";
 import { CREDIT_DESTINATIONS, legalConfigOf } from "./legal-config.js";
 import { formatMoney } from "./fees.js";
 import { queueUploadCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
@@ -970,15 +970,10 @@ function plan(g, body, user, options = {}) {
 }
 
 function syncCascadeLinks(changedProperties, changedOwners, tenantProperties) {
-  const today = madridDate();
   for (const id of new Set([...changedProperties, ...tenantProperties])) {
     const row = db.prepare("SELECT id FROM properties WHERE id=?").get(id);
     if (!row) continue;
-    const tenants = db.prepare("SELECT * FROM tenants WHERE propertyId=? ORDER BY id").all(id);
-    db.prepare("UPDATE properties SET tenantIds=? WHERE id=?").run(
-      JSON.stringify(tenants.filter((t) => isTenantContractActive(t, today)).map((t) => t.id)),
-      id,
-    );
+    normalizeStoredResidency(id);
   }
   const fields = [
     "communityId",

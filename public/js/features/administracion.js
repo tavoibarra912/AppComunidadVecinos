@@ -22,6 +22,7 @@ import { textosDe } from "../textos-envio.js";
 import { renderAudit } from "./audit.js";
 import { renderProvidersPanel } from "./communication.js";
 import { applyBrand, applyPublicSettings, effectiveBrand, readInjectedBrand } from "../brand.js";
+import { PERMISOS_CATALOGO } from "../permissions-catalog.js";
 const ADMIN_TABS = {
   usuarios: "admin:users",
   roles: "admin:roles",
@@ -33,277 +34,11 @@ const ADMIN_TABS = {
 // PANTALLA ADMINISTRACIÓN: Usuarios / Roles / Configuración
 // ==========================================
 
-const PERMISOS_CATALOGO = [
-  {
-    key: "cascade-delete",
-    label: "Borrado avanzado con asistente",
-    grupo: "Administración",
-    hint: "Evaluar dependencias, reasignar y borrar en cascada, incluso históricos financieros con confirmación. Requiere también los permisos de las entidades afectadas.",
-  },
-  {
-    key: "fee:read",
-    label: "Consultar cuotas",
-    grupo: "Cuotas",
-    hint: "Propietarios: recibos propios. Administradores: comunidades de su ámbito.",
-  },
-  {
-    key: "fee:manage",
-    label: "Gestionar cuotas",
-    grupo: "Cuotas",
-    hint: "Configurar acuerdos, emitir recibos, registrar cobros, revisar justificantes y devoluciones.",
-  },
-  {
-    key: "community:read",
-    label: "Ver comunidades",
-    grupo: "Comunidades",
-    hint: "Consultar los datos de las comunidades dentro del ámbito permitido.",
-  },
-  {
-    key: "community:create",
-    label: "Crear comunidades",
-    grupo: "Comunidades",
-    hint: "Dar de alta nuevas comunidades.",
-  },
-  {
-    key: "community:edit",
-    label: "Editar comunidades",
-    grupo: "Comunidades",
-    hint: "Modificar los datos de una comunidad existente.",
-  },
-  {
-    key: "community:manage",
-    label: "Administrar comunidades",
-    grupo: "Comunidades",
-    hint: "Gestionar la comunidad, sus vínculos y su documentación.",
-  },
-  {
-    key: "community:brand",
-    label: "Personalizar el estilo de la comunidad",
-    grupo: "Comunidades",
-    hint: "Cambiar el nombre visible, el logo, los colores y la tipografía de una comunidad sin editar sus datos.",
-  },
-  {
-    key: "community:delete",
-    label: "Eliminar comunidades",
-    grupo: "Comunidades",
-    hint: "Eliminar comunidades existentes.",
-  },
-  {
-    key: "owner:read",
-    label: "Ver propietarios",
-    grupo: "Propietarios",
-    hint: "Consultar los datos de los propietarios dentro del ámbito permitido.",
-  },
-  {
-    key: "owner:create",
-    label: "Crear propietarios",
-    grupo: "Propietarios",
-    hint: "Dar de alta nuevos propietarios.",
-  },
-  {
-    key: "owner:manage",
-    label: "Gestionar propietarios",
-    grupo: "Propietarios",
-    hint: "Editar propietarios y operar con sus datos.",
-  },
-  {
-    key: "owner:edit",
-    label: "Editar su propio perfil",
-    grupo: "Propietarios",
-    hint: "Permite al propietario modificar sus propios datos personales.",
-  },
-  {
-    key: "owner:delete",
-    label: "Eliminar propietarios",
-    grupo: "Propietarios",
-    hint: "Eliminar propietarios existentes.",
-  },
-  {
-    key: "owner:documents:submit",
-    label: "Subir documentación propia",
-    grupo: "Propietarios",
-    hint: "Permite al propietario adjuntar sus propios documentos.",
-  },
-  {
-    key: "property:read",
-    label: "Ver inmuebles",
-    grupo: "Inmuebles",
-    hint: "Consultar los datos de los inmuebles dentro del ámbito permitido.",
-  },
-  {
-    key: "property:create",
-    label: "Crear inmuebles",
-    grupo: "Inmuebles",
-    hint: "Dar de alta nuevos inmuebles.",
-  },
-  {
-    key: "property:manage",
-    label: "Gestionar inmuebles",
-    grupo: "Inmuebles",
-    hint: "Editar inmuebles y sus titulares.",
-  },
-  {
-    key: "property:delete",
-    label: "Eliminar inmuebles",
-    grupo: "Inmuebles",
-    hint: "Eliminar inmuebles existentes.",
-  },
-  {
-    key: "tenant:read",
-    label: "Ver inquilinos",
-    grupo: "Inquilinos",
-    hint: "Consultar los datos de los inquilinos dentro del ámbito permitido.",
-  },
-  {
-    key: "tenant:create",
-    label: "Crear inquilinos",
-    grupo: "Inquilinos",
-    hint: "Dar de alta nuevos inquilinos.",
-  },
-  {
-    key: "tenant:manage",
-    label: "Gestionar inquilinos",
-    grupo: "Inquilinos",
-    hint: "Editar inquilinos y sus contratos.",
-  },
-  {
-    key: "tenant:delete",
-    label: "Eliminar inquilinos",
-    grupo: "Inquilinos",
-    hint: "Eliminar inquilinos existentes.",
-  },
-  {
-    key: "tenant:history:read",
-    label: "Conservar historial propio de antiguo inquilino",
-    grupo: "Inquilinos",
-    hint: "Tras finalizar el contrato, permite consultar su ficha y descargar sus documentos. No da acceso a la comunidad ni a los inmuebles.",
-  },
-  {
-    key: "document:read",
-    label: "Ver documentos",
-    grupo: "Documentación",
-    hint: "Consultar y descargar los documentos dentro del ámbito permitido.",
-  },
-  {
-    key: "document:upload",
-    label: "Subir documentos",
-    grupo: "Documentación",
-    hint: "Adjuntar archivos a comunidades, propietarios, inmuebles e inquilinos.",
-  },
-  {
-    key: "document:approve",
-    label: "Aprobar documentación",
-    grupo: "Documentación",
-    hint: "Revisar y aprobar los documentos aportados.",
-  },
-  {
-    key: "document:delete",
-    label: "Eliminar documentos",
-    grupo: "Documentación",
-    hint: "Eliminar documentos existentes.",
-  },
-  {
-    key: "comm:participacion",
-    label: "Participar en Comunicación",
-    grupo: "Comunicación",
-    hint: "Comentar, votar y confirmar asistencia.",
-  },
-  {
-    key: "comm:publicar",
-    label: "Publicar en Comunicación",
-    grupo: "Comunicación",
-    hint: "Crear y editar publicaciones.",
-  },
-  {
-    key: "comm:moderar",
-    label: "Moderar Comunicación",
-    grupo: "Comunicación",
-    hint: "Eliminar comentarios ajenos y ver documentos internos.",
-  },
-  {
-    key: "comm:eliminar",
-    label: "Eliminar publicaciones de Comunicación",
-    grupo: "Comunicación",
-    hint: "Eliminar publicaciones del tablón (propias o ajenas) y sus adjuntos.",
-  },
-  {
-    key: "admin_notification:read",
-    label: "Ver buzón del administrador",
-    grupo: "Notificaciones",
-    hint: "Consultar los avisos y notificaciones del buzón de administración.",
-  },
-  {
-    key: "admin_notification:delete",
-    label: "Eliminar notificaciones del buzón del administrador",
-    grupo: "Notificaciones",
-    hint: "Eliminar avisos del buzón de administración.",
-  },
-  {
-    key: "owner_notification:read",
-    label: "Ver su buzón de avisos",
-    grupo: "Notificaciones",
-    hint: "Permite al propietario consultar los avisos dirigidos a su buzón.",
-  },
-  {
-    key: "owner_notification:send",
-    label: "Enviar avisos a propietarios",
-    grupo: "Notificaciones",
-    hint: "Responder y enviar avisos desde el buzón de propietarios.",
-  },
-  {
-    key: "owner_notification:delete",
-    label: "Eliminar avisos del buzón",
-    grupo: "Notificaciones",
-    hint: "Eliminar avisos del buzón (propios o de las comunidades gestionadas).",
-  },
-  {
-    key: "reports:read",
-    label: "Ver reportes",
-    grupo: "Reportes y auditoría",
-    hint: "Consultar los reportes y estadísticas de la aplicación.",
-  },
-  {
-    key: "audit:read",
-    label: "Ver auditoría",
-    grupo: "Reportes y auditoría",
-    hint: "Consultar el registro de auditoría de las acciones realizadas.",
-  },
-  {
-    key: "admin:users",
-    label: "Administrar usuarios",
-    grupo: "Sistema",
-    hint: "Crear, editar y gestionar las cuentas de usuario.",
-  },
-  {
-    key: "admin:roles",
-    label: "Administrar roles",
-    grupo: "Sistema",
-    hint: "Crear y editar roles, y asignar los permisos de cada uno.",
-  },
-  {
-    key: "admin:settings",
-    label: "Administrar configuración",
-    grupo: "Sistema",
-    hint: "Modificar la configuración general de la aplicación.",
-  },
-  {
-    key: "admin:providers",
-    label: "Configurar proveedores de comunicación",
-    grupo: "Sistema",
-    hint: "Configurar los proveedores de comunicación como correo o SMS.",
-  },
-  {
-    key: "admin:branding",
-    label: "Personalizar el estilo de la plataforma",
-    grupo: "Sistema",
-    hint: "Cambiar el nombre, el logo, los colores y la tipografía de toda la plataforma, sin acceder al resto de la configuración.",
-  },
-];
-
 let userTable = null;
 let adminTabActual = "usuarios";
 let editingUserId = null;
 let editingRoleId = null;
+let editingRoleOriginalPermissions = [];
 
 function puedeEditarMarcaComunidad(community) {
   return (
@@ -951,9 +686,10 @@ function renderRolePermissions(selected = []) {
 function openRoleEditor(id = null) {
   if (!requirePermission("admin:roles")) return;
   editingRoleId = id;
+  const role = state.roles.find((item) => item.id === id);
+  editingRoleOriginalPermissions = role ? [...role.permisos] : [];
   roleForm.reset();
   roleError.textContent = "";
-  const role = state.roles.find((item) => item.id === id);
   document.querySelector("#role-dialog-title").textContent = role
     ? `Editar rol: ${role.nombre}`
     : "Nuevo rol";
@@ -970,9 +706,17 @@ function openRoleEditor(id = null) {
 roleForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!requirePermission("admin:roles")) return;
-  const permisos = [...rolePermissionsList.querySelectorAll("input:checked")].map(
-    (input) => input.value,
-  );
+  // El catálogo debe estar completo, pero si una versión anterior no conocía
+  // algún permiso válido, se conserva al guardar en lugar de borrarlo en
+  // silencio. Así una actualización del catálogo nunca retira capacidades.
+  const catalogadas = new Set(PERMISOS_CATALOGO.map((permiso) => permiso.key));
+  const preservados = editingRoleOriginalPermissions.filter((permiso) => !catalogadas.has(permiso));
+  const permisos = [
+    ...new Set([
+      ...[...rolePermissionsList.querySelectorAll("input:checked")].map((input) => input.value),
+      ...preservados,
+    ]),
+  ];
   const data = {
     nombre: roleForm.elements.nombre.value.trim(),
     descripcion: roleForm.elements.descripcion.value.trim(),
@@ -998,6 +742,7 @@ roleForm?.addEventListener("submit", async (event) => {
   renderRoles();
   toast(editingRoleId ? "Rol actualizado." : "Rol creado.");
   editingRoleId = null;
+  editingRoleOriginalPermissions = [];
 });
 
 async function deleteRole(id, nombre) {

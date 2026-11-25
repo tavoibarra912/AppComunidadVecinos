@@ -7,7 +7,7 @@ import { recordAudit } from "../audit.js";
 import { documentLimits, allowedDocumentLabels, detectContentType } from "../document-policy.js";
 import { policyData, allowed } from "../security.js";
 import { textosActuales, aplicarPlantilla, nombrePlataforma } from "../textos-envio.js";
-import { legalConfigOf } from "../legal-config.js";
+import { explicitLegalRegime, legalConfigOf } from "../legal-config.js";
 import {
   allPosts,
   postById,
@@ -25,6 +25,7 @@ import {
   mayVote,
   ballotWeights,
   ensureVotingCensus,
+  votingCoefficientProblem,
   pollOpen,
   summary,
   detail,
@@ -176,6 +177,17 @@ router.get(
     });
   }),
 );
+function requireExplicitLegalRegime(communityId, action) {
+  const community = db
+    .prepare("SELECT id, legalConfig FROM communities WHERE id=?")
+    .get(communityId);
+  if (!explicitLegalRegime(community))
+    throw problem(
+      `Configura el régimen jurídico de la comunidad (LPH o asociación) antes de ${action}.`,
+      409,
+    );
+}
+
 function canAccessCommunity(user, id, data) {
   const { members } = resolveAudience(id, { mode: "all" }, data);
   return [...members.owners, ...members.tenants].some((p) => p.userId === user.id);
@@ -259,6 +271,7 @@ router.post(
       p = validatePost(req.body, null, data);
     if (!canPublish(req.user, p.communityId, data))
       throw problem("No puedes publicar en esta comunidad.", 403);
+    if (p.poll) requireExplicitLegalRegime(p.communityId, "convocar votaciones");
     const id = crypto.randomUUID(),
       now = new Date().toISOString();
     transaction(() => {
@@ -290,6 +303,9 @@ router.put(
       p = validatePost(req.body, old, policyData());
     if (req.body.version !== old.version)
       throw problem("La publicación cambió. Recárgala antes de guardar.", 409);
+    // La regla de voto se congela al convocar; una consulta ya existente
+    // conserva la suya aunque la comunidad cambie después de régimen.
+    if (p.poll && !old.poll) requireExplicitLegalRegime(p.communityId, "convocar votaciones");
     transaction(() => {
       const comparable = (post) => {
         const { poll, ...content } = post;
@@ -449,6 +465,10 @@ router.post(
         403,
       );
     if (!pollOpen(p)) throw problem("La consulta está cerrada.", 409);
+    // Defensa para votaciones antiguas: se comprueba el censo congelado (o los
+    // datos vivos si aún no existe) antes de aceptar el primer voto.
+    const coefficientProblem = votingCoefficientProblem(p);
+    if (coefficientProblem) throw problem(coefficientProblem, 409);
     const choices = req.body?.choices;
     if (
       !Array.isArray(choices) ||

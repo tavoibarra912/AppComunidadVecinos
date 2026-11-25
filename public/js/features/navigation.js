@@ -586,17 +586,25 @@ export function renderUserSelector() {
   activeRoleSelect.title = "Usuario conectado";
 }
 
-// Backward compatibility: redirect hash-based URLs to path-based
-if (window.location.hash) {
-  const hash = window.location.hash.slice(1).toLowerCase();
-  const route = ROUTES[hash] ? hash : "home";
-  history.replaceState({ route }, "", getRoutePath(route));
+function parseHash(targetHash) {
+  const [route, ...queryParts] = targetHash.replace(/^#/, "").split("?");
+  return [route.toLowerCase(), queryParts.length ? `?${queryParts.join("?")}` : ""];
 }
 
-// Backward compatibility export for old hash-based navigation
+// Backward compatibility: redirect hash-based URLs to path-based, conservando
+// la consulta (por ejemplo `#cuotas?propietario=...`). Los enlaces de
+// recuperación de contraseña se dejan intactos para que auth.js los lea.
+if (window.location.hash) {
+  const [route, query] = parseHash(window.location.hash);
+  if (ROUTES[route]) history.replaceState({ route }, "", getRoutePath(route) + query);
+}
+
+// Backward compatibility export for old hash-based navigation.
 export async function navigateToSection(targetHash) {
-  const hash = targetHash.startsWith("#") ? targetHash.slice(1) : targetHash;
-  const [route] = hash.split("?");
-  const mappedRoute = ROUTES[route.toLowerCase()] ? route.toLowerCase() : "home";
-  await navigateToRoute(mappedRoute);
+  const [route, query] = parseHash(targetHash);
+  const mappedRoute = ROUTES[route] ? route : "home";
+  const target = getRoutePath(mappedRoute) + query;
+  if (window.location.pathname + window.location.search !== target)
+    history.pushState({ route: mappedRoute }, "", target);
+  await handleRouting();
 }

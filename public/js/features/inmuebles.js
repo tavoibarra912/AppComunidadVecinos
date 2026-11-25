@@ -33,6 +33,7 @@ import { createRichText } from "../rich-text.js";
 import { openOwnerDetail, openOwnerEditor, addPropertyToOwnerEditor } from "./propietarios.js";
 import { openTenantDetail, openTenantEditor } from "./inquilinos.js";
 import { openCommunityEditor, refreshCommunityEditorAfterPropertySave } from "./comunidades.js";
+import { openCommunicationComposer } from "./communication.js";
 
 // Diálogo de eliminación de Inmuebles
 const propertyDeleteDialog = document.querySelector("#property-delete-dialog");
@@ -54,6 +55,7 @@ const propertyNotes = createRichText({
   toolbar: document.querySelector("#property-notes-toolbar"),
 });
 const propertyFormError = document.querySelector("#property-form-error");
+const propertyInitialResidentStep = document.querySelector("#property-initial-resident");
 const propertyDocumentList = document.querySelector("#property-document-list");
 const propertyDetailDialog = document.querySelector("#property-detail-dialog");
 const propertyDetailDocuments = document.querySelector("#property-detail-documents");
@@ -83,6 +85,12 @@ let initialPropertyTenantIds = [];
 let editingOwnerPercentages = {};
 // El editor de inmueble se abre en modo lectura desde «Ver inmueble».
 let propertyDialogReadOnly = false;
+// Ocupación del inmueble en edición: owner | tenant | vacant.
+let editingOccupancy = "owner";
+// Copropietarios que residen realmente en el inmueble (subconjunto de ownerIds).
+let editingResidentOwnerIds = [];
+// Contacto principal de los avisos del inmueble (propietario o inquilino).
+let editingPrimaryResidentId = "";
 
 function selectedPropertyCommunityId() {
   return propertyForm.elements.communityId?.value || "";
@@ -165,6 +173,29 @@ function handlePropertyCommunityChange() {
   }
 }
 
+/**
+ * El coeficiente es un porcentaje: se descartan letras y símbolos y solo se
+ * admite un separador decimal con hasta cuatro decimales.
+ */
+function sanitizeCoefficientInput() {
+  const input = propertyForm.elements.participationCoef;
+  if (!input) return;
+  const cleaned = input.value.replace(/[^\d.,]/g, "");
+  const separatorIndex = cleaned.search(/[.,]/);
+  let value = cleaned;
+  if (separatorIndex !== -1) {
+    const integer = cleaned.slice(0, separatorIndex).replace(/[^\d]/g, "");
+    const decimals = cleaned
+      .slice(separatorIndex + 1)
+      .replace(/[^\d]/g, "")
+      .slice(0, 4);
+    value = `${integer}${cleaned[separatorIndex]}${decimals}`;
+  }
+  if (value !== input.value) input.value = value;
+}
+
+propertyForm.elements.participationCoef?.addEventListener("input", sanitizeCoefficientInput);
+
 function populatePropertyCurrencySelect(selected) {
   const select = propertyForm.elements.currency;
   if (!select) return;
@@ -197,14 +228,101 @@ document.querySelectorAll(".community-editor-tab[data-property-tab]").forEach((b
   btn.addEventListener("click", () => switchPropertyEditorTab(btn.dataset.propertyTab));
 });
 
+/**
+ * La pestaña Inquilinos solo tiene sentido cuando el inmueble lo ocupa otra persona: si vive
+ * el propietario no hay contrato que asociar. En inmuebles ya creados la pregunta no se
+ * muestra, así que la pestaña queda siempre disponible.
+ */
+function syncPropertyResidencyTab() {
+  const tab = document.querySelector('.community-editor-tab[data-property-tab="tenants"]');
+  if (!tab) return;
+  const asksResident = !!propertyInitialResidentStep && !propertyInitialResidentStep.hidden;
+  // Solo hay contratos que asociar cuando el inmueble lo ocupa otra persona.
+  const disabled = asksResident && editingOccupancy !== "tenant";
+  tab.disabled = disabled;
+  tab.setAttribute("aria-disabled", String(disabled));
+  tab.title = disabled
+    ? "Marca «Vive otra persona» para asociar inquilinos al inmueble."
+    : "";
+  if (disabled && tab.classList.contains("active")) switchPropertyEditorTab("owners");
+}
+
+propertyForm.addEventListener("change", (event) => {
+  if (event.target?.matches?.('input[name="initialResident"]'))
+    setPropertyOccupancy(event.target.value);
+});
+
+/**
+ * La ocupación se marca sobre las personas ya vinculadas al inmueble: los
+ * propietarios de la pestaña Propietarios o los inquilinos de la pestaña
+ * Inquilinos. No crea listas ni fichas nuevas.
+ */
+function setPropertyOccupancy(value) {
+  editingOccupancy = value === "other" ? "tenant" : value === "vacant" ? "vacant" : "owner";
+  if (editingOccupancy === "owner") {
+    // Con un único titular no hay ambigüedad; con varios, no se inventa que
+    // todos residen: se conservan las marcas y el usuario decide quién habita.
+    const owners = editingPropertyPeople.ownerIds;
+    const kept = editingResidentOwnerIds.filter((ownerId) => owners.includes(ownerId));
+    editingResidentOwnerIds = kept.length ? kept : owners.length === 1 ? [owners[0]] : [];
+    if (!editingResidentOwnerIds.includes(editingPrimaryResidentId))
+      editingPrimaryResidentId = editingResidentOwnerIds[0] || "";
+  } else {
+    editingResidentOwnerIds = [];
+    editingPrimaryResidentId =
+      editingOccupancy === "tenant"
+        ? editingPropertyPeople.tenantIds[0] || ""
+        : "";
+  }
+  renderPropertyOwnersTab();
+  renderPropertyTenantsTab();
+  syncPropertyResidencyTab();
+}
+
 const ICON_UNLINK_SM = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-const ICON_VIEW_SM = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+// Icono de "ver" real (ojo) para los botones de acción de inmuebles.
+const ICON_VIEW = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+
+/**
+ * El permiso específico permite guardar un inmueble sin titulares; el resto de
+ * roles debe asociar al menos un propietario. Un inmueble heredado que ya no
+ * tiene titulares también puede guardarse para poder repararlo.
+ */
+function propertyOwnerAssignmentOptional() {
+  if (hasPermission("property:create:unassigned")) return true;
+  const editing = state.properties.find(
+    (property) => property.id === state.ui.editingPropertyId,
+  );
+  return !!editing && propertyOwnerIds(editing).length === 0;
+}
+
+/** Ajusta los textos de obligatoriedad de titulares al permiso del usuario. */
+function syncPropertyOwnerRequirement() {
+  const optional = propertyOwnerAssignmentOptional();
+  const intro = document.querySelector("#property-form-intro");
+  if (intro)
+    intro.textContent = optional
+      ? "La comunidad y la dirección son obligatorios. Puedes guardar el inmueble sin propietarios y asignarlos más adelante; los inquilinos y documentos son opcionales."
+      : "La comunidad, al menos un propietario y la dirección son obligatorios. Los inquilinos y documentos son opcionales.";
+  const requirement = document.querySelector("#property-owners-requirement");
+  if (requirement)
+    requirement.textContent = optional
+      ? "Asocia propietarios existentes, crea nuevos o desvincula los que ya no correspondan. Con tu permiso, el inmueble puede guardarse sin titulares."
+      : "Asocia propietarios existentes, crea nuevos o desvincula los que ya no correspondan. Debe quedar al menos uno asociado.";
+}
 
 function renderPropertyOwnersTab() {
   const listEl = document.querySelector("#property-owners-list");
   const countEl = document.querySelector("#property-owner-count");
   if (!listEl) return;
   const ownerIds = editingPropertyPeople.ownerIds;
+  // Un titular desvinculado deja de ser residente sin conservar marcas huérfanas.
+  editingResidentOwnerIds = editingResidentOwnerIds.filter((id) => ownerIds.includes(id));
+  if (editingPrimaryResidentId && ![
+    ...editingResidentOwnerIds,
+    ...editingPropertyPeople.tenantIds,
+  ].includes(editingPrimaryResidentId))
+    editingPrimaryResidentId = editingResidentOwnerIds[0] || "";
   if (countEl) countEl.textContent = String(ownerIds.length);
   listEl.replaceChildren();
   const panel = document.querySelector("#property-owner-link-panel");
@@ -214,8 +332,24 @@ function renderPropertyOwnersTab() {
   const atFullCapacity = capacity <= 0;
   // Los botones siguen habilitados: al intentar vincular se explica cómo
   // hacer lugar (bajando el % de los propietarios actuales)
-  const oldNote = listEl.parentElement.querySelector(".property-owners-capacity-note");
-  if (oldNote) oldNote.remove();
+  for (const note of listEl.parentElement.querySelectorAll(".property-owners-capacity-note"))
+    note.remove();
+  const assigned = Math.round(
+    ownerIds.reduce(
+      (sum, ownerId) => sum + (Number(editingOwnerPercentages[ownerId]) || 0),
+      0,
+    ) * 10000,
+  ) / 10000;
+  // La titularidad parcial es válida, pero debe verse: el porcentaje sin
+  // asignar no se reparte entre los titulares ni cambia la cuota del inmueble.
+  if (ownerIds.length && assigned > 0 && assigned < 100) {
+    const note = document.createElement("p");
+    note.className = "form-intro property-owners-capacity-note";
+    note.textContent = `Titularidad asignada: ${assigned}%. Queda ${
+      Math.round((100 - assigned) * 10000) / 10000
+    }% sin asignar. El porcentaje restante no se reparte automáticamente entre los titulares.`;
+    listEl.parentElement.insertBefore(note, listEl);
+  }
   if (atFullCapacity) {
     const note = document.createElement("p");
     note.className = "form-intro property-owners-capacity-note";
@@ -227,7 +361,9 @@ function renderPropertyOwnersTab() {
   if (ownerIds.length === 0) {
     const empty = document.createElement("p");
     empty.className = "form-intro";
-    empty.textContent = "No hay propietarios asociados. Asocia al menos uno antes de guardar.";
+    empty.textContent = propertyOwnerAssignmentOptional()
+      ? "No hay propietarios asociados. Puedes guardar el inmueble sin titulares y asignarlos más adelante."
+      : "No hay propietarios asociados. Asocia al menos uno antes de guardar.";
     listEl.append(empty);
     return;
   }
@@ -248,9 +384,11 @@ function renderPropertyOwnersTab() {
     const title = document.createElement("span");
     title.className = "community-property-title";
     title.textContent = `${owner.name} ${owner.surname} (${owner.dni})`;
+    const isResident = editingOccupancy === "owner" && editingResidentOwnerIds.includes(ownerId);
+    const isPrimary = editingOccupancy === "owner" && editingPrimaryResidentId === ownerId;
     const sub = document.createElement("span");
     sub.className = "community-property-sub";
-    sub.textContent = `Comunidad: ${communityName}`;
+    sub.textContent = `Comunidad: ${communityName}${isResident ? " · Reside" : ""}${isPrimary ? " · Contacto principal" : ""}`;
     info.append(title, sub);
 
     const pctWrap = document.createElement("label");
@@ -295,6 +433,51 @@ function renderPropertyOwnersTab() {
     pctWrap.append(pctInput, document.createTextNode("%"));
     info.append(pctWrap);
 
+    if (!propertyDialogReadOnly && editingOccupancy === "owner") {
+      const residentToggle = document.createElement("label");
+      residentToggle.className = "property-resident-toggle";
+      const residentInput = document.createElement("input");
+      residentInput.type = "checkbox";
+      residentInput.checked = isResident;
+      residentInput.setAttribute(
+        "aria-label",
+        `${owner.name} ${owner.surname} reside en el inmueble`,
+      );
+      residentInput.addEventListener("change", () => {
+        if (residentInput.checked) {
+          editingResidentOwnerIds = [...new Set([...editingResidentOwnerIds, ownerId])];
+          if (!editingResidentOwnerIds.includes(editingPrimaryResidentId))
+            editingPrimaryResidentId = ownerId;
+        } else {
+          editingResidentOwnerIds = editingResidentOwnerIds.filter((id) => id !== ownerId);
+          if (editingPrimaryResidentId === ownerId)
+            editingPrimaryResidentId = editingResidentOwnerIds[0] || "";
+        }
+        renderPropertyOwnersTab();
+      });
+      residentToggle.append(residentInput, document.createTextNode("Reside aquí"));
+      info.append(residentToggle);
+
+      if (isResident && editingResidentOwnerIds.length > 1) {
+        const primaryToggle = document.createElement("label");
+        primaryToggle.className = "property-resident-toggle";
+        const primaryInput = document.createElement("input");
+        primaryInput.type = "radio";
+        primaryInput.name = "propertyPrimaryResident";
+        primaryInput.checked = editingPrimaryResidentId === ownerId;
+        primaryInput.setAttribute(
+          "aria-label",
+          `${owner.name} ${owner.surname} es el contacto principal`,
+        );
+        primaryInput.addEventListener("change", () => {
+          editingPrimaryResidentId = ownerId;
+          renderPropertyOwnersTab();
+        });
+        primaryToggle.append(primaryInput, document.createTextNode("Contacto principal"));
+        info.append(primaryToggle);
+      }
+    }
+
     if (propertyDialogReadOnly) {
       card.append(info);
       listEl.append(card);
@@ -308,7 +491,7 @@ function renderPropertyOwnersTab() {
       "btn-info",
       "Ver propietario",
       `Ver propietario ${owner.name} ${owner.surname}`,
-      ICON_VIEW_SM,
+      ICON_VIEW,
     );
     viewBtn.addEventListener("click", () => openOwnerDetail(owner.id));
 
@@ -323,6 +506,9 @@ function renderPropertyOwnersTab() {
         (id) => id !== ownerId,
       );
       delete editingOwnerPercentages[ownerId];
+      editingResidentOwnerIds = editingResidentOwnerIds.filter((id) => id !== ownerId);
+      if (editingPrimaryResidentId === ownerId)
+        editingPrimaryResidentId = editingResidentOwnerIds[0] || "";
       const validTenantIds = state.owners
         .filter((o) => editingPropertyPeople.ownerIds.includes(o.id))
         .flatMap((o) => ownerTenants(o).map((t) => t.id));
@@ -344,6 +530,8 @@ function renderPropertyTenantsTab() {
   const countEl = document.querySelector("#property-tenant-count");
   if (!listEl) return;
   const tenantIds = editingPropertyPeople.tenantIds;
+  if (editingOccupancy === "tenant" && editingPrimaryResidentId && !tenantIds.includes(editingPrimaryResidentId) && !editingResidentOwnerIds.includes(editingPrimaryResidentId))
+    editingPrimaryResidentId = tenantIds[0] || "";
   if (countEl) countEl.textContent = String(tenantIds.length);
   listEl.replaceChildren();
   const panel = document.querySelector("#property-tenant-link-panel");
@@ -373,8 +561,27 @@ function renderPropertyTenantsTab() {
     title.textContent = `${tenant.name} ${tenant.surname}`;
     const sub = document.createElement("span");
     sub.className = "community-property-sub";
-    sub.textContent = `Contrato ${getTenantContractStatus(tenant)} · Arrendador: ${owner.name} ${owner.surname}`;
+    sub.textContent = `Contrato ${getTenantContractStatus(tenant)} · Arrendador: ${owner.name} ${owner.surname}${editingOccupancy === "tenant" ? " · Reside" : ""}${editingOccupancy === "tenant" && editingPrimaryResidentId === tenantId ? " · Contacto principal" : ""}`;
     info.append(title, sub);
+
+    if (!propertyDialogReadOnly && editingOccupancy === "tenant" && tenantIds.length > 1) {
+      const primaryToggle = document.createElement("label");
+      primaryToggle.className = "property-resident-toggle";
+      const primaryInput = document.createElement("input");
+      primaryInput.type = "radio";
+      primaryInput.name = "propertyPrimaryResident";
+      primaryInput.checked = editingPrimaryResidentId === tenantId;
+      primaryInput.setAttribute(
+        "aria-label",
+        `${tenant.name} ${tenant.surname} es el contacto principal`,
+      );
+      primaryInput.addEventListener("change", () => {
+        editingPrimaryResidentId = tenantId;
+        renderPropertyTenantsTab();
+      });
+      primaryToggle.append(primaryInput, document.createTextNode("Contacto principal"));
+      info.append(primaryToggle);
+    }
 
     if (propertyDialogReadOnly) {
       card.append(info);
@@ -389,7 +596,7 @@ function renderPropertyTenantsTab() {
       "btn-info",
       "Ver inquilino",
       `Ver inquilino ${tenant.name} ${tenant.surname}`,
-      ICON_VIEW_SM,
+      ICON_VIEW,
     );
     viewBtn.addEventListener("click", () => openTenantDetail(owner.id, tenant.id));
 
@@ -404,6 +611,8 @@ function renderPropertyTenantsTab() {
       editingPropertyPeople.tenantIds = editingPropertyPeople.tenantIds.filter(
         (id) => id !== tenantId,
       );
+      if (editingPrimaryResidentId === tenantId)
+        editingPrimaryResidentId = editingPropertyPeople.tenantIds[0] || "";
       renderPropertyTenantsTab();
     });
 
@@ -530,6 +739,12 @@ if (btnConfirmOwner) {
     }
     editingPropertyPeople.ownerIds.push(ownerId);
     editingOwnerPercentages[ownerId] = capacity;
+    // Al dar de alta un inmueble ocupado por el propietario, el primer titular
+    // pasa a ser el residente por defecto; se puede desmarcar o cambiar luego.
+    if (editingOccupancy === "owner" && editingResidentOwnerIds.length === 0) {
+      editingResidentOwnerIds = [ownerId];
+      editingPrimaryResidentId = ownerId;
+    }
     const panel = document.querySelector("#property-owner-link-panel");
     if (panel) panel.hidden = true;
     renderPropertyOwnersTab();
@@ -579,15 +794,16 @@ if (btnCancelTenant) {
   });
 }
 
-// Crear propietario/inquilino nuevos desde el editor de inmueble
+// Crear propietario/inquilino nuevos desde el editor de inmueble.
+// No se cierra el editor de inmueble: se conserva lo ya editado y la alta
+// relacionada se abre apilada encima. Al guardar la entidad relacionada se
+// vuelve al editor de inmueble con el vínculo ya hecho (inquilino) o listo
+// para asociar desde el panel (propietario).
 const btnAddOwner = document.querySelector("#btn-property-add-owner");
 if (btnAddOwner) {
   btnAddOwner.addEventListener("click", () => {
-    const targetPropertyId = state.ui.editingPropertyId;
-    closePropertyEditor();
     openOwnerEditor(null, "data");
     // nota: tras crear el propietario, el usuario lo asocia desde el panel de asociación
-    if (targetPropertyId) state.ui.editingPropertyId = targetPropertyId;
   });
 }
 
@@ -596,9 +812,11 @@ if (btnAddTenant) {
   btnAddTenant.addEventListener("click", () => {
     const targetPropertyId = state.ui.editingPropertyId;
     const linkedOwners = editingPropertyPeople.ownerIds;
-    closePropertyEditor();
-    openTenantEditor(null, linkedOwners[0] || "");
-    if (targetPropertyId) state.ui.editingPropertyId = targetPropertyId;
+    state.ui.editorReturnContext = {
+      kind: "property-tenant",
+      propertyId: targetPropertyId,
+    };
+    openTenantEditor(null, linkedOwners[0] || "", false, "general", targetPropertyId);
   });
 }
 
@@ -698,6 +916,15 @@ function applyPropertyEditorReadOnly(readonly) {
     const panel = document.querySelector(selector);
     if (panel) panel.hidden = true;
   });
+  const notifyBtn = document.querySelector("#btn-property-notify");
+  if (notifyBtn) {
+    const communityId =
+      state.properties.find((item) => item.id === state.ui.editingPropertyId)?.communityId || "";
+    notifyBtn.hidden =
+      readonly ||
+      !state.ui.editingPropertyId ||
+      !hasPermission("comm:publicar", communityId);
+  }
 }
 
 export function openPropertyEditor(id = null, defaultTab = "general", readonly = false) {
@@ -716,11 +943,47 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   updatePropertyCommunitySelect();
   switchPropertyEditorTab(defaultTab);
   const property = state.properties.find((item) => item.id === id);
+  // La pestaña Inquilinos depende de la ocupación ya al abrir el formulario,
+  // antes de pintar las tarjetas de personas.
+  editingOccupancy =
+    property?.occupancy ||
+    ((property?.tenantIds || (property?.tenantId ? [property.tenantId] : [])).length
+      ? "tenant"
+      : "owner");
+  if (propertyInitialResidentStep) {
+    // La sección de ocupación siempre está accesible al editar o crear,
+    // salvo en modo solo lectura (no hay nada que cambiar).
+    propertyInitialResidentStep.hidden = readonly;
+  }
+  syncPropertyResidencyTab();
   populatePropertyCurrencySelect(property?.currency || "EUR");
   const ownerIds = propertyOwnerIds(property);
   const tenantIds = property?.tenantIds || (property?.tenantId ? [property.tenantId] : []);
   initialPropertyTenantIds = [...tenantIds];
   updatePropertyPeopleSelectors(ownerIds, tenantIds, property?.ownerPercentages || {});
+  // La ocupación se guarda en el inmueble; en fichas antiguas se deduce de los
+  // contratos vigentes para no inventar un residente que nadie declaró.
+  editingOccupancy = property?.occupancy || (tenantIds.length ? "tenant" : "owner");
+  if (propertyForm.elements.initialResident) {
+    propertyForm.elements.initialResident.value =
+      editingOccupancy === "tenant"
+        ? "other"
+        : editingOccupancy === "vacant"
+          ? "vacant"
+          : "owner";
+  }
+  editingResidentOwnerIds =
+    editingOccupancy === "owner" ? [...(property?.residentOwnerIds || [])] : [];
+  editingPrimaryResidentId =
+    editingOccupancy === "owner"
+      ? property?.primaryResidentId || editingResidentOwnerIds[0] || ""
+      : editingOccupancy === "tenant"
+        ? property?.primaryResidentId || tenantIds[0] || ""
+        : "";
+  renderPropertyOwnersTab();
+  renderPropertyTenantsTab();
+  syncPropertyResidencyTab();
+  syncPropertyOwnerRequirement();
   propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
   propertyForm.elements.receiptStatus.closest("label").hidden = !!property?.hasFeeReceipts;
   propertyForm.elements.communityFee.closest("label").hidden = !!property?.hasFeeReceipts;
@@ -729,8 +992,9 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
     ledgerHint = document.createElement("p");
     ledgerHint.dataset.feeLedgerHint = "";
     ledgerHint.className = "form-intro full";
-    propertyForm.elements.receiptStatus.closest("label").after(ledgerHint);
   }
+  // El aviso se lee antes que los importes: queda arriba de Moneda y Coeficiente.
+  propertyForm.querySelector('[data-property-pane="finance"] .form-grid')?.prepend(ledgerHint);
   ledgerHint.hidden = !property?.hasFeeReceipts;
   ledgerHint.textContent =
     "La cuota y el estado de los pagos se calculan a partir de los recibos. Gestiona los cobros desde el menú Cuotas, seleccionando la comunidad.";
@@ -780,8 +1044,63 @@ export function closePropertyEditor() {
   propertyDocumentsLibrary?.setEntity("");
 }
 
+/**
+ * Aplica el contexto de retorno tras crear una entidad relacionada desde el
+ * editor de inmuebles (por ejemplo, un inquilino dado de alta desde la pestaña
+ * Inquilinos).
+ *
+ * Si hay un contexto pendiente y coincide con el inmueble que aún se está
+ * editando, vincula la entidad creada a ese inmueble y refresca la pestaña
+ * correspondiente, de modo que al volver al formulario del inmueble el vínculo
+ * ya quede reflejado sin haber cerrado ni perdido los datos del padre.
+ * Devuelve true si se aplicó el vínculo.
+ */
+export function applyEditorReturnContext(savedChild) {
+  const ctx = state.ui.editorReturnContext;
+  state.ui.editorReturnContext = null;
+  if (!ctx || !savedChild || !savedChild.id) return false;
+  if (ctx.kind !== "property-tenant" || !ctx.propertyId) return false;
+  // Solo aplica si seguimos editando el mismo inmueble que originó la alta
+  if (state.ui.editingPropertyId !== ctx.propertyId) return false;
+  const property = state.properties.find((p) => p.id === ctx.propertyId);
+  if (!property) return false;
+  const tenant = state.tenants.find((t) => t.id === savedChild.id) || savedChild;
+  const owner = state.owners.find((o) => ownerTenants(o).some((t) => t.id === tenant.id));
+  if (
+    !owner ||
+    !editingPropertyPeople.ownerIds.includes(owner.id) ||
+    !tenantBelongsToCommunity(tenant, property.communityId)
+  ) {
+    return false;
+  }
+  if (!editingPropertyPeople.tenantIds.includes(tenant.id)) {
+    editingPropertyPeople.tenantIds.push(tenant.id);
+  }
+  renderPropertyTenantsTab();
+  return true;
+}
+
 export function visibleProperties() {
   return state.properties.filter((property) => hasPermission("property:read", property.id));
+}
+
+const PROPERTY_OCCUPANCY_LABELS = {
+  owner: "Vive el propietario",
+  tenant: "Vive otra persona",
+  vacant: "Sin ocupante",
+};
+
+function propertyOccupancyLabel(property) {
+  return PROPERTY_OCCUPANCY_LABELS[property?.occupancy] || "Sin especificar";
+}
+
+/** Nombre del contacto principal, sea propietario residente o inquilino. */
+function propertyResidentName(id) {
+  if (!id) return "";
+  const owner = state.owners.find((item) => item.id === id);
+  if (owner) return `${owner.name} ${owner.surname}`.trim();
+  const tenant = state.tenants.find((item) => item.id === id);
+  return tenant ? `${tenant.name} ${tenant.surname}`.trim() : "";
 }
 
 export function renderProperties() {
@@ -915,6 +1234,31 @@ export function renderProperties() {
           },
         },
         {
+          key: "occupancy",
+          label: "Ocupación",
+          value: (property) => {
+            const contact = propertyResidentName(property.primaryResidentId);
+            return [propertyOccupancyLabel(property), contact].filter(Boolean).join(" · ");
+          },
+          defaultVisible: true,
+          render: (property) => {
+            const wrap = document.createElement("div");
+            wrap.className = "property-occupancy-cell";
+            const badge = document.createElement("span");
+            badge.className = `status-badge ${property.occupancy === "vacant" ? "doc-pending-admin" : "doc-approved"}`;
+            badge.textContent = propertyOccupancyLabel(property);
+            wrap.append(badge);
+            const contact = propertyResidentName(property.primaryResidentId);
+            if (contact) {
+              const name = document.createElement("small");
+              name.className = "community-property-sub";
+              name.textContent = contact;
+              wrap.append(name);
+            }
+            return wrap;
+          },
+        },
+        {
           key: "receipts",
           label: "Estado recibos",
           value: (property) =>
@@ -944,7 +1288,7 @@ export function renderProperties() {
           render: (property) => {
             const wrap = document.createElement("div");
             wrap.className = "row-actions";
-            const btnInfo = iconBtn("btn-info", "Ver inmueble", `Ver ${property.plot}`, ICON_INFO);
+            const btnInfo = iconBtn("btn-info", "Ver inmueble", `Ver ${property.plot}`, ICON_VIEW);
             btnInfo.addEventListener("click", () =>
               openPropertyEditor(property.id, "general", true),
             );
@@ -1007,7 +1351,17 @@ export function renderProperties() {
   document.querySelector('[data-export-table="properties"]')?.remove?.();
   const exportWrap = createExportDropdown({
     tableId: "properties",
-    getView: () => propertyTable?.getExportState(),
+    getView: () => {
+      const view = propertyTable?.getExportState();
+      if (!view?.columns?.length) return view;
+      // La grilla muestra el contacto principal dentro de la columna Ocupación:
+      // la exportación lo conserva como columna propia para no perderlo.
+      const index = view.columns.indexOf("occupancy");
+      if (index === -1 || view.columns.includes("primaryResident")) return view;
+      const columns = [...view.columns];
+      columns.splice(index + 1, 0, "primaryResident");
+      return { ...view, columns };
+    },
     getFilters: () => ({ query: propertySearch?.value || "" }),
   });
   propertyTable.setExportControl?.(exportWrap);
@@ -1022,6 +1376,9 @@ export function openPropertyDetail(id) {
   const propOwnerIds = propertyOwnerIds(property);
   const linkedOwners = state.owners.filter((o) => propOwnerIds.includes(o.id));
   const linkedTenants = tenantsForProperty(property.id);
+  const residentOwnerIds = new Set(
+    property.occupancy === "owner" ? property.residentOwnerIds || [] : [],
+  );
 
   document.querySelector("#property-detail-title").textContent =
     property.plot || "Ficha del inmueble";
@@ -1030,6 +1387,10 @@ export function openPropertyDetail(id) {
     `${PROPERTY_TYPE_LABELS[property.propertyType] || "Inmueble"} · ${property.plot || "—"}`;
   document.querySelector("#property-detail-community").textContent =
     community?.name || property.communityName || "—";
+  document.querySelector("#property-detail-occupancy").textContent =
+    propertyOccupancyLabel(property);
+  document.querySelector("#property-detail-primary-resident").textContent =
+    propertyResidentName(property.primaryResidentId) || "Sin contacto declarado";
   document.querySelector("#property-detail-address").textContent = property.address || "—";
   document.querySelector("#property-detail-owner").textContent = linkedOwners.length
     ? linkedOwners.map((o) => `${o.name} ${o.surname}`).join(", ")
@@ -1087,7 +1448,7 @@ export function openPropertyDetail(id) {
     linkedOwners.forEach((o) => {
       const badge = document.createElement("span");
       badge.className = "status-badge";
-      badge.textContent = `👤 ${o.name} ${o.surname}`;
+      badge.textContent = `👤 ${o.name} ${o.surname}${residentOwnerIds.has(o.id) ? " · Reside" : ""}`;
       ownersListEl.append(badge);
     });
   }
@@ -1099,7 +1460,7 @@ export function openPropertyDetail(id) {
     linkedTenants.forEach((t) => {
       const badge = document.createElement("span");
       badge.className = "status-badge";
-      badge.textContent = `🔑 ${t.name} ${t.surname}`;
+      badge.textContent = `🔑 ${t.name} ${t.surname}${property.occupancy === "tenant" ? " · Reside" : ""}`;
       tenantsListEl.append(badge);
     });
   }
@@ -1133,13 +1494,21 @@ export function openPropertyDelete(id) {
   const inquilinos = tenantsForProperty(id);
   if (inquilinos.length > 0) {
     toast(
-      `No se puede eliminar “${p.plot}”: tiene ${inquilinos.length === 1 ? "un inquilino asociado" : "inquilinos asociados"}. Desvincula primero al inquilino.`,
+      `No se puede eliminar “${p.plot}”: tiene ${inquilinos.length === 1 ? "un contrato vigente" : `${inquilinos.length} contratos vigentes`}. Finaliza o desvincula el contrato antes de eliminarlo.`,
     );
     return;
   }
+  // Los contratos finalizados no bloquean el borrado: se conservan sin inmueble.
+  const historicos = state.tenants.filter(
+    (tenant) => tenant.propertyId === id && getTenantContractStatus(tenant) !== "Vigente",
+  );
   state.ui.deletingPropertyId = id;
   document.querySelector("#property-delete-message").textContent =
-    `Vas a eliminar el inmueble “${p.plot}” (${p.address}). Esta acción no se puede deshacer.`;
+    `Vas a eliminar el inmueble “${p.plot}” (${p.address}).` +
+    (historicos.length
+      ? " Sus contratos finalizados se conservarán desvinculados del inmueble."
+      : "") +
+    " Esta acción no se puede deshacer.";
   propertyDeleteDialog.showModal();
 }
 
@@ -1168,6 +1537,21 @@ document.querySelector("#property-detail-edit-btn").addEventListener("click", ()
   const targetId = state.ui.viewingPropertyId;
   closePropertyDetail();
   if (targetId) openPropertyEditor(targetId);
+});
+
+// Aviso del inmueble: se apoya en el compositor de Comunicación, que ya sabe
+// dirigirse a los propietarios del inmueble (y, si se pide, a sus residentes).
+document.querySelector("#btn-property-notify")?.addEventListener("click", async () => {
+  const propertyId = state.ui.editingPropertyId;
+  const property = state.properties.find((item) => item.id === propertyId);
+  if (!property) return;
+  await openCommunicationComposer({
+    communityId: property.communityId,
+    title: `Aviso del inmueble ${property.plot}`,
+    audienceMode: "selected",
+    propertyIds: [property.id],
+    includeResidents: false,
+  });
 });
 
 // Select de comunidad con buscador integrado
@@ -1222,6 +1606,21 @@ propertyForm.addEventListener("submit", async (event) => {
     selectedOwnerIds.push(ownerEditorContextId);
   }
   const selectedTenantIds = [...editingPropertyPeople.tenantIds];
+  // La residencia solo admite titulares del inmueble o contratos vigentes.
+  const residentOwnerIds =
+    editingOccupancy === "owner"
+      ? editingResidentOwnerIds.filter((ownerId) => selectedOwnerIds.includes(ownerId))
+      : [];
+  const primaryResidentId =
+    editingOccupancy === "owner"
+      ? residentOwnerIds.includes(editingPrimaryResidentId)
+        ? editingPrimaryResidentId
+        : residentOwnerIds[0] || ""
+      : editingOccupancy === "tenant"
+        ? selectedTenantIds.includes(editingPrimaryResidentId)
+          ? editingPrimaryResidentId
+          : selectedTenantIds[0] || ""
+        : "";
   const cadastralRef = normalizeCadastralRef(values.cadastralRef);
   const participationCoef = String(values.participationCoef || "")
     .trim()
@@ -1229,7 +1628,7 @@ propertyForm.addEventListener("submit", async (event) => {
 
   const messages = [];
   if (!community) messages.push("Selecciona una comunidad existente.");
-  if (selectedOwnerIds.length === 0)
+  if (selectedOwnerIds.length === 0 && !propertyOwnerAssignmentOptional())
     messages.push("Debes asociar al menos un propietario al inmueble (1 o más).");
   const linkedTenantRecords = state.owners.flatMap((owner) =>
     ownerTenants(owner)
@@ -1258,6 +1657,18 @@ propertyForm.addEventListener("submit", async (event) => {
     if (linkedTenantRecords.some((tenant) => !tenantBelongsToCommunity(tenant, community.id))) {
       messages.push("Los inquilinos asociados deben pertenecer a la comunidad del inmueble.");
     }
+  }
+  if (editingOccupancy === "owner") {
+    if (selectedOwnerIds.length === 0)
+      messages.push("Asocia al menos un propietario o marca el inmueble como «Sin ocupante».");
+    else if (selectedTenantIds.length)
+      messages.push(
+        "Un inmueble ocupado por el propietario no puede tener inquilinos vinculados. Desvincúlalos o elige «Vive otra persona».",
+      );
+  } else if (editingOccupancy === "vacant" && selectedTenantIds.length) {
+    messages.push(
+      "Un inmueble sin ocupante no puede tener inquilinos vinculados. Desvincúlalos primero.",
+    );
   }
   if (!values.address || !values.address.trim()) messages.push("La dirección es obligatoria.");
   if (!values.propertyType) messages.push("Selecciona el tipo de inmueble.");
@@ -1315,6 +1726,9 @@ propertyForm.addEventListener("submit", async (event) => {
     linkTenantIds: selectedTenantIds.filter((id) => !initialPropertyTenantIds.includes(id)),
     unlinkTenantIds: initialPropertyTenantIds.filter((id) => !selectedTenantIds.includes(id)),
     currency: values.currency || "",
+    occupancy: editingOccupancy,
+    residentOwnerIds,
+    primaryResidentId,
     address: values.address.trim(),
     propertyType: values.propertyType,
     plot: values.plot.trim(),

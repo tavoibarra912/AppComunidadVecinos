@@ -32,13 +32,15 @@ import {
 import { createDataTable } from "../table.js";
 import { createExportDropdown } from "../export-client.js";
 import { createRichText } from "../rich-text.js";
-import { openPropertyDetail } from "./inmuebles.js";
+import { openPropertyDetail, applyEditorReturnContext } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
 import { createDocumentLibrary } from "../document-library.js";
+import { ownerHasSameDocument } from "../tenant-form.js";
 
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
-const ICON_INFO = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+// Icono de "ver" real (ojo) para los botones de acción de inquilinos.
+const ICON_VIEW = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const ICON_EDIT = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>`;
 const ICON_DELETE = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
 const ICON_CASCADE_DELETE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h12M13 6v3M5 6v14a1 1 0 0 0 1 1h4M7 6V4h4v2"/><path d="M8 10v7"/><path d="M15 12h7M17 10v4M12 18h10M19 16v4"/></svg>`;
@@ -323,7 +325,7 @@ export function renderTenants() {
               "btn-info",
               "Más info",
               `Ver información de ${tenant.name} ${tenant.surname}`,
-              ICON_INFO,
+              ICON_VIEW,
             );
             btnInfo.addEventListener("click", () => openTenantEditor(tenant.id, owner.id, true));
             wrap.append(btnInfo);
@@ -484,11 +486,92 @@ function switchTenantDialogTab(tab) {
   }
 }
 
+function tenantTabForField(element) {
+  return element?.closest?.("[data-tenant-pane]")?.dataset.tenantPane || "general";
+}
+
+/** Control visible y enfocable de un campo (los combos usan un buscador). */
+function tenantFieldFocusTarget(element) {
+  if (!element) return null;
+  const combo = element.closest?.(".combo-box");
+  const search = combo?.querySelector(".combo-box-input");
+  if (search && !search.disabled && !search.hidden) return search;
+  if (!element.disabled && !element.hidden) return element;
+  const label = element.closest?.("label");
+  return (
+    label?.querySelector("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)") ||
+    null
+  );
+}
+
+function clearTenantValidationMarks() {
+  document.querySelectorAll("#tenant-dialog .community-editor-tab.has-error").forEach((tab) => {
+    tab.classList.remove("has-error");
+    tab.removeAttribute("aria-invalid");
+  });
+  tenantForm.querySelectorAll("label.field-error").forEach((label) => {
+    label.classList.remove("field-error");
+  });
+  tenantForm.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+    field.removeAttribute("aria-invalid");
+  });
+}
+
+/**
+ * Abre la primera pestaña con error, marca todas las pestañas afectadas y sus
+ * campos, enfoca el primer campo inválido y mantiene el resumen habitual.
+ */
+function revealTenantValidationProblems(problems) {
+  clearTenantValidationMarks();
+  const tabs = [
+    ...document.querySelectorAll("#tenant-dialog .community-editor-tab[data-tenant-tab]"),
+  ];
+  const problemsByTab = new Map();
+  problems.forEach((problem) => {
+    const tab = tenantTabForField(problem.element);
+    if (!problemsByTab.has(tab)) problemsByTab.set(tab, []);
+    problemsByTab.get(tab).push(problem);
+  });
+  tabs.forEach((tab) => {
+    if (!problemsByTab.has(tab.dataset.tenantTab)) return;
+    tab.classList.add("has-error");
+    tab.setAttribute("aria-invalid", "true");
+  });
+  const firstTab = tabs.find((tab) => problemsByTab.has(tab.dataset.tenantTab))?.dataset
+    .tenantTab;
+  if (firstTab) switchTenantDialogTab(firstTab);
+
+  const marked = new Set();
+  problems.forEach(({ element }) => {
+    if (!element || marked.has(element)) return;
+    marked.add(element);
+    const label = element.closest("label");
+    if (!label) return;
+    label.classList.add("field-error");
+    element.setAttribute("aria-invalid", "true");
+  });
+
+  const firstProblem = firstTab
+    ? problems.find((problem) => tenantTabForField(problem.element) === firstTab)
+    : problems[0];
+  const focusTarget = tenantFieldFocusTarget(firstProblem?.element);
+  if (focusTarget) focusTarget.focus();
+  showValidationErrors(
+    problems.map((problem) => problem.message),
+    "Revisa los datos del inquilino",
+  );
+  const summary = document.querySelector("#validation-dialog");
+  if (summary?.open && focusTarget) {
+    summary.addEventListener("close", () => focusTarget.focus(), { once: true });
+  }
+}
+
 export function openTenantEditor(
   id = null,
   ownerId = state.ui.viewingOwnerId,
   readonly = false,
   initialTab = "general",
+  initialPropertyId = "",
 ) {
   const permission = readonly ? "tenant:read" : id ? "tenant:manage" : "tenant:create";
   if (!requirePermission(permission, id || ownerId || "")) return;
@@ -503,7 +586,7 @@ export function openTenantEditor(
   tenantForm.reset();
   tenantFormError.textContent = "";
   tenantEditingDocs = tenant?.documents ? JSON.parse(JSON.stringify(tenant.documents)) : {};
-  editingTenantPropertyId = tenant?.propertyId || null;
+  editingTenantPropertyId = tenant?.propertyId || initialPropertyId || null;
   tenantResetContactVerification(tenant);
 
   tenantOwnerSelect.disabled = !!tenant;
@@ -639,14 +722,14 @@ function renderTenantPropertyTab() {
     "btn-info",
     "Ver inmueble",
     `Ver inmueble ${property.plot}`,
-    `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+    ICON_VIEW,
   );
   viewBtn.addEventListener("click", () => openPropertyDetail(property.id));
   const unlinkBtn = iconBtn(
     "btn-delete",
     "Desvincular",
     `Desvincular ${property.plot}`,
-    `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path></svg>`,
+    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
   );
   unlinkBtn.addEventListener("click", () => {
     editingTenantPropertyId = null;
@@ -1128,6 +1211,7 @@ tenantForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (tenantDialogReadOnly) return;
   tenantFormError.textContent = "";
+  clearTenantValidationMarks();
   const property = state.properties.find((item) => item.id === editingTenantPropertyId);
   const selectedOwnerId = tenantOwnerSelect.value || "";
   const derivedOwnerId = property?.ownerIds?.includes(selectedOwnerId)
@@ -1147,44 +1231,44 @@ tenantForm.addEventListener("submit", async (event) => {
   const values = Object.fromEntries(formData);
   const phone = (values.phone || "").replace(/\D/g, "");
   const email = (values.email || "").trim().toLowerCase();
-  const messages = [];
-  if (!(values.name || "").trim()) messages.push("El nombre es obligatorio.");
-  if (!(values.surname || "").trim()) messages.push("Los apellidos son obligatorios.");
+  const problems = [];
+  const addProblem = (message, field) => {
+    const element = typeof field === "string" ? tenantForm.elements[field] : field;
+    problems.push({ message, element });
+  };
+  if (!(values.name || "").trim()) addProblem("El nombre es obligatorio.", "name");
+  if (!(values.surname || "").trim()) addProblem("Los apellidos son obligatorios.", "surname");
   const documentType = (values.documentType || "DNI").trim().toUpperCase();
   const documentId = (values.documentId || "").trim().toUpperCase();
-  if (!documentType) messages.push("El tipo de documento es obligatorio.");
-  else if (!documentId) messages.push("El DNI / NIE / CIF es obligatorio.");
+  if (!documentType) addProblem("El tipo de documento es obligatorio.", "documentType");
+  else if (!documentId) addProblem("El DNI / NIE / CIF es obligatorio.", "documentId");
   else if (!isValidIdentityDocument(documentId, documentType))
-    messages.push(
+    addProblem(
       `El ${documentType} "${documentId}" no es válido según el algoritmo oficial de España.`,
+      "documentId",
     );
   if (!/^[6-9]\d{8}$/.test(phone))
-    messages.push("El teléfono principal debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.");
-  if (!isValidEmail(email)) messages.push("Introduce una dirección de email válida.");
-  if (!editingTenantPropertyId) messages.push("Selecciona un inmueble asociado a este inquilino.");
+    addProblem(
+      "El teléfono principal debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.",
+      "phone",
+    );
+  if (!isValidEmail(email))
+    addProblem("Introduce una dirección de email válida.", "email");
+  if (!editingTenantPropertyId)
+    addProblem("Selecciona un inmueble asociado a este inquilino.", tenantPropertySelect);
   if (!isValidDateInput(values.contractStart))
-    messages.push("Indica una fecha de inicio de contrato válida.");
+    addProblem("Indica una fecha de inicio de contrato válida.", "contractStart");
   if (values.contractEnd && !isValidDateInput(values.contractEnd))
-    messages.push("Indica una fecha de fin de contrato válida.");
+    addProblem("Indica una fecha de fin de contrato válida.", "contractEnd");
   else if (values.contractStart && values.contractEnd && values.contractEnd < values.contractStart)
-    messages.push("La fecha de fin no puede ser anterior al inicio del contrato.");
+    addProblem(
+      "La fecha de fin no puede ser anterior al inicio del contrato.",
+      "contractEnd",
+    );
   // verification checks
   // Verificación de email opcional para inquilinos (solo se valida formato)
-  if (messages.length) {
-    const tabMark = messages.find((m) => typeof m === "string" && m.startsWith("__tab:"));
-    if (tabMark) switchTenantDialogTab(tabMark.slice(6));
-    else if (
-      messages.some(
-        (m) => m.includes("nombre") || m.includes("apellidos") || m.includes("documento"),
-      )
-    )
-      switchTenantDialogTab("general");
-    else if (messages.some((m) => m.includes("teléfono") || m.includes("email")))
-      switchTenantDialogTab("contact");
-    else if (messages.some((m) => m.includes("inmueble"))) switchTenantDialogTab("property");
-    else if (messages.some((m) => m.includes("contrato") || m.includes("fecha")))
-      switchTenantDialogTab("contract");
-    showValidationErrors(messages, "Revisa los siguientes datos");
+  if (problems.length) {
+    revealTenantValidationProblems(problems);
     return;
   }
   const submittedAuthorizations = formData.getAll("authorizations");
@@ -1249,7 +1333,16 @@ tenantForm.addEventListener("submit", async (event) => {
   await refreshState();
   limpiarGuardia(tenantForm);
   closeTenantEditor();
-  toast(isEditing ? "Inquilino actualizado." : "Inquilino creado.");
+  applyEditorReturnContext(tenant);
+  const sameOwnerDocument = !isEditing && ownerHasSameDocument(tenant.documentId, owner);
+  toast(
+    sameOwnerDocument
+      ? "Inquilino creado. El propietario ya figura como habitante del inmueble; no es necesario un contrato consigo mismo."
+      : isEditing
+        ? "Inquilino actualizado."
+        : "Inquilino creado.",
+    sameOwnerDocument ? "info" : undefined,
+  );
 });
 
 // openTenantDetail / closeTenantDetail unchanged

@@ -182,3 +182,22 @@ test("UI auditoría: filtra y pagina por API, trata contenido como texto y recha
   assert.equal(ui.get("#audit-results").children.length, 0);
   assert.match(ui.get("#audit-status").textContent, /No tienes permiso/);
 });
+
+test("H-09: al iniciar sesión se descarta la ruta de la cuenta anterior", async () => {
+  let routed = 0;
+  const ui = fixture("auth", ["startSession"], {
+    refreshState: async () => {},
+    renderUserSelector: () => {},
+    limpiarGuardia: () => {},
+    applyRoleUI: () => {},
+    handleRouting: async () => {
+      routed += 1;
+    },
+  });
+  ui.window.location.pathname = "/administracion";
+  ui.window.location.hash = "#home";
+  await ui.startSession({ nombre: "urucp1" });
+  assert.equal(ui.window.location.hash, "");
+  assert.equal(ui.window.history.value, "/");
+  assert.equal(routed, 1);
+});
