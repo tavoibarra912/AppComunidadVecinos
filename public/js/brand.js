@@ -11,6 +11,15 @@ const FONT_STACKS = {
   georgia: 'Georgia, "Times New Roman", serif',
 };
 
+const FONT_FALLBACKS = {
+  sans: "sans-serif",
+  serif: "serif",
+  mono: "monospace",
+};
+const MAX_CUSTOM_FONTS = 4;
+const CUSTOM_FONT_ID = /^custom-[a-z0-9][a-z0-9-]{7,40}$/;
+const FONT_NAME = /^[\p{L}\p{N} .,'&()_-]{1,60}$/u;
+const FONT_DATA_URL = /^data:font\/(woff2|woff|ttf|otf);base64,[A-Za-z0-9+/]+={0,2}$/;
 const DENSITIES = ["compacta", "normal", "amplia"];
 const HEX = /^#[0-9a-f]{6}$/i;
 const FALLBACK = {
@@ -24,6 +33,9 @@ const FALLBACK = {
   colorTextoSuave: "#64748b",
   colorBorde: "#e4e9ef",
   tipografia: "inter",
+  tipografiaTitulos: "inter",
+  tipografiaBotones: "inter",
+  tipografias: [],
   tamanoBase: 14,
   radioBordes: 5,
   densidad: "normal",
@@ -44,6 +56,38 @@ const numberOr = (value, fallback, min, max) => {
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.round(number)));
 };
+
+function fontFileInfo(dataUrl) {
+  if (typeof dataUrl !== "string" || dataUrl.length > 400_000) return null;
+  const match = /^data:(font\/(woff2|woff|ttf|otf));base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+  if (!match) return null;
+  const mime = match[1];
+  return {
+    dataUrl,
+    format: mime === "font/ttf" ? "truetype" : mime === "font/otf" ? "opentype" : mime.slice(5),
+  };
+}
+
+function normalizeCustomFonts(value) {
+  if (!Array.isArray(value)) return [];
+  const fonts = [];
+  const ids = new Set();
+  const names = new Set();
+  for (const font of value.slice(0, MAX_CUSTOM_FONTS)) {
+    if (!font || typeof font !== "object" || Array.isArray(font)) continue;
+    const id = typeof font.id === "string" ? font.id.trim() : "";
+    const nombre = typeof font.nombre === "string" ? font.nombre.trim() : "";
+    const respaldo = Object.hasOwn(FONT_FALLBACKS, font.respaldo) ? font.respaldo : "";
+    if (!CUSTOM_FONT_ID.test(id) || !FONT_NAME.test(nombre) || !respaldo) continue;
+    const nameKey = nombre.toLowerCase();
+    if (ids.has(id) || names.has(nameKey)) continue;
+    const file = fontFileInfo(font.dataUrl);
+    ids.add(id);
+    names.add(nameKey);
+    fonts.push({ id, nombre, respaldo, ...(file ? { dataUrl: file.dataUrl } : {}) });
+  }
+  return fonts;
+}
 
 export function readInjectedBrand() {
   try {
@@ -66,12 +110,34 @@ export function readInjectedPublicSettings() {
 export function brandStyle(brand = FALLBACK) {
   const color = (key) => hexOr(brand[key], FALLBACK[key]);
   const acento = color("colorAcento");
-  const tipografia = Object.hasOwn(FONT_STACKS, brand.tipografia)
-    ? FONT_STACKS[brand.tipografia]
-    : FONT_STACKS.inter;
+  const fonts = Array.isArray(brand.tipografias) ? brand.tipografias : [];
+  const fontFamily = (id) => {
+    const custom = fonts.find((font) => font && font.id === id);
+    if (custom) {
+      const safeId = CUSTOM_FONT_ID.test(custom.id) ? custom.id : "";
+      if (!safeId) return FONT_STACKS.inter;
+      const file = fontFileInfo(custom.dataUrl);
+      const fallback = FONT_FALLBACKS[custom.respaldo] || FONT_FALLBACKS.sans;
+      const family = file
+        ? `ACVFont-${safeId}`
+        : `"${String(custom.nombre || "Tipografía").replace(/[^\p{L}\p{N} .,'&()_-]/gu, "")}"`;
+      return `${family}, ${fallback}`;
+    }
+    return FONT_STACKS[id] || FONT_STACKS.inter;
+  };
+  const fontFaces = fonts
+    .map((font) => {
+      const file = fontFileInfo(font?.dataUrl);
+      if (!file || !CUSTOM_FONT_ID.test(font.id)) return "";
+      return `@font-face{font-family:"ACVFont-${font.id}";src:url("${file.dataUrl}") format("${file.format}");font-display:swap}`;
+    })
+    .join("");
+  const tipografia = fontFamily(brand.tipografia);
+  const tipografiaTitulos = fontFamily(brand.tipografiaTitulos || brand.tipografia);
+  const tipografiaBotones = fontFamily(brand.tipografiaBotones || brand.tipografia);
   const tamanoBase = numberOr(brand.tamanoBase, FALLBACK.tamanoBase, 12, 18);
   const radioBordes = numberOr(brand.radioBordes, FALLBACK.radioBordes, 0, 16);
-  return `:root:root{--nav:${color("colorPrimario")};--brand:${acento};--brand-dark:color-mix(in srgb,${acento} 80%,black);--canvas:${color("colorFondo")};--surface:${color("colorSuperficie")};--ink:${color("colorTexto")};--muted:${color("colorTextoSuave")};--line:${color("colorBorde")};--font-ui:${tipografia};--font-size-base:${tamanoBase}px;--radius:${radioBordes}px}`;
+  return `${fontFaces}:root:root{--nav:${color("colorPrimario")};--brand:${acento};--brand-dark:color-mix(in srgb,${acento} 80%,black);--canvas:${color("colorFondo")};--surface:${color("colorSuperficie")};--ink:${color("colorTexto")};--muted:${color("colorTextoSuave")};--line:${color("colorBorde")};--font-ui:${tipografia};--font-heading:${tipografiaTitulos};--font-button:${tipografiaBotones};--font-size-base:${tamanoBase}px;--radius:${radioBordes}px}`;
 }
 
 function setBrandText(root, name) {
@@ -92,6 +158,10 @@ function setLogo(id, url) {
 
 export function applyBrand(brand = readInjectedBrand()) {
   const name = (brand.nombre || FALLBACK.nombre).trim() || FALLBACK.nombre;
+  const tipografias = normalizeCustomFonts(brand.tipografias);
+  const fontIds = new Set([...Object.keys(FONT_STACKS), ...tipografias.map((font) => font.id)]);
+  const tipografia = fontIds.has(brand.tipografia) ? brand.tipografia : "inter";
+  const pickFont = (value) => (fontIds.has(value) ? value : tipografia);
   const normalized = {
     ...brand,
     nombre: name,
@@ -102,7 +172,10 @@ export function applyBrand(brand = readInjectedBrand()) {
     colorTexto: hexOr(brand.colorTexto, FALLBACK.colorTexto),
     colorTextoSuave: hexOr(brand.colorTextoSuave, FALLBACK.colorTextoSuave),
     colorBorde: hexOr(brand.colorBorde, FALLBACK.colorBorde),
-    tipografia: Object.hasOwn(FONT_STACKS, brand.tipografia) ? brand.tipografia : "inter",
+    tipografia,
+    tipografiaTitulos: pickFont(brand.tipografiaTitulos),
+    tipografiaBotones: pickFont(brand.tipografiaBotones),
+    tipografias,
     tamanoBase: numberOr(brand.tamanoBase, FALLBACK.tamanoBase, 12, 18),
     radioBordes: numberOr(brand.radioBordes, FALLBACK.radioBordes, 0, 16),
     densidad: DENSITIES.includes(brand.densidad) ? brand.densidad : "normal",
@@ -162,6 +235,9 @@ const COMMUNITY_STYLE_KEYS = [
   "colorTextoSuave",
   "colorBorde",
   "tipografia",
+  "tipografiaTitulos",
+  "tipografiaBotones",
+  "tipografias",
   "tamanoBase",
   "radioBordes",
   "densidad",

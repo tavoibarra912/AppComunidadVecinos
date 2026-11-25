@@ -245,3 +245,20 @@ test("brand.js: sin marca de estilo la comunidad conserva intactos los colores g
   assert.equal(brand.colorPrimario, "#0f3057");
   assert.equal(brand.colorAcento, "#e8743b");
 });
+
+test("brand.js: tipografías añadidas y variables por elemento", () => {
+  const fx = fixture({ nombre: "Marca global" });
+  const id = "custom-fuente-ui";
+  const dataUrl = `data:font/woff2;base64,${Buffer.from("wOF2" + "U".repeat(20)).toString("base64")}`;
+  const css = fx.brandStyle({
+    ...fx.readInjectedBrand(),
+    tipografia: id,
+    tipografiaTitulos: "georgia",
+    tipografiaBotones: id,
+    tipografias: [{ id, nombre: "Fuente UI", respaldo: "serif", dataUrl }],
+  });
+  assert.match(css, /@font-face/);
+  assert.match(css, new RegExp(`--font-ui:ACVFont-${id}, serif`));
+  assert.match(css, /--font-heading:Georgia/);
+  assert.match(css, new RegExp(`--font-button:ACVFont-${id}, serif`));
+});

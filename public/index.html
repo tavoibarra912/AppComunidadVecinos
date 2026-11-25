@@ -1778,17 +1778,39 @@
                   <input name="marcaColorBorde" type="color" />
                 </label>
 
-                <p class="form-section-title full">Tipografía y formato</p>
+                <p class="form-section-title full">Tipografías y formato</p>
+                <p class="form-intro full">
+                  Elige la tipografía de cada parte de la interfaz. Puedes añadir tipografías
+                  instaladas en los dispositivos o subir un archivo WOFF2, WOFF, TTF u OTF.
+                </p>
                 <label
-                  >Tipografía
-                  <select name="marcaTipografia">
-                    <option value="inter">Inter (predeterminada)</option>
-                    <option value="system">Sistema</option>
-                    <option value="arial">Arial</option>
-                    <option value="verdana">Verdana</option>
-                    <option value="georgia">Georgia</option>
-                  </select>
+                  >Texto general
+                  <select name="marcaTipografia"></select>
                 </label>
+                <label
+                  >Títulos
+                  <select name="marcaTipografiaTitulos"></select>
+                </label>
+                <label
+                  >Botones y navegación
+                  <select name="marcaTipografiaBotones"></select>
+                </label>
+                <div class="full font-library" id="marca-tipografias-editor">
+                  <div class="font-library-head">
+                    <div>
+                      <strong>Tipografías añadidas</strong>
+                      <p class="form-intro">
+                        Hasta 4 tipografías. El archivo es opcional: sin él se usa la fuente
+                        instalada en el dispositivo; con él se carga en la app.
+                      </p>
+                    </div>
+                    <button type="button" class="secondary-button" id="marca-add-tipografia">
+                      Añadir tipografía
+                    </button>
+                  </div>
+                  <div id="marca-tipografias-list" class="font-library-list"></div>
+                  <input type="hidden" name="marcaTipografiasState" />
+                </div>
                 <label
                   >Tamaño base del texto (px)
                   <input

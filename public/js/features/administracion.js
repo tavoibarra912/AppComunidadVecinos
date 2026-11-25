@@ -771,7 +771,30 @@ document
 const settingsForm = document.querySelector("#settings-form");
 const TIPOS_DOCUMENTO = ["pdf", "jpg", "jpeg", "png", "webp"];
 const DENSIDADES = ["compacta", "normal", "amplia"];
-const TIPOGRAFIAS = ["inter", "system", "arial", "verdana", "georgia"];
+const TIPOGRAFIAS_BASE = [
+  { id: "inter", nombre: "Inter (predeterminada)" },
+  { id: "system", nombre: "Sistema" },
+  { id: "arial", nombre: "Arial" },
+  { id: "verdana", nombre: "Verdana" },
+  { id: "georgia", nombre: "Georgia" },
+];
+const TIPOGRAFIAS = TIPOGRAFIAS_BASE.map((font) => font.id);
+const RESPALDOS_TIPOGRAFIA = [
+  { id: "sans", nombre: "Sans serif" },
+  { id: "serif", nombre: "Serif" },
+  { id: "mono", nombre: "Monoespaciada" },
+];
+const FONT_FALLBACKS = { sans: "sans-serif", serif: "serif", mono: "monospace" };
+const MAX_TIPOGRAFIAS = 4;
+const MAX_FONT_BYTES = 250_000;
+const CUSTOM_FONT_ID = /^custom-[a-z0-9][a-z0-9-]{7,40}$/;
+const FONT_NAME = /^[\p{L}\p{N} .,'&()_-]{1,60}$/u;
+const FONT_FILE_TYPES = {
+  woff2: "font/woff2",
+  woff: "font/woff",
+  ttf: "font/ttf",
+  otf: "font/otf",
+};
 const colorValue = (value, fallback) => (/^#[0-9a-fA-F]{6}$/.test(value || "") ? value : fallback);
 const numericValue = (element, fallback, min, max) => {
   if (element?.value === "" || element?.value == null) return fallback;
@@ -779,6 +802,244 @@ const numericValue = (element, fallback, min, max) => {
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.round(number)));
 };
+
+let marcaTipografias = [];
+
+function savedCustomFonts() {
+  const fonts = state.settings?.marca?.tipografias;
+  return Array.isArray(fonts) ? fonts.filter((font) => font && typeof font.id === "string") : [];
+}
+
+function fontOptions(customFonts = []) {
+  const options = TIPOGRAFIAS_BASE.map((font) => ({ ...font }));
+  const seen = new Set(options.map((font) => font.id));
+  for (const font of customFonts) {
+    if (!font || typeof font.id !== "string" || seen.has(font.id)) continue;
+    seen.add(font.id);
+    options.push({
+      id: font.id,
+      nombre: (typeof font.nombre === "string" && font.nombre.trim()) || "Tipografía sin nombre",
+    });
+  }
+  return options;
+}
+
+function validFontId(id, customFonts = savedCustomFonts()) {
+  return TIPOGRAFIAS.includes(id) || customFonts.some((font) => font.id === id);
+}
+
+function fillFontSelect(select, selected, customFonts = []) {
+  if (!select) return;
+  const options = fontOptions(customFonts);
+  select.replaceChildren(...options.map((font) => new Option(font.nombre, font.id)));
+  select.value = options.some((font) => font.id === selected) ? selected : "inter";
+}
+
+function normalizeFontsForEditor(value) {
+  return (Array.isArray(value) ? value : [])
+    .filter((font) => font && typeof font.id === "string")
+    .slice(0, MAX_TIPOGRAFIAS)
+    .map((font) => ({
+      id: font.id,
+      nombre: typeof font.nombre === "string" ? font.nombre : "",
+      respaldo: Object.hasOwn(FONT_FALLBACKS, font.respaldo) ? font.respaldo : "sans",
+      dataUrl: typeof font.dataUrl === "string" ? font.dataUrl : "",
+      fileName: typeof font.fileName === "string" ? font.fileName : "",
+      fileSize: Number(font.fileSize) || 0,
+    }));
+}
+
+function syncMarcaTipografiasState() {
+  const field = settingsForm?.elements.marcaTipografiasState;
+  if (field)
+    field.value = marcaTipografias
+      .map((font) => [font.id, font.nombre, font.respaldo, font.dataUrl.length].join(":"))
+      .join("|");
+}
+
+function renderMarcaFontSelects() {
+  if (!settingsForm) return;
+  for (const name of ["marcaTipografia", "marcaTipografiaTitulos", "marcaTipografiaBotones"]) {
+    const select = settingsForm.elements[name];
+    if (!select) continue;
+    fillFontSelect(select, select.value, marcaTipografias);
+  }
+}
+
+function fontFileError(file) {
+  const extension = (file.name.split(".").pop() || "").toLowerCase();
+  if (!Object.hasOwn(FONT_FILE_TYPES, extension))
+    return "Selecciona una fuente WOFF2, WOFF, TTF u OTF.";
+  if (!file.size) return "El archivo de la fuente está vacío.";
+  if (file.size > MAX_FONT_BYTES) return "La fuente no puede superar los 250 KB.";
+  return null;
+}
+
+function readFontFile(file) {
+  const error = fontFileError(file);
+  if (error) return Promise.reject(new Error(error));
+  const mime = FONT_FILE_TYPES[(file.name.split(".").pop() || "").toLowerCase()];
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = String(reader.result || "").split(",")[1] || "";
+      if (!base64) return reject(new Error("No se pudo leer el archivo de la fuente."));
+      resolve({
+        dataUrl: `data:${mime};base64,${base64}`,
+        fileName: file.name,
+        fileSize: file.size,
+      });
+    };
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo de la fuente."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatFontSize(bytes) {
+  if (!bytes) return "";
+  return bytes >= 1024 ? `${Math.round(bytes / 1024)} KB` : `${bytes} B`;
+}
+
+function renderMarcaTipografias() {
+  const list = document.querySelector("#marca-tipografias-list");
+  if (!list) return;
+  list.replaceChildren();
+  marcaTipografias.forEach((font, index) => {
+    const row = document.createElement("div");
+    row.className = "custom-font-row";
+    row.dataset.fontId = font.id;
+
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "Nombre";
+    const name = document.createElement("input");
+    name.type = "text";
+    name.value = font.nombre;
+    name.maxLength = 60;
+    name.placeholder = "Ej.: Trebuchet MS";
+    name.setAttribute("aria-label", `Nombre de la tipografía ${index + 1}`);
+    name.addEventListener("input", () => {
+      font.nombre = name.value;
+      renderMarcaFontSelects();
+      syncMarcaTipografiasState();
+      settingsForm.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    nameLabel.append(name);
+
+    const fallbackLabel = document.createElement("label");
+    fallbackLabel.textContent = "Respaldo";
+    const fallback = document.createElement("select");
+    fallback.setAttribute("aria-label", `Respaldo de la tipografía ${index + 1}`);
+    for (const option of RESPALDOS_TIPOGRAFIA) fallback.add(new Option(option.nombre, option.id));
+    fallback.value = font.respaldo;
+    fallback.addEventListener("change", () => {
+      font.respaldo = fallback.value;
+      syncMarcaTipografiasState();
+      settingsForm.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    fallbackLabel.append(fallback);
+
+    const fileLabel = document.createElement("label");
+    fileLabel.textContent = "Archivo (opcional)";
+    const file = document.createElement("input");
+    file.type = "file";
+    file.accept = ".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf";
+    file.setAttribute("aria-label", `Archivo de la tipografía ${index + 1}`);
+    const hint = document.createElement("p");
+    hint.className = "custom-font-hint";
+    const updateHint = () => {
+      hint.textContent = font.dataUrl
+        ? `Archivo cargado${font.fileName ? `: ${font.fileName}` : ""}${
+            font.fileSize ? ` (${formatFontSize(font.fileSize)})` : ""
+          }.`
+        : "Sin archivo: se usará la fuente instalada en el dispositivo.";
+    };
+    updateHint();
+    file.addEventListener("change", async () => {
+      const selected = file.files?.[0];
+      if (!selected) return;
+      try {
+        const loaded = await readFontFile(selected);
+        font.dataUrl = loaded.dataUrl;
+        font.fileName = loaded.fileName;
+        font.fileSize = loaded.fileSize;
+        if (!font.nombre.trim()) font.nombre = selected.name.replace(/\.[^.]+$/, "").slice(0, 60);
+        updateHint();
+        renderMarcaFontSelects();
+        syncMarcaTipografiasState();
+        settingsForm.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (error) {
+        file.value = "";
+        showValidationErrors([error.message], "Revisa la tipografía");
+      }
+    });
+    fileLabel.append(file);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "icon-action-btn btn-delete";
+    remove.title = "Eliminar tipografía";
+    remove.setAttribute("aria-label", `Eliminar tipografía ${index + 1}`);
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      marcaTipografias.splice(index, 1);
+      renderMarcaTipografias();
+      settingsForm.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    row.append(nameLabel, fallbackLabel, fileLabel, remove, hint);
+    list.append(row);
+  });
+  const add = document.querySelector("#marca-add-tipografia");
+  if (add) add.disabled = marcaTipografias.length >= MAX_TIPOGRAFIAS;
+  renderMarcaFontSelects();
+  syncMarcaTipografiasState();
+}
+
+function addMarcaTipografia() {
+  if (marcaTipografias.length >= MAX_TIPOGRAFIAS) return;
+  marcaTipografias.push({
+    id: `custom-${crypto.randomUUID()}`,
+    nombre: "",
+    respaldo: "sans",
+    dataUrl: "",
+    fileName: "",
+    fileSize: 0,
+  });
+  renderMarcaTipografias();
+  const rows = document.querySelectorAll("#marca-tipografias-list .custom-font-row");
+  rows[rows.length - 1]?.querySelector('input[type="text"]')?.focus();
+  settingsForm.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function marcaTipografiaErrors() {
+  if (marcaTipografias.length > MAX_TIPOGRAFIAS)
+    return [`Puedes añadir como máximo ${MAX_TIPOGRAFIAS} tipografías.`];
+  const errors = [];
+  const ids = new Set();
+  const names = new Set();
+  marcaTipografias.forEach((font, index) => {
+    const nombre = font.nombre.trim();
+    if (!CUSTOM_FONT_ID.test(font.id))
+      errors.push(`La tipografía ${index + 1} tiene un identificador no válido.`);
+    else if (ids.has(font.id)) errors.push(`La tipografía ${index + 1} está duplicada.`);
+    else ids.add(font.id);
+    if (!nombre) errors.push(`La tipografía ${index + 1} no tiene nombre.`);
+    else if (!FONT_NAME.test(nombre))
+      errors.push(`El nombre de la tipografía ${index + 1} no es válido (máximo 60 caracteres).`);
+    else {
+      const key = nombre.toLowerCase();
+      if (names.has(key)) errors.push(`La tipografía «${nombre}» está repetida.`);
+      else names.add(key);
+    }
+    if (!Object.hasOwn(FONT_FALLBACKS, font.respaldo))
+      errors.push(`El respaldo de la tipografía ${index + 1} no es válido.`);
+    if (font.dataUrl && !/^data:font\/(woff2|woff|ttf|otf);base64,/.test(font.dataUrl))
+      errors.push(`El archivo de la tipografía ${index + 1} no es válido.`);
+  });
+  return errors;
+}
+
+document.querySelector("#marca-add-tipografia")?.addEventListener("click", addMarcaTipografia);
 
 let tenantAuthDraft = {};
 let tenantAuthCommunityId = "";
@@ -990,7 +1251,7 @@ function communityMarcaDefaults() {
     colorTexto: colorValue(marca.colorTexto, "#17212b"),
     colorTextoSuave: colorValue(marca.colorTextoSuave, "#64748b"),
     colorBorde: colorValue(marca.colorBorde, "#e4e9ef"),
-    tipografia: TIPOGRAFIAS.includes(marca.tipografia) ? marca.tipografia : "inter",
+    tipografia: validFontId(marca.tipografia) ? marca.tipografia : "inter",
     tamanoBase: Number.isFinite(Number(marca.tamanoBase)) ? Number(marca.tamanoBase) : 14,
     radioBordes: Number.isFinite(Number(marca.radioBordes)) ? Number(marca.radioBordes) : 5,
     densidad: DENSIDADES.includes(marca.densidad) ? marca.densidad : "normal",
@@ -1077,10 +1338,13 @@ function renderCommunitySettings() {
   setControl("#settings-community-colorTexto", colorValue(marca.colorTexto, "#17212b"));
   setControl("#settings-community-colorTextoSuave", colorValue(marca.colorTextoSuave, "#64748b"));
   setControl("#settings-community-colorBorde", colorValue(marca.colorBorde, "#e4e9ef"));
-  setControl(
-    "#settings-community-tipografia",
-    TIPOGRAFIAS.includes(marca.tipografia) ? marca.tipografia : "inter",
+  const communityTipografia = validFontId(marca.tipografia) ? marca.tipografia : "inter";
+  fillFontSelect(
+    document.querySelector("#settings-community-tipografia"),
+    communityTipografia,
+    savedCustomFonts(),
   );
+  setControl("#settings-community-tipografia", communityTipografia);
   setControl("#settings-community-tamanoBase", marca.tamanoBase ?? 14);
   setControl("#settings-community-radioBordes", marca.radioBordes ?? 5);
   setControl(
@@ -1318,6 +1582,8 @@ function renderSettings() {
   settingsForm.elements.mantenimiento.checked = !!s.mantenimiento;
   settingsForm.elements.mensajeMantenimiento.value = s.mensajeMantenimiento || "";
   const marca = s.marca || {};
+  marcaTipografias = normalizeFontsForEditor(marca.tipografias);
+  renderMarcaTipografias();
   settingsForm.elements.marcaNombre.value = marca.nombre || "Peñarrubia";
   settingsForm.elements.marcaColorPrimario.value = colorValue(marca.colorPrimario, "#11273e");
   settingsForm.elements.marcaColorAcento.value = colorValue(marca.colorAcento, "#198b84");
@@ -1326,9 +1592,18 @@ function renderSettings() {
   settingsForm.elements.marcaColorTexto.value = colorValue(marca.colorTexto, "#17212b");
   settingsForm.elements.marcaColorTextoSuave.value = colorValue(marca.colorTextoSuave, "#64748b");
   settingsForm.elements.marcaColorBorde.value = colorValue(marca.colorBorde, "#e4e9ef");
-  settingsForm.elements.marcaTipografia.value = TIPOGRAFIAS.includes(marca.tipografia)
-    ? marca.tipografia
-    : "inter";
+  const baseFont = validFontId(marca.tipografia, marcaTipografias) ? marca.tipografia : "inter";
+  fillFontSelect(settingsForm.elements.marcaTipografia, baseFont, marcaTipografias);
+  fillFontSelect(
+    settingsForm.elements.marcaTipografiaTitulos,
+    validFontId(marca.tipografiaTitulos, marcaTipografias) ? marca.tipografiaTitulos : baseFont,
+    marcaTipografias,
+  );
+  fillFontSelect(
+    settingsForm.elements.marcaTipografiaBotones,
+    validFontId(marca.tipografiaBotones, marcaTipografias) ? marca.tipografiaBotones : baseFont,
+    marcaTipografias,
+  );
   settingsForm.elements.marcaTamanoBase.value = marca.tamanoBase ?? 14;
   settingsForm.elements.marcaRadioBordes.value = marca.radioBordes ?? 5;
   settingsForm.elements.marcaDensidad.value = DENSIDADES.includes(marca.densidad)
@@ -1356,6 +1631,7 @@ function readMarca() {
   const file = settingsForm.elements.marcaLogo.files?.[0];
   return new Promise((resolve, reject) => {
     const build = (logoDataUrl) => {
+      const tipografia = settingsForm.elements.marcaTipografia.value || "inter";
       const marca = {
         nombre: settingsForm.elements.marcaNombre.value.trim(),
         colorPrimario: settingsForm.elements.marcaColorPrimario.value,
@@ -1365,7 +1641,15 @@ function readMarca() {
         colorTexto: settingsForm.elements.marcaColorTexto.value,
         colorTextoSuave: settingsForm.elements.marcaColorTextoSuave.value,
         colorBorde: settingsForm.elements.marcaColorBorde.value,
-        tipografia: settingsForm.elements.marcaTipografia.value,
+        tipografia,
+        tipografiaTitulos: settingsForm.elements.marcaTipografiaTitulos?.value || tipografia,
+        tipografiaBotones: settingsForm.elements.marcaTipografiaBotones?.value || tipografia,
+        tipografias: marcaTipografias.map((font) => ({
+          id: font.id,
+          nombre: font.nombre.trim(),
+          respaldo: font.respaldo,
+          ...(font.dataUrl ? { dataUrl: font.dataUrl } : {}),
+        })),
         tamanoBase: numericValue(settingsForm.elements.marcaTamanoBase, 14, 12, 18),
         radioBordes: numericValue(settingsForm.elements.marcaRadioBordes, 5, 0, 16),
         densidad: settingsForm.elements.marcaDensidad.value,
@@ -1392,6 +1676,11 @@ settingsForm?.addEventListener("submit", async (event) => {
   const brandingOnly =
     settingsTab === "estilo" && !hasPermission("admin:settings") && hasPermission("admin:branding");
   if (!brandingOnly && !requirePermission("admin:settings")) return;
+  const fontErrors = marcaTipografiaErrors();
+  if (fontErrors.length) {
+    showValidationErrors(fontErrors, "Revisa las tipografías");
+    return;
+  }
   if (!brandingOnly) {
     const authErrors = tenantAuthorizationErrors();
     if (authErrors.length) {
