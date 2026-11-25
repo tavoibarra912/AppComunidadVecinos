@@ -1640,6 +1640,8 @@ test("contadores UI: muestra fecha, imagen e incidencia y guarda la incidencia",
     assert.ok(section, "faltó la pantalla de contadores");
     const headers = [...section.querySelectorAll(".fee-table th")].map((th) => th.textContent);
     assert.ok(headers.includes("Fecha"));
+    assert.equal(section.querySelector('input[type="date"]'), null, "la fecha es de consulta");
+    assert.equal(section.querySelector("time").dateTime, "2026-11-02");
     assert.ok(headers.includes("Imagen"));
     assert.ok(headers.includes("Incidencia"));
     assert.match(section.textContent, /Parcela 1/);
@@ -1667,6 +1669,172 @@ test("contadores UI: muestra fecha, imagen e incidencia y guarda la incidencia",
     assert.equal(sent[2].date, "2026-11-02");
     assert.equal(save.disabled, true, "vuelve a quedar sin cambios pendientes");
     assert.match(section.textContent, /Guardado/);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("contadores UI: sube las fotos al inmueble y al servicio de su lectura", async () => {
+  const f = fixture();
+  try {
+    const root = f.w.document.querySelector("#community-editor-fees");
+    f.w.feeTest.mountFees(root, "community", "c1");
+    await flush();
+    click(f.w, "Contadores", root);
+    click(f.w, "Adjuntar fotos del contador", root);
+    await flush();
+    const body = f.w.document.querySelector("#fee-dialog-body");
+    assert.match(body.textContent, /Parcela|inmueble/);
+    const input = body.querySelector('input[type="file"]');
+    assert.ok(input.multiple);
+    Object.defineProperty(input, "files", {
+      value: [new f.w.File(["foto"], "contador.jpg", { type: "image/jpeg" })],
+    });
+    const original = f.w.api.fees;
+    f.w.api.fees = async (route, method, payload) => {
+      if (route === "/services/s1/reading-photos/p1" && method === "POST") {
+        f.calls.push([route, method, payload]);
+        return { id: "photo1", fileName: "contador.jpg", kind: "reading", propertyId: "p1" };
+      }
+      return original(route, method, payload);
+    };
+    click(f.w, "Subir fotos del contador", body);
+    await flush();
+    const sent = f.calls.find((call) => call[0] === "/services/s1/reading-photos/p1");
+    assert.ok(sent);
+    assert.equal(sent[2].get("file").name, "contador.jpg");
+    assert.equal(f.w.document.querySelector("#fee-dialog").open, false);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("derrama y servicio: certificado y acciones comparten cabecera aun sin permiso de exportar", async () => {
+  const f = fixture();
+  try {
+    const root = f.w.document.querySelector("#community-editor-fees");
+    f.w.feeTest.mountFees(root, "community", "c1");
+    await flush();
+    for (const tab of ["Derramas", "Servicios"]) {
+      click(f.w, tab, root);
+      await flush();
+      const heading = root.querySelector(".fee-heading-with-certificate");
+      assert.equal(
+        heading.querySelector(".table-list-actions > .fee-certificate-action").textContent,
+        "Certificado de deuda",
+      );
+      const certificate = heading.querySelector(".fee-certificate-action");
+      assert.match(certificate.nextElementSibling.textContent, /Registrar cobro/);
+      assert.equal(certificate.parentElement, certificate.nextElementSibling.parentElement);
+      assert.ok(heading.querySelector('.table-list-actions [aria-label="Actualizar"]'));
+      assert.match(heading.querySelector(".table-list-actions").textContent, /Registrar cobro/);
+    }
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("contadores UI: amplía fotos y permite borrar una o varias sin cerrar la galería", async () => {
+  const f = fixture();
+  try {
+    const photos = ["uno.jpg", "dos.png", "tres.webp"].map((fileName, i) => ({
+      id: `photo-${i}`,
+      fileName,
+      kind: "reading",
+      propertyId: "p1",
+    }));
+    f.data.meters[0].photos = photos;
+    const original = f.w.api.fees;
+    f.w.api.fees = async (route, method, body) => {
+      if (route.startsWith("/service-attachments/") && method === "DELETE") {
+        f.calls.push([route, method]);
+        return { ok: true };
+      }
+      return original(route, method, body);
+    };
+    const root = f.w.document.querySelector("#community-editor-fees");
+    f.w.feeTest.mountFees(root, "community", "c1");
+    await flush();
+    click(f.w, "Contadores", root);
+    click(f.w, "Ver fotos del contador de Parcela 1", root);
+    await flush();
+    const body = f.w.document.querySelector("#fee-dialog-body");
+    const preview = () => body.querySelector(".fee-meter-preview img");
+    assert.match(preview().src, /photo-0\/download\?preview=1$/);
+    assert.equal(body.querySelectorAll(".fee-meter-photo-card").length, 3);
+    click(f.w, "Ampliar dos.png", body);
+    await flush();
+    assert.match(preview().src, /photo-1\/download\?preview=1$/);
+    assert.match(body.querySelector("figcaption").textContent, /2 de 3.*dos.png/);
+    click(f.w, "Eliminar dos.png", body);
+    await flush();
+    assert.equal(f.calls.filter((call) => call[1] === "DELETE").length, 0);
+    click(f.w, "Cancelar eliminación", body);
+    await flush();
+    assert.equal(f.data.meters[0].photos.length, 3);
+    click(f.w, "Eliminar dos.png", body);
+    await flush();
+    click(f.w, "Eliminar foto", body);
+    await flush();
+    assert.equal(body.querySelectorAll(".fee-meter-photo-card").length, 2);
+    assert.match(preview().src, /photo-0/);
+    assert.equal(f.w.document.querySelector("#fee-dialog").open, true);
+    assert.equal(f.w.document.querySelector("#fee-dialog").dataset.busy, "false");
+    for (const input of body.querySelectorAll('.fee-meter-photo-card input[type="checkbox"]')) {
+      input.checked = true;
+      input.dispatchEvent(new f.w.Event("change", { bubbles: true }));
+    }
+    click(f.w, "Eliminar fotos seleccionadas", body);
+    await flush();
+    click(f.w, "Eliminar 2 fotos", body);
+    await flush();
+    assert.equal(body.querySelectorAll(".fee-meter-photo-card").length, 0);
+    assert.equal(preview(), null);
+    assert.match(body.textContent, /todavía no tiene fotos/);
+    assert.equal(f.data.meters[0].photos.length, 0);
+    assert.equal(f.calls.filter((call) => call[1] === "DELETE").length, 3);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("contadores UI: un error al borrar conserva las fotos pendientes y permite reintentar", async () => {
+  const f = fixture();
+  try {
+    f.data.meters[0].photos = [
+      { id: "photo-0", fileName: "uno.jpg" },
+      { id: "photo-1", fileName: "dos.jpg" },
+    ];
+    const original = f.w.api.fees;
+    f.w.api.fees = async (route, method, body) => {
+      if (method === "DELETE") {
+        if (route.includes("photo-1")) throw new Error("No se pudo eliminar la foto");
+        return { ok: true };
+      }
+      return original(route, method, body);
+    };
+    const root = f.w.document.querySelector("#community-editor-fees");
+    f.w.feeTest.mountFees(root, "community", "c1");
+    await flush();
+    click(f.w, "Contadores", root);
+    click(f.w, "Adjuntar fotos del contador", root);
+    const body = f.w.document.querySelector("#fee-dialog-body");
+    for (const input of body.querySelectorAll('.fee-meter-photo-card input[type="checkbox"]')) {
+      input.checked = true;
+      input.dispatchEvent(new f.w.Event("change"));
+    }
+    click(f.w, "Eliminar fotos seleccionadas", body);
+    await flush();
+    click(f.w, "Eliminar 2 fotos", body);
+    await flush();
+    assert.equal(body.querySelectorAll(".fee-meter-photo-card").length, 1);
+    assert.match(body.textContent, /dos.jpg/);
+    assert.deepEqual(
+      f.data.meters[0].photos.map((p) => p.id),
+      ["photo-1"],
+    );
+    assert.match(f.w.document.querySelector("[data-fee-error]").textContent, /No se pudo eliminar/);
+    assert.equal(f.w.document.querySelector("#fee-dialog").dataset.busy, "false");
   } finally {
     f.dom.window.close();
   }

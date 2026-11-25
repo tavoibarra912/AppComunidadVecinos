@@ -849,8 +849,11 @@ function renderPanel(root, ctx) {
       el("h3", serviceTab ? "Servicios" : assessmentTab ? "Derramas" : "Cuotas ordinarias"),
     );
   const tools = el("div", undefined, "fee-toolbar");
-  if (ctx.kind === "community" && manage)
-    tools.append(button("Certificado de deuda", () => certificateDialog(ctx)));
+  let certificate = null;
+  if (ctx.kind === "community" && manage) {
+    certificate = button("Certificado de deuda", () => certificateDialog(ctx));
+    tools.append(certificate);
+  }
   // En derramas y servicios el registro de cobros vive en la cabecera de la sección.
   let sectionPayment = null;
   if (!assessmentTab && !serviceTab && ctx.kind === "community" && canConfigure)
@@ -903,10 +906,22 @@ function renderPanel(root, ctx) {
   if (serviceTab && !manage) informativeServiceSection(root, data, ctx);
   // En derramas y servicios el refresco y el registro de cobros acompañan a exportar en la
   // cabecera de la sección, pegados a la derecha y a la misma altura.
-  const sectionTools = root.querySelector(".fee-section-heading .table-list-actions");
+  const sectionHeading = root.querySelector(".fee-section-heading");
+  let sectionTools = sectionHeading?.querySelector(".table-list-actions");
+  if (sectionHeading && !sectionTools) {
+    sectionTools = el("div", undefined, "table-list-actions");
+    const create = sectionHeading.querySelector(":scope > button");
+    if (create) sectionTools.append(create);
+    sectionHeading.append(sectionTools);
+  }
   if (sectionTools) {
     sectionTools.prepend(refresh);
     if (sectionPayment) sectionTools.prepend(sectionPayment);
+  }
+  if (sectionHeading && certificate && (assessmentTab || serviceTab)) {
+    sectionHeading.classList.add("fee-heading-with-certificate");
+    certificate.classList.add("fee-certificate-action");
+    sectionTools.prepend(certificate);
   }
   if (!tools.childElementCount) tools.remove();
   if (assessmentTab && manage && !receipts.length) {
@@ -1023,6 +1038,7 @@ function renderPanel(root, ctx) {
           }),
         },
       );
+    results.classList.add("fee-receipt-results");
     for (const [key, name] of [
       ["issued", "Emitido"],
       ["paid", "Cobrado"],
@@ -1290,7 +1306,7 @@ async function showAssessment(id) {
     body.replaceChildren();
     dialog.querySelector("h2").textContent = a.name;
     const header = el("div", undefined, "fee-receipt-header");
-    header.innerHTML = `<p>Acuerdo: ${esc(a.agreement)}</p><p>${assessmentStatus(a)}</p>`;
+    header.innerHTML = `<div class="fee-header-meta"><p>Acuerdo: ${esc(a.agreement)}</p><span aria-hidden="true">-</span><p>${assessmentStatus(a)}</p></div>`;
     body.append(header);
     const panes = new Map();
     const detailTabs = tabBar(
@@ -1444,7 +1460,7 @@ async function showAssessment(id) {
             money(r.paid),
             money(r.outstanding),
             status(r),
-            button("Ver recibo", () => showReceipt(r.id)),
+            iconButton("Ver recibo", () => showReceipt(r.id), "info", "eye"),
           ]),
         ),
       );
@@ -1581,23 +1597,205 @@ function serviceSection(root, ctx) {
     );
   root.append(section);
 }
-function meterImage(meter) {
+function meterPhotoUrl(photo, preview = false) {
+  return `/api/fees/service-attachments/${encodeURIComponent(photo.id)}/download${preview ? "?preview=1" : ""}`;
+}
+function meterImage(meter, showPhotos) {
   if (!meter.photos?.length) return el("span", "—", "fee-meter-no-image");
   const first = meter.photos[0],
-    link = el("a", undefined, "fee-meter-thumb-link");
-  link.href = `/api/fees/service-attachments/${encodeURIComponent(first.id)}/download`;
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.title = first.fileName;
+    preview = button("", showPhotos);
+  preview.className = "fee-meter-thumb-link";
+  preview.title = "Ver fotos del contador";
+  preview.setAttribute("aria-label", `Ver fotos del contador de ${meter.plot}`);
   const image = document.createElement("img");
   image.className = "fee-meter-thumb";
-  image.src = link.href;
+  image.src = meterPhotoUrl(first, true);
   image.alt = `Foto del contador de ${meter.plot}`;
   image.loading = "lazy";
-  link.append(image);
+  preview.append(image);
   if (meter.photos.length > 1)
-    link.append(el("span", `+${meter.photos.length - 1}`, "fee-meter-thumb-count"));
-  return link;
+    preview.append(el("span", `+${meter.photos.length - 1}`, "fee-meter-thumb-count"));
+  return preview;
+}
+function meterPhotos(meter, root, ctx) {
+  const cell = el("div", undefined, "fee-meter-photos");
+  function showPhotos() {
+    const body = open(`Fotos del contador · ${meter.plot}`);
+    info(
+      body,
+      `${meter.serviceLabel} · ${meter.period}. Puedes ampliar, descargar o eliminar las fotos de la lectura de este inmueble. La factura se adjunta en Servicios → Abrir servicio → Adjuntos.`,
+    );
+    const gallery = el("div", undefined, "fee-meter-gallery");
+    const selected = new Set();
+    let activeId = meter.photos?.[0]?.id || "";
+    body.append(gallery);
+    function renderPhotos() {
+      gallery.replaceChildren();
+      const photos = meter.photos || [];
+      if (!photos.length) {
+        info(gallery, "Esta lectura todavía no tiene fotos. Puedes añadirlas a continuación.");
+        return;
+      }
+      const active = photos.find((photo) => photo.id === activeId) || photos[0];
+      activeId = active.id;
+      const figure = el("figure", undefined, "fee-meter-preview");
+      const image = document.createElement("img");
+      image.src = meterPhotoUrl(active, true);
+      image.alt = `Vista ampliada: ${active.fileName}`;
+      figure.append(
+        image,
+        el("figcaption", `${photos.indexOf(active) + 1} de ${photos.length} · ${active.fileName}`),
+      );
+      gallery.append(figure);
+      const list = el("div", undefined, "fee-meter-photo-grid");
+      gallery.append(list);
+      const bulk = button("Eliminar fotos seleccionadas", () =>
+        confirmRemoval(photos.filter((photo) => selected.has(photo.id))),
+      );
+      bulk.classList.add("fee-meter-delete-selected");
+      bulk.disabled = !selected.size;
+      bulk.dataset.feeDisabled = String(bulk.disabled);
+      for (const photo of photos) {
+        const card = el("div", undefined, "fee-meter-photo-card");
+        const preview = button("", () => {
+          activeId = photo.id;
+          renderPhotos();
+        });
+        preview.className = "fee-meter-photo-choice";
+        preview.setAttribute("aria-label", `Ampliar ${photo.fileName}`);
+        preview.setAttribute("aria-pressed", String(photo.id === activeId));
+        const thumb = document.createElement("img");
+        thumb.src = meterPhotoUrl(photo, true);
+        thumb.alt = photo.fileName;
+        preview.append(thumb);
+        const pick = field(
+          card,
+          `Seleccionar ${photo.fileName}`,
+          "checkbox",
+          selected.has(photo.id),
+        );
+        pick.addEventListener("change", () => {
+          if (pick.checked) selected.add(photo.id);
+          else selected.delete(photo.id);
+          confirmation.hidden = true;
+          bulk.disabled = !selected.size;
+          bulk.dataset.feeDisabled = String(bulk.disabled);
+        });
+        const actions = el("div", undefined, "fee-row-actions");
+        const download = el("a", "Descargar");
+        download.href = meterPhotoUrl(photo);
+        download.download = photo.fileName;
+        actions.append(
+          download,
+          iconButton(
+            `Eliminar ${photo.fileName}`,
+            () => confirmRemoval([photo]),
+            "delete",
+            "remove",
+          ),
+        );
+        card.prepend(preview);
+        card.append(actions);
+        list.append(card);
+      }
+      const confirmation = el("div", undefined, "fee-meter-photo-confirmation");
+      confirmation.hidden = true;
+      confirmation.setAttribute("role", "alert");
+      function confirmRemoval(photosToDelete) {
+        if (!photosToDelete.length) return;
+        confirmation.replaceChildren();
+        confirmation.hidden = false;
+        const label =
+          photosToDelete.length === 1 ? "Eliminar foto" : `Eliminar ${photosToDelete.length} fotos`;
+        confirmation.append(
+          el(
+            "p",
+            `${photosToDelete.length === 1 ? "Se eliminará la foto" : "Se eliminarán las fotos"}: ${photosToDelete.map((photo) => photo.fileName).join(", ")}. Esta acción no se puede deshacer.`,
+          ),
+          button("Cancelar eliminación", () => {
+            confirmation.hidden = true;
+          }),
+          button(
+            label,
+            async () => {
+              let failure;
+              for (const photo of photosToDelete) {
+                try {
+                  await api.fees(`/service-attachments/${encodeURIComponent(photo.id)}`, "DELETE");
+                  meter.photos = meter.photos.filter((item) => item.id !== photo.id);
+                  selected.delete(photo.id);
+                } catch (error) {
+                  failure = error;
+                  break;
+                }
+              }
+              renderPhotos();
+              await load(root, ctx);
+              if (failure) throw failure;
+              toast(photosToDelete.length === 1 ? "Foto eliminada." : "Fotos eliminadas.");
+            },
+            true,
+          ),
+        );
+        confirmation.querySelector("button").focus();
+      }
+      gallery.append(bulk, confirmation);
+    }
+    renderPhotos();
+    const file = field(
+      body,
+      "Fotos del contador (JPG, PNG o WebP; hasta 6 fotos y 10 MB por archivo)",
+      "file",
+    );
+    file.accept = ".jpg,.jpeg,.png,.webp";
+    file.multiple = true;
+    hint(file, "Selecciona las fotos y pulsa «Subir fotos del contador» para guardarlas.");
+    body.append(
+      button(
+        "Subir fotos del contador",
+        async () => {
+          const files = [...file.files];
+          if (!files.length) throw new Error("Selecciona al menos una foto.");
+          if (files.length + (meter.photos || []).length > 6)
+            throw new Error("Cada lectura admite un máximo de 6 fotos.");
+          if (files.some((item) => item.size > 10 * 1024 * 1024))
+            throw new Error("Cada foto debe ocupar como máximo 10 MB.");
+          if (files.some((item) => !/\.(jpe?g|png|webp)$/i.test(item.name)))
+            throw new Error("Las fotos deben ser JPG, PNG o WebP.");
+          // Una subida completada se conserva si falla uno de los archivos siguientes.
+          const pending = [...files];
+          try {
+            for (const item of files) {
+              const form = new FormData();
+              form.append("file", item);
+              const saved = await api.fees(
+                `/services/${encodeURIComponent(meter.serviceBillId)}/reading-photos/${encodeURIComponent(meter.propertyId)}`,
+                "POST",
+                form,
+              );
+              meter.photos ||= [];
+              meter.photos.push(saved);
+              pending.shift();
+            }
+          } catch (error) {
+            file.value = "";
+            throw new Error(
+              `${error.message} ${files.length - pending.length} fotos guardadas. Vuelve a abrir este diálogo para verlas y subir solo las pendientes.`,
+            );
+          }
+          dialog.close();
+          await load(root, ctx);
+          toast("Fotos del contador guardadas.");
+        },
+        true,
+      ),
+    );
+  }
+  cell.append(
+    meterImage(meter, showPhotos),
+    iconButton("Adjuntar fotos del contador", showPhotos, "docs", "add"),
+  );
+  return cell;
 }
 /**
  * Pantalla de contadores: una fila por lectura con fecha, foto e incidencia.
@@ -1612,7 +1810,7 @@ function meterSection(root, ctx) {
     el("h3", "Contadores", "fee-section-title"),
     el(
       "p",
-      "Lecturas de contador con fecha, imagen e incidencia. Anota roturas, sustituciones, fugas o lecturas no visibles para dejar constancia junto a cada lectura.",
+      "Consulta la fecha y las lecturas registradas. Usa «Adjuntar fotos del contador» en la columna Imagen para subir fotos a ese inmueble y periodo. Puedes anotar una incidencia y guardarla con el botón de su fila.",
       "form-intro",
     ),
   );
@@ -1671,10 +1869,9 @@ function meterSection(root, ctx) {
           "Incidencia",
         ],
         rows.map((meter, index) => {
-          const readingDate = document.createElement("input");
-          readingDate.type = "date";
+          const readingDate = el("time", meter.date ? date(meter.date) : "—");
           readingDate.className = "fee-meter-date";
-          readingDate.value = meter.date || "";
+          if (meter.date) readingDate.dateTime = meter.date;
           readingDate.setAttribute("aria-label", `Fecha de lectura de ${meter.plot}`);
           const incident = document.createElement("input");
           incident.type = "text";
@@ -1686,16 +1883,15 @@ function meterSection(root, ctx) {
           const statusText = el("span", "", "fee-meter-status");
           statusText.setAttribute("aria-live", "polite");
           const save = iconButton(
-            `Guardar fecha e incidencia de ${meter.plot}`,
+            `Guardar incidencia de ${meter.plot}`,
             async () => {
               const saved = await api.fees(
                 `/services/${encodeURIComponent(meter.serviceBillId)}/readings/${encodeURIComponent(meter.propertyId)}`,
                 "PATCH",
-                { date: readingDate.value, incident: incident.value },
+                { date: meter.date || "", incident: incident.value },
               );
               meter.date = saved.date;
               meter.incident = saved.incident;
-              readingDate.value = saved.date;
               incident.value = saved.incident;
               save.disabled = true;
               save.dataset.feeDisabled = "true";
@@ -1709,12 +1905,10 @@ function meterSection(root, ctx) {
           save.disabled = true;
           save.dataset.feeDisabled = "true";
           const markDirty = () => {
-            save.disabled =
-              readingDate.value === (meter.date || "") && incident.value === (meter.incident || "");
+            save.disabled = incident.value === (meter.incident || "");
             save.dataset.feeDisabled = String(save.disabled);
             if (!save.disabled) statusText.textContent = "Cambios sin guardar";
           };
-          readingDate.addEventListener("input", markDirty);
           incident.addEventListener("input", markDirty);
           const incidentCell = el("div", undefined, "fee-meter-incident");
           incidentCell.append(incident, save, statusText);
@@ -1723,7 +1917,7 @@ function meterSection(root, ctx) {
             `<strong>${esc(meter.plot)}</strong>`,
             `${esc(meter.serviceLabel)}<small>${esc(meter.period)}</small>`,
             readingDate,
-            meterImage(meter),
+            meterPhotos(meter, root, ctx),
             `${formatReading(meter.current)} m³<small>Anterior ${formatReading(meter.previous)} m³</small>`,
             `${formatReading(meter.consumption)} m³`,
             incidentCell,
@@ -1923,7 +2117,7 @@ async function showService(id) {
     dialog.querySelector("h2").textContent =
       `Servicio de ${service.serviceLabel} · ${service.period}`;
     const header = el("div", undefined, "fee-receipt-header");
-    header.innerHTML = `<h3>${esc(service.concept)}</h3><p>${esc(service.supplier || "Sin proveedor indicado")}${service.invoiceNumber ? ` · Factura ${esc(service.invoiceNumber)}` : ""} · Vence ${esc(date(service.dueDate))}</p><p>${serviceStatus(service)}</p>`;
+    header.innerHTML = `<h3>${esc(service.concept)}</h3><div class="fee-header-meta"><p>${esc(service.supplier || "Sin proveedor indicado")}${service.invoiceNumber ? ` · Factura ${esc(service.invoiceNumber)}` : ""} · Vence ${esc(date(service.dueDate))}</p><span aria-hidden="true">-</span><p>${serviceStatus(service)}</p></div>`;
     body.append(header);
     const panes = new Map();
     const detailTabs = tabBar(
@@ -2041,8 +2235,12 @@ async function showService(id) {
       cancel.disabled = service.totals.paid > 0;
       overview.append(cancel);
     }
-    split.append(el("h3", "Reparto congelado"));
-    split.append(serviceRowsTable(service.breakdown || [], service.method, service.id));
+    const splitHeading = el("div", undefined, "fee-section-heading fee-subheading");
+    splitHeading.append(el("h3", "Reparto congelado"));
+    const breakdown = serviceRowsTable(service.breakdown || [], service.method, service.id);
+    const exportControl = breakdown.querySelector(":scope > .table-export-wrap");
+    if (exportControl) splitHeading.append(exportControl);
+    split.append(splitHeading, breakdown);
     if (service.subset)
       info(
         split,
@@ -2094,7 +2292,7 @@ async function showService(id) {
             money(receipt.paid),
             money(receipt.outstanding),
             status(receipt),
-            button("Ver recibo", () => showReceipt(receipt.id)),
+            iconButton("Ver recibo", () => showReceipt(receipt.id), "info", "eye"),
           ]),
         ),
       );
@@ -2108,7 +2306,7 @@ async function showService(id) {
     attachments.append(el("h3", "Factura y adjuntos"));
     info(
       attachments,
-      "Puedes adjuntar la foto o el PDF de la factura. Los adjuntos se conservan como justificante del reparto.",
+      "Adjunta aquí la factura y los justificantes generales del servicio, en PDF, JPG, PNG o WebP. Para fotos de contadores, ve a Cuotas → Contadores y usa «Adjuntar fotos del contador» en la fila del inmueble; así quedan vinculadas a su lectura.",
     );
     for (const attachment of service.attachments || []) {
       if (attachment.kind === "reading") continue;
@@ -2133,7 +2331,7 @@ async function showService(id) {
         );
       attachments.append(row);
     }
-    if (service.canEdit) {
+    if (!service.cancelledAt) {
       const file = field(
         attachments,
         "Adjuntar factura (PDF, JPG, PNG o WebP; máximo 10 MB)",

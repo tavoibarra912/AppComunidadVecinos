@@ -1312,13 +1312,11 @@
                   />
                   <span class="field-hint"
                     >Recibe un correo cada vez que se crea o modifica un propietario o un inquilino.
-                    Separa varias direcciones con comas; vacío = desactivado.</span
+                    Separa varias direcciones con comas; vacío = desactivado. Para enviar los
+                    avisos, activa «Habilitar correo electrónico» y configura el correo en
+                    Proveedores de comunicación.</span
                   >
                 </label>
-                <p class="form-intro full">
-                  Separa varias direcciones con comas. Vacío = desactivado. El envío usa el correo
-                  habilitado en Proveedores de comunicación. Marca «Habilitar correo electrónico».
-                </p>
 
                 <p class="form-section-title full">Cuotas ordinarias</p>
                 <p class="form-intro full">
@@ -3705,6 +3703,11 @@
                 notificaciones.</span
               >
             </label>
+            <p class="field-hint full">
+              Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
+              están verificados en la pestaña Contacto y Domicilio. La preferencia se guarda en la
+              ficha; el envío de avisos usa las preferencias de la cuenta de usuario.
+            </p>
             <label class="full"
               >Canal preferente de notificaciones (LPH art. 9) (opcional)
               <select name="notificationPreference">
@@ -3713,11 +3716,6 @@
                 <option value="phone">Teléfono / Mensajería</option>
               </select>
             </label>
-            <p class="field-hint full">
-              Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
-              están verificados en la pestaña Contacto y Domicilio. La preferencia se guarda en la
-              ficha; el envío de avisos usa las preferencias de la cuenta de usuario.
-            </p>
           </div>
         </section>
 
@@ -5066,11 +5064,15 @@
             <p class="form-section-title full">Autorizaciones concedidas</p>
             <fieldset class="full tenant-authorizations">
               <legend>Autorizaciones concedidas</legend>
-              <div id="tenant-authorizations-list" class="full"></div>
               <p class="field-hint full" id="tenant-authorizations-hint">
                 Las opciones se configuran por comunidad en Configuración → Inquilinos.
               </p>
+              <div id="tenant-authorizations-list" class="full"></div>
             </fieldset>
+            <p class="field-hint full">
+              Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
+              están verificados en la pestaña Contacto y Domicilio.
+            </p>
             <label class="full"
               >Canal preferente de notificaciones (LPH art. 9) (opcional)
               <select name="notificationPreference">
@@ -5079,10 +5081,6 @@
                 <option value="phone">Teléfono / Mensajería</option>
               </select>
             </label>
-            <p class="field-hint full">
-              Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
-              están verificados en la pestaña Contacto y Domicilio.
-            </p>
           </div>
         </section>
 
@@ -6370,7 +6368,7 @@
           </div>
           <div class="community-edit-link-panel" id="property-owner-link-panel" hidden>
             <label
-              >Propietario (opcional)
+              >Propietario a asociar
               <select id="property-owner-link-select"></select>
             </label>
             <button

@@ -1180,3 +1180,140 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Certificado y cobro son acciones contiguas con el mismo alto. */
+.fee-heading-with-certificate .table-list-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
+.fee-heading-with-certificate .table-list-actions > .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  margin: 0;
+}
+.fee-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 7px 0;
+}
+.fee-header-meta p {
+  margin: 0;
+}
+.fee-header-meta > span {
+  margin-left: auto;
+}
+.fee-header-meta p:last-child {
+  white-space: nowrap;
+}
+.fee-meter-photos {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fee-meter-date {
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+.fee-subheading h3 {
+  margin: 0;
+}
+.fee-receipt-results > .table-export-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+@media (max-width: 600px) {
+  .fee-header-meta {
+    flex-wrap: wrap;
+  }
+}
+
+/* Galería de lecturas: imagen ampliada y selección de fotos. */
+button.fee-meter-thumb-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.fee-meter-gallery {
+  display: grid;
+  gap: 16px;
+  margin: 18px 0;
+}
+.fee-meter-preview {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.fee-meter-preview > img {
+  width: 100%;
+  max-height: 55vh;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+}
+.fee-meter-preview figcaption {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fee-meter-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+}
+.fee-meter-photo-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.fee-meter-photo-card .fee-check {
+  overflow-wrap: anywhere;
+}
+.fee-meter-photo-choice {
+  padding: 3px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: var(--canvas);
+  cursor: pointer;
+}
+.fee-meter-photo-choice[aria-pressed="true"] {
+  border-color: var(--brand);
+}
+.fee-meter-photo-choice img {
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+  display: block;
+}
+.fee-meter-photo-card .fee-row-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+.fee-meter-delete-selected {
+  justify-self: start;
+}
+.fee-meter-photo-confirmation {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--canvas);
+}
+.fee-meter-photo-confirmation[hidden] {
+  display: none;
+}
+.fee-meter-photo-confirmation button {
+  margin: 4px 8px 4px 0;
+}

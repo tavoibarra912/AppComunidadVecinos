@@ -698,6 +698,14 @@ test("servicios: fotos de contadores se guardan por inmueble y sobreviven a la e
   });
   assert.equal(download.status, 200);
   assert.match(download.headers.get("content-type"), /image\/png/);
+  assert.match(download.headers.get("content-disposition"), /^attachment;/);
+  const inline = await fetch(`${base}/fees/service-attachments/${photo.id}/download?preview=1`, {
+    headers: { Cookie: staff.cookie || "" },
+  });
+  assert.equal(inline.status, 200);
+  assert.match(inline.headers.get("content-type"), /image\/png/);
+  assert.match(inline.headers.get("content-disposition"), /^inline;/);
+
   await ok(
     staff,
     `/fees/services/${service.id}/issue`,

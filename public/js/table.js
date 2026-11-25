@@ -112,7 +112,7 @@ function crearInstancia(options) {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
       if (Array.isArray(saved.order)) {
-        const valid = saved.order.filter((key) => byKey.has(key));
+        const valid = [...new Set(saved.order.filter((key) => byKey.has(key)))];
         const missing = columns.map((col) => col.key).filter((key) => !valid.includes(key));
         columnOrder = [...valid, ...missing];
       }
@@ -120,6 +120,15 @@ function crearInstancia(options) {
       /* preferencias corruptas: se ignoran */
     }
   }
+  // Las columnas nuevas pueden añadirse después de Acciones en un orden guardado.
+  // Acciones conserva siempre el extremo derecho, también después de arrastrar.
+  function pinActionsLast() {
+    columnOrder = [
+      ...columnOrder.filter((key) => key !== "actions"),
+      ...columnOrder.filter((key) => key === "actions"),
+    ];
+  }
+  pinActionsLast();
   const orderedColumns = () => columnOrder.map((key) => byKey.get(key));
   const sortableKeys = new Set(
     columns.filter((col) => col.sortable !== false && col.hideable !== false).map((col) => col.key),
@@ -220,9 +229,13 @@ function crearInstancia(options) {
         th.append(labelNode);
       }
       // Reordenar columnas arrastrando el encabezado
-      th.draggable = true;
-      th.title = "Arrastra para reordenar columnas";
+      th.draggable = col.key !== "actions";
+      th.title = col.key === "actions" ? "Acciones" : "Arrastra para reordenar columnas";
       th.addEventListener("dragstart", (event) => {
+        if (col.key === "actions") {
+          event.preventDefault();
+          return;
+        }
         dragKey = col.key;
         event.dataTransfer.effectAllowed = "move";
         try {
@@ -253,6 +266,7 @@ function crearInstancia(options) {
         const to = columnOrder.indexOf(col.key);
         if (from < 0 || to < 0) return;
         columnOrder.splice(to, 0, columnOrder.splice(from, 1)[0]);
+        pinActionsLast();
         dragKey = null;
         persistState();
         refresh();

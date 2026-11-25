@@ -120,3 +120,44 @@ test("exportar: oculta controles sin permiso, manda el estado de la vista y ofre
   w.exportsUI.refreshExportControls();
   assert.equal(control.hidden, true);
 });
+
+test("tablas: Acciones queda última al recuperar preferencias anteriores y al reordenar", (t) => {
+  const dom = new JSDOM('<div id="table"></div>', {
+    url: "http://localhost",
+    runScripts: "outside-only",
+  });
+  t.after(() => dom.window.close());
+  const w = dom.window;
+  w.state = { settings: {} };
+  w.sanitizeHtml = (v) => v;
+  w.localStorage.setItem(
+    "table-engine:property-order",
+    JSON.stringify({ order: ["plot", "actions"] }),
+  );
+  w.eval(source("public/js/table.js") + "\nwindow.createDataTable=createDataTable;");
+  w.createDataTable({
+    mount: w.document.querySelector("#table"),
+    storageKey: "property-order",
+    getRows: () => [{ id: "one" }],
+    columns: [
+      { key: "plot", label: "Inmueble", defaultVisible: true, value: () => "Unidad" },
+      { key: "occupancy", label: "Ocupación", defaultVisible: true, value: () => "Vacío" },
+      { key: "actions", label: "Acciones", hideable: false, value: () => "Abrir" },
+    ],
+  });
+  const order = () => [...w.document.querySelectorAll("thead th")].map((th) => th.dataset.col);
+  assert.deepEqual(order(), ["plot", "occupancy", "actions"]);
+  assert.equal(w.document.querySelector('th[data-col="actions"]').draggable, false);
+  const transfer = { setData() {}, effectAllowed: "" };
+  const drag = new w.Event("dragstart", { bubbles: true });
+  Object.defineProperty(drag, "dataTransfer", { value: transfer });
+  w.document.querySelector('th[data-col="plot"]').dispatchEvent(drag);
+  const drop = new w.Event("drop", { bubbles: true });
+  w.document.querySelector('th[data-col="actions"]').dispatchEvent(drop);
+  assert.deepEqual(order(), ["occupancy", "plot", "actions"]);
+  assert.deepEqual(JSON.parse(w.localStorage.getItem("table-engine:property-order")).order, [
+    "occupancy",
+    "plot",
+    "actions",
+  ]);
+});

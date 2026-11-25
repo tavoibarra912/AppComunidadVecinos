@@ -96,8 +96,51 @@ export function prepareOwnerPropertyShares(data, ownerId, user) {
       throw fail("La suma de los porcentajes de titularidad no puede superar el 100%.");
     updates.set(property.id, percentages);
   }
+  const residences = data.propertyResidencies ?? [];
+  if (!Array.isArray(residences) || residences.length > 1000)
+    throw fail("La lista de residencias no es válida.");
+  const residenceUpdates = new Map();
+  for (const entry of residences) {
+    if (
+      !entry ||
+      typeof entry.propertyId !== "string" ||
+      typeof entry.resides !== "boolean" ||
+      residenceUpdates.has(entry.propertyId)
+    )
+      throw fail("La residencia indicada no es válida.");
+    const property = policy.properties.find((item) => item.id === entry.propertyId);
+    if (!property || !requestedIds.includes(property.id))
+      throw fail("La residencia debe corresponder a un inmueble vinculado.");
+    if (!allowed(user, "property:manage", property.id, policy))
+      throw fail("No tienes permiso para modificar la residencia en este inmueble.", 403);
+    if (!Number.isSafeInteger(entry.version) || entry.version !== property.version)
+      throw fail(EDIT_CONFLICT, 409);
+    if (entry.resides && property.occupancy === "tenant")
+      throw fail(
+        "Este inmueble tiene un inquilino. Revisa su ocupación desde Inmuebles antes de marcar al propietario como residente.",
+      );
+    residenceUpdates.set(property.id, entry.resides);
+  }
   return () => {
     const update = db.prepare("UPDATE properties SET ownerPercentages=? WHERE id=?");
     for (const [id, percentages] of updates) update.run(JSON.stringify(percentages), id);
+    for (const [id, resides] of residenceUpdates) {
+      const property = db.prepare("SELECT * FROM properties WHERE id=?").get(id);
+      const residents = JSON.parse(property.residentOwnerIds || "[]").filter(
+        (id) => id !== ownerId,
+      );
+      if (resides) residents.push(ownerId);
+      const primary = residents.includes(property.primaryResidentId)
+        ? property.primaryResidentId
+        : residents[0] || "";
+      db.prepare(
+        "UPDATE properties SET occupancy=?, residentOwnerIds=?, primaryResidentId=? WHERE id=?",
+      ).run(
+        resides ? "owner" : property.occupancy,
+        JSON.stringify(residents),
+        property.occupancy === "tenant" ? property.primaryResidentId : primary,
+        id,
+      );
+    }
   };
 }

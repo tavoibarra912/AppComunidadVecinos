@@ -43,7 +43,9 @@ function account(role, permissions = []) {
 }
 
 const admin = account("super_admin");
-let server, base, serial = 0;
+let server,
+  base,
+  serial = 0;
 
 before(async () => {
   const app = express();
@@ -62,10 +64,10 @@ after(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-async function request(route, method = "GET", body) {
+async function request(route, method = "GET", body, user = admin) {
   const response = await fetch(base + route, {
     method,
-    headers: { "Content-Type": "application/json", Cookie: `penarrubia_session=${admin.token}` },
+    headers: { "Content-Type": "application/json", Cookie: `penarrubia_session=${user.token}` },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   return { status: response.status, data: await response.json() };
@@ -73,9 +75,7 @@ async function request(route, method = "GET", body) {
 
 function fixture() {
   const prefix = `residency-${++serial}-`;
-  const f = Object.fromEntries(
-    ["c", "o", "o2", "p", "p2", "t"].map((key) => [key, prefix + key]),
-  );
+  const f = Object.fromEntries(["c", "o", "o2", "p", "p2", "t"].map((key) => [key, prefix + key]));
   insert("communities", {
     id: f.c,
     name: "Comunidad de prueba",
@@ -147,11 +147,15 @@ const propertyInput = (f, extra = {}) => ({
 
 test("la ocupación por el propietario se guarda con sus residentes y contacto principal", async () => {
   const f = fixture();
-  const created = await request("/properties", "POST", propertyInput(f, {
-    occupancy: "owner",
-    residentOwnerIds: [f.o2],
-    primaryResidentId: f.o2,
-  }));
+  const created = await request(
+    "/properties",
+    "POST",
+    propertyInput(f, {
+      occupancy: "owner",
+      residentOwnerIds: [f.o2],
+      primaryResidentId: f.o2,
+    }),
+  );
   assert.equal(created.status, 201, JSON.stringify(created.data));
   assert.equal(created.data.occupancy, "owner");
   assert.deepEqual(created.data.residentOwnerIds, [f.o2]);
@@ -181,12 +185,16 @@ test("no se admite como residente a quien no es titular ni un principal ajeno", 
 
 test("un inmueble con inquilinos no puede declararse ocupado por el propietario", async () => {
   const f = fixture();
-  const result = await request("/properties", "POST", propertyInput(f, {
-    id: `${f.p2}-conflict`,
-    occupancy: "owner",
-    residentOwnerIds: [f.o],
-    linkTenantIds: [f.t],
-  }));
+  const result = await request(
+    "/properties",
+    "POST",
+    propertyInput(f, {
+      id: `${f.p2}-conflict`,
+      occupancy: "owner",
+      residentOwnerIds: [f.o],
+      linkTenantIds: [f.t],
+    }),
+  );
   assert.equal(result.status, 400);
   assert.match(result.data.error, /inquilinos vinculados/i);
   assert.equal(row("properties", `${f.p2}-conflict`), undefined);
@@ -194,18 +202,26 @@ test("un inmueble con inquilinos no puede declararse ocupado por el propietario"
 
 test("«Sin ocupante» exige dejar de ser residente y no admite inquilinos", async () => {
   const f = fixture();
-  const withTenant = await request("/properties", "POST", propertyInput(f, {
-    id: `${f.p2}-vacant`,
-    occupancy: "vacant",
-    linkTenantIds: [f.t],
-    residentOwnerIds: [],
-  }));
+  const withTenant = await request(
+    "/properties",
+    "POST",
+    propertyInput(f, {
+      id: `${f.p2}-vacant`,
+      occupancy: "vacant",
+      linkTenantIds: [f.t],
+      residentOwnerIds: [],
+    }),
+  );
   assert.equal(withTenant.status, 400);
-  const withResident = await request("/properties", "POST", propertyInput(f, {
-    id: `${f.p2}-vacant`,
-    occupancy: "vacant",
-    residentOwnerIds: [f.o],
-  }));
+  const withResident = await request(
+    "/properties",
+    "POST",
+    propertyInput(f, {
+      id: `${f.p2}-vacant`,
+      occupancy: "vacant",
+      residentOwnerIds: [f.o],
+    }),
+  );
   assert.equal(withResident.status, 400);
 });
 
@@ -288,8 +304,9 @@ test("un contrato vencido deja de ocupar y libera el contacto principal", async 
   assert.equal(saved.status, 200, JSON.stringify(saved.data));
   db.prepare("UPDATE tenants SET contractEnd='2021-01-01' WHERE id=?").run(f.t);
   // La lectura no hereda el estado guardado: el contrato vencido ya no ocupa.
-  db.prepare("UPDATE properties SET occupancy='tenant', tenantIds=?, primaryResidentId=? WHERE id=?")
-    .run(JSON.stringify([f.t]), f.t, f.p2);
+  db.prepare(
+    "UPDATE properties SET occupancy='tenant', tenantIds=?, primaryResidentId=? WHERE id=?",
+  ).run(JSON.stringify([f.t]), f.t, f.p2);
   const read = (await request(`/properties/${f.p2}`)).data;
   assert.equal(read.occupancy, "owner");
   assert.deepEqual(read.tenantIds, []);
@@ -317,11 +334,15 @@ test("los avisos por inmueble van solo a los propietarios salvo que se incluyan 
 
 test("la residencia declarada es opcional aunque el inmueble lo ocupe el propietario", async () => {
   const f = fixture();
-  const created = await request("/properties", "POST", propertyInput(f, {
-    occupancy: "owner",
-    residentOwnerIds: [],
-    primaryResidentId: "",
-  }));
+  const created = await request(
+    "/properties",
+    "POST",
+    propertyInput(f, {
+      occupancy: "owner",
+      residentOwnerIds: [],
+      primaryResidentId: "",
+    }),
+  );
   assert.equal(created.status, 201, JSON.stringify(created.data));
   assert.equal(created.data.occupancy, "owner");
   assert.deepEqual(created.data.residentOwnerIds, []);
@@ -345,4 +366,75 @@ test("un inmueble con solo contratos históricos se borra conservando la ficha",
   assert.equal(row("properties", f.p2), undefined);
   assert.equal(row("tenants", f.t).propertyId, "");
   assert.equal(row("tenants", f.t).contractEnd, "2021-01-01");
+});
+
+test("desde propietario se guarda la residencia junto a la ficha y se conserva al otro residente", async () => {
+  const f = fixture();
+  db.prepare("UPDATE properties SET occupancy='vacant' WHERE id=?").run(f.p);
+  let owner = (await request(`/owners/${f.o}`)).data;
+  let property = row("properties", f.p);
+  const saved = await request(`/owners/${f.o}`, "PUT", {
+    version: owner.version,
+    name: "Ana residente",
+    propertyResidencies: [{ propertyId: f.p, version: property.version, resides: true }],
+  });
+  assert.equal(saved.status, 200, JSON.stringify(saved.data));
+  property = row("properties", f.p);
+  assert.equal(property.occupancy, "owner");
+  assert.deepEqual(JSON.parse(property.residentOwnerIds), [f.o]);
+  assert.equal(property.primaryResidentId, f.o);
+  // Un segundo copropietario residente se conserva al desmarcar al primero.
+  db.prepare("UPDATE properties SET residentOwnerIds=? WHERE id=?").run(
+    JSON.stringify([f.o, f.o2]),
+    f.p,
+  );
+  owner = (await request(`/owners/${f.o}`)).data;
+  property = row("properties", f.p);
+  const removed = await request(`/owners/${f.o}`, "PUT", {
+    version: owner.version,
+    propertyResidencies: [{ propertyId: f.p, version: property.version, resides: false }],
+  });
+  assert.equal(removed.status, 200, JSON.stringify(removed.data));
+  property = row("properties", f.p);
+  assert.deepEqual(JSON.parse(property.residentOwnerIds), [f.o2]);
+  assert.equal(property.primaryResidentId, f.o2);
+});
+
+test("residencia desde propietario: contrato o versión obsoleta revierten toda la edición", async () => {
+  const f = fixture();
+  for (const [propertyId, version, status] of [
+    [f.p2, row("properties", f.p2).version, 400],
+    [f.p, row("properties", f.p).version + 1, 409],
+    ["inmueble-ajeno", 1, 400],
+  ]) {
+    const owner = row("owners", f.o);
+    const result = await request(`/owners/${f.o}`, "PUT", {
+      version: owner.version,
+      name: "Este cambio debe revertirse",
+      propertyResidencies: [{ propertyId, version, resides: true }],
+    });
+    assert.equal(result.status, status, JSON.stringify(result.data));
+    assert.deepEqual(row("owners", f.o), owner);
+    assert.deepEqual(JSON.parse(row("properties", f.p).residentOwnerIds), []);
+  }
+});
+
+test("residencia desde propietario exige gestionar también el inmueble", async () => {
+  const f = fixture();
+  const owner = row("owners", f.o);
+  const property = row("properties", f.p);
+  const user = account("residency-owner-manager", ["owner:read", "owner:manage"]);
+  const result = await request(
+    `/owners/${f.o}`,
+    "PUT",
+    {
+      version: owner.version,
+      name: "Cambio sin permiso de inmueble",
+      propertyResidencies: [{ propertyId: f.p, version: property.version, resides: true }],
+    },
+    user,
+  );
+  assert.equal(result.status, 403, JSON.stringify(result.data));
+  assert.deepEqual(row("owners", f.o), owner);
+  assert.deepEqual(row("properties", f.p), property);
 });
