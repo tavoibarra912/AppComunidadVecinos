@@ -54,6 +54,8 @@ import {
   serviceAttachmentById,
   serviceAttachments,
   informativeServicesFor,
+  communityMeters,
+  updateServiceReading,
 } from "../services.js";
 
 const router = Router();
@@ -265,6 +267,7 @@ router.get(
       assessments: editable ? assessments(id) : [],
       services: editable ? services(id) : [],
       serviceMeters: editable ? lastServiceReadings(id) : {},
+      meters: editable ? communityMeters(id) : [],
       defaults: editable ? feeDefaults() : null,
       properties: editable
         ? listProperties()
@@ -425,6 +428,13 @@ router.put(
   wrap((req, res) => {
     const row = service(req);
     res.json(saveService(row.communityId, req.body || {}, req.user, row.id));
+  }),
+);
+router.patch(
+  "/services/:serviceId/readings/:propertyId",
+  wrap((req, res) => {
+    const row = service(req);
+    res.json(updateServiceReading(row.id, req.params.propertyId, req.body || {}, req.user));
   }),
 );
 router.post(
