@@ -8098,6 +8098,16 @@
           <h3 id="account-privacy-title">Privacidad y datos</h3>
           <p class="form-intro" id="account-privacy-status">Cargando tu situación de baja…</p>
           <div class="account-profile-links" id="account-privacy-actions"></div>
+          <div class="account-profile-links">
+            <button
+              class="secondary-button"
+              type="button"
+              id="account-privacy-notice-btn"
+              aria-haspopup="dialog"
+            >
+              Aviso de privacidad
+            </button>
+          </div>
         </section>
         <div class="dialog-actions">
           <button
@@ -8106,6 +8116,152 @@
             data-close-account-dialog="account-profile-dialog"
           >
             Cerrar perfil
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog
+      id="privacy-notice-dialog"
+      class="dialog-sm account-dialog"
+      aria-labelledby="privacy-notice-title"
+    >
+      <div class="dialog-content">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">RGPD · ARTÍCULO 13</p>
+            <h2 id="privacy-notice-title">Aviso de privacidad</h2>
+          </div>
+          <button
+            class="icon-action-btn btn-cancel btn-lg"
+            type="button"
+            aria-label="Cerrar aviso de privacidad"
+            data-close-account-dialog="privacy-notice-dialog"
+          >
+            ×
+          </button>
+        </div>
+        <p class="form-intro">
+          El responsable del tratamiento es la comunidad de propietarios que gestiona este espacio,
+          a través de su administración. Este aviso reúne la información del artículo 13 del RGPD.
+        </p>
+        <div
+          class="privacy-notice"
+          role="region"
+          aria-label="Texto del aviso de privacidad"
+          tabindex="0"
+        >
+          <section>
+            <h3>Qué datos tratamos</h3>
+            <ul>
+              <li>
+                <strong>Cuenta y acceso:</strong> nombre, apellidos, usuario, email, contraseña
+                cifrada, rol, estado y sesiones abiertas.
+              </li>
+              <li>
+                <strong>Comunidad:</strong> comunidades que administras o a las que perteneces,
+                inmuebles, propietarios e inquilinos, contratos, recibos, cobros, derramas, actas y
+                certificados.
+              </li>
+              <li>
+                <strong>Documentos y comunicaciones:</strong> archivos y carpetas de la biblioteca,
+                publicaciones, comentarios y votos.
+              </li>
+              <li>
+                <strong>Avisos y preferencias:</strong> qué avisos quieres recibir y el estado de
+                los pendientes.
+              </li>
+              <li>
+                <strong>Seguridad:</strong> registro de accesos y de acciones sobre los datos (quién
+                creó, modificó, exportó o borró algo), solicitudes de recuperación de contraseña
+                —solo el hash del email— y los reportes de error que envíes.
+              </li>
+              <li>
+                <strong>Bajas:</strong> la solicitud de baja y el motivo, si decides escribirlo.
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h3>Para qué y con qué base legal</h3>
+            <ul>
+              <li>
+                <strong>Gestionar la relación con la comunidad</strong> (art. 6.1.b, ejecución de
+                contrato): cuenta, comunidades, inmuebles, contratos, recibos, documentación y
+                comunicaciones.
+              </li>
+              <li>
+                <strong>Cumplir obligaciones legales</strong> (art. 6.1.c): conservar recibos,
+                cobros, derramas, actas y registros contables.
+              </li>
+              <li>
+                <strong>Seguridad y prevención de abusos</strong> (art. 6.1.f, interés legítimo):
+                sesiones, auditoría de accesos y limitador de intentos.
+              </li>
+            </ul>
+            <p>
+              Sin usuario, email y contraseña no hay cuenta, y sin los datos de la comunidad no se
+              puede gestionarla. No se toman decisiones automatizadas ni se elaboran perfiles con
+              efectos jurídicos.
+            </p>
+          </section>
+          <section>
+            <h3>Plazos de respuesta</h3>
+            <p>
+              Respondemos a tus solicitudes en un mes desde que las recibimos. Si son complejas o
+              llegan muchas a la vez, el plazo puede ampliarse dos meses más, y te avisaríamos
+              dentro del primer mes.
+            </p>
+            <p>
+              Puedes ejercer los derechos de acceso, rectificación, supresión —desde esta sección—,
+              limitación, oposición y portabilidad escribiendo a la administración de tu comunidad.
+              La baja de cuenta se resuelve en la cola de <em>Administración → Usuarios</em>. Si no
+              estás conforme, puedes reclamar ante la Agencia Española de Protección de Datos
+              (www.aepd.es).
+            </p>
+          </section>
+          <section>
+            <h3>Cuánto tiempo los conservamos</h3>
+            <ul>
+              <li>
+                <strong>Mientras la cuenta esté activa:</strong> datos de cuenta, comunidad,
+                documentación, comunicaciones, avisos y preferencias.
+              </li>
+              <li>
+                <strong>Al aprobar la baja:</strong> se borran sesiones, enlaces de recuperación de
+                contraseña, preferencias y avisos pendientes, y el historial de reportes de error.
+                La autoría de documentos, carpetas y comentarios queda anónima, porque el contenido
+                forma parte de la documentación y de los hilos de la comunidad.
+              </li>
+              <li>
+                <strong>Registro contable y actas:</strong> recibos, cobros, derramas, actas y
+                certificados se conservan mientras la normativa contable y fiscal obligue, sin datos
+                de acceso.
+              </li>
+              <li>
+                <strong>Auditoría de seguridad:</strong> se conserva para poder acreditar quién hizo
+                cada cambio.
+              </li>
+              <li>
+                <strong>Solicitudes de baja:</strong> se conservan para acreditar el trámite; el
+                motivo y la nota se descartan al ejecutar el borrado.
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h3>Quién más los ve</h3>
+            <p>
+              No se ceden datos a terceros salvo obligación legal. Los proveedores de alojamiento y
+              de base de datos tratan la información por cuenta de la comunidad, y GitHub recibe los
+              reportes de error que envíes desde la aplicación.
+            </p>
+          </section>
+        </div>
+        <div class="dialog-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-close-account-dialog="privacy-notice-dialog"
+          >
+            Entendido
           </button>
         </div>
       </div>

@@ -153,6 +153,11 @@ function openDeletionDialog() {
   deletionForm.elements.password.focus();
 }
 
+const privacyNoticeDialog = document.querySelector("#privacy-notice-dialog");
+const privacyNoticeButton = document.querySelector("#account-privacy-notice-btn");
+privacyNoticeButton?.addEventListener("click", () => privacyNoticeDialog?.showModal());
+privacyNoticeDialog?.addEventListener("close", () => privacyNoticeButton?.focus());
+
 async function cancelDeletion() {
   if (!confirm("¿Cancelar tu solicitud de baja? Tu cuenta seguirá activa.")) return;
   try {
