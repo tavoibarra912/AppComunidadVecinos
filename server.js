@@ -43,7 +43,7 @@ app.use((req, res, next) => {
   res.set("X-Content-Type-Options", "nosniff");
   res.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; frame-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
   );
   next();
 });
@@ -152,9 +152,7 @@ const SPA_ROUTES = [
 ];
 app.get(SPA_ROUTES, (_req, res) => {
   res.set("Cache-Control", "no-store");
-  res
-    .type("html")
-    .send(renderIndex(path.join(PUBLIC_DIR, "index.html"), getSettings()));
+  res.type("html").send(renderIndex(path.join(PUBLIC_DIR, "index.html"), getSettings()));
 });
 
 app.use((error, req, res, next) => {

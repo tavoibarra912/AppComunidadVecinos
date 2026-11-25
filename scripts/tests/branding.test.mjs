@@ -131,6 +131,59 @@ test("brandOf: tolera settings parciales y descarta valores inválidos", () => {
   assert.equal(brand.colorAcento, "#123abc");
   assert.equal(brand.logoDataUrl, "");
 });
+test("brandOf y brandStyle: tipografías añadidas y asignadas por elemento", () => {
+  const id = "custom-fuente-1";
+  const dataUrl = `data:font/woff2;base64,${Buffer.from("wOF2" + "A".repeat(24)).toString("base64")}`;
+  const brand = brandOf({
+    marca: {
+      tipografia: id,
+      tipografiaTitulos: "georgia",
+      tipografiaBotones: id,
+      tipografias: [{ id, nombre: "Fuente propia", respaldo: "serif", dataUrl }],
+    },
+  });
+  assert.equal(brand.tipografia, id);
+  assert.equal(brand.tipografiaTitulos, "georgia");
+  assert.equal(brand.tipografiaBotones, id);
+  assert.equal(brand.tipografias.length, 1);
+  assert.equal(brand.tipografias[0].dataUrl, dataUrl);
+  const css = brandStyle(brand);
+  assert.match(css, new RegExp(`@font-face\\{font-family:"ACVFont-${id}"`));
+  assert.match(css, new RegExp(`--font-ui:ACVFont-${id}, serif`));
+  assert.match(css, /--font-heading:Georgia/);
+  assert.match(css, new RegExp(`--font-button:ACVFont-${id}, serif`));
+  const withoutFile = brandOf({
+    marca: {
+      tipografia: id,
+      tipografias: [{ id, nombre: "Fuente propia", respaldo: "sans" }],
+    },
+  });
+  assert.match(brandStyle(withoutFile), new RegExp(`--font-ui:"Fuente propia", sans-serif`));
+});
+test("validateBrand: valida tipografías añadidas y sus archivos", () => {
+  const id = "custom-fuente-1";
+  const dataUrl = `data:font/woff2;base64,${Buffer.from("wOF2" + "A".repeat(24)).toString("base64")}`;
+  const font = { id, nombre: "Fuente propia", respaldo: "serif", dataUrl };
+  assert.equal(
+    validateBrand({
+      tipografias: [font],
+      tipografia: id,
+      tipografiaTitulos: "georgia",
+      tipografiaBotones: id,
+    }),
+    null,
+  );
+  assert.match(validateBrand({ tipografias: [{ ...font, id: "mal" }] }), /identificador/i);
+  assert.match(validateBrand({ tipografias: [{ ...font, nombre: "" }] }), /nombre/i);
+  assert.match(validateBrand({ tipografias: [{ ...font, respaldo: "otro" }] }), /respaldo/i);
+  assert.match(validateBrand({ tipografias: [font, { ...font }] }), /mismo identificador/i);
+  assert.equal(validateBrand({ tipografia: "custom-12345678" }), null);
+  assert.match(validateBrand({ tipografia: "otra" }), /tipografía/i);
+  assert.match(
+    validateBrand({ tipografias: [{ ...font, dataUrl: "data:font/woff2;base64,AAAA" }] }),
+    /archivo/i,
+  );
+});
 test("validateBrand: acepta, rechaza y limita como corresponde", () => {
   assert.equal(validateBrand(undefined), null);
   assert.equal(validateBrand({}), null);
@@ -261,6 +314,27 @@ test("API settings: guarda marca validada, la mergea y la expone en bootstrap", 
   );
   assert.equal(partial.data.marca.logoDataUrl, sampleLogo);
   assert.equal(partial.data.marca.colorPrimario, "#0f3057");
+  // Tipografías añadidas y asignación por elemento.
+  const fontId = "custom-fuente-api";
+  const fontData = `data:font/woff2;base64,${Buffer.from("wOF2" + "B".repeat(24)).toString("base64")}`;
+  const withFont = await request(
+    "/admin/settings",
+    "PUT",
+    {
+      marca: {
+        tipografia: fontId,
+        tipografiaTitulos: "georgia",
+        tipografiaBotones: fontId,
+        tipografias: [{ id: fontId, nombre: "Fuente API", respaldo: "serif", dataUrl: fontData }],
+      },
+    },
+    cookie,
+  );
+  assert.equal(withFont.status, 200, JSON.stringify(withFont.data));
+  assert.equal(withFont.data.marca.tipografia, fontId);
+  assert.equal(withFont.data.marca.tipografiaTitulos, "georgia");
+  assert.equal(withFont.data.marca.tipografiaBotones, fontId);
+  assert.equal(withFont.data.marca.tipografias[0].nombre, "Fuente API");
   // Quitar logo.
   const cleared = await request("/admin/settings", "PUT", { marca: { logoDataUrl: "" } }, cookie);
   assert.equal(cleared.data.marca.logoDataUrl, "");

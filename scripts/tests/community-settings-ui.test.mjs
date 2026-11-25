@@ -601,3 +601,33 @@ test("marca de comunidad: salir de Estilos oculta todas sus subpestañas y conse
   assert.equal(f.q("#settings-estilo-aplicacion").closest("[hidden]"), null);
   assert.equal(f.requests.length, 0, "cambiar de pestaña no guarda ni descarta el borrador");
 });
+
+test("marca de plataforma: añade tipografías y las asigna a cada elemento", async (t) => {
+  const f = fixture(t);
+  await f.w.review.renderAdministracion();
+  await f.w.review.switchAdminTab("settings");
+  await f.w.review.switchSettingsTab("estilo");
+  await f.w.review.switchEstiloTab("aplicacion");
+  f.q("#marca-add-tipografia").click();
+  const row = f.q("#marca-tipografias-list .custom-font-row");
+  assert.ok(row, "se añade una fila de tipografía");
+  const id = row.dataset.fontId;
+  const name = row.querySelector('input[type="text"]');
+  name.value = "Trebuchet MS";
+  name.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+  f.q('[name="marcaTipografia"]').value = id;
+  f.q('[name="marcaTipografiaTitulos"]').value = id;
+  f.q('[name="marcaTipografiaBotones"]').value = "georgia";
+  await f.submit();
+  assert.equal(f.requests.length, 1);
+  assert.equal(f.requests[0].kind, "settings");
+  const marca = f.requests[0].data.marca;
+  assert.equal(marca.tipografia, id);
+  assert.equal(marca.tipografiaTitulos, id);
+  assert.equal(marca.tipografiaBotones, "georgia");
+  assert.equal(marca.tipografias.length, 1);
+  assert.equal(marca.tipografias[0].id, id);
+  assert.equal(marca.tipografias[0].nombre, "Trebuchet MS");
+  assert.equal(marca.tipografias[0].respaldo, "sans");
+  assert.equal(marca.tipografias[0].dataUrl, undefined);
+});

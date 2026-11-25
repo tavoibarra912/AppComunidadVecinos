@@ -10,6 +10,8 @@
   --danger: #c63838;
   --font-ui:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-heading: var(--font-ui);
+  --font-button: var(--font-ui);
   --font-size-base: 14px;
   --radius: 5px;
 
@@ -77,6 +79,19 @@ body {
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--font-size-base);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+legend,
+.form-section-title,
+.brand,
+.login-brand {
+  font-family: var(--font-heading);
 }
 
 .topbar {
@@ -1507,6 +1522,90 @@ dialog .dialog-content {
 
 .settings-community-actions {
   align-items: center;
+}
+
+/* Tipografías añadidas en Administración > Estilo */
+.font-library {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.font-library-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.font-library-head strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.font-library-head .form-intro {
+  max-width: 620px;
+  margin: 4px 0 0;
+}
+
+.font-library-list {
+  display: grid;
+  gap: 10px;
+}
+
+.custom-font-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.2fr) minmax(120px, 0.7fr) minmax(180px, 1.2fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--canvas);
+}
+
+.custom-font-row label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: #3f4f61;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.custom-font-row input[type="text"],
+.custom-font-row select,
+.custom-font-row input[type="file"] {
+  width: 100%;
+  min-width: 0;
+}
+
+.custom-font-row .btn-delete {
+  align-self: end;
+}
+
+.custom-font-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .font-library-head {
+    flex-direction: column;
+  }
+
+  .custom-font-row {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-font-row .btn-delete {
+    justify-self: start;
+  }
 }
 
 .settings-community-actions .form-intro {
@@ -7903,4 +8002,19 @@ input[type="datetime-local"]:disabled {
   color: var(--muted);
   border-color: #dbe3ec;
   cursor: not-allowed;
+}
+
+/* La tipografía por elemento debe ganar a los atajos `font: inherit`. */
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.primary-button,
+.secondary-button,
+.danger-button,
+.nav-item,
+.mobile-nav-item,
+.topbar-btn-inbox,
+.community-editor-tab {
+  font-family: var(--font-button);
 }
