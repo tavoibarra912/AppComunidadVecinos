@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { state, ROLE_LABELS, hasPermission } from "../state.js";
+import { toast } from "../utils.js";
 import { accountView } from "../account-view.js";
 import { navigateToSection } from "./navigation.js";
 import { openOwnerDetail } from "./propietarios.js";
@@ -13,6 +14,10 @@ const passwordDialog = document.querySelector("#account-password-dialog");
 const passwordForm = document.querySelector("#account-password-form");
 const passwordError = document.querySelector("#account-password-error");
 const passwordSubmit = document.querySelector("#account-password-submit");
+const deletionDialog = document.querySelector("#account-deletion-dialog");
+const deletionForm = document.querySelector("#account-deletion-form");
+const deletionError = document.querySelector("#account-deletion-error");
+const deletionSubmit = document.querySelector("#account-deletion-submit");
 
 function items() {
   return [...menu.querySelectorAll('[role="menuitem"]')].filter(
@@ -121,7 +126,80 @@ function openProfile() {
       : "Tu acceso a la aplicación depende de los permisos de tu rol. No necesitas un perfil de propietario o inquilino para administrar.";
   closeMenu();
   profileDialog.showModal();
+  void renderPrivacy();
 }
+
+// ---------- Baja de cuenta (RGPD) ----------
+const accountDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "fecha desconocida"
+    : date.toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+};
+
+function privacyButton(label, onClick, variant = "secondary-button") {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = variant;
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function openDeletionDialog() {
+  deletionForm.reset();
+  deletionError.textContent = "";
+  deletionDialog.showModal();
+  deletionForm.elements.password.focus();
+}
+
+async function cancelDeletion() {
+  if (!confirm("¿Cancelar tu solicitud de baja? Tu cuenta seguirá activa.")) return;
+  try {
+    await api.cancelDeletion();
+  } catch (error) {
+    toast(error.message, "warning");
+    return;
+  }
+  toast("Solicitud de baja cancelada.");
+  await renderPrivacy();
+}
+
+async function renderPrivacy() {
+  const status = document.querySelector("#account-privacy-status");
+  const actions = document.querySelector("#account-privacy-actions");
+  if (!status || !actions) return;
+  status.textContent = "Cargando tu situación de baja…";
+  actions.replaceChildren();
+  let request = null;
+  try {
+    request = (await api.getDeletionRequest()).request || null;
+  } catch (error) {
+    status.textContent = `No se pudo consultar tu situación de baja: ${error.message}`;
+    return;
+  }
+  if (!request || request.state === "cancelled") {
+    status.textContent = request
+      ? `Cancelaste tu solicitud de baja del ${accountDate(request.requestedAt)}. Puedes enviar una nueva cuando quieras.`
+      : "Puedes pedir la eliminación de tu cuenta y de tus datos personales. La administración revisa la solicitud; los recibos, cobros y registros contables se conservan mientras la ley lo exija.";
+    actions.append(
+      privacyButton("Solicitar baja de mi cuenta", openDeletionDialog, "danger-button"),
+    );
+    return;
+  }
+  if (request.state === "pending") {
+    status.textContent = `Solicitud de baja enviada el ${accountDate(request.requestedAt)}. La administración la revisará en el menor plazo posible y puedes cancelarla mientras siga pendiente.`;
+    actions.append(privacyButton("Cancelar solicitud de baja", cancelDeletion));
+    return;
+  }
+  if (request.state === "rejected") {
+    status.textContent = `Tu solicitud del ${accountDate(request.requestedAt)} fue rechazada${request.resolutionNote ? `: ${request.resolutionNote}` : "."} Puedes enviar una nueva solicitud o consultar a la administración.`;
+    actions.append(
+      privacyButton("Volver a solicitar la baja", openDeletionDialog, "danger-button"),
+    );
+  }
+}
+
 document.querySelector("#account-menu-profile").addEventListener("click", openProfile);
 document.querySelector("#account-menu-community").addEventListener("click", () => {
   closeMenu();
@@ -139,11 +217,41 @@ for (const button of document.querySelectorAll("[data-close-account-dialog]")) {
     document.getElementById(button.dataset.closeAccountDialog).close(),
   );
 }
-for (const dialog of [profileDialog, passwordDialog])
+for (const dialog of [profileDialog, passwordDialog, deletionDialog])
   dialog.addEventListener("close", () => toggle.focus());
 passwordDialog.addEventListener("close", () => {
   passwordForm.reset();
   passwordError.textContent = "";
+});
+deletionDialog.addEventListener("close", () => {
+  deletionForm.reset();
+  deletionError.textContent = "";
+});
+deletionForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (deletionSubmit.disabled) return;
+  deletionError.textContent = "";
+  const { password, reason } = deletionForm.elements;
+  if (!password.value) {
+    deletionError.textContent = "Indica tu contraseña actual.";
+    password.focus();
+    return;
+  }
+  deletionSubmit.disabled = true;
+  deletionForm.setAttribute("aria-busy", "true");
+  try {
+    await api.requestDeletion({ password: password.value, reason: reason.value.trim() });
+    deletionDialog.close();
+    toast("Solicitud de baja enviada. La administración la revisará.");
+    await renderPrivacy();
+  } catch (error) {
+    deletionError.textContent = error.message;
+    password.value = "";
+    password.focus();
+  } finally {
+    deletionSubmit.disabled = false;
+    deletionForm.removeAttribute("aria-busy");
+  }
 });
 passwordForm.addEventListener("submit", async (event) => {
   event.preventDefault();

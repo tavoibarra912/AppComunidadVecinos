@@ -323,6 +323,7 @@ function renderUsers() {
     getFilters: () => ({}),
   });
   userTable.setExportControl?.(exportWrap);
+  void renderDeletionRequests();
 }
 
 function iconBtn(className, title, ariaLabel, svg) {
@@ -532,6 +533,172 @@ async function deleteUser(id, usuario) {
   renderUsers();
   toast(`Usuario ${usuario} eliminado.`);
 }
+
+// ---------- Solicitudes de baja (RGPD) ----------
+function deletionRequestLabel(item) {
+  const name = `${item.nombre || ""} ${item.apellido || ""}`.trim();
+  return name || item.usuario || item.email || "Cuenta eliminada";
+}
+
+async function renderDeletionRequests() {
+  const panel = document.querySelector("#deletion-requests-panel");
+  const list = document.querySelector("#deletion-requests-list");
+  if (!panel || !list) return;
+  let requests = [];
+  if (hasPermission("admin:users")) {
+    try {
+      requests = (await api.deletionRequests()).requests || [];
+    } catch {
+      // Sin la cola disponible el panel se queda oculto, igual que sin permiso.
+      requests = [];
+    }
+  }
+  list.replaceChildren(...requests.map(deletionRequestItem));
+  panel.hidden = !requests.length;
+}
+
+function deletionRequestItem(item) {
+  const li = document.createElement("li");
+  li.className = "deletion-request";
+  const info = document.createElement("div");
+  info.className = "deletion-request-info";
+  const title = document.createElement("strong");
+  title.textContent = deletionRequestLabel(item);
+  const meta = document.createElement("span");
+  meta.className = "community-notes";
+  meta.textContent = [
+    item.usuario ? `Usuario: ${item.usuario}` : "",
+    item.email,
+    `Solicitada el ${new Date(item.requestedAt).toLocaleDateString("es-ES")}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  info.append(title, meta);
+  if (item.reason) {
+    const reason = document.createElement("p");
+    reason.className = "form-intro";
+    reason.textContent = `Motivo: ${item.reason}`;
+    info.append(reason);
+  }
+  const actions = document.createElement("div");
+  actions.className = "row-actions";
+  const approve = document.createElement("button");
+  approve.type = "button";
+  approve.className = "danger-button";
+  approve.textContent = "Eliminar cuenta";
+  approve.addEventListener("click", () => approveDeletion(item));
+  const reject = document.createElement("button");
+  reject.type = "button";
+  reject.className = "secondary-button";
+  reject.textContent = "Rechazar";
+  reject.addEventListener("click", () => rejectDeletion(item));
+  actions.append(approve, reject);
+  li.append(info, actions);
+  return li;
+}
+
+const deletionApproveDialog = document.querySelector("#deletion-approve-dialog");
+const deletionApproveForm = document.querySelector("#deletion-approve-form");
+const deletionApproveMessage = document.querySelector("#deletion-approve-message");
+const deletionApproveError = document.querySelector("#deletion-approve-error");
+const deletionApproveSubmit = document.querySelector("#deletion-approve-submit");
+const deletionRejectDialog = document.querySelector("#deletion-reject-dialog");
+const deletionRejectForm = document.querySelector("#deletion-reject-form");
+const deletionRejectMessage = document.querySelector("#deletion-reject-message");
+const deletionRejectNote = document.querySelector("#deletion-reject-note");
+const deletionRejectError = document.querySelector("#deletion-reject-error");
+const deletionRejectSubmit = document.querySelector("#deletion-reject-submit");
+
+// Solicitud que el diálogo abierto está revisando.
+let deletionTarget = null;
+
+function setDeletionBusy(form, submit, busy) {
+  submit.disabled = busy;
+  if (busy) form.setAttribute("aria-busy", "true");
+  else form.removeAttribute("aria-busy");
+}
+
+function approveDeletion(item) {
+  if (!requirePermission("admin:users")) return;
+  deletionTarget = item;
+  deletionApproveError.textContent = "";
+  deletionApproveMessage.textContent = `¿Eliminar la cuenta de «${deletionRequestLabel(item)}»? Se cerrarán sus sesiones y se borrarán sus datos de acceso y preferencias. Los recibos, cobros y registros contables se conservan.`;
+  deletionApproveDialog.showModal();
+  deletionApproveForm.querySelector("[data-close-deletion-dialog]")?.focus();
+}
+
+function rejectDeletion(item) {
+  if (!requirePermission("admin:users")) return;
+  deletionTarget = item;
+  deletionRejectError.textContent = "";
+  deletionRejectMessage.textContent = `La cuenta de «${deletionRequestLabel(item)}» seguirá activa y el titular verá aquí el motivo del rechazo.`;
+  deletionRejectNote.value = "";
+  deletionRejectDialog.showModal();
+  deletionRejectNote.focus();
+}
+
+for (const button of document.querySelectorAll("[data-close-deletion-dialog]"))
+  button.addEventListener("click", () =>
+    document.getElementById(button.dataset.closeDeletionDialog)?.close(),
+  );
+for (const dialog of [deletionApproveDialog, deletionRejectDialog])
+  dialog.addEventListener("close", () => {
+    deletionTarget = null;
+    deletionApproveError.textContent = "";
+    deletionRejectError.textContent = "";
+    setDeletionBusy(deletionApproveForm, deletionApproveSubmit, false);
+    setDeletionBusy(deletionRejectForm, deletionRejectSubmit, false);
+  });
+
+// Los dos diálogos se comportan igual: bloquean el botón, muestran el error en
+// línea y recargan al terminar. Solo cambian la acción y lo que sigue.
+function deletionFormHandler({ form, submit, errorBox, dialog, action, done }) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!deletionTarget || submit.disabled) return;
+    const item = deletionTarget;
+    errorBox.textContent = "";
+    setDeletionBusy(form, submit, true);
+    try {
+      await action(item);
+    } catch (error) {
+      errorBox.textContent = error.message;
+      setDeletionBusy(form, submit, false);
+      return;
+    }
+    dialog.close();
+    await done(item);
+  });
+}
+
+deletionFormHandler({
+  form: deletionApproveForm,
+  submit: deletionApproveSubmit,
+  errorBox: deletionApproveError,
+  dialog: deletionApproveDialog,
+  action: (item) => api.approveDeletionRequest(item.id),
+  done: async (item) => {
+    if (item.userId === state.currentUserId) {
+      window.dispatchEvent(new Event("auth:expired"));
+      return;
+    }
+    toast(`Cuenta de ${deletionRequestLabel(item)} eliminada.`);
+    await refreshState();
+    renderUsers();
+  },
+});
+
+deletionFormHandler({
+  form: deletionRejectForm,
+  submit: deletionRejectSubmit,
+  errorBox: deletionRejectError,
+  dialog: deletionRejectDialog,
+  action: (item) => api.rejectDeletionRequest(item.id, deletionRejectNote.value.trim()),
+  done: async () => {
+    toast("Solicitud de baja rechazada.");
+    await renderDeletionRequests();
+  },
+});
 
 document.querySelector("#new-user")?.addEventListener("click", () => openUserEditor());
 document
