@@ -798,6 +798,7 @@ function renderPanel(root, ctx) {
     manage = data.canManage && !ctx.readonly;
   const assessmentTab = ctx.tab === "assessments";
   const serviceTab = ctx.tab === "services";
+  const meterTab = ctx.tab === "meters";
   const receipts = data.receipts.filter((r) => {
     const kind = r.kind || "ordinary";
     return serviceTab
@@ -812,13 +813,15 @@ function renderPanel(root, ctx) {
       : "EUR";
   const canConfigure = feeCurrency === "EUR";
   root.replaceChildren();
+  const tabs = [
+    ["ordinary", "Cuotas ordinarias"],
+    ["assessments", "Derramas"],
+    ["services", "Servicios"],
+  ];
+  if (ctx.kind === "community" && data.canManage) tabs.push(["meters", "Contadores"]);
   tabBar(
     root,
-    [
-      ["ordinary", "Cuotas ordinarias"],
-      ["assessments", "Derramas"],
-      ["services", "Servicios"],
-    ],
+    tabs,
     ctx.tab,
     (tab) => {
       ctx.tab = tab;
@@ -834,6 +837,11 @@ function renderPanel(root, ctx) {
   }
   if (serviceTab && ctx.serviceEditor) {
     root.append(ctx.serviceEditor);
+    return;
+  }
+  if (meterTab) {
+    if (ctx.kind === "community" && data.canManage) meterSection(root, ctx);
+    else info(root, "No tienes acceso a los contadores de esta comunidad.", true);
     return;
   }
   if ((!assessmentTab && !serviceTab) || !manage)
@@ -1573,6 +1581,162 @@ function serviceSection(root, ctx) {
     );
   root.append(section);
 }
+function meterImage(meter) {
+  if (!meter.photos?.length) return el("span", "—", "fee-meter-no-image");
+  const first = meter.photos[0],
+    link = el("a", undefined, "fee-meter-thumb-link");
+  link.href = `/api/fees/service-attachments/${encodeURIComponent(first.id)}/download`;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.title = first.fileName;
+  const image = document.createElement("img");
+  image.className = "fee-meter-thumb";
+  image.src = link.href;
+  image.alt = `Foto del contador de ${meter.plot}`;
+  image.loading = "lazy";
+  link.append(image);
+  if (meter.photos.length > 1)
+    link.append(el("span", `+${meter.photos.length - 1}`, "fee-meter-thumb-count"));
+  return link;
+}
+/**
+ * Pantalla de contadores: una fila por lectura con fecha, foto e incidencia.
+ * La incidencia se guarda por lectura y queda auditada; no altera importes.
+ */
+function meterSection(root, ctx) {
+  const meters = ctx.data.meters || [],
+    section = el("section", undefined, "fee-meters"),
+    heading = el("div", undefined, "fee-section-heading"),
+    copy = el("div");
+  copy.append(
+    el("h3", "Contadores", "fee-section-title"),
+    el(
+      "p",
+      "Lecturas de contador con fecha, imagen e incidencia. Anota roturas, sustituciones, fugas o lecturas no visibles para dejar constancia junto a cada lectura.",
+      "form-intro",
+    ),
+  );
+  copy.querySelector("h3").id = "fee-meters-title";
+  section.setAttribute("aria-labelledby", "fee-meters-title");
+  heading.append(
+    copy,
+    iconButton("Actualizar contadores", () => load(root, ctx), "info", "refresh"),
+  );
+  section.append(heading);
+  if (!meters.length) {
+    info(
+      section,
+      "Todavía no hay lecturas de contador. Crea un servicio con reparto por lecturas o mixto para cargar los contadores.",
+    );
+    root.append(section);
+    return;
+  }
+  const filters = el("div", undefined, "fee-filters"),
+    supplies = [...new Map(meters.map((meter) => [meter.service, meter.serviceLabel])).entries()],
+    supplyFilter = field(filters, "Suministro", "select", "", [
+      ["", "Todos los suministros"],
+      ...supplies,
+    ]),
+    search = field(filters, "Buscar contador", "search", "");
+  search.placeholder = "Inmueble o incidencia";
+  section.append(filters);
+  const results = el("div", undefined, "fee-meter-results");
+  section.append(results);
+  root.append(section);
+  function renderRows() {
+    const query = search.value.trim().toLocaleLowerCase("es"),
+      rows = meters.filter(
+        (meter) =>
+          (!supplyFilter.value || meter.service === supplyFilter.value) &&
+          (!query || `${meter.plot} ${meter.incident}`.toLocaleLowerCase("es").includes(query)),
+      );
+    results.replaceChildren();
+    if (!rows.length) {
+      info(results, "No hay contadores que coincidan con estos filtros.");
+      return;
+    }
+    const summary = el("p", undefined, "fee-selection-summary");
+    summary.textContent = `${rows.length} ${rows.length === 1 ? "contador" : "contadores"}`;
+    results.append(summary);
+    results.append(
+      table(
+        [
+          "Nº",
+          "Inmueble",
+          "Suministro · periodo",
+          "Fecha",
+          "Imagen",
+          "Lectura",
+          "Consumo",
+          "Incidencia",
+        ],
+        rows.map((meter, index) => {
+          const readingDate = document.createElement("input");
+          readingDate.type = "date";
+          readingDate.className = "fee-meter-date";
+          readingDate.value = meter.date || "";
+          readingDate.setAttribute("aria-label", `Fecha de lectura de ${meter.plot}`);
+          const incident = document.createElement("input");
+          incident.type = "text";
+          incident.className = "fee-meter-incident-input";
+          incident.maxLength = 500;
+          incident.value = meter.incident || "";
+          incident.placeholder = "Sin incidencias";
+          incident.setAttribute("aria-label", `Incidencia de ${meter.plot}`);
+          const statusText = el("span", "", "fee-meter-status");
+          statusText.setAttribute("aria-live", "polite");
+          const save = iconButton(
+            `Guardar fecha e incidencia de ${meter.plot}`,
+            async () => {
+              const saved = await api.fees(
+                `/services/${encodeURIComponent(meter.serviceBillId)}/readings/${encodeURIComponent(meter.propertyId)}`,
+                "PATCH",
+                { date: readingDate.value, incident: incident.value },
+              );
+              meter.date = saved.date;
+              meter.incident = saved.incident;
+              readingDate.value = saved.date;
+              incident.value = saved.incident;
+              save.disabled = true;
+              save.dataset.feeDisabled = "true";
+              statusText.textContent = "Guardado";
+              toast("Incidencia del contador guardada.");
+            },
+            "save",
+            "save",
+          );
+          save.classList.add("fee-meter-save");
+          save.disabled = true;
+          save.dataset.feeDisabled = "true";
+          const markDirty = () => {
+            save.disabled =
+              readingDate.value === (meter.date || "") && incident.value === (meter.incident || "");
+            save.dataset.feeDisabled = String(save.disabled);
+            if (!save.disabled) statusText.textContent = "Cambios sin guardar";
+          };
+          readingDate.addEventListener("input", markDirty);
+          incident.addEventListener("input", markDirty);
+          const incidentCell = el("div", undefined, "fee-meter-incident");
+          incidentCell.append(incident, save, statusText);
+          return [
+            String(index + 1),
+            `<strong>${esc(meter.plot)}</strong>`,
+            `${esc(meter.serviceLabel)}<small>${esc(meter.period)}</small>`,
+            readingDate,
+            meterImage(meter),
+            `${formatReading(meter.current)} m³<small>Anterior ${formatReading(meter.previous)} m³</small>`,
+            `${formatReading(meter.consumption)} m³`,
+            incidentCell,
+          ];
+        }),
+      ),
+    );
+  }
+  supplyFilter.addEventListener("change", renderRows);
+  search.addEventListener("input", renderRows);
+  renderRows();
+}
+
 function serviceForm(ctx, service = null) {
   buildServiceEditor(ctx, service, {
     el,

@@ -1115,3 +1115,68 @@
     font-size: 13px;
   }
 }
+
+/* Pantalla de contadores: fecha, imagen e incidencia por lectura. */
+.fee-meter-thumb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.fee-meter-thumb {
+  width: 58px;
+  height: 44px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #f1f4f7;
+}
+.fee-meter-thumb-count {
+  font-size: 11px;
+  color: var(--muted);
+}
+.fee-meter-no-image {
+  color: var(--muted);
+}
+.fee-meter-date {
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: inherit;
+  font-size: 13px;
+}
+.fee-meter-incident {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fee-meter-incident-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: inherit;
+  font-size: 13px;
+}
+.fee-meter-save {
+  flex: 0 0 auto;
+}
+.fee-meter-status {
+  font-size: 11px;
+  color: var(--muted);
+}
+@media (max-width: 600px) {
+  .fee-meter-incident {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .fee-meter-incident-input {
+    min-width: 0;
+    width: 100%;
+  }
+  .fee-meter-status {
+    grid-column: 1 / -1;
+  }
+}

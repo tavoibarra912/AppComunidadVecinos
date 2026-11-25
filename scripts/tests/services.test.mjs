@@ -728,3 +728,104 @@ test("servicios: no permite borrar ni mover inmuebles incluidos en un reparto vi
     409,
   );
 });
+
+test("contadores: guarda fecha e incidencia por lectura, las expone y bloquea a quien no gestiona", async () => {
+  const c = community(["50", "50"]),
+    otherCommunity = community(["100"]),
+    route = `/fees/communities/${c.id}/services`,
+    service = await ok(
+      staff,
+      route,
+      "POST",
+      {
+        ...defaults,
+        totalAmount: "100",
+        method: "reading",
+        readings: {
+          [c.properties[0]]: {
+            previous: "100",
+            current: "120",
+            date: "2030-01-09",
+            incident: "Contador roto",
+          },
+          [c.properties[1]]: { previous: "0", current: "10" },
+        },
+      },
+      201,
+    );
+  assert.equal(service.readings[c.properties[0]].date, "2030-01-09");
+  assert.equal(service.readings[c.properties[0]].incident, "Contador roto");
+  // Sin fecha explícita se usa la fecha de la factura; la incidencia nace vacía.
+  assert.equal(service.readings[c.properties[1]].date, "2030-01-10");
+  assert.equal(service.readings[c.properties[1]].incident, "");
+  const communityView = await ok(staff, `/fees/communities/${c.id}`);
+  assert.equal(communityView.meters.length, 2);
+  const broken = communityView.meters.find((meter) => meter.propertyId === c.properties[0]);
+  assert.equal(broken.date, "2030-01-09");
+  assert.equal(broken.incident, "Contador roto");
+  assert.equal(broken.serviceBillId, service.id);
+  // Se puede anotar después de emitir: no recalcula importes.
+  await ok(
+    staff,
+    `/fees/services/${service.id}/issue`,
+    "POST",
+    { token: preview(service.id).token },
+    201,
+  );
+  const updated = await ok(
+    staff,
+    `/fees/services/${service.id}/readings/${c.properties[1]}`,
+    "PATCH",
+    { date: "2030-01-11", incident: "Goteando" },
+  );
+  assert.equal(updated.date, "2030-01-11");
+  assert.equal(updated.incident, "Goteando");
+  const after = await ok(staff, `/fees/services/${service.id}`);
+  assert.equal(after.readings[c.properties[1]].incident, "Goteando");
+  assert.equal(after.readings[c.properties[1]].current, 10000);
+  assert.equal(
+    db
+      .prepare(
+        "SELECT COUNT(*) n FROM access_audit WHERE action='fee.service.reading' AND resourceId=?",
+      )
+      .get(service.id).n,
+    1,
+  );
+  for (const request of [owner, tenant])
+    assert.equal(
+      (
+        await request(`/fees/services/${service.id}/readings/${c.properties[0]}`, "PATCH", {
+          incident: "No autorizado",
+        })
+      ).status,
+      403,
+    );
+  assert.equal(
+    (
+      await staff(
+        `/fees/services/${service.id}/readings/${otherCommunity.properties[0]}`,
+        "PATCH",
+        { incident: "Inmueble ajeno" },
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await staff(`/fees/services/${service.id}/readings/${c.properties[0]}`, "PATCH", {
+        date: "2030-02-30",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await staff(`/fees/services/${service.id}/readings/${c.properties[0]}`, "PATCH", {
+        incident: "x".repeat(501),
+      })
+    ).status,
+    400,
+  );
+  const ownerView = await ok(owner, `/fees/communities/${c.id}`);
+  assert.deepEqual(ownerView.meters, [], "la pantalla de contadores es solo para gestión");
+});

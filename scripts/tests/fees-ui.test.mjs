@@ -82,6 +82,23 @@ function fixture(manage = true) {
     defaults: {},
     services: [],
     serviceMeters: {},
+    meters: [
+      {
+        propertyId: "p1",
+        plot: "Parcela 1",
+        service: "agua",
+        serviceLabel: "Agua",
+        serviceBillId: "s1",
+        period: "2026-11",
+        issueDate: "2026-11-01",
+        date: "2026-11-02",
+        previous: 100000,
+        current: 120000,
+        consumption: 20000,
+        incident: "",
+        photos: [],
+      },
+    ],
     properties: [{ id: "p1", plot: "Parcela 1", coefficient: "100" }],
   };
   Object.assign(w, {
@@ -1606,6 +1623,50 @@ test("H-08: el atajo de cuotas usa una ruta real y conserva el filtro del propie
     assert.equal(f.w.location.pathname, "/cuotas");
     assert.equal(f.w.location.search, "?propietario=o1");
     assert.equal(f.w.location.hash, "");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("contadores UI: muestra fecha, imagen e incidencia y guarda la incidencia", async () => {
+  const f = fixture();
+  try {
+    const root = f.w.document.querySelector("#community-editor-fees");
+    f.w.feeTest.mountFees(root, "community", "c1");
+    await flush();
+    click(f.w, "Contadores", root);
+    await flush();
+    const section = root.querySelector(".fee-meters");
+    assert.ok(section, "faltó la pantalla de contadores");
+    const headers = [...section.querySelectorAll(".fee-table th")].map((th) => th.textContent);
+    assert.ok(headers.includes("Fecha"));
+    assert.ok(headers.includes("Imagen"));
+    assert.ok(headers.includes("Incidencia"));
+    assert.match(section.textContent, /Parcela 1/);
+    assert.match(section.textContent, /Agua/);
+    const incident = section.querySelector(".fee-meter-incident-input");
+    const save = section.querySelector(".fee-meter-save");
+    assert.equal(save.disabled, true, "no se guarda sin cambios");
+    incident.value = "Contador roto";
+    incident.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+    assert.equal(save.disabled, false, "el cambio habilita el guardado");
+    const original = f.w.api.fees;
+    f.w.api.fees = async (route, method, body) => {
+      if (route === "/services/s1/readings/p1" && method === "PATCH") {
+        f.calls.push([route, method, body]);
+        return { ...body };
+      }
+      return original(route, method, body);
+    };
+    save.click();
+    await flush();
+    const sent = f.calls.find((call) => call[0] === "/services/s1/readings/p1");
+    assert.ok(sent, "no se envió la incidencia");
+    assert.equal(sent[1], "PATCH");
+    assert.equal(sent[2].incident, "Contador roto");
+    assert.equal(sent[2].date, "2026-11-02");
+    assert.equal(save.disabled, true, "vuelve a quedar sin cambios pendientes");
+    assert.match(section.textContent, /Guardado/);
   } finally {
     f.dom.window.close();
   }

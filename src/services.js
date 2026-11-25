@@ -168,7 +168,7 @@ function coefficientData(entries, all) {
   );
 }
 
-function readingData(entries, input) {
+function readingData(entries, input, defaultDate, existing = {}) {
   const readings = {};
   for (const entry of entries) {
     const item = input.readings?.[entry.property.id];
@@ -178,10 +178,20 @@ function readingData(entries, input) {
       throw problem(
         `${entry.property.plot}: la lectura actual no puede ser menor que la anterior.`,
       );
+    const saved = existing?.[entry.property.id];
+    const rawDate = typeof item?.date === "string" ? item.date.trim() : "";
+    if (rawDate && !validDate(rawDate))
+      throw problem(`${entry.property.plot}: la fecha de lectura no es válida.`);
+    const incident =
+      item?.incident === undefined
+        ? saved?.incident || ""
+        : text(item.incident, `${entry.property.plot}: la incidencia`, 500);
     readings[entry.property.id] = {
       previous,
       current,
       consumption: current - previous,
+      date: rawDate || saved?.date || defaultDate,
+      incident,
     };
   }
   return readings;
@@ -230,7 +240,11 @@ export function saveService(communityId, input, actor, id = "") {
     for (const entry of entries) coefficients[entry.property.id] = entry.property.participationCoef;
   }
 
-  const readings = method === "reading" || method === "mixed" ? readingData(entries, input) : {};
+  const existingReadings = id ? payload(serviceBillById(id)).readings || {} : {};
+  const readings =
+    method === "reading" || method === "mixed"
+      ? readingData(entries, input, input.issueDate, existingReadings)
+      : {};
   const allocations = {},
     fixedParts = new Map(),
     variableParts = new Map(),
@@ -846,6 +860,101 @@ export function lastServiceReadings(communityId) {
     }
   }
   return result;
+}
+
+/**
+ * Pantalla de contadores: última lectura de cada inmueble por suministro, con
+ * la fecha, la incidencia anotada y las fotos de referencia asociadas.
+ */
+export function communityMeters(communityId) {
+  const bills = db
+    .prepare(
+      "SELECT * FROM service_bills WHERE communityId=? AND cancelledAt='' ORDER BY issueDate DESC,createdAt DESC",
+    )
+    .all(communityId);
+  const properties = new Map(
+    listProperties()
+      .filter((property) => property.communityId === communityId)
+      .map((property) => [property.id, property]),
+  );
+  const seen = new Set();
+  const meters = [];
+  for (const bill of bills) {
+    const data = payload(bill);
+    if (!["reading", "mixed"].includes(data.method)) continue;
+    for (const [propertyId, reading] of Object.entries(data.readings || {})) {
+      const key = `${bill.service}:${propertyId}`;
+      if (seen.has(key)) continue;
+      const property = properties.get(propertyId);
+      if (!property) continue;
+      seen.add(key);
+      meters.push({
+        propertyId,
+        plot: property.plot || property.address || propertyId,
+        service: bill.service,
+        serviceLabel: serviceLabels[bill.service] || bill.service,
+        serviceBillId: bill.id,
+        period: bill.period,
+        issueDate: bill.issueDate,
+        date: reading.date || bill.issueDate,
+        previous: reading.previous ?? null,
+        current: reading.current ?? null,
+        consumption: reading.consumption ?? null,
+        incident: reading.incident || "",
+        photos: [],
+      });
+    }
+  }
+  const billIds = new Set(meters.map((meter) => meter.serviceBillId));
+  const photos = db
+    .prepare(
+      "SELECT id,serviceBillId,propertyId,fileName,mime FROM service_attachments WHERE kind='reading' ORDER BY createdAt",
+    )
+    .all();
+  const byReading = new Map(
+    meters.map((meter) => [`${meter.serviceBillId}:${meter.propertyId}`, meter]),
+  );
+  for (const photo of photos) {
+    if (!billIds.has(photo.serviceBillId)) continue;
+    byReading
+      .get(`${photo.serviceBillId}:${photo.propertyId}`)
+      ?.photos.push({ id: photo.id, fileName: photo.fileName, mime: photo.mime });
+  }
+  return meters.sort(
+    (left, right) =>
+      left.plot.localeCompare(right.plot, "es") || left.service.localeCompare(right.service, "es"),
+  );
+}
+
+/**
+ * Anota la fecha y la incidencia de una lectura concreta. Los importes del
+ * reparto no se recalculan: la anotación es informativa y queda auditada.
+ */
+export function updateServiceReading(id, propertyId, input, actor) {
+  const row = serviceBillById(id);
+  if (!canManage(actor, row.communityId))
+    throw problem("No tienes permiso para gestionar cuotas de esta comunidad.", 403);
+  if (row.cancelledAt) throw problem("El servicio está anulado.", 409);
+  const property = listProperties().find(
+    (item) => item.id === propertyId && item.communityId === row.communityId,
+  );
+  if (!property) throw problem("Inmueble no encontrado.", 404);
+  const data = payload(row);
+  const reading = data.readings?.[propertyId];
+  if (!reading) throw problem("El inmueble no tiene lectura en este servicio.", 404);
+  const rawDate = typeof input.date === "string" ? input.date.trim() : "";
+  if (rawDate && !validDate(rawDate)) throw problem("La fecha de lectura no es válida.");
+  const date = rawDate || reading.date || row.issueDate;
+  const incident =
+    input.incident === undefined
+      ? reading.incident || ""
+      : text(input.incident, "la incidencia", 500);
+  return transaction(() => {
+    data.readings[propertyId] = { ...reading, date, incident };
+    db.prepare("UPDATE service_bills SET data=? WHERE id=?").run(JSON.stringify(data), row.id);
+    audit(actor, "reading", row.id, { propertyId, date, incident });
+    return { propertyId, date, incident };
+  });
 }
 
 export function serviceAttachmentById(id) {
