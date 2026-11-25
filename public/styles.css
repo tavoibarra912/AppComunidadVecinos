@@ -4611,6 +4611,14 @@ select {
   border-color: var(--brand);
 }
 
+.community-property-card input:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: var(--line);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .community-property-info {
   display: flex;
   flex-direction: column;
@@ -5357,6 +5365,16 @@ th.th-drag-over {
   font-size: 12.5px;
   color: var(--ink);
   background: #fff;
+}
+
+#owner-dialog .owner-property-pct input:disabled,
+#owner-dialog.is-readonly .owner-property-pct input:disabled,
+#owner-dialog.is-property-locked .owner-property-pct input:disabled {
+  background: #f1f5f9;
+  border-color: var(--line, #cbd5df);
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .owner-property-pct input:focus {

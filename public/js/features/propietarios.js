@@ -480,6 +480,21 @@ function ownerTabForField(name) {
   return pane ? pane.dataset.ownerPane : "general";
 }
 
+/** Control visible y enfocable de un campo (los combos usan un buscador). */
+function ownerFieldFocusTarget(field) {
+  const element = typeof field === "string" ? ownerForm.elements[field] : field;
+  if (!element) return null;
+  const combo = element.closest?.(".combo-box");
+  const search = combo?.querySelector(".combo-box-input");
+  if (search && !search.disabled && !search.hidden) return search;
+  if (!element.disabled && !element.hidden) return element;
+  const label = element.closest?.("label");
+  return (
+    label?.querySelector("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)") ||
+    null
+  );
+}
+
 // --- Pestaña Inmueble: badges como en comunidad (mismo UX) ---
 function renderOwnerPropertiesTab() {
   if (!ownerPropertiesList) return;
@@ -535,7 +550,9 @@ function renderOwnerPropertiesTab() {
     pctInput.value = String(currentPct);
     pctInput.title = "Porcentaje de titularidad de este propietario sobre el inmueble";
     pctInput.setAttribute("aria-label", `Porcentaje de titularidad en ${property.plot}`);
-    pctInput.readOnly = propertyLocked;
+    // En solo lectura el control debe verse inerte, no como un campo editable
+    // que aparenta aceptar cambios y luego no los guarda.
+    pctInput.disabled = propertyLocked;
     pctInput.addEventListener("change", () => {
       if (propertyLocked) return;
       let value = Number(pctInput.value.replace(",", "."));
@@ -655,9 +672,13 @@ export function addPropertyToOwnerEditor(ownerId, propertyId) {
 export function clearOwnerFieldErrors() {
   ownerForm.querySelectorAll("label.field-error").forEach((label) => {
     label.classList.remove("field-error");
-    label
-      .querySelectorAll("[aria-invalid='true']")
-      .forEach((field) => field.removeAttribute("aria-invalid"));
+  });
+  ownerForm.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+    field.removeAttribute("aria-invalid");
+  });
+  ownerTabsRoot.forEach((tab) => {
+    tab.classList.remove("has-error");
+    tab.removeAttribute("aria-invalid");
   });
   ownerError.textContent = "";
 }
@@ -1662,13 +1683,20 @@ ownerForm.addEventListener("submit", async (event) => {
   const { errors, marks, selectedLocation } = collectOwnerErrors();
 
   if (errors.length > 0) {
+    const fieldMarks = marks.filter((mark) => !String(mark).startsWith("__tab:"));
     const tabMark = marks.find((mark) => typeof mark === "string" && mark.startsWith("__tab:"));
-    if (tabMark) {
-      switchOwnerDialogTab(tabMark.slice(6));
-    } else {
-      switchOwnerDialogTab(ownerTabForField(marks[0] || "name"));
-    }
-    marks.filter((mark) => !String(mark).startsWith("__tab:")).forEach(markOwnerFieldError);
+    const firstTab = tabMark ? tabMark.slice(6) : ownerTabForField(fieldMarks[0] || "name");
+    switchOwnerDialogTab(firstTab);
+    fieldMarks.forEach(markOwnerFieldError);
+    const markedTabs = new Set(fieldMarks.map((mark) => ownerTabForField(mark)));
+    if (tabMark) markedTabs.add(firstTab);
+    ownerTabsRoot.forEach((tab) => {
+      if (!markedTabs.has(tab.dataset.ownerTab)) return;
+      tab.classList.add("has-error");
+      tab.setAttribute("aria-invalid", "true");
+    });
+    const focusTarget = ownerFieldFocusTarget(fieldMarks[0]);
+    if (focusTarget) focusTarget.focus();
 
     if (ownerValidationList && ownerValidationDialog) {
       ownerValidationList.replaceChildren();
@@ -1678,6 +1706,8 @@ ownerForm.addEventListener("submit", async (event) => {
         ownerValidationList.append(li);
       });
       ownerValidationDialog.showModal();
+      if (focusTarget)
+        ownerValidationDialog.addEventListener("close", () => focusTarget.focus(), { once: true });
     } else {
       alert("Corrige los siguientes errores:\n\n" + errors.join("\n"));
     }

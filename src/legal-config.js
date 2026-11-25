@@ -296,6 +296,25 @@ export function validateLegalConfig(value) {
   return null;
 }
 
+/**
+ * Régimen realmente guardado, sin completar el valor por defecto. Devuelve ""
+ * cuando la comunidad nunca lo eligió: los certificados y las votaciones no
+ * deben tratar ese vacío como si fuera LPH.
+ */
+export function explicitLegalRegime(community) {
+  if (!community) return "";
+  let source = community.legalConfig;
+  if (typeof source === "string") {
+    try {
+      source = JSON.parse(source || "{}");
+    } catch {
+      return "";
+    }
+  }
+  if (!source || typeof source !== "object" || Array.isArray(source)) return "";
+  return Object.hasOwn(LEGAL_REGIMES, source.regimen) ? source.regimen : "";
+}
+
 /** Devuelve la configuración de una comunidad ya normalizada. */
 export function legalConfigOf(community) {
   if (!community) return legalConfigFromValue({});

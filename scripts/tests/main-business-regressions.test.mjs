@@ -56,6 +56,7 @@ function fixture() {
     currency: "EUR",
     address: "Calle Prueba",
     city: "Madrid",
+    legalConfig: JSON.stringify({ regimen: "lph" }),
   });
   for (const [index, id] of [f.o, f.o2].entries())
     insert("owners", {
@@ -363,6 +364,7 @@ test("N:M ownership: foreign owner read permissions still apply", async () => {
 function debtPolicy(f, policy = "no_consta") {
   db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
     JSON.stringify({
+      regimen: "lph",
       deudaCopropietarios: {
         expresion: "cuota",
         mostrarRepartoInterno: true,

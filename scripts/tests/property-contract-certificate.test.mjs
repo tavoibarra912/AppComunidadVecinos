@@ -107,6 +107,7 @@ function fixture() {
     currency: "EUR",
     address: "Calle de prueba",
     city: "Madrid",
+    legalConfig: JSON.stringify({ regimen: "lph" }),
   });
   for (const [id, name] of [
     [f.o, "Ana"],
@@ -482,7 +483,7 @@ for (const copropiedad of ["todos", "representante"])
       "UPDATE properties SET ownerIds=?,ownerPercentages='{}',participationCoef='100' WHERE id=?",
     ).run(JSON.stringify([f.o, f.o2]), f.p);
     db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
-      JSON.stringify({ votaciones: { unidad: "coeficiente", copropiedad } }),
+      JSON.stringify({ regimen: "lph", votaciones: { unidad: "coeficiente", copropiedad } }),
       f.c,
     );
     const post = await f.createPoll();
@@ -525,6 +526,7 @@ test("revisión P2: pagos reales del titular y recibos sin porcentaje no se vuel
     r = `${f.p}-paid`;
   db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
     JSON.stringify({
+      regimen: "lph",
       deudaCopropietarios: {
         expresion: "cuota",
         mostrarRepartoInterno: true,
@@ -658,6 +660,7 @@ test("R4: la configuración jurídica decide la expresión de la deuda y el porc
   receipt(f, r, f.p, [{ id: f.o, name: "Ana Prueba" }]);
   db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
     JSON.stringify({
+      regimen: "lph",
       deudaCopropietarios: {
         expresion: "cuota",
         mostrarRepartoInterno: true,
@@ -690,6 +693,7 @@ test("R4: la configuración jurídica decide la expresión de la deuda y el porc
   // Con «último conocido» se usa el porcentaje actual, avisando de que no acredita el histórico.
   db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
     JSON.stringify({
+      regimen: "lph",
       deudaCopropietarios: {
         expresion: "cuota",
         mostrarRepartoInterno: false,
@@ -721,6 +725,7 @@ test("R4: la configuración jurídica decide la expresión de la deuda y el porc
   // «Omitir» prevalece sobre la casilla de mostrar reparto interno.
   db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
     JSON.stringify({
+      regimen: "lph",
       deudaCopropietarios: {
         expresion: "cuota",
         mostrarRepartoInterno: true,

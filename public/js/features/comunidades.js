@@ -1384,7 +1384,11 @@ async function persistCommunityDraft() {
     );
   [...communityForm.elements].forEach((element) => {
     if (element.willValidate && !element.checkValidity()) {
-      addProblem(`${fieldLabel(element)}: ${mensajeDeValidez(element)}.`, element);
+      const detalle = mensajeDeValidez(element);
+      addProblem(
+        `${fieldLabel(element)}: ${/[.!?]$/.test(detalle) ? detalle : `${detalle}.`}`,
+        element,
+      );
     }
   });
   if (!selectedLocation) {

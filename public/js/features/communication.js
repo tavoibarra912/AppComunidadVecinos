@@ -413,11 +413,13 @@ function openEditor(post = null, defaults = null) {
   editorPost = post;
   editorStep = 0;
   editorSnapshot = "";
+  const manageable = metadata.communities.filter((c) => c.canManage);
+  const preferredCommunityId =
+    post?.communityId || defaults?.communityId || $("#comm-community").value;
+  // El filtro puede apuntar a una comunidad solo de lectura: el editor solo
+  // puede publicar en una comunidad gestionable.
   const communityId =
-    post?.communityId ||
-    defaults?.communityId ||
-    $("#comm-community").value ||
-    metadata.communities.find((c) => c.canManage)?.id;
+    manageable.find((c) => c.id === preferredCommunityId)?.id || manageable[0]?.id;
   const initialAudience = post?.audience || {
     mode: defaults?.audienceMode || "all",
     ownerIds: [],
@@ -436,7 +438,7 @@ function openEditor(post = null, defaults = null) {
     post ? "Editar publicación" : "Nueva publicación",
     `<form id="comm-editor" novalidate><ol class="comm-steps"><li data-step-label="0">1. Contenido</li><li data-step-label="1">2. Destinatarios</li><li data-step-label="2">3. Revisar y publicar</li></ol>
     <div data-editor-step="0"><div class="comm-form-grid"><label>Comunidad<select name="communityId" ${post ? "disabled" : ""}>${options(
-      metadata.communities.filter((c) => c.canManage).map((c) => [c.id, c.name]),
+      manageable.map((c) => [c.id, c.name]),
       communityId,
     )}</select></label><label>Tipo<select name="type">${options(Object.entries(types), post?.type || "notice")}</select></label>${input("title", "Título *", post?.title || defaults?.title || "", "text", 'required maxlength="180"')}<label>Prioridad<select name="priority">${options(
       [
@@ -465,6 +467,13 @@ function openEditor(post = null, defaults = null) {
     <div class="comm-dialog-footer"><button type="button" class="secondary-button" id="comm-prev">Anterior</button><button type="button" class="primary-button" id="comm-next">Siguiente</button><button type="submit" class="primary-button" id="comm-save" hidden>Guardar publicación</button></div></form>`,
   );
   const form = $("#comm-editor");
+  form.addEventListener("input", (event) => {
+    const control = event.target;
+    if (!control.matches?.("input, textarea, select")) return;
+    control.removeAttribute("aria-invalid");
+    control.closest("label")?.classList.remove("field-error");
+    if ($("#comm-error")) $("#comm-error").textContent = "";
+  });
   form.elements.communityId.addEventListener("change", () => {
     syncCommunityTerms();
     audienceSelectors();
@@ -597,6 +606,7 @@ function toggleEditorFields() {
   $("#comm-audience-selectors").hidden = f.elements.audienceMode.value !== "selected";
 }
 function showStep(step) {
+  clearEditorValidationMarks();
   editorStep = Math.max(0, Math.min(2, step));
   dialog.querySelectorAll("[data-editor-step]").forEach((el) => {
     el.hidden = Number(el.dataset.editorStep) !== editorStep;
@@ -609,14 +619,43 @@ function showStep(step) {
   $("#comm-save").hidden = editorStep !== 2;
   $("#comm-error").textContent = "";
 }
+function clearEditorValidationMarks() {
+  const form = $("#comm-editor");
+  if (!form) return;
+  form.querySelectorAll("label.field-error").forEach((label) => {
+    label.classList.remove("field-error");
+    label.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+      field.removeAttribute("aria-invalid");
+    });
+  });
+  form.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+    field.removeAttribute("aria-invalid");
+  });
+}
+
+function editorFieldFocusTarget(element) {
+  if (!element) return null;
+  const combo = element.closest?.(".combo-box, .searchable-select");
+  const search = combo?.querySelector("input");
+  if (search && !search.disabled && !search.hidden) return search;
+  return element.disabled || element.hidden ? null : element;
+}
+
 function validateEditorStep() {
+  clearEditorValidationMarks();
   const controls = dialog
     .querySelector(`[data-editor-step="${editorStep}"]`)
     .querySelectorAll("input,textarea,select");
   for (const el of controls) {
-    if (el.disabled || el.offsetParent === null || el.checkValidity()) continue;
+    if (el.disabled || el.closest("[hidden]") || el.checkValidity()) continue;
+    const label = el.closest("label");
+    label?.classList.add("field-error");
+    el.setAttribute("aria-invalid", "true");
+    const detalle = mensajeDeValidez(el);
+    const message = /[.!?]$/.test(detalle) ? detalle : `${detalle}.`;
     const campo = document.querySelector("#comm-error");
-    if (campo) campo.textContent = `${fieldLabel(el)}: ${mensajeDeValidez(el)}.`;
+    if (campo) campo.textContent = `${fieldLabel(el)}: ${message}`;
+    editorFieldFocusTarget(el)?.focus();
     return false;
   }
   return true;

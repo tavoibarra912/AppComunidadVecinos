@@ -57,15 +57,15 @@ function fixture(t) {
   w.mensajeDeValidez = () => "";
   w.validateDocumentFiles = () => null;
   let rows = [post()],
-    load = null;
+    load = null,
+    meta = {
+      communities: [{ id: "c1", name: "Comunidad", canManage: true }],
+      selectors: [],
+    };
   w.api = {
     communication: async (route, method, payload) => {
       calls.push({ route, method, payload, user: w.state.currentUserId });
-      if (route === "/metadata")
-        return {
-          communities: [{ id: "c1", name: "Comunidad", canManage: true }],
-          selectors: [],
-        };
+      if (route === "/metadata") return structuredClone(meta);
       if (route === "/posts") return load ? load() : structuredClone(rows);
       if (route === "/inbox/read-all") {
         rows = rows.map((p) => ({ ...p, recipient: { readAt: "2026-11-18T12:30:00Z" } }));
@@ -74,7 +74,9 @@ function fixture(t) {
       throw new Error(`Ruta inesperada: ${route}`);
     },
   };
-  w.eval(source + "\nwindow.inboxTest={refreshCommunication,getCommunicationSnapshot,openEditor};");
+  w.eval(
+    source +
+      "\nwindow.inboxTest={refreshCommunication,getCommunicationSnapshot,openEditor,validateEditorStep};");
   return {
     w,
     calls,
@@ -84,6 +86,9 @@ function fixture(t) {
     },
     load: (value) => {
       load = value;
+    },
+    metadata: (value) => {
+      meta = value;
     },
     refresh: () => w.inboxTest.refreshCommunication(),
   };
@@ -173,6 +178,56 @@ test("copropiedad UI: muestra la advertencia sin exponer HTML ni bloquear el reg
   assert.equal(root.querySelector("[data-attendance]").disabled, true);
   root.innerHTML = f.w.inboxTest.meetingView({ ...meeting, canRecordAttendance: true });
   assert.equal(root.querySelector("[data-attendance]").disabled, false);
+});
+
+test("comunicación UI: al faltar un campo lo marca, enfoca y no duplica el punto final", async (t) => {
+  const f = fixture(t);
+  await f.refresh();
+  f.w.fieldLabel = (el) => (el.name === "title" ? "Título" : el.name);
+  f.w.mensajeDeValidez = () => "completa este campo";
+  f.w.inboxTest.openEditor();
+  const form = f.w.document.querySelector("#comm-editor");
+  const title = form.elements.title;
+
+  assert.equal(f.w.inboxTest.validateEditorStep(), false);
+  assert.equal(title.getAttribute("aria-invalid"), "true");
+  assert.ok(title.closest("label").classList.contains("field-error"));
+  assert.equal(f.w.document.querySelector("#comm-error").textContent, "Título: completa este campo.");
+  assert.equal(f.w.document.activeElement, title);
+
+  f.w.mensajeDeValidez = () => "El título no es válido.";
+  f.w.inboxTest.validateEditorStep();
+  assert.equal(
+    f.w.document.querySelector("#comm-error").textContent,
+    "Título: El título no es válido.",
+  );
+  assert.equal(f.w.document.querySelector("#comm-error").textContent.includes(".."), false);
+
+  title.value = "Aviso";
+  title.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+  assert.equal(title.hasAttribute("aria-invalid"), false);
+  assert.equal(title.closest("label").classList.contains("field-error"), false);
+  assert.equal(f.w.document.querySelector("#comm-error").textContent, "");
+});
+
+test("comunicación UI: el editor no preselecciona una comunidad solo de lectura", async (t) => {
+  const f = fixture(t);
+  f.metadata({
+    communities: [
+      { id: "c1", name: "Gestionable", canManage: true, regimen: "lph" },
+      { id: "c2", name: "Solo lectura", canManage: false, regimen: "asociacion" },
+    ],
+    selectors: [],
+  });
+  await f.refresh();
+  f.w.document.querySelector("#comm-community").value = "c2";
+  f.w.inboxTest.openEditor();
+  const form = f.w.document.querySelector("#comm-editor");
+  assert.equal(form.elements.communityId.value, "c1");
+  assert.equal(
+    [...form.elements.communityId.options].some((option) => option.value === "c2"),
+    false,
+  );
 });
 
 test("comunicación UI: la consulta anuncia como obligatorios los campos que bloquean el avance", async (t) => {

@@ -503,6 +503,7 @@ test("R-02: un error en Contacto y Domicilio abre esa pestaña y enfoca el prime
     const form = f.w.document.querySelector("#community-form");
     fillValidCommunityForm(f.w, form);
     form.elements.phone.value = "";
+    f.w.mensajeDeValidez = () => "Inválido.";
     const summaries = [];
     f.w.showValidationErrors = (messages) => summaries.push(...messages);
     form.elements.name.focus();
@@ -521,6 +522,7 @@ test("R-02: un error en Contacto y Domicilio abre esa pestaña y enfoca el prime
     assert.equal(f.w.document.activeElement, form.elements.phone);
     assert.equal(form.elements.phone.getAttribute("aria-invalid"), "true");
     assert.ok(summaries.some((message) => /phone/.test(message)));
+    assert.equal(summaries.some((message) => message.includes("..")), false);
   } finally {
     f.dom.window.close();
   }

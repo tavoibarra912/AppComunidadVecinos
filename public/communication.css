@@ -108,6 +108,15 @@
 .comm-dialog textarea {
   resize: vertical;
 }
+.comm-dialog label.field-error input:not([type="checkbox"]):not([type="radio"]),
+.comm-dialog label.field-error select,
+.comm-dialog label.field-error textarea,
+.comm-dialog label.field-error .combo-box-input,
+.comm-dialog label.field-error .searchable-select input {
+  border-color: #b91c1c;
+  background: #fef2f2;
+  outline: none;
+}
 .comm-dialog input:disabled,
 .comm-dialog textarea:disabled,
 .comm-dialog select:disabled {

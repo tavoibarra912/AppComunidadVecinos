@@ -486,6 +486,86 @@ function switchTenantDialogTab(tab) {
   }
 }
 
+function tenantTabForField(element) {
+  return element?.closest?.("[data-tenant-pane]")?.dataset.tenantPane || "general";
+}
+
+/** Control visible y enfocable de un campo (los combos usan un buscador). */
+function tenantFieldFocusTarget(element) {
+  if (!element) return null;
+  const combo = element.closest?.(".combo-box");
+  const search = combo?.querySelector(".combo-box-input");
+  if (search && !search.disabled && !search.hidden) return search;
+  if (!element.disabled && !element.hidden) return element;
+  const label = element.closest?.("label");
+  return (
+    label?.querySelector("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)") ||
+    null
+  );
+}
+
+function clearTenantValidationMarks() {
+  document.querySelectorAll("#tenant-dialog .community-editor-tab.has-error").forEach((tab) => {
+    tab.classList.remove("has-error");
+    tab.removeAttribute("aria-invalid");
+  });
+  tenantForm.querySelectorAll("label.field-error").forEach((label) => {
+    label.classList.remove("field-error");
+  });
+  tenantForm.querySelectorAll("[aria-invalid='true']").forEach((field) => {
+    field.removeAttribute("aria-invalid");
+  });
+}
+
+/**
+ * Abre la primera pestaña con error, marca todas las pestañas afectadas y sus
+ * campos, enfoca el primer campo inválido y mantiene el resumen habitual.
+ */
+function revealTenantValidationProblems(problems) {
+  clearTenantValidationMarks();
+  const tabs = [
+    ...document.querySelectorAll("#tenant-dialog .community-editor-tab[data-tenant-tab]"),
+  ];
+  const problemsByTab = new Map();
+  problems.forEach((problem) => {
+    const tab = tenantTabForField(problem.element);
+    if (!problemsByTab.has(tab)) problemsByTab.set(tab, []);
+    problemsByTab.get(tab).push(problem);
+  });
+  tabs.forEach((tab) => {
+    if (!problemsByTab.has(tab.dataset.tenantTab)) return;
+    tab.classList.add("has-error");
+    tab.setAttribute("aria-invalid", "true");
+  });
+  const firstTab = tabs.find((tab) => problemsByTab.has(tab.dataset.tenantTab))?.dataset
+    .tenantTab;
+  if (firstTab) switchTenantDialogTab(firstTab);
+
+  const marked = new Set();
+  problems.forEach(({ element }) => {
+    if (!element || marked.has(element)) return;
+    marked.add(element);
+    const label = element.closest("label");
+    if (!label) return;
+    label.classList.add("field-error");
+    element.setAttribute("aria-invalid", "true");
+  });
+
+  const firstProblem = firstTab
+    ? problems.find((problem) => tenantTabForField(problem.element) === firstTab)
+    : problems[0];
+  const focusTarget = tenantFieldFocusTarget(firstProblem?.element);
+  if (focusTarget) focusTarget.focus();
+  showValidationErrors(
+    problems.map((problem) => problem.message),
+    "Revisa los datos del inquilino",
+  );
+  const summary = document.querySelector("#validation-dialog");
+  if (summary?.open && focusTarget) {
+    summary.addEventListener("close", () => focusTarget.focus(), { once: true });
+  }
+}
+
 export function openTenantEditor(
   id = null,
   ownerId = state.ui.viewingOwnerId,
@@ -1131,6 +1211,7 @@ tenantForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (tenantDialogReadOnly) return;
   tenantFormError.textContent = "";
+  clearTenantValidationMarks();
   const property = state.properties.find((item) => item.id === editingTenantPropertyId);
   const selectedOwnerId = tenantOwnerSelect.value || "";
   const derivedOwnerId = property?.ownerIds?.includes(selectedOwnerId)
@@ -1150,44 +1231,44 @@ tenantForm.addEventListener("submit", async (event) => {
   const values = Object.fromEntries(formData);
   const phone = (values.phone || "").replace(/\D/g, "");
   const email = (values.email || "").trim().toLowerCase();
-  const messages = [];
-  if (!(values.name || "").trim()) messages.push("El nombre es obligatorio.");
-  if (!(values.surname || "").trim()) messages.push("Los apellidos son obligatorios.");
+  const problems = [];
+  const addProblem = (message, field) => {
+    const element = typeof field === "string" ? tenantForm.elements[field] : field;
+    problems.push({ message, element });
+  };
+  if (!(values.name || "").trim()) addProblem("El nombre es obligatorio.", "name");
+  if (!(values.surname || "").trim()) addProblem("Los apellidos son obligatorios.", "surname");
   const documentType = (values.documentType || "DNI").trim().toUpperCase();
   const documentId = (values.documentId || "").trim().toUpperCase();
-  if (!documentType) messages.push("El tipo de documento es obligatorio.");
-  else if (!documentId) messages.push("El DNI / NIE / CIF es obligatorio.");
+  if (!documentType) addProblem("El tipo de documento es obligatorio.", "documentType");
+  else if (!documentId) addProblem("El DNI / NIE / CIF es obligatorio.", "documentId");
   else if (!isValidIdentityDocument(documentId, documentType))
-    messages.push(
+    addProblem(
       `El ${documentType} "${documentId}" no es válido según el algoritmo oficial de España.`,
+      "documentId",
     );
   if (!/^[6-9]\d{8}$/.test(phone))
-    messages.push("El teléfono principal debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.");
-  if (!isValidEmail(email)) messages.push("Introduce una dirección de email válida.");
-  if (!editingTenantPropertyId) messages.push("Selecciona un inmueble asociado a este inquilino.");
+    addProblem(
+      "El teléfono principal debe tener 9 dígitos y comenzar por 6, 7, 8 o 9.",
+      "phone",
+    );
+  if (!isValidEmail(email))
+    addProblem("Introduce una dirección de email válida.", "email");
+  if (!editingTenantPropertyId)
+    addProblem("Selecciona un inmueble asociado a este inquilino.", tenantPropertySelect);
   if (!isValidDateInput(values.contractStart))
-    messages.push("Indica una fecha de inicio de contrato válida.");
+    addProblem("Indica una fecha de inicio de contrato válida.", "contractStart");
   if (values.contractEnd && !isValidDateInput(values.contractEnd))
-    messages.push("Indica una fecha de fin de contrato válida.");
+    addProblem("Indica una fecha de fin de contrato válida.", "contractEnd");
   else if (values.contractStart && values.contractEnd && values.contractEnd < values.contractStart)
-    messages.push("La fecha de fin no puede ser anterior al inicio del contrato.");
+    addProblem(
+      "La fecha de fin no puede ser anterior al inicio del contrato.",
+      "contractEnd",
+    );
   // verification checks
   // Verificación de email opcional para inquilinos (solo se valida formato)
-  if (messages.length) {
-    const tabMark = messages.find((m) => typeof m === "string" && m.startsWith("__tab:"));
-    if (tabMark) switchTenantDialogTab(tabMark.slice(6));
-    else if (
-      messages.some(
-        (m) => m.includes("nombre") || m.includes("apellidos") || m.includes("documento"),
-      )
-    )
-      switchTenantDialogTab("general");
-    else if (messages.some((m) => m.includes("teléfono") || m.includes("email")))
-      switchTenantDialogTab("contact");
-    else if (messages.some((m) => m.includes("inmueble"))) switchTenantDialogTab("property");
-    else if (messages.some((m) => m.includes("contrato") || m.includes("fecha")))
-      switchTenantDialogTab("contract");
-    showValidationErrors(messages, "Revisa los siguientes datos");
+  if (problems.length) {
+    revealTenantValidationProblems(problems);
     return;
   }
   const submittedAuthorizations = formData.getAll("authorizations");

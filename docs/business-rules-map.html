@@ -1794,7 +1794,10 @@
                   </td>
                   <td>
                     Determina censo, unidad de voto, mayoría y etiquetas. En asociación no se usan
-                    coeficientes ni inmuebles para votar.
+                    coeficientes ni inmuebles para votar. Debe estar declarado de forma explícita:
+                    sin régimen guardado no se emiten certificados de deuda ni se convocan
+                    votaciones nuevas. La migración convierte el antiguo valor implícito en LPH
+                    para las comunidades existentes.
                   </td>
                 </tr>
                 <tr>
@@ -1976,7 +1979,9 @@
             </li>
             <li>
               <strong>Cada titular tiene un porcentaje positivo.</strong> La suma de porcentajes de
-              un inmueble no puede superar el 100 %. Al cambiar la titularidad, se exigen
+              un inmueble no puede superar el 100 %. Puede quedar un porcentaje sin asignar: se
+              muestra en la ficha y en el certificado, no se reparte automáticamente entre los
+              titulares y no altera la cuota del inmueble. Al cambiar la titularidad, se exigen
               explícitamente los porcentajes de todos los titulares; no se reparte automáticamente
               un porcentaje ausente.
             </li>

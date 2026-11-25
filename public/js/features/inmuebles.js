@@ -332,8 +332,24 @@ function renderPropertyOwnersTab() {
   const atFullCapacity = capacity <= 0;
   // Los botones siguen habilitados: al intentar vincular se explica cómo
   // hacer lugar (bajando el % de los propietarios actuales)
-  const oldNote = listEl.parentElement.querySelector(".property-owners-capacity-note");
-  if (oldNote) oldNote.remove();
+  for (const note of listEl.parentElement.querySelectorAll(".property-owners-capacity-note"))
+    note.remove();
+  const assigned = Math.round(
+    ownerIds.reduce(
+      (sum, ownerId) => sum + (Number(editingOwnerPercentages[ownerId]) || 0),
+      0,
+    ) * 10000,
+  ) / 10000;
+  // La titularidad parcial es válida, pero debe verse: el porcentaje sin
+  // asignar no se reparte entre los titulares ni cambia la cuota del inmueble.
+  if (ownerIds.length && assigned > 0 && assigned < 100) {
+    const note = document.createElement("p");
+    note.className = "form-intro property-owners-capacity-note";
+    note.textContent = `Titularidad asignada: ${assigned}%. Queda ${
+      Math.round((100 - assigned) * 10000) / 10000
+    }% sin asignar. El porcentaje restante no se reparte automáticamente entre los titulares.`;
+    listEl.parentElement.insertBefore(note, listEl);
+  }
   if (atFullCapacity) {
     const note = document.createElement("p");
     note.className = "form-intro property-owners-capacity-note";

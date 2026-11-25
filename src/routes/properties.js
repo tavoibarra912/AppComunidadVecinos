@@ -15,6 +15,7 @@ import {
   syncPropertyTenantReferences,
 } from "../domain.js";
 import { allowed, policyData } from "../security.js";
+import { recordAudit } from "../audit.js";
 import { isTenantContractActive } from "../../public/js/permissions.js";
 import { removeEntityFiles } from "./documents.js";
 import { registerCascadeRoutes } from "../cascade-delete.js";
@@ -510,6 +511,25 @@ router.put(
       const changes = tenantLinkChanges(existing.id, data, existing, req.user);
       applyTenantLinkChanges(changes);
       storeProperty(existing.id, data, community);
+      // El traslado deja los recibos en la comunidad de origen: se registra el
+      // cambio para poder reconstruir dónde se emitió cada cargo.
+      if ((community?.id || "") !== existing.communityId)
+        recordAudit({
+          actor: req.user,
+          action: "property.community-changed",
+          resourceType: "property",
+          resourceId: existing.id,
+          req,
+          details: {
+            fromCommunityId: existing.communityId,
+            fromCommunity: existing.communityName,
+            toCommunityId: community?.id || "",
+            toCommunity: community?.name || "",
+            receiptsKeptInOrigin: db
+              .prepare("SELECT COUNT(*) n FROM fee_receipts WHERE communityId=? AND propertyId=?")
+              .get(existing.communityId, existing.id).n,
+          },
+        });
       const affectedOwners = [
         ...(Array.isArray(existing.ownerIds) ? existing.ownerIds : []),
         ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),

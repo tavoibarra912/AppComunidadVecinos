@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { DDL_APP } from "./ddl.js";
-import { legalConfigFromValue } from "./legal-config.js";
+import { LEGAL_REGIMES, legalConfigFromValue } from "./legal-config.js";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
@@ -512,6 +512,29 @@ db.exec(`CREATE TABLE IF NOT EXISTS sessions (
   tokenHash TEXT PRIMARY KEY, userId TEXT NOT NULL, expiresAt INTEGER NOT NULL
 ); CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(userId);`);
 db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY)");
+// Régimen jurídico explícito (v1): las comunidades existentes conservan el
+// criterio LPH que ya aplicaban, pero guardado de forma explícita. Desde ahora
+// un certificado o una votación no pueden apoyarse en un régimen supuesto.
+if (
+  !db.prepare("SELECT id FROM schema_migrations WHERE id = 'explicit-legal-regime-v1'").get()
+) {
+  for (const row of db.prepare("SELECT id, legalConfig FROM communities").all()) {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(row.legalConfig || "{}");
+    } catch {
+      parsed = null;
+    }
+    const config =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    if (Object.hasOwn(LEGAL_REGIMES, config.regimen)) continue;
+    db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
+      JSON.stringify({ ...config, regimen: "lph" }),
+      row.id,
+    );
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('explicit-legal-regime-v1')").run();
+}
 if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'scoped-permissions-v1'").get()) {
   for (const [name, additions] of [
     ["user", ["tenant:manage", "tenant:delete", "document:read"]],

@@ -415,6 +415,25 @@ const ownerSeeds = [
     postalCode: "50001",
     notes: "Interesada en la comisión de lecturas de contadores.",
   },
+  {
+    id: "own-seed-9",
+    name: "Lucía",
+    surname: "Sanz Ferrer",
+    dni: "12345678Z",
+    communityId: "com-seed-1",
+    communityName: "Residencial Peñarrubia",
+    plot: "Parcela 30",
+    phone: "690123456",
+    otherPhone: "",
+    email: "lucia.sanz@email.com",
+    isMember: true,
+    iban: "",
+    address: "Calle de la Sierra, 30",
+    city: "Madrid",
+    province: "Madrid",
+    postalCode: "28035",
+    notes: "Titular de la Parcela 30, incorporada al censo de la comunidad.",
+  },
 ];
 
 const propertySeeds = [
@@ -444,7 +463,7 @@ const propertySeeds = [
     floor: "",
     door: "",
     areaM2: "380",
-    participationCoef: "3.8000",
+    participationCoef: "60.7500",
     propertyUse: "residencial",
     address: "Calle de la Sierra, 22",
   },
@@ -459,7 +478,7 @@ const propertySeeds = [
     floor: "",
     door: "",
     areaM2: "350",
-    participationCoef: "3.5000",
+    participationCoef: "35.0000",
     propertyUse: "residencial",
     address: "Calle de la Sierra, 30",
   },
@@ -588,6 +607,7 @@ const propertySeeds = [
 const PLOT_TO_PROPERTY_ID = {
   "Parcela 14": "prop-seed-1",
   "Parcela 22": "prop-seed-2",
+  "Parcela 30": "prop-seed-3",
   "Piso 3º B": "prop-seed-4",
   "Chalet 7": "prop-seed-6",
   "Parcela 5": "prop-seed-7",
@@ -705,8 +725,8 @@ export function seedIfEmpty() {
   if (count > 0) return false;
 
   const insertCommunity = db.prepare(
-    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, notes, documents)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]')`,
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, notes, documents, legalConfig)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?)`,
   );
   const insertOwner = db.prepare(
     `INSERT INTO owners (id, name, surname, documentType, dni, isMember, communityId, communityName, plot,
@@ -751,6 +771,9 @@ export function seedIfEmpty() {
         c.postalCode,
         c.email,
         c.notes,
+        // El demo declara el régimen de forma explícita: certificados y
+        // votaciones no deben depender de un LPH supuesto.
+        JSON.stringify({ regimen: "lph" }),
       );
     });
 
