@@ -72,11 +72,21 @@ export async function saveIssueReport({
 /**
  * Borra el historial de reportes de una cuenta al ejercer el derecho de
  * supresión. No es un dato contable: se elimina, no se anonimiza.
+ *
+ * Sin la migración aplicada la tabla no existe y no hay nada que borrar: se
+ * avisa y se sigue, porque un despliegue sin migrar no debe bloquear la baja.
  */
 export async function purgeIssueReports(userId, { pool = postgresPool } = {}) {
   if (!postgresConfigured()) return 0;
-  const result = await pool().query("DELETE FROM issue_reports WHERE user_id = $1", [userId]);
-  return result?.rowCount || 0;
+  try {
+    const result = await pool().query("DELETE FROM issue_reports WHERE user_id = $1", [userId]);
+    return result?.rowCount || 0;
+  } catch (error) {
+    // 42P01 = undefined_table en PostgreSQL.
+    if (error?.code !== "42P01") throw error;
+    console.warn("[issues] la tabla issue_reports no existe; no hay historial que borrar.");
+    return 0;
+  }
 }
 
 /** Historial de la propia cuenta, del reporte más reciente al más antiguo. */
