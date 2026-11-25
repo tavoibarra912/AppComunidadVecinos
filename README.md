@@ -467,6 +467,16 @@ inquilino vinculada ni el último superadministrador activo. Cada paso queda en 
 auditoría (`users.deletion-requested`, `users.deletion-cancelled`,
 `users.deletion-rejected`, `users.deleted`).
 
+### Aviso de privacidad (art. 13 RGPD)
+
+**Mi perfil → Privacidad y datos → Aviso de privacidad** abre la información del
+artículo 13: quién es el responsable, qué categorías de datos se tratan (cuenta,
+comunidad, documentos y comunicaciones, avisos, seguridad y bajas), para qué y con
+qué base legal del artículo 6, los plazos de respuesta del artículo 12.3, cuánto se
+conservan —incluido lo que sobrevive a la baja y qué se anonimiza— y quién más los
+ve. El texto es estático (`#privacy-notice-dialog` en `public/index.html`): si
+cambia un tratamiento, se actualiza en el mismo cambio.
+
 ### Recuperación de contraseña
 
 Desde «Olvidé mi contraseña», indica el email de la cuenta. La respuesta es igual

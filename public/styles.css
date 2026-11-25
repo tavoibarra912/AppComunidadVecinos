@@ -275,6 +275,41 @@ legend,
   margin: 0;
   font-size: var(--text-lg);
 }
+.privacy-notice {
+  display: grid;
+  gap: 18px;
+  max-height: 58vh;
+  margin-top: 14px;
+  padding-right: 6px;
+  overflow: auto;
+}
+.privacy-notice section {
+  display: grid;
+  gap: 6px;
+}
+.privacy-notice h3 {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.privacy-notice ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.privacy-notice p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.privacy-notice li {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.privacy-notice strong {
+  color: var(--ink);
+}
 .deletion-requests {
   display: grid;
   gap: 12px;
