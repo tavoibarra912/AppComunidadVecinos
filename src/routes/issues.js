@@ -4,6 +4,7 @@ import multer from "multer";
 import path from "node:path";
 import { allowedDocumentLabels, detectContentType, documentLimits } from "../document-policy.js";
 import { GithubIssueError, createGithubIssueClient, githubIssuesConfig } from "../github-issues.js";
+import { issueHistoryEnabled, listIssueReportsForUser, saveIssueReport } from "../issue-reports.js";
 import { richTextToPlainText, sanitizeRichText } from "../rich-text.js";
 
 const router = Router();
@@ -163,6 +164,19 @@ router.get("/", (_req, res) => {
   });
 });
 
+router.get("/reports", async (req, res, next) => {
+  if (!issueHistoryEnabled()) {
+    return res.status(503).json({
+      error: "El historial de reportes no está disponible en este servidor.",
+    });
+  }
+  try {
+    res.json({ reports: await listIssueReportsForUser(req.user.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post(
   "/",
   (req, res, next) => {
@@ -232,6 +246,26 @@ router.post(
           viewport,
         },
       });
+      try {
+        await saveIssueReport({
+          userId: req.user.id,
+          username: req.user.usuario,
+          title,
+          description,
+          steps,
+          screen,
+          userAgent,
+          language,
+          viewport,
+          appVersion: APP_VERSION,
+          githubIssueNumber: result.number,
+          githubIssueUrl: result.url,
+        });
+      } catch (error) {
+        // El issue ya existe en GitHub: un fallo al archivar la copia local no
+        // debe ocultar al usuario que su reporte se envió.
+        console.error(`[issues] no se pudo archivar el reporte: ${error.message}`);
+      }
       return res.status(201).json(result);
     } catch (error) {
       if (error instanceof GithubIssueError) {
