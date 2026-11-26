@@ -72,7 +72,11 @@ Cada acuerdo conserva su configuración de avisos. Los recordatorios se procesan
 el servidor encendido, cada 30 segundos, usando Europe/Madrid, sin duplicados y
 sin reclamar recibos pagados o anulados. Los avisos internos enlazan al recibo;
 los emails requieren activar el canal en el acuerdo, el ajuste general, el proveedor
-y el consentimiento del destinatario en sus preferencias de comunicación. El email
+y el consentimiento del destinatario en sus preferencias de comunicación. La
+oposición **«no contactar»** prevalece sobre cualquier canal consentido y cada alta
+o baja queda en el historial de consentimientos (`communication_consent_log`), que
+el titular consulta en el mismo diálogo; la revisión de destinatarios indica cuántas
+cuentas se han opuesto. El email
 de cuotas está desactivado inicialmente. Los fallos e interrupciones de envío no se
 reintentan automáticamente; quedan en auditoría. La aceptación por el proveedor no
 confirma entrega. Los justificantes se guardan dentro de `uploads/fee-proofs/` y
@@ -458,13 +462,17 @@ borran las sesiones, los enlaces de recuperación de contraseña, las preferenci
 de aviso y los avisos aún no enviados de esa cuenta; los perfiles de propietario e
 inquilino y las comunidades que administraba quedan desvinculados. También se
 borra el historial de «Reportar un error» en Postgres y se anonimiza la autoría de
-los documentos, carpetas y comentarios que hubiera creado, que se conservan sin
-nombre porque forman parte de la documentación y de los hilos de la comunidad. Si
+los documentos, carpetas, comentarios y publicaciones que hubiera creado, que se
+conservan sin nombre porque forman parte de la documentación y de los hilos de la
+comunidad. También se anonimiza la copia de su ficha conservada en el acta de un
+borrado avanzado (identidad, DNI, contacto, dirección e IBAN), manteniendo el
+vínculo por id, los importes y las fechas del registro contable. Si
 el historial de reportes no se puede purgar, el borrado no se ejecuta y la
 administración puede reintentarlo. Se conservan los recibos, cobros, derramas,
 actas y la auditoría de seguridad, que son registro contable y de seguridad, sin
 datos de acceso. El motivo y la nota se descartan al
-ejecutar el borrado. Nunca se puede eliminar un usuario con ficha de propietario o
+ejecutar el borrado. La solicitud expone el plazo de respuesta de un mes (art.
+12.3) y la administración ve las que están vencidas. Nunca se puede eliminar un usuario con ficha de propietario o
 inquilino vinculada ni el último superadministrador activo. Cada paso queda en la
 auditoría (`users.deletion-requested`, `users.deletion-cancelled`,
 `users.deletion-rejected`, `users.deleted`).
@@ -478,6 +486,25 @@ qué base legal del artículo 6, los plazos de respuesta del artículo 12.3, cu�
 conservan —incluido lo que sobrevive a la baja y qué se anonimiza— y quién más los
 ve. El texto es estático (`#privacy-notice-dialog` en `public/index.html`): si
 cambia un tratamiento, se actualiza en el mismo cambio.
+
+### Acceso y portabilidad (arts. 15 y 20 RGPD)
+
+**Mi perfil → Privacidad y datos → Descargar mis datos** genera un paquete JSON con
+la cuenta, los consentimientos y su historial, las fichas de propietario o
+inquilino vinculadas, sus comunidades, los recibos y cobros propios, sus
+comentarios y el estado de su solicitud de baja. `GET /api/auth/my-data` lo sirve
+como descarga, exige sesión, no necesita ningún permiso de gestión, queda auditado
+(`users.data-exported`) y nunca incluye datos de terceros: los recibos van sin la
+instantánea compartida y los cobros solo del titular. Los endpoints de exportación
+con `export:read` siguen siendo la vía de la administración.
+
+### Información de tratamientos (art. 30 RGPD)
+
+`public/informacion-tratamientos.html` (accesible desde _Privacidad y datos_) resume
+las actividades que la aplicación trata realmente, con finalidad, base legal,
+destinatarios y conservación. `docs/rat-actividades-tratamiento.md` es la plantilla
+cumplimentable del registro y la guía para el responsable; no se implementa un
+módulo de cumplimiento.
 
 ### Recuperación de contraseña
 

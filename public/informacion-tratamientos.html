@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Información de tratamientos · Gestión Peñarrubia</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 62rem;
+        padding: 2rem 1.25rem 4rem;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.6;
+        color: #1f2933;
+        background: #f8fafc;
+      }
+      header h1 {
+        margin: 0 0 0.25rem;
+        font-size: 1.75rem;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #52606d;
+      }
+      .intro,
+      .note {
+        max-width: 48rem;
+      }
+      .note {
+        border-left: 4px solid #7b8794;
+        padding: 0.5rem 1rem;
+        background: #fff;
+      }
+      table {
+        width: 100%;
+        margin: 1.5rem 0;
+        border-collapse: collapse;
+        background: #fff;
+        font-size: 0.92rem;
+      }
+      caption {
+        text-align: left;
+        font-weight: 700;
+        padding-bottom: 0.5rem;
+      }
+      th,
+      td {
+        border: 1px solid #d9e2ec;
+        padding: 0.5rem 0.6rem;
+        vertical-align: top;
+        text-align: left;
+      }
+      th {
+        background: #eef2f7;
+      }
+      section {
+        margin-top: 2rem;
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+      }
+      a {
+        color: #0b6bcb;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          color: #e4e7eb;
+          background: #101820;
+        }
+        table,
+        .note {
+          background: #16212b;
+        }
+        th {
+          background: #1d2a36;
+        }
+        th,
+        td {
+          border-color: #2b3a47;
+        }
+        .eyebrow {
+          color: #9fb3c8;
+        }
+        a {
+          color: #7cc4ff;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">RGPD · Artículo 30</p>
+      <h1>Información de tratamientos</h1>
+      <p class="intro">
+        Esta página resume las actividades de tratamiento que la aplicación soporta para la
+        comunidad o asociación. El responsable del tratamiento es la comunidad de propietarios (o
+        la asociación) a través de su administración; la plataforma actúa como encargado del
+        tratamiento. El registro formal de actividades (RAT) es un documento del responsable: aquí
+        está la plantilla cumplimentable y esta información pública de lo que la aplicación hace
+        realmente con los datos.
+      </p>
+    </header>
+
+    <section>
+      <h2>Actividades de tratamiento</h2>
+      <table>
+        <caption>Datos efectivamente tratados por la aplicación</caption>
+        <thead>
+          <tr>
+            <th scope="col">Actividad</th>
+            <th scope="col">Datos</th>
+            <th scope="col">Finalidad</th>
+            <th scope="col">Base legal</th>
+            <th scope="col">Destinatarios</th>
+            <th scope="col">Conservación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Censo y titularidad</th>
+            <td>
+              Identidad, DNI/NIE, contacto, dirección, IBAN, coeficiente o porcentaje y documentos
+              del expediente
+            </td>
+            <td>Gestión de la comunidad o asociación, convocatorias y votaciones</td>
+            <td>Relación asociativa o contractual; obligación legal (LPH, art. 9)</td>
+            <td>Administración de la comunidad; no se cede salvo obligación legal</td>
+            <td>Mientras dure la relación y los plazos legales</td>
+          </tr>
+          <tr>
+            <th scope="row">Cuotas, derramas y servicios</th>
+            <td>Recibos, pagos, imputaciones, saldos, justificantes y lecturas de contador</td>
+            <td>Facturación y cobro de la comunidad</td>
+            <td>Obligación legal contable y fiscal; relación asociativa</td>
+            <td>Administración; entidades bancarias solo si el responsable lo gestiona fuera de la app</td>
+            <td>Conservación contable (6 años, Código de Comercio)</td>
+          </tr>
+          <tr>
+            <th scope="row">Comunicaciones</th>
+            <td>Cuenta, destinatarios, lectura y confirmación, consentimientos de canal y oposición</td>
+            <td>Avisos, convocatorias y participación</td>
+            <td>Interés legítimo o relación asociativa; consentimiento para canales externos</td>
+            <td>Proveedores de email, SMS o WhatsApp si están activados</td>
+            <td>Mientras sean necesarias; el consentimiento es revocable y la oposición prevalece</td>
+          </tr>
+          <tr>
+            <th scope="row">Documentos y actas</th>
+            <td>Archivos, autoría, versiones y adjuntos de comunicaciones</td>
+            <td>Gestión documental y prueba de acuerdos</td>
+            <td>Relación asociativa; obligación legal (actas)</td>
+            <td>Administración y destinatarios autorizados</td>
+            <td>Actas: permanentes; resto según la política del responsable</td>
+          </tr>
+          <tr>
+            <th scope="row">Auditoría y seguridad</th>
+            <td>Accesos, cambios, IP, resultado y detalle de la operación</td>
+            <td>Seguridad, prevención de abuso y trazabilidad</td>
+            <td>Interés legítimo (seguridad)</td>
+            <td>Personal autorizado con <code>audit:read</code></td>
+            <td>Plazo de seguridad definido por el responsable</td>
+          </tr>
+          <tr>
+            <th scope="row">Solicitudes de derechos y bajas</th>
+            <td>Identidad, motivo, estado, plazo y resolución</td>
+            <td>Atender los derechos del interesado</td>
+            <td>Obligación legal (RGPD)</td>
+            <td>Administración</td>
+            <td>Mientras se tramita y el plazo de prueba de la respuesta</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">
+        La supresión de la cuenta no elimina las obligaciones legales: los recibos, cobros, actas y
+        registros de seguridad se conservan. La copia de la ficha que queda en el acta de un
+        borrado avanzado se anonimiza al suprimir la cuenta.
+      </p>
+    </section>
+
+    <section>
+      <h2>Derechos del interesado</h2>
+      <p>
+        Puedes ejercer el acceso y la portabilidad desde <em>Mi perfil → Privacidad y datos →
+        Descargar mis datos</em>, y la supresión desde la misma sección. La administración tramita
+        la solicitud con un plazo de un mes. Para el resto de derechos (rectificación, limitación u
+        oposición) dirígete a la administración de tu comunidad.
+      </p>
+    </section>
+
+    <section>
+      <h2>Plantilla del registro de actividades</h2>
+      <p>
+        El repositorio incluye la plantilla cumplimentable en
+        <code>docs/rat-actividades-tratamiento.md</code>, con las mismas actividades y una guía para
+        completar responsable, encargado, bases jurídicas y plazos.
+      </p>
+    </section>
+
+    <p><a href="/">Volver a la aplicación</a></p>
+  </body>
+</html>
