@@ -27,6 +27,11 @@ async function fixture(t) {
     new URL("../update-vm.sh", import.meta.url),
     path.join(source, "scripts/update-vm.sh"),
   );
+  for (const name of ["backup.sh", "prune-backups.sh"])
+    await copyFile(
+      new URL(`../../deploy/${name}`, import.meta.url),
+      path.join(source, "deploy", name),
+    );
   await writeFile(path.join(root, "data/penarrubia.db"), "existing database");
   await writeFile(path.join(root, "data/provider-key"), "existing encryption key");
   await writeFile(path.join(root, "uploads/document.pdf"), "existing upload");

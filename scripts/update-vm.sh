@@ -46,6 +46,8 @@ awk -v image="$image" '
 ' .env > "$env_tmp"
 mv "$env_tmp" .env
 cp "$source_root/deploy/compose.yml" deploy/compose.yml
+install -m 700 "$source_root/deploy/backup.sh" deploy/backup.sh
+install -m 700 "$source_root/deploy/prune-backups.sh" deploy/prune-backups.sh
 "${compose[@]}" up -d --no-deps --pull never api
 
 for attempt in $(seq 1 60); do
@@ -55,6 +57,9 @@ for attempt in $(seq 1 60); do
       if (!r.ok || d.status !== "ok" || d.app !== "app-comunidad-vecinos" || d.release !== process.argv[1]) process.exit(1);
     }).catch(() => process.exit(1));
   ' "$release_sha" 2>/dev/null; then
+    if ! bash "$source_root/deploy/prune-backups.sh" "$app_root/backups" 2; then
+      echo 'Aviso: no se pudieron retirar copias antiguas.' >&2
+    fi
     printf '%s\n' "$release_sha" > .deployed-release
     echo "Versión $release_sha saludable. Backup privado: $backup"
     exit 0
