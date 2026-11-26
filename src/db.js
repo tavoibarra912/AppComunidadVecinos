@@ -95,7 +95,6 @@ db.exec(`
     address TEXT NOT NULL DEFAULT '',
     staircase TEXT NOT NULL DEFAULT '',
     energyCertificate TEXT NOT NULL DEFAULT '',
-    communityFee TEXT NOT NULL DEFAULT '',
     cadastralRef TEXT NOT NULL DEFAULT '',
     registryNumber TEXT NOT NULL DEFAULT '',
     floor TEXT NOT NULL DEFAULT '',
@@ -103,7 +102,6 @@ db.exec(`
     areaM2 TEXT NOT NULL DEFAULT '',
     participationCoef TEXT NOT NULL DEFAULT '',
     propertyUse TEXT NOT NULL DEFAULT '',
-    receiptStatus TEXT NOT NULL DEFAULT 'current',
     createdAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -1057,6 +1055,18 @@ ensureColumns("properties", {
   primaryResidentId: "TEXT NOT NULL DEFAULT ''",
 });
 
+// La cuota y el estado de los recibos se derivan siempre del libro financiero.
+// Las columnas manuales quedaron inertes: se eliminan de las bases existentes
+// y el trigger de versión se reconstruye después con las columnas restantes.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'property-finance-derived-v1'").get()) {
+  db.exec("DROP TRIGGER IF EXISTS properties_edit_version");
+  const columns = db.prepare("PRAGMA table_info(properties)").all().map((row) => row.name);
+  for (const column of ["communityFee", "receiptStatus"]) {
+    if (columns.includes(column)) db.exec(`ALTER TABLE properties DROP COLUMN ${column}`);
+  }
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('property-finance-derived-v1')").run();
+}
+
 ensureColumns("tenants", {
   phoneVerified: "INTEGER NOT NULL DEFAULT 0",
   phoneVerifiedAt: "TEXT NOT NULL DEFAULT ''",
@@ -1309,7 +1319,7 @@ export function propertyFromRow(
     address: row.address,
     staircase: row.staircase,
     energyCertificate: row.energyCertificate,
-    // La cuota no se guarda en la ficha: sale del último recibo ordinario vigente.
+    // La cuota no se guarda en la ficha: sale del último recibo vigente.
     communityFee: latestFee
       ? (latestFee.amount / (JSON.parse(latestFee.snapshot).months || 1) / 100).toFixed(2)
       : "",
@@ -1322,7 +1332,6 @@ export function propertyFromRow(
     propertyUse: row.propertyUse,
     // Sin recibos no hay estado que marcar: se deriva siempre del libro financiero.
     receiptStatus: hasFeeReceipts ? (pendingFee ? "pending" : "current") : "none",
-    hasFeeReceipts,
     notes: row.notes || "",
     postalCode: row.postalCode || "",
     city: row.city || "",

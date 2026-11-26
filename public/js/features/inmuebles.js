@@ -986,16 +986,6 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   renderPropertyTenantsTab();
   syncPropertyResidencyTab();
   syncPropertyOwnerRequirement();
-  let ledgerHint = propertyForm.querySelector("[data-fee-ledger-hint]");
-  if (!ledgerHint) {
-    ledgerHint = document.createElement("p");
-    ledgerHint.dataset.feeLedgerHint = "";
-    ledgerHint.className = "form-intro full";
-  }
-  // La cuota y el estado de los pagos no se editan: se derivan de los recibos.
-  propertyForm.querySelector('[data-property-pane="finance"] .form-grid')?.prepend(ledgerHint);
-  ledgerHint.textContent =
-    "La cuota y el estado de los pagos se calculan a partir de los recibos. Gestiona los cobros desde el menú Cuotas, seleccionando la comunidad.";
   propertyForm.elements.propertyType.value = property?.propertyType || "";
   if (property) {
     [

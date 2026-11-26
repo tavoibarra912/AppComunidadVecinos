@@ -152,6 +152,77 @@ test("migración: una base con documents antiguo añade columnas antes de crear 
   }
 });
 
+test("migración: elimina las columnas manuales de cuota y estado de recibos", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-property-finance-test-"));
+  const dbPath = path.join(directory, "penarrubia.db");
+  const legacy = new DatabaseSync(dbPath);
+  legacy.exec(`
+    CREATE TABLE properties (
+      id TEXT PRIMARY KEY,
+      communityId TEXT NOT NULL DEFAULT '',
+      communityName TEXT NOT NULL DEFAULT '',
+      ownerIds TEXT NOT NULL DEFAULT '[]',
+      tenantIds TEXT NOT NULL DEFAULT '[]',
+      propertyType TEXT NOT NULL DEFAULT '',
+      plot TEXT NOT NULL DEFAULT '',
+      address TEXT NOT NULL DEFAULT '',
+      staircase TEXT NOT NULL DEFAULT '',
+      energyCertificate TEXT NOT NULL DEFAULT '',
+      communityFee TEXT NOT NULL DEFAULT '',
+      cadastralRef TEXT NOT NULL DEFAULT '',
+      registryNumber TEXT NOT NULL DEFAULT '',
+      floor TEXT NOT NULL DEFAULT '',
+      door TEXT NOT NULL DEFAULT '',
+      areaM2 TEXT NOT NULL DEFAULT '',
+      participationCoef TEXT NOT NULL DEFAULT '',
+      propertyUse TEXT NOT NULL DEFAULT '',
+      receiptStatus TEXT NOT NULL DEFAULT 'current',
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      notes TEXT NOT NULL DEFAULT '',
+      postalCode TEXT NOT NULL DEFAULT '',
+      city TEXT NOT NULL DEFAULT '',
+      province TEXT NOT NULL DEFAULT '',
+      currency TEXT NOT NULL DEFAULT '',
+      ownerPercentages TEXT NOT NULL DEFAULT '{}',
+      occupancy TEXT NOT NULL DEFAULT '',
+      residentOwnerIds TEXT NOT NULL DEFAULT '[]',
+      primaryResidentId TEXT NOT NULL DEFAULT ''
+    );
+    INSERT INTO properties(id,communityFee,receiptStatus) VALUES('legacy-prop','65.50','pending');
+  `);
+  legacy.close();
+  const url = new URL("../../src/db.js", import.meta.url).href;
+  const result = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", `const {db}=await import(${JSON.stringify(url)});db.close();`],
+    {
+      env: {
+        ...process.env,
+        APP_DATA_DIR: directory,
+        APP_UPLOADS_DIR: path.join(directory, "uploads"),
+      },
+      encoding: "utf8",
+    },
+  );
+  const check = new DatabaseSync(dbPath);
+  try {
+    assert.equal(result.status, 0, result.stderr);
+    const columns = check
+      .prepare("PRAGMA table_info(properties)")
+      .all()
+      .map((row) => row.name);
+    assert.ok(!columns.includes("communityFee"));
+    assert.ok(!columns.includes("receiptStatus"));
+    assert.equal(check.prepare("SELECT id FROM properties").get().id, "legacy-prop");
+    assert.ok(
+      check.prepare("SELECT id FROM schema_migrations WHERE id='property-finance-derived-v1'").get(),
+    );
+  } finally {
+    check.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("migracion: corrige los NIF heredados de las comunidades demo sin tocar los validos", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-community-nif-test-"));
   const dbPath = path.join(directory, "penarrubia.db");

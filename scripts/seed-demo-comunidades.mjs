@@ -376,7 +376,6 @@ const inmuebles = [
     areaM2: "78",
     participationCoef: "9.5000",
     propertyUse: "residencial",
-    receiptStatus: "current",
     notes: "Vivienda principal de la propietaria.",
     postalCode: "28001",
     city: "Madrid",
@@ -398,7 +397,6 @@ const inmuebles = [
     areaM2: "85",
     participationCoef: "10.2500",
     propertyUse: "residencial",
-    receiptStatus: "current",
     notes: "Vivienda del propietario que además alquila en Las Acacias.",
     postalCode: "28001",
     city: "Madrid",
@@ -420,7 +418,6 @@ const inmuebles = [
     areaM2: "70",
     participationCoef: "8.0000",
     propertyUse: "residencial",
-    receiptStatus: "current",
     notes: "Departamento de la administradora de la comunidad.",
     postalCode: "28001",
     city: "Madrid",
@@ -442,7 +439,6 @@ const inmuebles = [
     areaM2: "55",
     participationCoef: "5.0000",
     propertyUse: "comercial",
-    receiptStatus: "current",
     notes: "Local comercial (perfil sin cuenta).",
     postalCode: "28001",
     city: "Madrid",
@@ -464,7 +460,6 @@ const inmuebles = [
     areaM2: "96",
     participationCoef: "12.0000",
     propertyUse: "residencial",
-    receiptStatus: "current",
     notes: "Ático propiedad de la cuenta urucp2.",
     postalCode: "28223",
     city: "Pozuelo de Alarcón",
@@ -486,7 +481,6 @@ const inmuebles = [
     areaM2: "88",
     participationCoef: "10.7500",
     propertyUse: "residencial",
-    receiptStatus: "current",
     notes: "Piso propiedad de la cuenta urucp3.",
     postalCode: "28223",
     city: "Pozuelo de Alarcón",
@@ -508,7 +502,6 @@ const inmuebles = [
     areaM2: "210",
     participationCoef: "14.0000",
     propertyUse: "residencial",
-    receiptStatus: "current",
     notes: "Chalet con jardín, administrado por ca2.",
     postalCode: "28250",
     city: "Torrelodones",
@@ -745,8 +738,8 @@ const insertOwner = db.prepare(
 );
 const insertProperty = db.prepare(
   `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, cadastralRef,
-     registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'current', ?, ?, ?, ?)`,
+     registryNumber, floor, door, areaM2, participationCoef, propertyUse, notes, postalCode, city, province)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 );
 const insertTenant = db.prepare(
   `INSERT INTO tenants (id, ownerId, propertyId, name, surname, documentType, documentId,

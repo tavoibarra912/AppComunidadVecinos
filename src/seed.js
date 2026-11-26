@@ -749,8 +749,8 @@ export function seedIfEmpty() {
   );
   const insertProperty = db.prepare(
     `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, cadastralRef,
-       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province)
-     VALUES (?, ?, ?, '[]', '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'current', ?, ?, ?, ?)`,
+       registryNumber, floor, door, areaM2, participationCoef, propertyUse, notes, postalCode, city, province)
+     VALUES (?, ?, ?, '[]', '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertTenant = db.prepare(
     `INSERT INTO tenants (id, ownerId, propertyId, name, surname, documentType, documentId,
@@ -1631,7 +1631,6 @@ export function seedDemoComunidades() {
       areaM2: "78",
       participationCoef: "9.5000",
       propertyUse: "residencial",
-      receiptStatus: "current",
       notes: "Vivienda principal.",
       postalCode: "28001",
       city: "Madrid",
@@ -1653,7 +1652,6 @@ export function seedDemoComunidades() {
       areaM2: "85",
       participationCoef: "10.2500",
       propertyUse: "residencial",
-      receiptStatus: "current",
       notes: "",
       postalCode: "28001",
       city: "Madrid",
@@ -1675,7 +1673,6 @@ export function seedDemoComunidades() {
       areaM2: "70",
       participationCoef: "8.0000",
       propertyUse: "residencial",
-      receiptStatus: "current",
       notes: "",
       postalCode: "28001",
       city: "Madrid",
@@ -1697,7 +1694,6 @@ export function seedDemoComunidades() {
       areaM2: "55",
       participationCoef: "5.0000",
       propertyUse: "comercial",
-      receiptStatus: "current",
       notes: "Local comercial (perfil sin cuenta).",
       postalCode: "28001",
       city: "Madrid",
@@ -1719,7 +1715,6 @@ export function seedDemoComunidades() {
       areaM2: "96",
       participationCoef: "12.0000",
       propertyUse: "residencial",
-      receiptStatus: "current",
       notes: "Ático propiedad de la cuenta urucp2.",
       postalCode: "28223",
       city: "Pozuelo de Alarcón",
@@ -1741,7 +1736,6 @@ export function seedDemoComunidades() {
       areaM2: "88",
       participationCoef: "10.7500",
       propertyUse: "residencial",
-      receiptStatus: "current",
       notes: "",
       postalCode: "28223",
       city: "Pozuelo de Alarcón",
@@ -1763,7 +1757,6 @@ export function seedDemoComunidades() {
       areaM2: "210",
       participationCoef: "14.0000",
       propertyUse: "residencial",
-      receiptStatus: "current",
       notes: "Chalet con jardín.",
       postalCode: "28250",
       city: "Torrelodones",
@@ -1978,8 +1971,8 @@ export function seedDemoComunidades() {
   );
   const insertProperty = db.prepare(
     `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, cadastralRef,
-       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'current', ?, ?, ?, ?)`,
+       registryNumber, floor, door, areaM2, participationCoef, propertyUse, notes, postalCode, city, province)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertTenant = db.prepare(
     `INSERT INTO tenants (id, ownerId, propertyId, name, surname, documentType, documentId,
