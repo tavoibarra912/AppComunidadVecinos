@@ -298,6 +298,9 @@ export async function sendMessage(channel, to, message, config = providers(false
 }
 export function destination(user, channel) {
   const p = getPreferences(user);
+  // La oposición a la comunicación externa («no contactar») prevalece sobre
+  // cualquier consentimiento por canal.
+  if (p.noContact) return null;
   if (!p[`${channel}Enabled`]) return null;
   return channel === "email" ? p.email : p.phone;
 }

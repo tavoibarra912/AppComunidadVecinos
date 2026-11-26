@@ -17,6 +17,8 @@ import {
   requestAccountDeletion,
   cancelAccountDeletion,
 } from "../account-deletion.js";
+import { exportPersonalData } from "../my-data.js";
+import { recordAudit } from "../audit.js";
 
 const router = Router();
 router.use("/change-password", requireSession);
@@ -25,6 +27,21 @@ router.use("/change-password", requireSession);
 router.use("/deletion-request", requireSession);
 router.use(createAuthRateLimit());
 router.get("/me", requireSession, (req, res) => res.json(publicUser(req.user)));
+// Acceso y portabilidad (RGPD, arts. 15 y 20): el titular descarga sus datos
+// sin depender de un permiso de gestión. Solo incluye lo suyo.
+router.get("/my-data", requireSession, (req, res) => {
+  const data = exportPersonalData(req.user);
+  recordAudit({
+    actor: req.user,
+    action: "users.data-exported",
+    resourceType: "user",
+    resourceId: req.user.id,
+    req,
+    details: { formato: "json", origen: "autoservicio" },
+  });
+  res.set("Content-Disposition", 'attachment; filename="mis-datos.json"');
+  res.json(data);
+});
 // Baja de cuenta (RGPD): el titular pide la supresión y la administración la
 // revisa. La última solicitud queda consultable para mostrar el estado en la app.
 router.get("/deletion-request", (req, res) =>

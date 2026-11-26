@@ -170,12 +170,31 @@ async function cancelDeletion() {
   await renderPrivacy();
 }
 
+// Acceso y portabilidad (RGPD, arts. 15 y 20): descarga de los datos propios.
+async function downloadMyData() {
+  try {
+    const data = await api.getMyData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `mis-datos-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast("Descarga de tus datos generada.");
+  } catch (error) {
+    toast(error.message, "warning");
+  }
+}
+
 async function renderPrivacy() {
   const status = document.querySelector("#account-privacy-status");
   const actions = document.querySelector("#account-privacy-actions");
   if (!status || !actions) return;
   status.textContent = "Cargando tu situación de baja…";
-  actions.replaceChildren();
+  actions.replaceChildren(privacyButton("Descargar mis datos", downloadMyData));
   let request = null;
   try {
     request = (await api.getDeletionRequest()).request || null;
@@ -193,7 +212,7 @@ async function renderPrivacy() {
     return;
   }
   if (request.state === "pending") {
-    status.textContent = `Solicitud de baja enviada el ${accountDate(request.requestedAt)}. La administración la revisará en el menor plazo posible y puedes cancelarla mientras siga pendiente.`;
+    status.textContent = `Solicitud de baja enviada el ${accountDate(request.requestedAt)}. Plazo de respuesta: ${accountDate(request.deadline)}${request.overdue ? " (vencido; reclama a la administración)" : ""}. Puedes cancelarla mientras siga pendiente.`;
     actions.append(privacyButton("Cancelar solicitud de baja", cancelDeletion));
     return;
   }

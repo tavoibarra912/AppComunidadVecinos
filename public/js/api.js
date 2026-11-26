@@ -99,6 +99,7 @@ export const api = {
     request(`/auth/${path}`, { method: "POST", body: JSON.stringify(body || {}) }),
 
   // --- Baja de cuenta (RGPD) ---
+  getMyData: () => request("/auth/my-data"),
   getDeletionRequest: () => request("/auth/deletion-request"),
   requestDeletion: (payload) =>
     request("/auth/deletion-request", { method: "POST", body: JSON.stringify(payload || {}) }),

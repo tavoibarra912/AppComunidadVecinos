@@ -287,14 +287,38 @@ export function audit(postId, userId, action) {
 export function getPreferences(user) {
   const row = db.prepare("SELECT data FROM communication_preferences WHERE userId=?").get(user.id);
   return row
-    ? JSON.parse(row.data)
+    ? { noContact: false, ...JSON.parse(row.data) }
     : {
         email: user.email || "",
         phone: "",
         emailEnabled: false,
         smsEnabled: false,
         whatsappEnabled: false,
+        // Oposición (art. 21): prevalece sobre cualquier canal externo.
+        noContact: false,
       };
+}
+// Trazabilidad del consentimiento (art. 7.1): qué canal, cuándo y con qué
+// origen cambió. El estado actual solo no basta para demostrar el consentimiento.
+export function recordConsentChange(userId, channel, enabled) {
+  db.prepare(
+    "INSERT INTO communication_consent_log (id,userId,channel,enabled,at,origin) VALUES (?,?,?,?,?,?)",
+  ).run(
+    crypto.randomUUID(),
+    userId,
+    channel,
+    enabled ? 1 : 0,
+    new Date().toISOString(),
+    "autoservicio",
+  );
+}
+export function consentHistory(userId, limit = 50) {
+  return db
+    .prepare(
+      "SELECT channel,enabled,at,origin FROM communication_consent_log WHERE userId=? ORDER BY at DESC,id DESC LIMIT ?",
+    )
+    .all(userId, limit)
+    .map((row) => ({ channel: row.channel, enabled: !!row.enabled, at: row.at, origin: row.origin }));
 }
 export function queue(post, kind = "publication") {
   const now = new Date().toISOString();
