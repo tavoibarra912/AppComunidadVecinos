@@ -10,6 +10,7 @@
     "restart": "node scripts/restart.mjs",
     "build:netlify": "node scripts/build-netlify.mjs",
     "test": "node --test scripts/tests/*.test.mjs",
+    "import:base26": "node scripts/import-base-datos-26.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

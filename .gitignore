@@ -135,6 +135,7 @@ data/
 uploads/
 
 # Scratch local de desarrollo
+.local-test/
 .kimchi/
 .freebuff/
 .cursor/

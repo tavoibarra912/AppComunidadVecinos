@@ -1,0 +1,809 @@
+#!/usr/bin/env node
+// Importador local de «BASE DE DATOS 26» (Asociación de Propietarios de
+// Parcelas Peña Rubia) siguiendo el mapping de Book1.
+//
+// Nunca toca la base de producción: por defecto hace un dry-run que solo
+// escribe un informe en una carpeta local y, con --write, crea una base nueva
+// dentro de esa misma carpeta (nunca en data/ ni uploads/).
+//
+// Uso:
+//   node scripts/import-base-datos-26.mjs --file "BASE DE DATOS 26.xlsm"
+//   node scripts/import-base-datos-26.mjs --file "BASE DE DATOS 26.xlsm" --write
+//
+// Ver docs/importacion-base-datos-26.md.
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+export const SHEET_NAME = "BASE DE DATOS COMPLETA";
+export const DEFAULT_OUT_DIR = path.join(ROOT, ".local-test", "base-26");
+
+// Mapping de Book1 (columna Excel → campo de la app). Índices 0-based.
+const COL = Object.freeze({
+  refRegantes: 0, // A  Ref.
+  pcla: 2, // C  Pcla.
+  titular: 3, // D  Nombre del Titular (Asociación)
+  cadastralRef: 5, // F  Ref. Catastral
+  dni: 6, // G  DNI/NIF
+  areaM2: 8, // I  Superficie C.R.
+  cuotaSuperficie: 12, // M  CUOTA DE SUPERFICIE (solo informativa)
+  tipoVia: 14, // O  Tipo de via
+  direccion: 15, // P  Direccion
+  telefonoFijo: 16, // Q  Teléfono fijo
+  telefonoMovil: 17, // R  Teléfono móvil
+  email: 18, // S  E-mail
+  codigoPostal: 19, // T  Codigo Postal
+  localidad: 20, // U  Localidad (para la ciudad obligatoria)
+});
+
+const MAX_COLUMNS = 21;
+
+// Datos fijos de la comunidad (Book1, hoja «Comunidad»).
+export const COMMUNITY = Object.freeze({
+  id: "com-base-26",
+  name: "Asociacion de Propietarios de Parcelas Peña Rubia",
+  nif: "G80105232",
+  phone: "607720096",
+  otherPhone: "697264963",
+  email: "asociacionpenarubia@gmail.com",
+  address: "Callejon Salsipuedes, 16",
+  city: "Estremera",
+  province: "Madrid",
+  postalCode: "28595",
+  iban: "ES1721002004851300269952",
+  president: "Francisco Cortés Lianes",
+  administrator: "Miguel Angel Castillo Palacios",
+  constitutionYear: "1987",
+  reserveFund: "0",
+  currency: "EUR",
+  notes: "Censo importado desde «BASE DE DATOS 26».",
+  legalConfig: JSON.stringify({ regimen: "asociacion" }),
+});
+
+export const PROPERTY_TYPE = "vivienda"; // Mapping Book1: «Vivienda».
+export const PROPERTY_USE = "residencial"; // Mapping Book1: «Residencial».
+
+const HEADER_MIN = 2; // «Pcla.» y «DNI» tienen que aparecer en el encabezado.
+
+/** Convierte cualquier valor de celda (ExcelJS o CSV) en texto recortado. */
+export function cellText(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  if (typeof value === "boolean") return value ? "SI" : "NO";
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (Array.isArray(value)) return value.map(cellText).filter(Boolean).join(" ").trim();
+  if (typeof value === "object") {
+    if (Array.isArray(value.richText))
+      return value.richText
+        .map((part) => part.text)
+        .join("")
+        .trim();
+    if ("result" in value) return cellText(value.result);
+    if ("text" in value) return cellText(value.text);
+    if ("error" in value) return "";
+  }
+  return String(value).trim();
+}
+
+/** Documento sin espacios, puntos ni guiones y en mayúsculas. */
+export function normalizeDocument(raw) {
+  return cellText(raw)
+    .toUpperCase()
+    .replace(/[\s.\-]/g, "");
+}
+
+/** Tipo de documento por la forma del identificador (DNI, NIE o CIF). */
+export function detectDocumentType(document) {
+  const value = normalizeDocument(document);
+  if (/^[XYZ]\d{7}[A-Z]$/.test(value)) return "NIE";
+  if (/^[A-HJNPQRSUVW]\d{7}[A-Z0-9]$/.test(value)) return "CIF";
+  return "DNI";
+}
+
+/** Identificador estable y seguro para la base local. */
+export function slug(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Parte el titular en nombre y apellidos (D mezcla ambos). */
+export function splitTitular(raw) {
+  const parts = cellText(raw).split(/\s+/).filter(Boolean);
+  if (!parts.length) return { name: "", surname: "" };
+  if (parts.length === 1) return { name: parts[0], surname: "" };
+  return { name: parts[0], surname: parts.slice(1).join(" ") };
+}
+
+/** Superficie numérica: acepta 1.051,5 / 1051.5 / "1051". */
+export function parseArea(raw) {
+  const text = cellText(raw).replace(/\s|€/g, "");
+  if (!text) return "";
+  const thousands = /^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(text);
+  const normalized = thousands ? text.replace(/\./g, "").replace(",", ".") : text.replace(",", ".");
+  const number = Number(normalized);
+  if (!Number.isFinite(number) || number <= 0) return "";
+  return String(Math.round(number * 100) / 100);
+}
+
+/** Normaliza una referencia catastral (20 alfanuméricos) o "" si no sirve. */
+export function normalizeCadastralRef(raw) {
+  const value = cellText(raw)
+    .toUpperCase()
+    .replace(/[\s.\-]/g, "");
+  return /^[A-Z0-9]{20}$/.test(value) ? value : "";
+}
+
+/** Parser CSV mínimo con soporte de comillas y saltos de línea dentro de celdas. */
+export function parseDelimited(text, delimiter = ",") {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+  const source = String(text).replace(/^\uFEFF/, "");
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    if (quoted) {
+      if (char === '"') {
+        if (source[i + 1] === '"') {
+          field += '"';
+          i += 1;
+        } else quoted = false;
+      } else field += char;
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+    } else if (char === delimiter) {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (char === "\r") {
+      // Se ignora: el LF cierra la fila.
+    } else field += char;
+  }
+  if (field || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
+/** Busca la fila de encabezado («Pcla.» y «DNI/NIF»). */
+export function findHeaderRow(table) {
+  for (let index = 0; index < Math.min(table.length, 20); index += 1) {
+    const cells = (table[index] || []).map((cell) => cellText(cell).toLowerCase());
+    const hasPcla = cells.some((cell) => /^pcla\.?$/.test(cell));
+    const hasDni = cells.some((cell) => /dni\s*\/?\s*nif|dni\b/.test(cell));
+    if (hasPcla && hasDni) return index;
+  }
+  return -1;
+}
+
+/** Lee la hoja desde .xlsx/.xlsm (ExcelJS) o desde un .csv exportado. */
+export async function readSheet({ file, sheet = SHEET_NAME }) {
+  const source = path.resolve(process.cwd(), file);
+  if (!fs.existsSync(source)) throw new Error(`No encuentro el archivo: ${source}`);
+  const extension = path.extname(source).toLowerCase();
+  if (extension === ".csv") {
+    const table = parseDelimited(fs.readFileSync(source, "utf8"));
+    return { table, source, sheet: "(csv)", extension };
+  }
+  if (extension !== ".xlsx" && extension !== ".xlsm") {
+    throw new Error("Formato no soportado: usá .xlsm, .xlsx o .csv.");
+  }
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(source);
+  const worksheet =
+    workbook.getWorksheet(sheet) ||
+    workbook.worksheets.find((item) => item.name.trim().toLowerCase() === sheet.toLowerCase());
+  if (!worksheet) {
+    throw new Error(
+      `La hoja «${sheet}» no existe. Hojas disponibles: ${workbook.worksheets
+        .map((item) => item.name)
+        .join(", ")}.`,
+    );
+  }
+  const table = [];
+  worksheet.eachRow({ includeEmpty: true }, (row) => {
+    const cells = [];
+    for (let column = 1; column <= MAX_COLUMNS; column += 1) {
+      cells.push(cellText(row.getCell(column).value));
+    }
+    table.push(cells);
+  });
+  return { table, source, sheet: worksheet.name, extension };
+}
+
+/** Notas comunes de propietario e inmueble (Book1: Ref. de la comunidad de regantes). */
+export function rowNotes(row, cuotaSuperficie) {
+  const notes = [];
+  if (row.refRegantes)
+    notes.push(`Referencia dentro de la comunidad de Regantes: ${row.refRegantes}`);
+  if (cuotaSuperficie) notes.push(`Cuota de superficie histórica (col. M): ${cuotaSuperficie} €`);
+  return notes.join(" · ");
+}
+
+/**
+ * Construye el plan de importación sin tocar ninguna base.
+ * Devuelve comunidades, usuarios, propietarios, inmuebles y avisos.
+ */
+export function buildPlan(table, headerIndex = findHeaderRow(table)) {
+  if (headerIndex < 0) {
+    throw new Error(
+      "No encontré el encabezado de la hoja (hacen falta las columnas «Pcla.» y «DNI/NIF»).",
+    );
+  }
+  const warnings = [];
+  const warn = (rowNumber, pcla, message) => warnings.push({ fila: rowNumber, pcla, message });
+  const owners = new Map();
+  const properties = [];
+  const seenPcla = new Map();
+  const seenCadastral = new Set();
+  let emptyRows = 0;
+  let totalArea = 0;
+
+  for (let index = headerIndex + 1; index < table.length; index += 1) {
+    const cells = table[index] || [];
+    // Filas vacías o separadores de Markdown/CSV exportado («| --- |»).
+    if (
+      cells.every((cell) => !cellText(cell) || /^:?-{3,}:?$/.test(cellText(cell))) ||
+      !cells.some((cell) => cellText(cell))
+    ) {
+      emptyRows += 1;
+      continue;
+    }
+    const rowNumber = index + 1;
+    const row = {
+      refRegantes: cellText(cells[COL.refRegantes]),
+      pcla: cellText(cells[COL.pcla]),
+      titular: cellText(cells[COL.titular]),
+      cadastralRef: cellText(cells[COL.cadastralRef]),
+      document: normalizeDocument(cells[COL.dni]),
+      areaM2: parseArea(cells[COL.areaM2]),
+      cuotaSuperficie: cellText(cells[COL.cuotaSuperficie]),
+      tipoVia: cellText(cells[COL.tipoVia]),
+      direccion: cellText(cells[COL.direccion]),
+      telefonoFijo: cellText(cells[COL.telefonoFijo]),
+      telefonoMovil: cellText(cells[COL.telefonoMovil]),
+      email: cellText(cells[COL.email]).toLowerCase(),
+      codigoPostal: cellText(cells[COL.codigoPostal]),
+      localidad: cellText(cells[COL.localidad]),
+    };
+
+    if (!row.pcla) {
+      warn(rowNumber, "", "Fila sin «Pcla.»: no se importa.");
+      continue;
+    }
+    if (seenPcla.has(row.pcla)) {
+      warn(
+        rowNumber,
+        row.pcla,
+        `Pcla. duplicada (ya importada en la fila ${seenPcla.get(row.pcla)}): se omite.`,
+      );
+      continue;
+    }
+    seenPcla.set(row.pcla, rowNumber);
+    if (!row.titular)
+      warn(rowNumber, row.pcla, "Fila sin titular: el inmueble queda sin propietario.");
+    else if (!row.document)
+      warn(
+        rowNumber,
+        row.pcla,
+        `Titular «${row.titular}» sin documento: el inmueble queda sin propietario.`,
+      );
+
+    const address = [row.tipoVia, row.direccion].filter(Boolean).join(" ").trim();
+    if (!address)
+      warn(rowNumber, row.pcla, "Fila sin dirección: se usa «Parcela N» como dirección.");
+    if (!row.codigoPostal) warn(rowNumber, row.pcla, "Fila sin código postal.");
+    if (!row.localidad) warn(rowNumber, row.pcla, "Fila sin localidad: se usa la de la comunidad.");
+    if (!row.telefonoMovil && !row.telefonoFijo)
+      warn(rowNumber, row.pcla, "Fila sin teléfono: el propietario queda sin teléfono.");
+    if (!row.email) warn(rowNumber, row.pcla, "Fila sin email: el propietario queda sin email.");
+
+    let ownerId = "";
+    if (row.document) {
+      const documentType = detectDocumentType(row.document);
+      const validFormat =
+        /^\d{7,8}[A-Z]$/.test(row.document) ||
+        /^[XYZ]\d{7}[A-Z]$/.test(row.document) ||
+        /^[A-HJNPQRSUVW]\d{7}[A-Z0-9]$/.test(row.document);
+      if (!validFormat)
+        warn(rowNumber, row.pcla, `Documento «${row.document}» con formato incompleto: revisalo.`);
+
+      const existing = owners.get(row.document);
+      if (existing) {
+        ownerId = existing.id;
+        // Un mismo titular puede traer el contacto repartido en varias filas.
+        existing.phone ||= row.telefonoMovil || row.telefonoFijo;
+        existing.otherPhone ||= row.telefonoMovil ? row.telefonoFijo : "";
+        existing.email ||= row.email;
+        existing.address ||= address;
+        existing.postalCode ||= row.codigoPostal;
+        existing.cadastralRef ||= normalizeCadastralRef(row.cadastralRef);
+        existing.areaM2 ||= row.areaM2;
+        existing.notes ||= rowNotes(row, row.cuotaSuperficie);
+        if (existing.phone) existing.phoneVerified = 1;
+        if (existing.email) existing.emailVerified = 1;
+        if (row.titular && existing.titular && row.titular !== existing.titular) {
+          warn(
+            rowNumber,
+            row.pcla,
+            `El documento ${row.document} aparece con otro titular («${row.titular}» frente a «${existing.titular}»): se unifica la ficha.`,
+          );
+        }
+        existing.propertyIds.push(`prop-base26-${slug(row.pcla)}`);
+      } else {
+        const { name, surname } = splitTitular(row.titular);
+        if (!name) warn(rowNumber, row.pcla, "Titular sin nombre utilizable.");
+        if (!surname) warn(rowNumber, row.pcla, "Titular sin apellidos separables.");
+        const phone = row.telefonoMovil || row.telefonoFijo;
+        const notes = [];
+        if (!row.telefonoMovil && row.telefonoFijo)
+          notes.push("Teléfono principal tomado del fijo (col. Q).");
+        ownerId = `own-base26-${slug(row.document)}`;
+        owners.set(row.document, {
+          id: ownerId,
+          userId: `user-base26-${slug(row.document)}`,
+          name,
+          surname,
+          documentType,
+          document: row.document,
+          email: row.email,
+          phone,
+          otherPhone: row.telefonoMovil ? row.telefonoFijo : "",
+          phoneVerified: phone ? 1 : 0,
+          emailVerified: row.email ? 1 : 0,
+          address,
+          postalCode: row.codigoPostal,
+          city: row.localidad || COMMUNITY.city,
+          province: COMMUNITY.province,
+          communityId: COMMUNITY.id,
+          communityName: COMMUNITY.name,
+          plot: `Parcela ${row.pcla}`,
+          cadastralRef: normalizeCadastralRef(row.cadastralRef),
+          areaM2: row.areaM2,
+          notes: rowNotes(row, row.cuotaSuperficie),
+          titular: row.titular,
+          propertyIds: [`prop-base26-${slug(row.pcla)}`],
+        });
+      }
+    }
+
+    let cadastralRef = normalizeCadastralRef(row.cadastralRef);
+    if (row.cadastralRef && !cadastralRef)
+      warn(
+        rowNumber,
+        row.pcla,
+        `Referencia catastral «${row.cadastralRef}» no válida (20 caracteres): se guarda vacía.`,
+      );
+    // Varias subparcelas comparten la referencia del inmueble matriz y la app
+    // exige que sea única: se conserva en la primera y se avisa del resto.
+    if (cadastralRef && seenCadastral.has(cadastralRef)) {
+      warn(
+        rowNumber,
+        row.pcla,
+        `Referencia catastral ${cadastralRef} repetida en otra parcela: se guarda vacía.`,
+      );
+      cadastralRef = "";
+    } else if (cadastralRef) seenCadastral.add(cadastralRef);
+    if (row.areaM2) totalArea += Number(row.areaM2);
+
+    properties.push({
+      id: `prop-base26-${slug(row.pcla)}`,
+      communityId: COMMUNITY.id,
+      communityName: COMMUNITY.name,
+      plot: `Parcela ${row.pcla}`,
+      pcla: row.pcla,
+      propertyType: PROPERTY_TYPE,
+      propertyUse: PROPERTY_USE,
+      address: address || `Parcela ${row.pcla}`,
+      cadastralRef,
+      areaM2: row.areaM2,
+      postalCode: row.codigoPostal,
+      city: row.localidad || COMMUNITY.city,
+      province: COMMUNITY.province,
+      ownerIds: ownerId ? [ownerId] : [],
+      ownerPercentages: ownerId ? { [ownerId]: 100 } : {},
+      occupancy: ownerId ? "owner" : "",
+      residentOwnerIds: ownerId ? [ownerId] : [],
+      primaryResidentId: ownerId,
+      notes: rowNotes(row, row.cuotaSuperficie),
+    });
+  }
+
+  const ownerList = [...owners.values()];
+  const users = ownerList.map((owner) => ({
+    id: owner.userId,
+    name: owner.name,
+    surname: owner.surname,
+    usuario: owner.document.toLowerCase(),
+    email: owner.email,
+    role: "user",
+    password: `${owner.document.toLowerCase()}12345678`,
+  }));
+
+  return {
+    community: COMMUNITY,
+    owners: ownerList,
+    users,
+    properties,
+    warnings,
+    stats: {
+      filas: table.length - headerIndex - 1,
+      filasVacias: emptyRows,
+      inmuebles: properties.length,
+      propietarios: ownerList.length,
+      usuarios: users.length,
+      inmueblesConPropietario: properties.filter((property) => property.ownerIds.length).length,
+      inmueblesSinPropietario: properties.filter((property) => !property.ownerIds.length).length,
+      superficieTotal: Math.round(totalArea * 100) / 100,
+      avisos: warnings.length,
+    },
+  };
+}
+
+/** Informe legible + CSV de previsualización. Solo escribe dentro de outDir. */
+export function writeReport(outDir, plan, meta) {
+  fs.mkdirSync(outDir, { recursive: true });
+  const generatedAt = new Date().toISOString();
+  const reportPath = path.join(outDir, "import-report.json");
+  const previewPath = path.join(outDir, "import-preview.csv");
+  const report = {
+    generatedAt,
+    origen: meta.source,
+    hoja: meta.sheet,
+    mapping: "Book1",
+    comunidad: {
+      id: plan.community.id,
+      nombre: plan.community.name,
+      nif: plan.community.nif,
+      regimen: "asociacion",
+    },
+    resumen: plan.stats,
+    avisos: plan.warnings,
+    propietarios: plan.owners.map((owner) => ({
+      id: owner.id,
+      usuario: owner.document.toLowerCase(),
+      nombre: `${owner.name} ${owner.surname}`.trim(),
+      documento: owner.document,
+      email: owner.email,
+      telefono: owner.phone,
+      inmuebles: owner.propertyIds.length,
+    })),
+    inmuebles: plan.properties.map((property) => ({
+      id: property.id,
+      parcela: property.pcla,
+      direccion: property.address,
+      superficie: property.areaM2,
+      propietario: property.ownerIds[0] || "",
+    })),
+  };
+  fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+
+  const csvRows = [
+    [
+      "parcela",
+      "titular",
+      "documento",
+      "direccion",
+      "cp",
+      "localidad",
+      "superficie",
+      "telefono",
+      "email",
+      "id_inmueble",
+    ],
+    ...plan.properties.map((property) => {
+      const owner = plan.owners.find((item) => item.id === property.ownerIds[0]);
+      return [
+        property.pcla,
+        owner ? `${owner.name} ${owner.surname}`.trim() : "",
+        owner?.document || "",
+        property.address,
+        property.postalCode,
+        property.city,
+        property.areaM2,
+        owner?.phone || "",
+        owner?.email || "",
+        property.id,
+      ];
+    }),
+  ];
+  const escape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  fs.writeFileSync(
+    previewPath,
+    `\uFEFF${csvRows.map((row) => row.map(escape).join(",")).join("\r\n")}\r\n`,
+    "utf8",
+  );
+  return { reportPath, previewPath };
+}
+
+/** La carpeta de salida tiene que quedar dentro del proyecto y fuera de data/uploads. */
+export function assertSafeOutDir(outDir) {
+  const resolved = path.resolve(outDir);
+  const relative = path.relative(ROOT, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("La carpeta de salida debe quedar dentro del proyecto.");
+  }
+  const forbidden = [path.join(ROOT, "data"), path.join(ROOT, "uploads")];
+  if (forbidden.some((dir) => resolved === dir || resolved.startsWith(`${dir}${path.sep}`))) {
+    throw new Error(
+      "La carpeta de salida no puede ser data/ ni uploads/ (esas carpetas son la app real).",
+    );
+  }
+  return resolved;
+}
+
+/** Crea una base SQLite nueva en outDir/data con el plan completo. */
+export async function writeDatabase(plan, outDir, { force = false } = {}) {
+  const dataDir = path.join(outDir, "data");
+  const uploadsDir = path.join(outDir, "uploads");
+  const dbFile = path.join(dataDir, "penarrubia.db");
+  if (fs.existsSync(dbFile) && !force) {
+    throw new Error(`Ya existe una base importada en ${dbFile}. Usá --force para reemplazarla.`);
+  }
+  if (force) {
+    fs.rmSync(dataDir, { recursive: true, force: true });
+    fs.rmSync(uploadsDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.mkdirSync(uploadsDir, { recursive: true });
+
+  // Los módulos de la app leen estas variables al cargarse: se definen antes del import.
+  process.env.APP_DATA_DIR = dataDir;
+  process.env.APP_UPLOADS_DIR = uploadsDir;
+  process.env.APP_DEMO_PROFILES = "false";
+  process.env.APP_DEMO_DATA = "false";
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Este importador es solo local: no se ejecuta con NODE_ENV=production.");
+  }
+
+  const { db } = await import("../src/db.js");
+  const { passwordRecord } = await import("../src/auth.js");
+  const { rebuildOwnersPropertyIds } = await import("../src/domain.js");
+  const now = new Date().toISOString();
+
+  const insertCommunity = db.prepare(
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode,
+       email, iban, president, administrator, constitutionYear, reserveFund, currency, notes,
+       documents, legalConfig, adminUserId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, 'user-super-admin')`,
+  );
+  const insertUser = db.prepare(
+    `INSERT INTO users (id, nombre, apellido, usuario, email, rol, activo, passwordHash)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+  );
+  const insertOwner = db.prepare(
+    `INSERT INTO owners (id, name, surname, documentType, dni, isMember, communityId, communityName,
+       plot, propertyId, propertyIds, phone, otherPhone, email, phoneVerified, phoneVerifiedAt,
+       emailVerified, emailVerifiedAt, address, province, city, postalCode, iban, currency,
+       votingRights, notificationPreference, notes, propertyType, cadastralRef, areaM2, documents,
+       userId)
+     VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, '', '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'EUR',
+       'active', 'email', ?, ?, ?, ?, '{}', ?)`,
+  );
+  const insertProperty = db.prepare(
+    `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot,
+       address, cadastralRef, areaM2, participationCoef, propertyUse, notes, postalCode, city,
+       province, currency, ownerPercentages, occupancy, residentOwnerIds, primaryResidentId)
+     VALUES (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, 'EUR', ?, ?, ?, ?)`,
+  );
+
+  db.exec("BEGIN");
+  try {
+    const community = plan.community;
+    insertCommunity.run(
+      community.id,
+      community.name,
+      community.nif,
+      community.phone,
+      community.otherPhone,
+      community.address,
+      community.city,
+      community.province,
+      community.postalCode,
+      community.email,
+      community.iban,
+      community.president,
+      community.administrator,
+      community.constitutionYear,
+      community.reserveFund,
+      community.currency,
+      community.notes,
+      community.legalConfig,
+    );
+    for (const user of plan.users) {
+      insertUser.run(
+        user.id,
+        user.name,
+        user.surname,
+        user.usuario,
+        user.email,
+        user.role,
+        passwordRecord(user.password),
+      );
+    }
+    for (const owner of plan.owners) {
+      insertOwner.run(
+        owner.id,
+        owner.name,
+        owner.surname,
+        owner.documentType,
+        owner.document,
+        owner.communityId,
+        owner.communityName,
+        owner.plot,
+        owner.phone,
+        owner.otherPhone,
+        owner.email,
+        owner.phoneVerified,
+        owner.phoneVerified ? now : "",
+        owner.emailVerified,
+        owner.emailVerified ? now : "",
+        owner.address,
+        owner.province,
+        owner.city,
+        owner.postalCode,
+        owner.notes,
+        owner.propertyType || PROPERTY_TYPE,
+        owner.cadastralRef,
+        owner.areaM2,
+        owner.userId,
+      );
+    }
+    for (const property of plan.properties) {
+      insertProperty.run(
+        property.id,
+        property.communityId,
+        property.communityName,
+        JSON.stringify(property.ownerIds),
+        property.propertyType,
+        property.plot,
+        property.address,
+        property.cadastralRef,
+        property.areaM2,
+        property.propertyUse,
+        property.notes,
+        property.postalCode,
+        property.city,
+        property.province,
+        JSON.stringify(property.ownerPercentages),
+        property.occupancy,
+        JSON.stringify(property.residentOwnerIds),
+        property.primaryResidentId,
+      );
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+
+  // Reconstruye propertyIds/propertyId de cada propietario y completa porcentajes.
+  rebuildOwnersPropertyIds({ repairPercentages: true });
+
+  const totals = {
+    comunidades: db.prepare("SELECT COUNT(*) AS total FROM communities").get().total,
+    usuarios: db.prepare("SELECT COUNT(*) AS total FROM users").get().total,
+    propietarios: db.prepare("SELECT COUNT(*) AS total FROM owners").get().total,
+    inmuebles: db.prepare("SELECT COUNT(*) AS total FROM properties").get().total,
+    inmueblesSinTitular: db
+      .prepare("SELECT COUNT(*) AS total FROM properties WHERE ownerIds = '[]'")
+      .get().total,
+  };
+  db.close();
+  return { dbFile, dataDir, uploadsDir, totals };
+}
+
+function parseArgs(argv) {
+  const options = { file: "", sheet: SHEET_NAME, out: DEFAULT_OUT_DIR, write: false, force: false };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--file" || arg === "-f") options.file = argv[++index] || "";
+    else if (arg === "--sheet") options.sheet = argv[++index] || SHEET_NAME;
+    else if (arg === "--out") options.out = argv[++index] || DEFAULT_OUT_DIR;
+    else if (arg === "--write") options.write = true;
+    else if (arg === "--force") options.force = true;
+    else if (arg === "--help" || arg === "-h") options.help = true;
+    else throw new Error(`Opción desconocida: ${arg}`);
+  }
+  return options;
+}
+
+function printSummary(plan, meta, outDir) {
+  const { stats } = plan;
+  console.log("");
+  console.log("Importador «BASE DE DATOS 26» — mapping Book1");
+  console.log(`  Origen: ${meta.source}`);
+  console.log(`  Hoja:   ${meta.sheet}`);
+  console.log(`  Salida: ${outDir}`);
+  console.log("");
+  console.log(`  Filas leídas:              ${stats.filas}`);
+  console.log(`  Inmuebles a importar:      ${stats.inmuebles}`);
+  console.log(`  Con propietario:           ${stats.inmueblesConPropietario}`);
+  console.log(`  Sin propietario:           ${stats.inmueblesSinPropietario}`);
+  console.log(`  Propietarios (por DNI):    ${stats.propietarios}`);
+  console.log(`  Usuarios de acceso:        ${stats.usuarios}`);
+  console.log(`  Superficie total (m²):     ${stats.superficieTotal}`);
+  console.log(`  Avisos:                    ${stats.avisos}`);
+  if (plan.warnings.length) {
+    console.log("");
+    console.log("  Primeros avisos:");
+    for (const warning of plan.warnings.slice(0, 12)) {
+      console.log(
+        `   · fila ${warning.fila}${warning.pcla ? ` (Pcla. ${warning.pcla})` : ""}: ${warning.message}`,
+      );
+    }
+    if (plan.warnings.length > 12) console.log(`   · … y ${plan.warnings.length - 12} avisos más.`);
+  }
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  if (options.help || !options.file) {
+    console.log(`Importador local de «BASE DE DATOS 26» (sin tocar producción).
+
+Uso:
+  node scripts/import-base-datos-26.mjs --file "BASE DE DATOS 26.xlsm"            # dry-run
+  node scripts/import-base-datos-26.mjs --file "BASE DE DATOS 26.xlsm" --write    # crea la base
+
+Opciones:
+  --file, -f  Archivo .xlsm, .xlsx o .csv con la hoja «${SHEET_NAME}».
+  --sheet     Nombre de la hoja (por defecto «${SHEET_NAME}»).
+  --out       Carpeta local de salida (por defecto .local-test/base-26).
+  --write     Crea <out>/data/penarrubia.db con los datos importados.
+  --force     Reemplaza una base importada existente en <out>/data.`);
+    return;
+  }
+  const outDir = assertSafeOutDir(options.out);
+  const meta = await readSheet({ file: options.file, sheet: options.sheet });
+  const plan = buildPlan(meta.table);
+  const { reportPath, previewPath } = writeReport(outDir, plan, meta);
+  printSummary(plan, meta, outDir);
+  console.log("");
+  console.log(`  Informe:  ${reportPath}`);
+  console.log(`  Preview:  ${previewPath}`);
+  if (!options.write) {
+    console.log("");
+    console.log("  Dry-run: no se creó ninguna base. Agregá --write para crear la copia local.");
+    return;
+  }
+  const result = await writeDatabase(plan, outDir, { force: options.force });
+  console.log("");
+  console.log(`  Base creada: ${result.dbFile}`);
+  console.log(
+    `  Verificación: ${result.totals.comunidades} comunidad, ${result.totals.usuarios} usuarios, ` +
+      `${result.totals.propietarios} propietarios, ${result.totals.inmuebles} inmuebles ` +
+      `(${result.totals.inmueblesSinTitular} sin titular).`,
+  );
+  console.log("");
+  console.log("  Para probarla:");
+  console.log(
+    `    APP_DATA_DIR="${result.dataDir}" APP_UPLOADS_DIR="${result.uploadsDir}" ` +
+      `APP_DEMO_PROFILES=false APP_DEMO_DATA=false PORT=3100 HOST=127.0.0.1 node server.js`,
+  );
+  console.log("    Login: super_admin / super_admin");
+}
+
+const invokedDirectly =
+  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) {
+  main().catch((error) => {
+    console.error(`\nError: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
