@@ -323,22 +323,22 @@ function executionToken(g, p, user) {
         .prepare("SELECT id,version FROM communities WHERE adminUserId=? ORDER BY id")
         .all(id),
     }));
+  // Las referencias documentales son evidencia, no un cambio de alcance: la
+  // vista previa no las exige y la interfaz solo las pide al ejecutar. Se
+  // anulan tanto en la copia superior como dentro del plan serializado, que las
+  // contiene, para que completarlas no invalide la revisión.
+  const credit = p.credit ? { ...p.credit, reference: undefined } : undefined;
+  const transfer = p.transfer ? { ...p.transfer, document: undefined } : undefined;
+  const plan = { ...p.actions, credit, transfer };
   return crypto
     .createHmac("sha256", reviewKey)
     .update(
       JSON.stringify({
         actor: user.id,
         graph: token(g),
-        plan: p.actions,
-        credit: p.credit ? { ...p.credit, reference: undefined } : undefined,
-        // Las referencias documentales son evidencia, no un cambio de alcance:
-        // no invalidan la revisión si se completan después de la vista previa.
-        transfer: p.transfer
-          ? {
-              debtPolicy: p.transfer.debtPolicy,
-              requiresDocument: p.transfer.requiresDocument,
-            }
-          : undefined,
+        plan,
+        credit,
+        transfer,
         targets,
         users,
         closed: p.closedDistributions,
