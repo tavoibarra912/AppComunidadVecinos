@@ -20,9 +20,24 @@ if (( available_kb < required_kb )); then
   echo 'Espacio insuficiente: no se amplía disco ni se borran backups.' >&2
   exit 1
 fi
+
 docker compose -f deploy/compose.yml --env-file .env --project-directory . stop api
-trap 'docker compose -f deploy/compose.yml --env-file .env --project-directory . start api' EXIT
-tar -czf "backups/comunidad-$(date -u +%Y%m%dT%H%M%SZ).tar.gz" data uploads .env
+tmp=''
+cleanup() {
+  if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi
+  docker compose -f deploy/compose.yml --env-file .env --project-directory . start api
+}
+trap cleanup EXIT
+
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+final="backups/comunidad-$stamp.tar.gz"
+# El temporal no coincide con comunidad-*.tar.gz: la retención nunca lo ve.
+tmp=$(mktemp "backups/.comunidad-$stamp.XXXXXX")
+tar -czf "$tmp" data uploads .env
+# Un archivo truncado o corrupto no debe llegar nunca a la retención.
+tar -tzf "$tmp" >/dev/null
+mv -- "$tmp" "$final"
+tmp=''
 echo 'Backup privado completo. Copiar fuera de la VM para cubrir pérdida de disco.'
 if ! bash deploy/prune-backups.sh backups 2; then
   echo 'Aviso: no se pudieron retirar copias antiguas.' >&2

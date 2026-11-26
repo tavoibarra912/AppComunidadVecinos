@@ -27,7 +27,7 @@ async function fixture(t) {
     new URL("../update-vm.sh", import.meta.url),
     path.join(source, "scripts/update-vm.sh"),
   );
-  for (const name of ["backup.sh", "prune-backups.sh"])
+  for (const name of ["backup.sh", "prune-backups.sh", "backup.cron"])
     await copyFile(
       new URL(`../../deploy/${name}`, import.meta.url),
       path.join(source, "deploy", name),

@@ -48,6 +48,7 @@ mv "$env_tmp" .env
 cp "$source_root/deploy/compose.yml" deploy/compose.yml
 install -m 700 "$source_root/deploy/backup.sh" deploy/backup.sh
 install -m 700 "$source_root/deploy/prune-backups.sh" deploy/prune-backups.sh
+install -m 644 "$source_root/deploy/backup.cron" deploy/backup.cron
 "${compose[@]}" up -d --no-deps --pull never api
 
 for attempt in $(seq 1 60); do

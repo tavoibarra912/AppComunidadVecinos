@@ -864,8 +864,10 @@ bash deploy/backup.sh
 ```
 
 `deploy/backup.sh` detiene brevemente solo esta API, guarda base, documentos y
-`.env`, y la vuelve a arrancar incluso si falla el backup. Tras una copia
-correcta conserva solo las dos más recientes (`deploy/prune-backups.sh`) y no
+`.env`, y la vuelve a arrancar incluso si falla el backup. La copia se escribe
+en un temporal, se comprueba que el tar se puede leer y solo entonces se
+publica; tras una copia correcta conserva solo las dos más recientes
+(`deploy/prune-backups.sh`) y no
 amplía el disco automáticamente. Las copias locales en la VM no cubren pérdida
 del disco: conservar también una copia privada fuera de ella.
 
