@@ -1656,7 +1656,13 @@ export function collectOwnerErrors() {
     marks.push("__tab:property");
   }
 
-  // 3. Contacto y verificación
+  // 3. Comunidad del censo (obligatoria para asociados)
+  if (el("isMember")?.value === "true" && !el("communityId")?.value) {
+    errors.push("La comunidad es obligatoria para los asociados.");
+    marks.push("communityId");
+  }
+
+  // 4. Contacto y verificación
   const phoneVal = digitsOnly(el("phone")?.value || "", 9);
   if (!phoneVal || !isValidPhone(phoneVal)) {
     errors.push(
@@ -1681,7 +1687,7 @@ export function collectOwnerErrors() {
     marks.push("email");
   }
 
-  // 4. Dirección y territorio
+  // 5. Dirección y territorio
   const addressVal = (el("address")?.value || "").trim();
   if (!addressVal) {
     errors.push("La dirección es obligatoria.");
@@ -1710,7 +1716,7 @@ export function collectOwnerErrors() {
     marks.push("postalCode");
   }
 
-  // 5. Domiciliación e IBAN
+  // 6. Domiciliación e IBAN
   const ibanVal = digitsIban(el("iban")?.value || "");
   if (ibanVal && !isValidIban(ibanVal)) {
     errors.push(

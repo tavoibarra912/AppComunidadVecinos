@@ -170,6 +170,20 @@ test("socios: la comunidad de censo se guarda aunque no tenga inmueble", async (
   assert.equal(updated.data.communityId, "com-seed-1");
   assert.equal(updated.data.communityName, "Residencial Peñarrubia");
 });
+test("socios: la comunidad es obligatoria para asociados", async () => {
+  const created = await admin("/owners", "POST", {
+    name: "Socia",
+    surname: "Sin Comunidad",
+    dni: "00000000T",
+    phone: "600000001",
+    email: "socia.sin.comunidad@example.test",
+    address: "Calle del Censo 2",
+    city: "Madrid",
+    isMember: true,
+  });
+  assert.equal(created.status, 400, JSON.stringify(created.data));
+  assert.match(created.data.error, /comunidad es obligatoria/i);
+});
 test("inquilinos: varios contratos no se sobrescriben y se conserva userId", async () => {
   const payload = {
     ownerId: "own-seed-1",
