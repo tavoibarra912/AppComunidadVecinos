@@ -10,6 +10,7 @@ import {
 } from "../db.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import {
+  balanceCommunityCoefficients,
   rebuildOwnersPropertyIds,
   syncOwnerProperties,
   syncPropertyTenantReferences,
@@ -58,9 +59,16 @@ function normalizeCadastralRef(value) {
 }
 
 function normalizeParticipationCoef(value) {
-  return String(value ?? "")
+  const text = String(value ?? "")
     .trim()
     .replace(",", ".");
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(text);
+  // El censo solo guarda cuatro decimales: el exceso se redondea, no se rechaza.
+  if (!match || (match[2] || "").length <= 4) return text;
+  const fraction = `${match[2]}0000`;
+  let units = Number(match[1]) * 10000 + Number(fraction.slice(0, 4));
+  if (fraction[4] >= "5") units += 1;
+  return (units / 10000).toFixed(4);
 }
 
 router.get("/", (req, res) => {
@@ -462,7 +470,11 @@ router.post("/", (req, res) => {
     // quién queda realmente en el inmueble.
     applyTenantLinkChanges(changes);
     storeProperty(id, data, community);
-    syncAffectedOwners(Array.isArray(data.ownerIds) ? data.ownerIds : []);
+    const adjustedOwners = balanceCommunityCoefficients(community?.id || "");
+    syncAffectedOwners([
+      ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),
+      ...adjustedOwners,
+    ]);
     rebuildOwnersPropertyIds();
     db.exec("COMMIT");
   } catch (error) {
@@ -529,6 +541,7 @@ router.put(
       const affectedOwners = [
         ...(Array.isArray(existing.ownerIds) ? existing.ownerIds : []),
         ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),
+        ...balanceCommunityCoefficients(community?.id || ""),
       ];
       syncAffectedOwners(affectedOwners);
       rebuildOwnersPropertyIds();

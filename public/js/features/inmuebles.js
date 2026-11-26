@@ -175,7 +175,7 @@ function handlePropertyCommunityChange() {
 
 /**
  * El coeficiente es un porcentaje: se descartan letras y símbolos y solo se
- * admite un separador decimal con hasta cuatro decimales.
+ * admite un separador decimal. Al salir del campo se redondea a cuatro.
  */
 function sanitizeCoefficientInput() {
   const input = propertyForm.elements.participationCoef;
@@ -187,14 +187,30 @@ function sanitizeCoefficientInput() {
     const integer = cleaned.slice(0, separatorIndex).replace(/[^\d]/g, "");
     const decimals = cleaned
       .slice(separatorIndex + 1)
-      .replace(/[^\d]/g, "")
-      .slice(0, 4);
+      .replace(/[^\d]/g, "");
     value = `${integer}${cleaned[separatorIndex]}${decimals}`;
   }
   if (value !== input.value) input.value = value;
 }
 
+/** Redondea el porcentaje a cuatro decimales sin arrastrar errores binarios. */
+function roundCoefficient(value) {
+  const text = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(text);
+  if (!match || (match[2] || "").length <= 4) return text;
+  const fraction = `${match[2]}0000`;
+  let units = Number(match[1]) * 10000 + Number(fraction.slice(0, 4));
+  if (fraction[4] >= "5") units += 1;
+  return (units / 10000).toFixed(4);
+}
+
 propertyForm.elements.participationCoef?.addEventListener("input", sanitizeCoefficientInput);
+propertyForm.elements.participationCoef?.addEventListener("blur", () => {
+  const input = propertyForm.elements.participationCoef;
+  input.value = roundCoefficient(input.value);
+});
 
 function populatePropertyCurrencySelect(selected) {
   const select = propertyForm.elements.currency;
@@ -1603,9 +1619,7 @@ propertyForm.addEventListener("submit", async (event) => {
           : selectedTenantIds[0] || ""
         : "";
   const cadastralRef = normalizeCadastralRef(values.cadastralRef);
-  const participationCoef = String(values.participationCoef || "")
-    .trim()
-    .replace(",", ".");
+  const participationCoef = roundCoefficient(values.participationCoef);
 
   const messages = [];
   if (!community) messages.push("Selecciona una comunidad existente.");
