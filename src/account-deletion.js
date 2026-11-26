@@ -218,7 +218,11 @@ function anonymizeArchives(user) {
     .toLowerCase();
   for (const row of db.prepare("SELECT id,data FROM cascade_archives").all()) {
     const data = JSON.parse(row.data);
-    const ids = collectArchivedIds(data, user, email);
+    // Primero por vínculo de cuenta, que es inequívoco. Solo si la ficha se
+    // archivó sin vínculo se usa el email, para no borrar la identidad de otra
+    // persona que comparta dirección.
+    const linked = collectArchivedIds(data, user, "");
+    const ids = linked.size ? linked : collectArchivedIds(data, user, email);
     if (!ids.size) continue;
     scrubArchivedValue(data, user, ids);
     db.prepare("UPDATE cascade_archives SET data=? WHERE id=?").run(JSON.stringify(data), row.id);
