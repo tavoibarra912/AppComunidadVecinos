@@ -223,6 +223,27 @@ test("inmuebles: coeficiente obligatorio y referencia catastral única", async (
   assert.equal(duplicate.status, 400);
   assert.match(duplicate.data.error, /referencia catastral/i);
 });
+test("inmuebles: estado de recibos y cuota se calculan desde los recibos", async () => {
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-computed-status','com-seed-2','Edificio Los Olivos','Piso calculado','vivienda','Calle Calculada 1','Madrid','[]','{}','1.0000')",
+  ).run();
+  try {
+    const created = (await admin("/properties/prop-computed-status")).data;
+    assert.equal(created.receiptStatus, "none");
+    assert.equal(created.communityFee, "");
+    // El cliente no puede marcar el estado ni inventar la cuota desde la ficha.
+    const updated = await admin("/properties/prop-computed-status", "PUT", {
+      ...created,
+      receiptStatus: "pending",
+      communityFee: "99.99",
+    });
+    assert.equal(updated.status, 200, JSON.stringify(updated.data));
+    assert.equal(updated.data.receiptStatus, "none");
+    assert.equal(updated.data.communityFee, "");
+  } finally {
+    db.prepare("DELETE FROM properties WHERE id='prop-computed-status'").run();
+  }
+});
 test("inmuebles: titularidad N:M y contratos dentro de su comunidad", async () => {
   const property = (await admin("/properties/prop-seed-3")).data;
   const crossOwner = await admin("/properties/prop-seed-3", "PUT", {

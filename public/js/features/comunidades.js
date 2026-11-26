@@ -1264,7 +1264,7 @@ export function renderCommunityPropertiesSection(c) {
       .filter((o) => propOwnerIds.includes(o.id))
       .map((o) => `${o.name} ${o.surname}`)
       .join(", ");
-    sub.textContent = `Propietario(s): ${propOwners || "Sin propietario"} | Coef: ${prop.participationCoef || "—"}% | Cuota: ${prop.communityFee ? prop.communityFee + " €" : "—"}`;
+    sub.textContent = `Propietario(s): ${propOwners || "Sin propietario"} | Coef: ${prop.participationCoef || "—"}% | Cuota: ${prop.communityFee ? prop.communityFee + " €/mes" : "—"}`;
     info.append(title, sub);
 
     const actions = document.createElement("div");

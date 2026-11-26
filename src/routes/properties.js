@@ -290,10 +290,10 @@ function storeProperty(id, data, community) {
   const primaryResidentId = residency.primaryResidentId;
   return db
     .prepare(
-      `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, communityFee, cadastralRef,
-       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province, currency, ownerPercentages,
+      `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, cadastralRef,
+       registryNumber, floor, door, areaM2, participationCoef, propertyUse, notes, postalCode, city, province, currency, ownerPercentages,
        occupancy, residentOwnerIds, primaryResidentId)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        communityId = excluded.communityId,
        communityName = excluded.communityName,
@@ -304,7 +304,6 @@ function storeProperty(id, data, community) {
        address = excluded.address,
        staircase = excluded.staircase,
        energyCertificate = excluded.energyCertificate,
-       communityFee = excluded.communityFee,
        cadastralRef = excluded.cadastralRef,
        registryNumber = excluded.registryNumber,
        floor = excluded.floor,
@@ -312,7 +311,6 @@ function storeProperty(id, data, community) {
        areaM2 = excluded.areaM2,
        participationCoef = excluded.participationCoef,
        propertyUse = excluded.propertyUse,
-       receiptStatus = excluded.receiptStatus,
        notes = excluded.notes,
        postalCode = excluded.postalCode,
        city = excluded.city,
@@ -334,7 +332,6 @@ function storeProperty(id, data, community) {
       data.address || "",
       data.staircase || "",
       data.energyCertificate || "",
-      data.communityFee || "",
       normalizeCadastralRef(data.cadastralRef),
       data.registryNumber || "",
       data.floor || "",
@@ -342,7 +339,6 @@ function storeProperty(id, data, community) {
       data.areaM2 || "",
       normalizeParticipationCoef(data.participationCoef),
       data.propertyUse || "",
-      data.receiptStatus === "pending" ? "pending" : "current",
       data.notes || "",
       data.postalCode || "",
       data.city || "",

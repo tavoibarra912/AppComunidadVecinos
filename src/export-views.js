@@ -201,7 +201,12 @@ export const TABLE_VIEWS = {
             .join(", ") || "Sin inquilino",
         occupancy: OCCUPANCY_LABELS[p.occupancy] || "Sin especificar",
         primaryResident: residentName(visible, p.primaryResidentId) || "Sin contacto",
-        receipts: p.receiptStatus === "pending" ? "Pagos pendientes" : "Al corriente",
+        receipts:
+          p.receiptStatus === "pending"
+            ? "Pagos pendientes"
+            : p.receiptStatus === "current"
+              ? "Al corriente"
+              : "Sin recibos",
         documents: permits("document:read", p.id)
           ? listDocumentsForEntities("property", [p.id]).length
           : 0,

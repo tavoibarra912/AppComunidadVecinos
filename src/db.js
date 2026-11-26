@@ -1309,9 +1309,10 @@ export function propertyFromRow(
     address: row.address,
     staircase: row.staircase,
     energyCertificate: row.energyCertificate,
+    // La cuota no se guarda en la ficha: sale del último recibo ordinario vigente.
     communityFee: latestFee
       ? (latestFee.amount / (JSON.parse(latestFee.snapshot).months || 1) / 100).toFixed(2)
-      : row.communityFee,
+      : "",
     cadastralRef: row.cadastralRef,
     registryNumber: row.registryNumber,
     floor: row.floor,
@@ -1319,7 +1320,8 @@ export function propertyFromRow(
     areaM2: row.areaM2,
     participationCoef: row.participationCoef,
     propertyUse: row.propertyUse,
-    receiptStatus: hasFeeReceipts ? (pendingFee ? "pending" : "current") : row.receiptStatus,
+    // Sin recibos no hay estado que marcar: se deriva siempre del libro financiero.
+    receiptStatus: hasFeeReceipts ? (pendingFee ? "pending" : "current") : "none",
     hasFeeReceipts,
     notes: row.notes || "",
     postalCode: row.postalCode || "",
