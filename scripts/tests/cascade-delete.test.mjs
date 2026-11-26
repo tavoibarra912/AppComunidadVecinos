@@ -505,6 +505,48 @@ test("liquidación final: perdona el pendiente y devuelve aplicaciones como cré
     undefined,
   );
 });
+test("regresión: la referencia de conciliación se completa tras la revisión sin invalidar el token", async () => {
+  const f = fixture(),
+    p = await plan("owners", f.owner);
+  p.actions.finance = "liquidate_final";
+  p.confirmCreditSettlement = true;
+  p.creditDestination = "devolucion";
+  // La interfaz pide la referencia en el último paso, después de la revisión.
+  const review = await request(`/owners/${f.owner}/cascade-preview`, "POST", p);
+  assert.equal(review.status, 200, JSON.stringify(review.data));
+  assert.equal(review.data.requiresCreditSettlement, true);
+  const r = await request(`/owners/${f.owner}?cascade=true`, "DELETE", {
+    ...p,
+    creditReference: "Acta de conciliación de 2026-11-01",
+    executionToken: review.data.executionToken,
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.settlement.creditReference, "Acta de conciliación de 2026-11-01");
+  assert.equal(get("owners", f.owner), undefined);
+  assert.ok(get("fee_receipts", f.r1).cancelledAt);
+});
+
+test("regresión: el documento del traslado se completa tras la revisión sin invalidar el token", async () => {
+  const f = fixture(),
+    p = await plan("communities", f.c1);
+  p.actions.properties[f.p1] = { action: "reassign_community", newCommunityId: f.target };
+  p.actions.finance = "reassign_community";
+  p.actions.posts = "reassign_community";
+  p.confirmLedgerTransfer = true;
+  const review = await request(`/communities/${f.c1}/cascade-preview`, "POST", p);
+  assert.equal(review.status, 200, JSON.stringify(review.data));
+  assert.equal(review.data.transfer.requiresDocument, true);
+  const r = await request(`/communities/${f.c1}?cascade=true`, "DELETE", {
+    ...p,
+    transferDocument: "Acta de la junta de 2026-11-01",
+    executionToken: review.data.executionToken,
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.settlement.transferDocument, "Acta de la junta de 2026-11-01");
+  assert.equal(get("fee_receipts", f.r1).communityId, f.target);
+  assert.equal(get("properties", f.p1).communityId, f.target);
+});
+
 test("comunidad: borrar todo incluye inquilinos, dependencias financieras y publicaciones, preservando titulares externos", async () => {
   const f = fixture(),
     p = await plan("communities", f.c1);

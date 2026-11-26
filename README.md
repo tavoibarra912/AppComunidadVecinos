@@ -132,7 +132,9 @@ La ejecución usa una transacción `BEGIN IMMEDIATE`, comprueba que las dependen
 sigan coincidiendo con la vista previa y registra auditoría dentro de la transacción.
 La revisión final devuelve un `executionToken` firmado, obligatorio al ejecutar, que
 incluye el plan, los destinos de reasignación y las cuentas afectadas. Un cambio en
-el origen o el destino exige volver a evaluar. La sincronización de vínculos se limita
+el origen o el destino exige volver a evaluar. Las referencias documentales que solo
+se piden al ejecutar (conciliación del saldo a favor y acuerdo de traslado) son
+evidencia y no invalidan la revisión. La sincronización de vínculos se limita
 a los registros afectados; no ejecuta reparaciones globales.
 Un conflicto invalida el plan sin aplicar cambios. Los archivos eliminados se retiran
 del disco después del commit. No se generan recordatorios automáticos para perfiles o inmuebles
