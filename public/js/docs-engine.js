@@ -125,7 +125,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
   const dni = (ownerContext.dni || "47895231P").toUpperCase();
   const iban = (ownerContext.iban || "ES66 2100 0418 4012 3456 7891").toUpperCase();
   const plot = ownerContext.plot || "Parcela 14";
-  const comm = ownerContext.communityName || "Residencial Peñarrubia";
+  const comm = ownerContext.communityName || "Comunidad";
 
   if (docType === "dni") {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520">
@@ -191,7 +191,7 @@ export function generateSampleDocumentData(docType, ownerContext = {}) {
       <text x="420" y="235" fill="#0f172a" font-family="sans-serif" font-size="15" font-weight="bold">${dni}</text>
       <text x="60" y="268" fill="#64748b" font-family="sans-serif" font-size="12">CÓDIGO DE CUENTA BANCARIA INTERNACIONAL (IBAN):</text>
       <text x="60" y="287" fill="#0369a1" font-family="monospace" font-size="16" font-weight="bold">${iban}</text>
-      <text x="40" y="335" fill="#475569" font-family="sans-serif" font-size="13">Documento para domiciliación de cuotas periódicas de la Asociación Peñarrubia.</text>
+      <text x="40" y="335" fill="#475569" font-family="sans-serif" font-size="13">Documento para domiciliación de cuotas periódicas de la comunidad.</text>
       <rect x="40" y="370" width="220" height="80" rx="4" fill="#f1f5f9" stroke="#94a3b8" stroke-dasharray="4"/>
       <text x="50" y="410" fill="#64748b" font-family="sans-serif" font-size="12">SELLO Y VALIDACIÓN BANCARIA</text>
       <text x="50" y="428" fill="#059669" font-family="sans-serif" font-size="11" font-weight="bold">✓ CUENTA ACTIVA Y VERIFICADA</text>
@@ -440,7 +440,7 @@ export function getFormOwnerContext() {
     surname: ownerForm.elements.surname.value.trim() || "Ruiz Mendoza",
     dni: ownerForm.elements.dni.value.trim().toUpperCase() || "47895231P",
     plot: ownerForm.elements.plot?.value.trim() || "Inmueble",
-    communityName: commName || "Residencial Peñarrubia",
+    communityName: commName || "Comunidad",
     iban: ownerForm.elements.iban.value.trim().toUpperCase() || "ES66 2100 0418 4012 3456 7891",
   };
 }

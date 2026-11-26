@@ -26,7 +26,7 @@ const FONT_DATA_URL = /^data:(font\/(?:woff2|woff|ttf|otf));base64,([A-Za-z0-9+/
 export const TEXT_DENSITIES = Object.freeze(["compacta", "normal", "amplia"]);
 
 export const DEFAULT_BRAND = Object.freeze({
-  nombre: "Peñarrubia",
+  nombre: "Gestión de Comunidades",
   colorPrimario: "#11273e",
   colorAcento: "#198b84",
   logoDataUrl: "",

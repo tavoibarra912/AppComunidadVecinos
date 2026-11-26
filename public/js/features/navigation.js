@@ -141,7 +141,10 @@ function getRoutePath(route) {
 }
 
 function brandTitle() {
-  return effectiveBrand(state.settings?.marca || readInjectedBrand(), state).nombre || "Peñarrubia";
+  return (
+    effectiveBrand(state.settings?.marca || readInjectedBrand(), state).nombre ||
+    "Gestión de Comunidades"
+  );
 }
 
 function setNavLabel(link, text) {

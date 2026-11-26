@@ -57,7 +57,7 @@ const defaults = () => ({
     user: "",
     password: "",
     from: "",
-    fromName: "Peñarrubia",
+    fromName: "Gestión de Comunidades",
   },
   sms: {
     enabled: false,

@@ -1,6 +1,6 @@
-# App Gestión Peñarrubia (Comunidades y Propietarios)
+# App Gestión de Comunidades (Propietarios e Inquilinos)
 
-Aplicación web completa para la gestión de la Asociación de Propietarios de Parcelas de Peñarrubia: comunidades de vecinos, propietarios/asociados, inmuebles, inquilinos y documentación con revisión administrativa.
+Aplicación web para la gestión de comunidades de vecinos, propietarios/asociados, inmuebles, inquilinos y documentación con revisión administrativa.
 
 ## Arquitectura
 

@@ -23,7 +23,7 @@ const FONT_DATA_URL = /^data:font\/(woff2|woff|ttf|otf);base64,[A-Za-z0-9+/]+={0
 const DENSITIES = ["compacta", "normal", "amplia"];
 const HEX = /^#[0-9a-f]{6}$/i;
 const FALLBACK = {
-  nombre: "Peñarrubia",
+  nombre: "Gestión de Comunidades",
   colorPrimario: "#11273e",
   colorAcento: "#198b84",
   logoDataUrl: "",
@@ -188,9 +188,9 @@ export function applyBrand(brand = readInjectedBrand()) {
   document.title = name;
   document
     .querySelector('meta[name="description"]')
-    ?.setAttribute("content", `Gestión de comunidades y propietarios de la Asociación ${name}`);
+    ?.setAttribute("content", "Gestión de comunidades, propietarios, inmuebles e inquilinos");
   const greet = document.querySelector("#home-greeting-title");
-  if (greet) greet.textContent = `Bienvenido a la gestión de ${name}`;
+  if (greet) greet.textContent = `Bienvenido a ${name}`;
   const topBrand = document.querySelector(".brand");
   if (topBrand) topBrand.setAttribute("aria-label", `Inicio de ${name}`);
   setLogo("topbar-brand-logo", normalized.logoDataUrl);
@@ -256,8 +256,7 @@ export function getSingleCommunityBrandOverride(state) {
     if (value !== undefined && value !== null && value !== "") override[key] = value;
   }
   const logoDataUrl = community.logoDataUrl || "";
-  const nombre = (community.name || "").trim();
-  if (nombre) override.nombre = nombre;
+  // La comunidad aporta logo y estilo, pero no cambia el nombre de la app.
   if (logoDataUrl) override.logoDataUrl = logoDataUrl;
   if (!Object.keys(override).length) return null;
   return override;
