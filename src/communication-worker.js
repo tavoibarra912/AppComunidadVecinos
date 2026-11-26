@@ -1,5 +1,5 @@
 import { db, getSettings } from "./db.js";
-import { materialize, postById, canRead, phase } from "./communication-store.js";
+import { materialize, postById, canRead, phase, getPreferences } from "./communication-store.js";
 import { sendMessage, destination } from "./delivery-providers.js";
 import { processRecoveryMail, recoverInterruptedMail } from "./password-recovery.js";
 import { textosActuales, aplicarPlantilla, nombrePlataforma } from "./textos-envio.js";
@@ -47,8 +47,12 @@ export async function processCommunications(send = sendMessage) {
         else if (post.status === "cancelled" && item.kind !== "cancelled")
           error = "Publicación cancelada.";
         else {
-          const to = destination(user, item.channel);
-          if (!to) error = "El destinatario no habilitó este canal.";
+          const prefs = getPreferences(user);
+          const to = prefs.noContact ? "" : destination(user, item.channel);
+          if (!to)
+            error = prefs.noContact
+              ? "El destinatario se opuso a la comunicación externa."
+              : "El destinatario no habilitó este canal.";
           else {
             // No se incluye contenido privado en SMS/WhatsApp ni enlaces configurables.
             const textos = textosActuales();

@@ -9,6 +9,7 @@ import {
   formatMoney,
 } from "./fees.js";
 import { sendMessage, destination } from "./delivery-providers.js";
+import { getPreferences } from "./communication-store.js";
 import { recordAudit } from "./audit.js";
 import { processFeeProofCleanup } from "./fee-proof-cleanup.js";
 
@@ -44,9 +45,12 @@ export async function processFeeNotifications(send = sendMessage) {
         const row = receiptById(item.receiptId),
           view = receiptView(row);
         const reminder = ["due", "overdue"].includes(item.kind);
-        const to = user ? destination(user, "email") : "";
+        const blocked = !!user && getPreferences(user).noContact;
+        const to = user && !blocked ? destination(user, "email") : "";
         if (!getSettings().notificacionesEmail || !user || !to || !canReadReceipt(user, row))
-          error = "Canal deshabilitado o destinatario sin acceso.";
+          error = blocked
+            ? "El destinatario se opuso a la comunicación externa."
+            : "Canal deshabilitado o destinatario sin acceso.";
         else if (reminder && (row.cancelledAt || view.outstanding <= 0))
           error = "El recibo ya no está pendiente.";
         else if (row.cancelledAt && item.kind !== "cancelled") error = "Recibo anulado.";
