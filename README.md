@@ -864,9 +864,19 @@ bash deploy/backup.sh
 ```
 
 `deploy/backup.sh` detiene brevemente solo esta API, guarda base, documentos y
-`.env`, y la vuelve a arrancar incluso si falla el backup. No borra copias ni
+`.env`, y la vuelve a arrancar incluso si falla el backup. La copia se escribe
+en un temporal, se comprueba que el tar se puede leer y solo entonces se
+publica; tras una copia correcta conserva solo las dos más recientes
+(`deploy/prune-backups.sh`) y no
 amplía el disco automáticamente. Las copias locales en la VM no cubren pérdida
 del disco: conservar también una copia privada fuera de ella.
+
+Para programarla dos veces al mes (días 1 y 15, 03:30 UTC), desde la raíz de la
+aplicación:
+
+```bash
+(crontab -l 2>/dev/null | grep -v 'deploy/backup.sh'; cat deploy/backup.cron) | crontab -
+```
 
 Para actualizar, fusionar una PR o hacer push a la rama
 predeterminada, y seguir los dos workflows de Actions. Para reintentar un fallo,

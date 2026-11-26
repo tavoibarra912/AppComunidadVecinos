@@ -1,0 +1,5 @@
+# Backup quincenal (días 1 y 15 a las 03:30 UTC).
+# Instalar desde /home/quantum_system/comunidad:
+#   (crontab -l 2>/dev/null | grep -v 'deploy/backup.sh'; cat deploy/backup.cron) | crontab -
+# El log no rota solo; vaciarlo de vez en cuando con: : > backups/backup.log
+30 3 1,15 * * cd /home/quantum_system/comunidad && flock -n /tmp/comunidad-backup.lock bash deploy/backup.sh >> backups/backup.log 2>&1
