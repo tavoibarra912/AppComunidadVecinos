@@ -513,6 +513,12 @@ db.exec(`CREATE TABLE IF NOT EXISTS sessions (
   tokenHash TEXT PRIMARY KEY, userId TEXT NOT NULL, expiresAt INTEGER NOT NULL
 ); CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(userId);`);
 db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY)");
+// Marca permanente: una base que arrancó en producción no vuelve a admitir la
+// siembra demo aunque después se abra desde un equipo local.
+if (process.env.NODE_ENV === "production")
+  db.prepare(
+    "INSERT OR IGNORE INTO schema_migrations (id) VALUES ('production-database-v1')",
+  ).run();
 // Régimen jurídico explícito (v1): las comunidades existentes conservan el
 // criterio LPH que ya aplicaban, pero guardado de forma explícita. Desde ahora
 // un certificado o una votación no pueden apoyarse en un régimen supuesto.
@@ -872,8 +878,16 @@ if (db.prepare("SELECT COUNT(*) AS total FROM users").get().total === 0) {
 }
 
 export function ensureDemoProfiles() {
-  // El despliegue público puede conservar el censo sin crear cuentas previsibles.
-  if (process.env.APP_DEMO_PROFILES === "false") return;
+  // El despliegue público puede conservar el censo sin crear cuentas
+  // previsibles: en producción no se crean y una base marcada como producción
+  // nunca las recibe, ni siquiera al abrirse desde un equipo local.
+  if (
+    process.env.APP_DEMO_PROFILES === "false" ||
+    process.env.APP_DEMO_DATA === "false" ||
+    process.env.NODE_ENV === "production" ||
+    db.prepare("SELECT 1 FROM schema_migrations WHERE id = 'production-database-v1'").get()
+  )
+    return;
   // Cuentas estándar de demostración (idempotente): una por rol y vecinos con
   // todas las combinaciones de perfiles para probar cada escenario.
   //   ca*      administradores de comunidad (2)
