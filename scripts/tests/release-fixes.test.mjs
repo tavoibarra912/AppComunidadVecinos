@@ -109,12 +109,11 @@ test("arranque real: crea el censo demo una vez y preserva cambios al reiniciar"
   assert.equal(db.prepare("SELECT COUNT(*) n FROM users").get().n, originalUsers);
 });
 
-test("arranque real en producción: no añade un censo de comunidades de ejemplo", async () => {
+test("arranque real en producción: no añade censo ni cuentas demo", async () => {
   const productionData = path.join(directory, "production-data");
   const running = await start({
     NODE_ENV: "production",
     APP_ADMIN_PASSWORD: "Clave-De-Prueba-Produccion-123",
-    APP_DEMO_PROFILES: "false",
     APP_DATA_DIR: productionData,
     APP_UPLOADS_DIR: path.join(directory, "production-uploads"),
   });
@@ -123,6 +122,12 @@ test("arranque real en producción: no añade un censo de comunidades de ejemplo
     try {
       assert.equal(production.prepare("SELECT COUNT(*) n FROM communities").get().n, 0);
       assert.equal(production.prepare("SELECT COUNT(*) n FROM users").get().n, 1);
+      assert.ok(
+        production
+          .prepare("SELECT 1 FROM schema_migrations WHERE id='production-database-v1'")
+          .get(),
+        "la base de producción debe quedar marcada",
+      );
     } finally {
       production.close();
     }

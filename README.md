@@ -6,7 +6,7 @@ Aplicación web completa para la gestión de la Asociación de Propietarios de P
 
 - **Backend**: Node.js + Express + SQLite (`node:sqlite`, sin dependencias nativas). API REST, subida de archivos (`multer`) y control de acceso por sesiones.
 - **Frontend**: vanilla JavaScript en módulos ES (sin build step), servido por el propio backend. Persistencia íntegra en base de datos — ya no se usa `localStorage`.
-- **Datos demo**: fuera de producción, el arranque llama a `seedIfEmpty()` y carga el censo de ejemplo **solo si no hay comunidades**; los cambios persisten entre reinicios.
+- **Datos demo**: fuera de producción, el arranque llama a `seedIfEmpty()` y `seedDemoFees()` y carga censo y cuotas de ejemplo **solo si faltan**; `APP_DEMO_DATA=false` lo desactiva también en local y una base que arrancó en producción nunca recibe demo. Los cambios persisten entre reinicios.
 
 ## Cuotas ordinarias
 
@@ -700,6 +700,27 @@ versiones anteriores no pueden recuperarse sin una copia de seguridad.
 
 ## Producción
 
+### Demo local y datos de producción
+
+La base local (`data/penarrubia.db`, o `APP_DATA_DIR`) y la de producción
+(`/home/quantum_system/comunidad/data` en la VM) son independientes y no se
+sincronizan. Los despliegues solo reemplazan imagen y código: el volumen de
+producción conserva sus comunidades, propietarios, recibos y documentos.
+
+Para regenerar la demo local basta con borrar `data/` (o usar otro
+`APP_DATA_DIR`); `APP_DEMO_DATA=false` evita sembrarla. Fuera de producción el
+arranque siembra censo y cuotas solo si faltan, nunca sobre datos existentes.
+Con `NODE_ENV=production` no se siembra nada y la base queda marcada con
+`production-database-v1`: aunque después se abra desde un equipo local, no
+recibirá censo, cuotas ni cuentas demo.
+
+`scripts/snapshot-deploy.mjs` sirve solo para la primera transferencia de una
+base existente a producción; después, los datos reales se crean o corrigen
+desde la web publicada, no reenviando el `.db` local. Para cargar un lote
+puntual, preparar una importación revisada, ejecutar `deploy/backup.sh` y
+aplicarla con la API detenida o sobre una copia; no editar a mano el `.db`
+activo.
+
 ### Despliegue híbrido de coste mínimo
 
 **Estado a 16 de noviembre de 2026:** publicación temporal completa en GCP,
@@ -859,10 +880,10 @@ Tras una actualización, comprobar también login, permisos y descargas. Un
 rollback de imagen puede necesitar restaurar también la
 base del backup si hubo migraciones; conservar primero los datos posteriores.
 
-Con `NODE_ENV=production` no se carga automáticamente el censo de comunidades de
-ejemplo y las cookies requieren HTTPS. La provisión de cuentas y permisos demo
-se mantiene durante esta etapa del MVP salvo si `APP_DEMO_PROFILES=false`, como
-en el contenedor de despliegue público.
+Con `NODE_ENV=production` no se carga automáticamente el censo ni las cuotas de
+ejemplo y las cookies requieren HTTPS. Tampoco se crean cuentas demo:
+`APP_DEMO_PROFILES=false` las desactiva también fuera de producción y la marca
+`production-database-v1` impide volver a sembrarlas al abrir la base en local.
 Una base nueva exige `APP_ADMIN_PASSWORD` de al menos 12 caracteres para crear
 la cuenta inicial. Las bases existentes conservan su administrador. Si se desea
 escuchar fuera de la máquina local, debe configurarse `HOST` explícitamente.
