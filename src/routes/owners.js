@@ -36,6 +36,8 @@ function ownerCommunityFor(data, existing) {
 function validateOwnerData(data) {
   const error = contactError(data) || bankAccountError(data);
   if (error) return error;
+  if (data.isMember && !String(data.communityId || "").trim())
+    return "La comunidad es obligatoria para los asociados.";
   if (data.isMember && String(data.communityId || "").trim() && !memberCommunityFor(data))
     return "La comunidad del socio no existe.";
   if (data.documentType !== undefined) {
