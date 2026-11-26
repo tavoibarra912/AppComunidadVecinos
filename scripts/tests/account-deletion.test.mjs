@@ -446,3 +446,148 @@ test("aprobar la baja purga el historial y deja la solicitud pendiente si falla"
   assert.equal(userRow(id), undefined);
   assert.equal(requestRow("req-falla").state, "approved");
 });
+
+test("acceso y portabilidad: la descarga propia no incluye datos de terceros", async () => {
+  const admin = await signin("super_admin");
+  const id = await createUser(admin, "midata1");
+  const session = await request("/auth/signin", "POST", {
+    usuario: "midata1",
+    password: "clave-de-prueba-123",
+  });
+  assert.equal(session.status, 200, "No se pudo iniciar sesión como midata1");
+  const cookie = session.cookie;
+  db.prepare(
+    "INSERT INTO owners (id,name,surname,dni,email,phone,userId) VALUES (?,?,?,?,?,?,?)",
+  ).run("midata-owner", "Propia", "Persona", "11111111H", "urusp1@example.test", "+34600111222", id);
+  db.prepare("INSERT INTO owners (id,name,surname,dni,email) VALUES (?,?,?,?,?)").run(
+    "midata-other",
+    "Ajena",
+    "Persona",
+    "22222222J",
+    "ajena@example.test",
+  );
+  const download = await request("/auth/my-data", undefined, undefined, cookie);
+  assert.equal(download.status, 200, JSON.stringify(download.data));
+  assert.equal(download.data.cuenta.id, id);
+  assert.ok(download.data.fichas.propietario.some((row) => row.id === "midata-owner"));
+  assert.equal(JSON.stringify(download.data).includes("ajena@example.test"), false);
+  assert.ok(
+    db
+      .prepare("SELECT COUNT(*) n FROM access_audit WHERE action='users.data-exported' AND resourceId=?")
+      .get(id).n >= 1,
+  );
+  assert.equal((await request("/auth/my-data")).status, 401);
+});
+
+test("la baja anonimiza la ficha conservada en el acta de borrado avanzado", async () => {
+  const admin = await signin("super_admin");
+  const id = await createUser(admin, "archivo-rgpd");
+  const email = "archivo-rgpd@example.test";
+  db.prepare(
+    "INSERT INTO owners (id,name,surname,dni,email,phone,address,iban,userId) VALUES (?,?,?,?,?,?,?,?,?)",
+  ).run("archive-owner", "Copia", "Archivada", "33333333P", email, "600111222", "Calle 1", "ES001", id);
+  const archive = {
+    entity: { id: "archive-owner", name: "Copia Archivada" },
+    entities: [
+      {
+        type: "owner",
+        id: "archive-owner",
+        name: "Copia",
+        surname: "Archivada",
+        dni: "33333333P",
+        email,
+        phone: "600111222",
+        address: "Calle 1",
+        iban: "ES001",
+        userId: id,
+      },
+      {
+        type: "owner",
+        id: "archive-other",
+        name: "Otra",
+        surname: "Persona",
+        dni: "44444444D",
+        email: "otra@example.test",
+      },
+    ],
+    affected: {
+      owners: [
+        { id: "archive-owner", name: "Copia Archivada" },
+        { id: "archive-other", name: "Otra Persona" },
+      ],
+    },
+    financial: {
+      receipts: [
+        {
+          id: "receipt-1",
+          amount: 1000,
+          snapshot: { owners: [{ id: "archive-owner", name: "Copia", dni: "33333333P" }] },
+        },
+      ],
+    },
+  };
+  db.prepare(
+    "INSERT INTO cascade_archives (id,createdAt,actorId,communityIds,data) VALUES (?,?,?,?,?)",
+  ).run(
+    "archive-rgpd",
+    new Date().toISOString(),
+    userId("super_admin"),
+    "[]",
+    JSON.stringify(archive),
+  );
+  db.prepare(
+    "INSERT INTO communication_posts (id,communityId,data,createdBy,createdAt,updatedAt) VALUES (?,?,?,?,?,?)",
+  ).run("post-rgpd", "", "{}", id, "now", "now");
+  // La ficha debe estar desvinculada para poder suprimir la cuenta.
+  db.prepare("UPDATE owners SET userId='' WHERE id='archive-owner'").run();
+
+  await deleteAccount(id, {
+    actor: { id: userId("super_admin"), usuario: "super_admin" },
+    purgeReports: async () => {},
+  });
+  const data = JSON.parse(
+    db.prepare("SELECT data FROM cascade_archives WHERE id='archive-rgpd'").get().data,
+  );
+  assert.equal(data.entities[0].name, "Titular suprimido (RGPD)");
+  for (const field of ["dni", "email", "phone", "address", "iban", "userId"])
+    assert.equal(data.entities[0][field], "", field);
+  assert.equal(data.affected.owners[0].name, "Titular suprimido (RGPD)");
+  assert.equal(data.financial.receipts[0].snapshot.owners[0].name, "Titular suprimido (RGPD)");
+  assert.equal(data.financial.receipts[0].amount, 1000);
+  assert.equal(data.entities[1].dni, "44444444D");
+  assert.equal(data.affected.owners[1].name, "Otra Persona");
+  assert.equal(
+    db.prepare("SELECT createdBy FROM communication_posts WHERE id='post-rgpd'").get().createdBy,
+    "",
+  );
+});
+
+test("la solicitud de baja expone el plazo de un mes y marca las vencidas", async () => {
+  const admin = await signin("super_admin");
+  const id = await createUser(admin, "plazo-rgpd");
+  const signinBody = await request("/auth/signin", "POST", {
+    usuario: "plazo-rgpd",
+    password: "clave-de-prueba-123",
+  });
+  assert.equal(signinBody.status, 200);
+  const cookie = signinBody.cookie;
+  const created = await request(
+    "/auth/deletion-request",
+    "POST",
+    { password: "clave-de-prueba-123" },
+    cookie,
+  );
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  const pending = created.data.request;
+  const days = (Date.parse(pending.deadline) - Date.parse(pending.requestedAt)) / 86400000;
+  assert.ok(days >= 28 && days <= 31, `plazo de ${days} días`);
+  assert.equal(pending.overdue, false);
+  db.prepare("UPDATE account_deletion_requests SET requestedAt='2026-01-05T00:00:00.000Z' WHERE id=?").run(
+    pending.id,
+  );
+  const again = await request("/auth/deletion-request", undefined, undefined, cookie);
+  assert.equal(again.data.request.overdue, true);
+  assert.equal(again.data.request.state, "pending");
+  db.prepare("UPDATE account_deletion_requests SET state='cancelled' WHERE id=?").run(pending.id);
+  assert.equal(userRow(id) !== undefined, true);
+});

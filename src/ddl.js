@@ -45,6 +45,11 @@ CREATE TABLE IF NOT EXISTS communication_audit (
  id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, action TEXT NOT NULL, createdAt TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS communication_preferences (userId TEXT PRIMARY KEY, data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS communication_consent_log (
+  id TEXT PRIMARY KEY, userId TEXT NOT NULL, channel TEXT NOT NULL,
+  enabled INTEGER NOT NULL, at TEXT NOT NULL, origin TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS communication_consent_log_user ON communication_consent_log(userId, at);
 CREATE TABLE IF NOT EXISTS communication_providers (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS communication_outbox (
  id TEXT PRIMARY KEY, postId TEXT NOT NULL, userId TEXT NOT NULL, channel TEXT NOT NULL, kind TEXT NOT NULL,

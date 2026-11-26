@@ -41,18 +41,35 @@ function linkedProfiles(userId) {
   return parts;
 }
 
+// Plazo legal de respuesta a una solicitud de derechos (RGPD, art. 12.3): un
+// mes desde la solicitud, prorrogable. Se calcula sobre el calendario, no como
+// 30 días fijos.
+function addMonth(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const day = date.getUTCDate();
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() + 1);
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(day, lastDay));
+  return date.toISOString();
+}
+
 const REQUEST_COLUMNS = `r.id,r.userId,r.reason,r.state,r.requestedAt,r.resolvedAt,
   r.resolutionNote,u.usuario,u.nombre,u.apellido,u.email`;
 const REQUEST_FROM = "FROM account_deletion_requests r LEFT JOIN users u ON u.id = r.userId";
 
 function requestFromRow(row) {
   if (!row) return null;
+  const deadline = addMonth(row.requestedAt);
   return {
     id: row.id,
     userId: row.userId,
     reason: row.reason,
     state: row.state,
     requestedAt: row.requestedAt,
+    deadline,
+    overdue: row.state === "pending" && !!deadline && Date.parse(deadline) < Date.now(),
     resolvedAt: row.resolvedAt,
     resolutionNote: row.resolutionNote,
     // La cuenta puede haberse eliminado ya: el LEFT JOIN deja estos campos vacíos.
@@ -139,12 +156,82 @@ function assertDeletable(user) {
     );
 }
 
+// El acta del borrado avanzado conserva una copia de la ficha (nombre, DNI,
+// contacto, IBAN) como evidencia. Al suprimir la cuenta esa copia deja de tener
+// base para identificar a la persona: se anonimiza manteniendo el vínculo por
+// id, los importes y las fechas del registro contable.
+const ARCHIVE_PII = [
+  "name",
+  "surname",
+  "dni",
+  "email",
+  "phone",
+  "otherPhone",
+  "address",
+  "province",
+  "city",
+  "postalCode",
+  "iban",
+  "notes",
+  "legalRepresentative",
+  "documents",
+  "userId",
+  "phoneVerifiedAt",
+  "emailVerifiedAt",
+];
+const SUPPRESSED_NAME = "Titular suprimido (RGPD)";
+
+function collectArchivedIds(value, user, email, ids = new Set()) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectArchivedIds(item, user, email, ids);
+    return ids;
+  }
+  if (!value || typeof value !== "object") return ids;
+  if (
+    ["owner", "tenant"].includes(value.type) &&
+    (value.userId === user.id ||
+      (!!email && String(value.email || "").trim().toLowerCase() === email))
+  )
+    ids.add(value.id);
+  for (const item of Object.values(value)) collectArchivedIds(item, user, email, ids);
+  return ids;
+}
+
+function scrubArchivedValue(value, user, ids) {
+  if (Array.isArray(value)) {
+    for (const item of value) scrubArchivedValue(item, user, ids);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (
+    (typeof value.id === "string" && ids.has(value.id)) ||
+    (value.userId && value.userId === user.id)
+  )
+    for (const key of ARCHIVE_PII)
+      if (Object.hasOwn(value, key)) value[key] = key === "name" ? SUPPRESSED_NAME : "";
+  for (const item of Object.values(value)) scrubArchivedValue(item, user, ids);
+}
+
+function anonymizeArchives(user) {
+  const email = String(user.email || "")
+    .trim()
+    .toLowerCase();
+  for (const row of db.prepare("SELECT id,data FROM cascade_archives").all()) {
+    const data = JSON.parse(row.data);
+    const ids = collectArchivedIds(data, user, email);
+    if (!ids.size) continue;
+    scrubArchivedValue(data, user, ids);
+    db.prepare("UPDATE cascade_archives SET data=? WHERE id=?").run(JSON.stringify(data), row.id);
+  }
+}
+
 // Datos de la cuenta que desaparecen con el borrado. Los recibos, cobros,
 // actas y la auditoría se conservan: son registro contable y de seguridad.
 function deleteAccountRows(user) {
   db.prepare("DELETE FROM sessions WHERE userId=?").run(user.id);
   db.prepare("DELETE FROM password_recovery_mail WHERE userId=?").run(user.id);
   db.prepare("DELETE FROM communication_preferences WHERE userId=?").run(user.id);
+  db.prepare("DELETE FROM communication_consent_log WHERE userId=?").run(user.id);
   // Avisos que aún no habían salido no deben enviarse a una cuenta borrada.
   db.prepare("DELETE FROM communication_outbox WHERE userId=? AND state='pending'").run(user.id);
   const email = String(user.email || "").trim();
@@ -163,6 +250,11 @@ function deleteAccountRows(user) {
     user.id,
   );
   db.prepare("UPDATE communication_comments SET userId='' WHERE userId=?").run(user.id);
+  // Las publicaciones siguen siendo de la comunidad, pero su autor deja de
+  // estar identificado, igual que en documentos y comentarios.
+  db.prepare("UPDATE communication_posts SET createdBy='' WHERE createdBy=?").run(user.id);
+  // Copia de la ficha conservada en las actas de borrado avanzado.
+  anonymizeArchives(user);
   db.prepare("DELETE FROM users WHERE id=?").run(user.id);
 }
 

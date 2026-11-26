@@ -739,7 +739,7 @@ function renderPreview(preview) {
         ([channel, c]) =>
           `<p>${h(channel)}: ${c.enabled ? `${c.optedIn} destinatarios lo habilitaron` : "proveedor desactivado; el envío externo quedará omitido"}.</p>`,
       )
-      .join("")}`;
+      .join("")}${preview.excluded ? `<p class="comm-warning">${preview.excluded} cuentas se opusieron a la comunicación externa («no contactar»): reciben el aviso dentro de la app, pero no por email, SMS ni WhatsApp.</p>` : ""}`;
 }
 
 async function openPost(id, tab = "publication") {
@@ -1069,9 +1069,18 @@ $("#comm-preferences").addEventListener("click", (e) =>
   action(async () => {
     const p = await request("/preferences");
     editorSnapshot = "";
+    const canales = { email: "correo", sms: "SMS", whatsapp: "WhatsApp", noContact: "no contactar" };
+    const historial = p.history?.length
+      ? `<h3>Historial de consentimientos</h3><ol class="comm-history">${p.history
+          .map(
+            (c) =>
+              `<li><strong>${c.enabled ? "Alta" : "Baja"} de ${h(canales[c.channel] || c.channel)}</strong><span>${h(date(c.at))}</span></li>`,
+          )
+          .join("")}</ol>`
+      : '<p class="comm-muted">Todavía no has cambiado ningún consentimiento.</p>';
     showDialog(
       "Mis canales de comunicación",
-      `<form id="comm-preference-form"><p>Los avisos dentro de la app siempre están disponibles. Elige si también quieres recibirlos por canales externos.</p>${input("email", "Correo electrónico", p.email, "email", 'maxlength="254"')}${input("phone", "Teléfono internacional", p.phone, "tel", 'placeholder="+34600111222" maxlength="16"')}<div class="comm-preference-checks">${check("emailEnabled", "Acepto recibir avisos por correo electrónico", p.emailEnabled)}${check("smsEnabled", "Acepto recibir avisos por SMS", p.smsEnabled)}${check("whatsappEnabled", "Acepto recibir avisos por WhatsApp", p.whatsappEnabled)}</div><p class="comm-muted">Puedes desactivarlos en cualquier momento. El administrador debe tener configurado el proveedor correspondiente.</p><button type="submit" class="primary-button">Guardar preferencias</button></form>`,
+      `<form id="comm-preference-form"><p>Los avisos dentro de la app siempre están disponibles. Elige si también quieres recibirlos por canales externos.</p>${input("email", "Correo electrónico", p.email, "email", 'maxlength="254"')}${input("phone", "Teléfono internacional", p.phone, "tel", 'placeholder="+34600111222" maxlength="16"')}<div class="comm-preference-checks">${check("emailEnabled", "Acepto recibir avisos por correo electrónico", p.emailEnabled)}${check("smsEnabled", "Acepto recibir avisos por SMS", p.smsEnabled)}${check("whatsappEnabled", "Acepto recibir avisos por WhatsApp", p.whatsappEnabled)}${check("noContact", "No quiero recibir ningún aviso externo (oposición)", p.noContact)}</div><p class="comm-muted">Puedes desactivarlos en cualquier momento. El aviso de oposición prevalece sobre cualquier canal. El administrador debe tener configurado el proveedor correspondiente.</p>${historial}<button type="submit" class="primary-button">Guardar preferencias</button></form>`,
     );
     $("#comm-preference-form").addEventListener("submit", (event) => {
       event.preventDefault();
@@ -1083,6 +1092,7 @@ $("#comm-preferences").addEventListener("click", (e) =>
           emailEnabled: f.elements.emailEnabled.checked,
           smsEnabled: f.elements.smsEnabled.checked,
           whatsappEnabled: f.elements.whatsappEnabled.checked,
+          noContact: f.elements.noContact.checked,
         });
         dialog.close();
         toast("Preferencias de comunicación guardadas.");

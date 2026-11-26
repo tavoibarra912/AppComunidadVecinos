@@ -20,6 +20,8 @@ import {
   attendanceOpen,
   audit,
   getPreferences,
+  recordConsentChange,
+  consentHistory,
   queue,
   materialize,
   mayVote,
@@ -114,18 +116,22 @@ router.post(
 );
 router.get(
   "/preferences",
-  route((req, res) => res.json(getPreferences(req.user))),
+  route((req, res) =>
+    res.json({ ...getPreferences(req.user), history: consentHistory(req.user.id) }),
+  ),
 );
 router.put(
   "/preferences",
   route((req, res) => {
     const b = req.body || {};
+    const previous = getPreferences(req.user);
     const p = {
       email: typeof b.email === "string" ? b.email.trim() : "",
       phone: typeof b.phone === "string" ? b.phone.trim() : "",
       emailEnabled: b.emailEnabled === true,
       smsEnabled: b.smsEnabled === true,
       whatsappEnabled: b.whatsappEnabled === true,
+      noContact: b.noContact === true,
     };
     if ((p.email || p.emailEnabled) && !emailAddress(p.email))
       throw problem("Indica un email válido para recibir avisos.");
@@ -134,7 +140,11 @@ router.put(
     db.prepare(
       "INSERT INTO communication_preferences(userId,data) VALUES (?,?) ON CONFLICT(userId) DO UPDATE SET data=excluded.data",
     ).run(req.user.id, JSON.stringify(p));
-    res.json(p);
+    // Solo se registra lo que cambió: el historial es la prueba del consentimiento.
+    for (const channel of ["email", "sms", "whatsapp", "noContact"])
+      if (!!previous[channel] !== !!p[channel])
+        recordConsentChange(req.user.id, channel, p[channel]);
+    res.json({ ...p, history: consentHistory(req.user.id) });
   }),
 );
 router.get(
@@ -214,15 +224,21 @@ router.post(
       unlinked = [];
     }
     const config = providers();
+    // Quien se ha opuesto a la comunicación externa sigue recibiendo los avisos
+    // dentro de la app, pero no cuenta como destinatario de ningún canal.
+    const excluded = recipients.filter((u) => getPreferences(u).noContact).length;
     res.json({
       recipients: recipients.map(safeRecipient),
+      excluded,
       unlinked: unlinked.map((p) => ({ name: `${p.name} ${p.surname}` })),
       channels: Object.fromEntries(
         p.channels.map((c) => [
           c,
           {
             enabled: config[c === "email" ? "smtp" : c].enabled,
-            optedIn: recipients.filter((u) => getPreferences(u)[`${c}Enabled`]).length,
+            optedIn: recipients.filter(
+              (u) => !getPreferences(u).noContact && getPreferences(u)[`${c}Enabled`],
+            ).length,
           },
         ]),
       ),

@@ -38,7 +38,7 @@ db.prepare("UPDATE tenants SET contractStart='',contractEnd=''").run();
 const { default: router } = await import("../../src/routes/index.js");
 const { materialize, postById, queue, getPreferences } =
   await import("../../src/communication-store.js");
-const { providers, seal, unseal, sendMessage, smtpTransport } =
+const { providers, seal, unseal, sendMessage, smtpTransport, destination } =
   await import("../../src/delivery-providers.js");
 const { processCommunications } = await import("../../src/communication-worker.js");
 const { passwordRecord } = await import("../../src/auth.js");
@@ -1426,4 +1426,56 @@ test("copropiedad: un segundo cotitular con peso cero recibe un aviso explícito
     db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(legal, communityId);
     db.prepare("DELETE FROM owners WHERE id=?").run(id);
   }
+});
+
+test("oposición: «no contactar» prevalece sobre el consentimiento y queda registrado", async () => {
+  const me = user("urucp1");
+  const saved = await owner("/communications/preferences", "PUT", {
+    email: "urucp1@example.test",
+    phone: "+34600111222",
+    emailEnabled: true,
+    smsEnabled: true,
+    whatsappEnabled: true,
+    noContact: true,
+  });
+  assert.equal(saved.status, 200, JSON.stringify(saved.data));
+  assert.equal(saved.data.noContact, true);
+  assert.equal(getPreferences(me).noContact, true);
+  assert.equal(destination(me, "email"), null);
+  assert.equal(destination(me, "sms"), null);
+  const history = await owner("/communications/preferences");
+  assert.equal(history.status, 200);
+  assert.ok(
+    history.data.history.some((row) => row.channel === "noContact" && row.enabled === true),
+    JSON.stringify(history.data.history),
+  );
+  // El aviso dentro de la app se genera, pero el envío externo queda omitido.
+  db.prepare("DELETE FROM communication_outbox").run();
+  const p = await create({ channels: ["sms"] });
+  queue(postById(p.id));
+  const sent = [];
+  await processCommunications(async (channel, to) => {
+    sent.push({ channel, to });
+    return "SM-no-contact";
+  });
+  assert.equal(
+    sent.some((row) => row.to === "+34600111222"),
+    false,
+    JSON.stringify(sent),
+  );
+  // La oposición se refleja en la revisión de destinatarios.
+  const preview = await admin("/communications/preview", "POST", payload({ channels: ["sms"] }));
+  assert.equal(preview.status, 200, JSON.stringify(preview.data));
+  assert.ok(preview.data.excluded >= 1, JSON.stringify(preview.data.excluded));
+  // Se restablece para no condicionar otras ejecuciones.
+  const restored = await owner("/communications/preferences", "PUT", {
+    email: "",
+    phone: "",
+    emailEnabled: false,
+    smsEnabled: false,
+    whatsappEnabled: false,
+    noContact: false,
+  });
+  assert.equal(restored.status, 200);
+  assert.equal(destination(me, "sms"), null);
 });
