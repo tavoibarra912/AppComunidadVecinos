@@ -95,6 +95,18 @@ test("configuración jurídica: valida sin lanzar y limita tamaños", () => {
   );
 });
 
+test("configuración jurídica: admite la mayoría de dos tercios", () => {
+  const config = legalConfigFromValue({
+    regimen: "asociacion",
+    votaciones: { mayoriaOrdinaria: "dos_tercios" },
+  });
+  assert.equal(config.votaciones.mayoriaOrdinaria, "dos_tercios");
+  assert.equal(
+    validateLegalConfig({ votaciones: { mayoriaOrdinaria: "dos_tercios" } }),
+    null,
+  );
+});
+
 test("configuración jurídica: la regla de voto se congela y se etiqueta", () => {
   const community = {
     legalConfig: {

@@ -237,6 +237,26 @@ test("inmuebles: coeficiente obligatorio y referencia catastral única", async (
   assert.equal(duplicate.status, 400);
   assert.match(duplicate.data.error, /referencia catastral/i);
 });
+test("inmuebles: en una asociación el coeficiente de participación es opcional", async () => {
+  db.prepare(
+    "INSERT INTO communities(id,name,nif,legalConfig) VALUES('com-assoc-coef','Asociación Coef','G00000001','{\"regimen\":\"asociacion\"}')",
+  ).run();
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-assoc-coef','com-assoc-coef','Asociación Coef','Parcela 1','vivienda','Calle Única 1','Madrid','[]','{}','')",
+  ).run();
+  try {
+    const property = (await admin("/properties/prop-assoc-coef")).data;
+    const updated = await admin("/properties/prop-assoc-coef", "PUT", {
+      ...property,
+      participationCoef: "",
+    });
+    assert.equal(updated.status, 200, JSON.stringify(updated.data));
+    assert.equal(updated.data.participationCoef, "");
+  } finally {
+    db.prepare("DELETE FROM properties WHERE communityId='com-assoc-coef'").run();
+    db.prepare("DELETE FROM communities WHERE id='com-assoc-coef'").run();
+  }
+});
 test("inmuebles: estado de recibos y cuota se calculan desde los recibos", async () => {
   db.prepare(
     "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-computed-status','com-seed-2','Edificio Los Olivos','Piso calculado','vivienda','Calle Calculada 1','Madrid','[]','{}','1.0000')",

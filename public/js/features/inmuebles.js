@@ -162,8 +162,28 @@ function prunePropertyPeopleForCommunity(communityId) {
   return removedOwners + removedTenants;
 }
 
+/** En una asociación el coeficiente es informativo: no se usa para votar. */
+function selectedPropertyIsAssociation() {
+  const communityId = propertyForm.elements.communityId?.value || "";
+  return (
+    state.communities.find((community) => community.id === communityId)?.legalConfig?.regimen ===
+    "asociacion"
+  );
+}
+
+/** El coeficiente solo es obligatorio en comunidades de propietarios (LPH). */
+function syncPropertyCoefficientRequirement() {
+  const input = propertyForm.elements.participationCoef;
+  if (!input) return;
+  const association = selectedPropertyIsAssociation();
+  input.required = !association;
+  const marker = propertyForm.querySelector("[data-coef-required]");
+  if (marker) marker.hidden = association;
+}
+
 function handlePropertyCommunityChange() {
   const removed = prunePropertyPeopleForCommunity(selectedPropertyCommunityId());
+  syncPropertyCoefficientRequirement();
   renderPropertyOwnersTab();
   renderPropertyTenantsTab();
   if (removed > 0) {
@@ -1025,6 +1045,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
     });
     propertyTerritory?.set(property.city, property.province, property.postalCode);
   }
+  syncPropertyCoefficientRequirement();
   propertyNotes?.setValue(propertyForm.elements.notes.value || "");
   document.querySelector("#property-dialog-title").textContent = property
     ? readonly
@@ -1594,6 +1615,7 @@ propertyForm.addEventListener("submit", async (event) => {
 
   const values = Object.fromEntries(new FormData(propertyForm));
   const community = state.communities.find((item) => item.id === values.communityId);
+  const association = community?.legalConfig?.regimen === "asociacion";
 
   // Requisito 7: Asociar 1 o más propietarios y 1 o más inquilinos (tabs)
   const selectedOwnerIds = [...editingPropertyPeople.ownerIds];
@@ -1697,7 +1719,7 @@ propertyForm.addEventListener("submit", async (event) => {
     messages.push("La superficie debe ser un número entero (sin decimales).");
   }
   if (!participationCoef) {
-    messages.push("El coeficiente de participación es obligatorio.");
+    if (!association) messages.push("El coeficiente de participación es obligatorio.");
   } else if (!isValidDecimal(participationCoef, 0.0001, 100)) {
     messages.push("El coeficiente debe ser un porcentaje decimal entre 0,0001 y 100.");
   }

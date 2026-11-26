@@ -2953,9 +2953,9 @@
                 ></select
                 ><span class="field-hint" id="legalMajority-hint"
                   >Selecciona la referencia de mayoría que se mostrará junto a las consultas:
-                  simple, absoluta, tres quintos o unanimidad. La aplicación presenta los resultados
-                  y la regla elegida; no declara automáticamente que un acuerdo esté aprobado.
-                  Comprueba la mayoría que corresponde al asunto y a la convocatoria.</span
+                  simple, absoluta, dos tercios, tres quintos o unanimidad. La aplicación presenta
+                  los resultados y la regla elegida; no declara automáticamente que un acuerdo esté
+                  aprobado. Comprueba la mayoría que corresponde al asunto y a la convocatoria.</span
                 ></label
               >
               <label class="community-legal-check"
@@ -6264,7 +6264,7 @@
               >
             </label>
             <label
-              >Coeficiente de participación (%) *
+              >Coeficiente de participación (%)<span data-coef-required> *</span>
               <input
                 name="participationCoef"
                 inputmode="decimal"
@@ -6277,7 +6277,8 @@
                 y 100). Se usa para repartir cuotas, derramas y gastos comunes, y para ponderar el
                 voto cuando la comunidad vota por coeficiente. La suma de todos los inmuebles suele
                 ser 100 %. Si la suma queda a menos de 0,01 % de 100 %, al guardar se ajusta el
-                coeficiente mayor para que sume 100,0000 %.</span
+                coeficiente mayor para que sume 100,0000 %. En asociaciones es opcional: solo hace
+                falta si vas a repartir cuotas o derramas por coeficiente.</span
               >
             </label>
           </div>

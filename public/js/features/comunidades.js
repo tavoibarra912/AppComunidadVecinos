@@ -112,6 +112,7 @@ const LEGAL_SELECT_OPTIONS = {
   legalMajority: [
     ["simple", "Mayoría simple de los asistentes"],
     ["absoluta", "Mayoría absoluta de propietarios y cuotas"],
+    ["dos_tercios", "Dos tercios de los presentes o representados"],
     ["tres_quintos", "Tres quintos de propietarios y cuotas"],
     ["unanimidad", "Unanimidad"],
   ],
@@ -124,6 +125,7 @@ const ASSOCIATION_VOTING_OPTIONS = [
 const ASSOCIATION_MAJORITY_OPTIONS = [
   ["simple", "Mayoría simple de socios"],
   ["absoluta", "Mayoría absoluta de socios"],
+  ["dos_tercios", "Dos tercios de los socios presentes o representados"],
   ["tres_quintos", "Tres quintos de socios"],
   ["unanimidad", "Unanimidad de socios"],
 ];
