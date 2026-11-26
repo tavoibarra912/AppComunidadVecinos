@@ -649,6 +649,9 @@ export function createDocumentLibrary(options) {
     return String(value || "");
   };
   const canWrite = () => !!option("canWrite", false) && !!entityId();
+  // Eliminar exige además `document:delete`: con solo subir se puede renombrar,
+  // mover o reemplazar, pero no borrar.
+  const canDelete = () => !!option("canDelete", canWrite()) && !!entityId();
 
   root.classList.add("doc-library");
   root.dataset.category = category;
@@ -851,8 +854,8 @@ export function createDocumentLibrary(options) {
         parts.push(itemButton("move", "Mover a…", ICONS.move, "btn-move"));
       if (kind === "document")
         parts.push(itemButton("replace", "Reemplazar archivo", ICONS.replace, "btn-replace"));
-      parts.push(itemButton("delete", "Eliminar", ICONS.trash, "btn-delete"));
     }
+    if (canDelete()) parts.push(itemButton("delete", "Eliminar", ICONS.trash, "btn-delete"));
     return parts.length ? `<div class="doc-library-item-actions">${parts.join("")}</div>` : "";
   };
 

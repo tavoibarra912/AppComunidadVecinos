@@ -1041,6 +1041,10 @@ const communityDocumentsLibrary = communityDocumentList
         !!editingCommunityId &&
         hasPermission("community:manage", editingCommunityId) &&
         hasPermission("document:upload", editingCommunityId),
+      canDelete: () =>
+        !communityReadonly &&
+        !!editingCommunityId &&
+        hasPermission("document:delete", editingCommunityId),
       onChange: refreshCommunityLibraries,
       emptyText: "Subí actas, contratos, certificados u otros archivos y organizalos en carpetas.",
     })
@@ -1060,6 +1064,10 @@ const communityStatutesLibrary = communityStatutesList
         !!editingCommunityId &&
         hasPermission("community:manage", editingCommunityId) &&
         hasPermission("document:upload", editingCommunityId),
+      canDelete: () =>
+        !communityReadonly &&
+        !!editingCommunityId &&
+        hasPermission("document:delete", editingCommunityId),
       onChange: refreshCommunityLibraries,
       emptyText:
         "Carga los estatutos de la comunidad en PDF, imagen o Word para que todos los vecinos puedan consultarlos.",

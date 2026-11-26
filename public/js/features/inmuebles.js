@@ -873,6 +873,10 @@ const propertyDocumentsLibrary = propertyDocumentList
         !!state.ui.editingPropertyId &&
         hasPermission("property:manage", state.ui.editingPropertyId) &&
         hasPermission("document:upload", state.ui.editingPropertyId),
+      canDelete: () =>
+        !propertyDialogReadOnly &&
+        !!state.ui.editingPropertyId &&
+        hasPermission("document:delete", state.ui.editingPropertyId),
       onChange: refreshPropertyLibraries,
       emptyText:
         "Subí escrituras, certificados energéticos u otros archivos y organizalos en carpetas.",

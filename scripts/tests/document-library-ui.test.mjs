@@ -7,7 +7,7 @@ const source = readFileSync("public/js/document-library.js", "utf8")
   .replace(/^import[^\n]*\n/gm, "")
   .replace(/\bexport (?=(async )?function)/g, "");
 const flush = () => new Promise((resolve) => setImmediate(resolve));
-function fixture(t, folders = []) {
+function fixture(t, folders = [], extra = {}) {
   for (const folder of folders) folder.parentId ??= "";
   const dom = new JSDOM('<div id="library"></div>', {
     url: "http://localhost/",
@@ -52,7 +52,8 @@ function fixture(t, folders = []) {
     entityType: "community",
     entityId: "c1",
     canWrite: true,
-    getData: () => ({ folders, documents: [] }),
+    ...extra,
+    getData: () => ({ folders, documents: extra.documents || [] }),
   });
   return { w, root, library, calls };
 }
@@ -89,6 +90,21 @@ test("carpetas: editar conserva el color y los selectores admiten navegación co
   assert.equal(f.calls[0].id, "f1");
   assert.equal(f.calls[0].color, "indigo");
   assert.equal(f.calls[0].icon, "legal");
+});
+test("documentación: eliminar exige document:delete aunque se pueda subir", (t) => {
+  const doc = {
+    id: "d1",
+    fileName: "acta.pdf",
+    size: 1024,
+    uploadedAt: "2026-01-01T10:00:00.000Z",
+    url: "/api/documents/d1/download",
+  };
+  const writable = fixture(t, [], { documents: [doc] });
+  assert.ok(writable.root.querySelector('[data-library-action="delete"]'));
+  const uploader = fixture(t, [], { canDelete: () => false, documents: [doc] });
+  assert.ok(uploader.root.querySelector('[data-library-action="rename"]'));
+  assert.ok(uploader.root.querySelector('[data-library-action="replace"]'));
+  assert.equal(uploader.root.querySelector('[data-library-action="delete"]'), null);
 });
 test("documentación: la ruta identifica la carpeta principal y permite volver a ella", (t) => {
   const f = fixture(t, [{ id: "f1", name: "Actas", icon: "folder" }]);

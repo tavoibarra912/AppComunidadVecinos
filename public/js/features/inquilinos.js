@@ -115,6 +115,10 @@ const tenantDocumentsLibrary = tenantDocumentLibraryHost
         !!state.ui.editingTenantId &&
         hasPermission("tenant:manage", state.ui.editingTenantId) &&
         hasPermission("document:upload", state.ui.editingTenantId),
+      canDelete: () =>
+        !tenantDialogReadOnly &&
+        !!state.ui.editingTenantId &&
+        hasPermission("document:delete", state.ui.editingTenantId),
       onChange: refreshTenantLibraries,
       emptyText: "Subí documentación adicional del inquilino y organizala en carpetas.",
     })
