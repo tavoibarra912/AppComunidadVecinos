@@ -260,6 +260,11 @@ legend,
   display: grid;
   gap: 8px;
 }
+/* Un enlace con el estilo del botón secundario debe leerse como un botón. */
+.account-profile-links a.secondary-button {
+  text-align: center;
+  text-decoration: none;
+}
 .account-dialog .dialog-content {
   max-width: 100%;
 }

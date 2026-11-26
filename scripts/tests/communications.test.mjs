@@ -1449,6 +1449,14 @@ test("oposición: «no contactar» prevalece sobre el consentimiento y queda reg
     history.data.history.some((row) => row.channel === "noContact" && row.enabled === true),
     JSON.stringify(history.data.history),
   );
+  // Un cliente antiguo que no envía el campo no levanta la oposición.
+  const partial = await owner("/communications/preferences", "PUT", {
+    email: "urucp1@example.test",
+    emailEnabled: false,
+  });
+  assert.equal(partial.status, 200);
+  assert.equal(partial.data.noContact, true);
+  assert.equal(getPreferences(me).noContact, true);
   // El aviso dentro de la app se genera, pero el envío externo queda omitido.
   db.prepare("DELETE FROM communication_outbox").run();
   const p = await create({ channels: ["sms"] });

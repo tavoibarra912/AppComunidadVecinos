@@ -1069,12 +1069,16 @@ $("#comm-preferences").addEventListener("click", (e) =>
   action(async () => {
     const p = await request("/preferences");
     editorSnapshot = "";
-    const canales = { email: "correo", sms: "SMS", whatsapp: "WhatsApp", noContact: "no contactar" };
+    const canales = { email: "correo", sms: "SMS", whatsapp: "WhatsApp" };
+    const etiquetaConsentimiento = (c) =>
+      c.channel === "noContact"
+        ? `${c.enabled ? "Activada" : "Desactivada"} la oposición (no contactar)`
+        : `${c.enabled ? "Alta" : "Baja"} de ${canales[c.channel] || c.channel}`;
     const historial = p.history?.length
       ? `<h3>Historial de consentimientos</h3><ol class="comm-history">${p.history
           .map(
             (c) =>
-              `<li><strong>${c.enabled ? "Alta" : "Baja"} de ${h(canales[c.channel] || c.channel)}</strong><span>${h(date(c.at))}</span></li>`,
+              `<li><strong>${h(etiquetaConsentimiento(c))}</strong><span>${h(date(c.at))}</span></li>`,
           )
           .join("")}</ol>`
       : '<p class="comm-muted">Todavía no has cambiado ningún consentimiento.</p>';

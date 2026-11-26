@@ -131,7 +131,8 @@ router.put(
       emailEnabled: b.emailEnabled === true,
       smsEnabled: b.smsEnabled === true,
       whatsappEnabled: b.whatsappEnabled === true,
-      noContact: b.noContact === true,
+      // Un cliente que aún no envía el campo no debe levantar la oposición.
+      noContact: b.noContact === undefined ? previous.noContact === true : b.noContact === true,
     };
     if ((p.email || p.emailEnabled) && !emailAddress(p.email))
       throw problem("Indica un email válido para recibir avisos.");
