@@ -472,6 +472,9 @@
   height: 12px;
   accent-color: var(--brand);
 }
+.comm-preference-checks .comm-check.is-disabled {
+  opacity: 0.55;
+}
 .comm-preference-checks {
   margin: 24px 0;
 }

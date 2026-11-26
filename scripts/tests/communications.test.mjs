@@ -1471,6 +1471,18 @@ test("oposición: «no contactar» prevalece sobre el consentimiento y queda reg
     false,
     JSON.stringify(sent),
   );
+  // El aviso interno se entrega igual y el envío externo consta como omitido por
+  // oposición, no como un fallo que la administración pueda reintentar.
+  assert.ok(
+    db
+      .prepare("SELECT 1 FROM communication_recipients WHERE postId=? AND userId=?")
+      .get(p.id, me.id),
+  );
+  const skipped = db
+    .prepare("SELECT state,error FROM communication_outbox WHERE postId=? AND userId=? AND channel='sms'")
+    .get(p.id, me.id);
+  assert.equal(skipped.state, "skipped");
+  assert.match(skipped.error, /opuso a la comunicación externa/i);
   // La oposición se refleja en la revisión de destinatarios.
   const preview = await admin("/communications/preview", "POST", payload({ channels: ["sms"] }));
   assert.equal(preview.status, 200, JSON.stringify(preview.data));

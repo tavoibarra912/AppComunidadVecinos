@@ -1086,7 +1086,22 @@ $("#comm-preferences").addEventListener("click", (e) =>
       "Mis canales de comunicación",
       `<form id="comm-preference-form"><p>Los avisos dentro de la app siempre están disponibles. Elige si también quieres recibirlos por canales externos.</p>${input("email", "Correo electrónico", p.email, "email", 'maxlength="254"')}${input("phone", "Teléfono internacional", p.phone, "tel", 'placeholder="+34600111222" maxlength="16"')}<div class="comm-preference-checks">${check("emailEnabled", "Acepto recibir avisos por correo electrónico", p.emailEnabled)}${check("smsEnabled", "Acepto recibir avisos por SMS", p.smsEnabled)}${check("whatsappEnabled", "Acepto recibir avisos por WhatsApp", p.whatsappEnabled)}${check("noContact", "No quiero recibir ningún aviso externo (oposición)", p.noContact)}</div><p class="comm-muted">Puedes desactivarlos en cualquier momento. El aviso de oposición prevalece sobre cualquier canal. El administrador debe tener configurado el proveedor correspondiente.</p>${historial}<button type="submit" class="primary-button">Guardar preferencias</button></form>`,
     );
-    $("#comm-preference-form").addEventListener("submit", (event) => {
+    const form = $("#comm-preference-form");
+    // La oposición prevalece: con ella activa, los canales quedan suspendidos y
+    // no se pueden marcar a la vez (evita un estado contradictorio en la UI).
+    const opposition = form.elements.noContact;
+    const canals = ["emailEnabled", "smsEnabled", "whatsappEnabled"].map(
+      (name) => form.elements[name],
+    );
+    const syncOpposition = () => {
+      for (const box of canals) {
+        box.disabled = opposition.checked;
+        box.closest("label")?.classList.toggle("is-disabled", opposition.checked);
+      }
+    };
+    opposition.addEventListener("change", syncOpposition);
+    syncOpposition();
+    form.addEventListener("submit", (event) => {
       event.preventDefault();
       action(async () => {
         const f = event.target;
