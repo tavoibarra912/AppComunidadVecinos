@@ -10,6 +10,7 @@ import {
 } from "../db.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import {
+  balanceCommunityCoefficients,
   rebuildOwnersPropertyIds,
   syncOwnerProperties,
   syncPropertyTenantReferences,
@@ -58,9 +59,16 @@ function normalizeCadastralRef(value) {
 }
 
 function normalizeParticipationCoef(value) {
-  return String(value ?? "")
+  const text = String(value ?? "")
     .trim()
     .replace(",", ".");
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(text);
+  // El censo solo guarda cuatro decimales: el exceso se redondea, no se rechaza.
+  if (!match || (match[2] || "").length <= 4) return text;
+  const fraction = `${match[2]}0000`;
+  let units = Number(match[1]) * 10000 + Number(fraction.slice(0, 4));
+  if (fraction[4] >= "5") units += 1;
+  return (units / 10000).toFixed(4);
 }
 
 router.get("/", (req, res) => {
@@ -290,10 +298,10 @@ function storeProperty(id, data, community) {
   const primaryResidentId = residency.primaryResidentId;
   return db
     .prepare(
-      `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, communityFee, cadastralRef,
-       registryNumber, floor, door, areaM2, participationCoef, propertyUse, receiptStatus, notes, postalCode, city, province, currency, ownerPercentages,
+      `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, cadastralRef,
+       registryNumber, floor, door, areaM2, participationCoef, propertyUse, notes, postalCode, city, province, currency, ownerPercentages,
        occupancy, residentOwnerIds, primaryResidentId)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        communityId = excluded.communityId,
        communityName = excluded.communityName,
@@ -304,7 +312,6 @@ function storeProperty(id, data, community) {
        address = excluded.address,
        staircase = excluded.staircase,
        energyCertificate = excluded.energyCertificate,
-       communityFee = excluded.communityFee,
        cadastralRef = excluded.cadastralRef,
        registryNumber = excluded.registryNumber,
        floor = excluded.floor,
@@ -312,7 +319,6 @@ function storeProperty(id, data, community) {
        areaM2 = excluded.areaM2,
        participationCoef = excluded.participationCoef,
        propertyUse = excluded.propertyUse,
-       receiptStatus = excluded.receiptStatus,
        notes = excluded.notes,
        postalCode = excluded.postalCode,
        city = excluded.city,
@@ -334,7 +340,6 @@ function storeProperty(id, data, community) {
       data.address || "",
       data.staircase || "",
       data.energyCertificate || "",
-      data.communityFee || "",
       normalizeCadastralRef(data.cadastralRef),
       data.registryNumber || "",
       data.floor || "",
@@ -342,7 +347,6 @@ function storeProperty(id, data, community) {
       data.areaM2 || "",
       normalizeParticipationCoef(data.participationCoef),
       data.propertyUse || "",
-      data.receiptStatus === "pending" ? "pending" : "current",
       data.notes || "",
       data.postalCode || "",
       data.city || "",
@@ -466,7 +470,11 @@ router.post("/", (req, res) => {
     // quién queda realmente en el inmueble.
     applyTenantLinkChanges(changes);
     storeProperty(id, data, community);
-    syncAffectedOwners(Array.isArray(data.ownerIds) ? data.ownerIds : []);
+    const adjustedOwners = balanceCommunityCoefficients(community?.id || "");
+    syncAffectedOwners([
+      ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),
+      ...adjustedOwners,
+    ]);
     rebuildOwnersPropertyIds();
     db.exec("COMMIT");
   } catch (error) {
@@ -533,6 +541,7 @@ router.put(
       const affectedOwners = [
         ...(Array.isArray(existing.ownerIds) ? existing.ownerIds : []),
         ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),
+        ...balanceCommunityCoefficients(community?.id || ""),
       ];
       syncAffectedOwners(affectedOwners);
       rebuildOwnersPropertyIds();

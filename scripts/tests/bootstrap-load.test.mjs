@@ -79,6 +79,8 @@ test(
         "UPDATE fee_receipts SET cancelledAt='2026-02-01' WHERE propertyId='load-property-0'",
       );
       assert.equal(property().receiptStatus, "current");
+      // Sin recibos vigentes no hay importe que mostrar en la ficha.
+      assert.equal(property().communityFee, "");
 
       const socket = createServer().listen(0, "127.0.0.1");
       await once(socket, "listening");

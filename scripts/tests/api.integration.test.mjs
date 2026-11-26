@@ -237,6 +237,71 @@ test("inmuebles: coeficiente obligatorio y referencia catastral única", async (
   assert.equal(duplicate.status, 400);
   assert.match(duplicate.data.error, /referencia catastral/i);
 });
+test("inmuebles: estado de recibos y cuota se calculan desde los recibos", async () => {
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-computed-status','com-seed-2','Edificio Los Olivos','Piso calculado','vivienda','Calle Calculada 1','Madrid','[]','{}','1.0000')",
+  ).run();
+  try {
+    const created = (await admin("/properties/prop-computed-status")).data;
+    assert.equal(created.receiptStatus, "none");
+    assert.equal(created.communityFee, "");
+    // El cliente no puede marcar el estado ni inventar la cuota desde la ficha.
+    const updated = await admin("/properties/prop-computed-status", "PUT", {
+      ...created,
+      receiptStatus: "pending",
+      communityFee: "99.99",
+    });
+    assert.equal(updated.status, 200, JSON.stringify(updated.data));
+    assert.equal(updated.data.receiptStatus, "none");
+    assert.equal(updated.data.communityFee, "");
+  } finally {
+    db.prepare("DELETE FROM properties WHERE id='prop-computed-status'").run();
+  }
+});
+test("inmuebles: el guardado ajusta el residuo de redondeo de los coeficientes", async () => {
+  db.prepare("INSERT INTO communities(id,name,nif) VALUES('com-coef-adjust','Comunidad Ajuste','H00000001')").run();
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-coef-a','com-coef-adjust','Comunidad Ajuste','A','vivienda','Calle A 1','Madrid','[]','{}','50.0000'),('prop-coef-b','com-coef-adjust','Comunidad Ajuste','B','vivienda','Calle B 1','Madrid','[]','{}','49.9999')",
+  ).run();
+  db.prepare("INSERT INTO communities(id,name,nif) VALUES('com-coef-gap','Comunidad Brecha','H00000002')").run();
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-gap-a','com-coef-gap','Comunidad Brecha','A','vivienda','Calle A 1','Madrid','[]','{}','50.0000'),('prop-gap-b','com-coef-gap','Comunidad Brecha','B','vivienda','Calle B 1','Madrid','[]','{}','49.0000')",
+  ).run();
+  try {
+    // 50,0000 + 49,9999: el residuo de 0,0001 pasa al coeficiente mayor.
+    const property = (await admin("/properties/prop-coef-a")).data;
+    assert.equal((await admin("/properties/prop-coef-a", "PUT", { ...property })).status, 200);
+    assert.deepEqual(
+      db
+        .prepare(
+          "SELECT participationCoef FROM properties WHERE communityId='com-coef-adjust' ORDER BY id",
+        )
+        .all()
+        .map((row) => row.participationCoef),
+      ["50.0001", "49.9999"],
+    );
+    // Una diferencia de un punto no es redondeo: el censo se deja intacto.
+    const gap = (await admin("/properties/prop-gap-a")).data;
+    assert.equal((await admin("/properties/prop-gap-a", "PUT", { ...gap })).status, 200);
+    assert.equal(
+      db.prepare("SELECT participationCoef FROM properties WHERE id='prop-gap-a'").get()
+        .participationCoef,
+      "50.0000",
+    );
+    // El exceso de decimales se redondea a cuatro, no se rechaza.
+    const gapB = (await admin("/properties/prop-gap-b")).data;
+    const rounded = await admin("/properties/prop-gap-b", "PUT", {
+      ...gapB,
+      participationCoef: "49.12346",
+    });
+    assert.equal(rounded.status, 200, JSON.stringify(rounded.data));
+    assert.equal(rounded.data.participationCoef, "49.1235");
+  } finally {
+    for (const communityId of ["com-coef-adjust", "com-coef-gap"])
+      db.prepare("DELETE FROM properties WHERE communityId = ?").run(communityId);
+    db.prepare("DELETE FROM communities WHERE id IN ('com-coef-adjust','com-coef-gap')").run();
+  }
+});
 test("inmuebles: titularidad N:M y contratos dentro de su comunidad", async () => {
   const property = (await admin("/properties/prop-seed-3")).data;
   const crossOwner = await admin("/properties/prop-seed-3", "PUT", {

@@ -226,6 +226,47 @@ export function syncOwnerProperties(ownerId, propertyIds = []) {
 }
 
 /**
+ * Corrige el residuo de redondeo del censo de coeficientes: si la suma queda a
+ * centésimas del 100 %, el resto pasa al coeficiente mayor para que el reparto
+ * y el voto por coeficiente sumen exactamente 100,0000 %. No toca censos
+ * incompletos ni diferencias que exijan revisar los datos a mano.
+ * Devuelve los ownerIds del inmueble ajustado (vacío si no hubo cambio).
+ */
+export function balanceCommunityCoefficients(communityId) {
+  if (!communityId) return [];
+  const rows = db
+    .prepare(
+      "SELECT id, participationCoef, ownerIds FROM properties WHERE communityId = ? ORDER BY id",
+    )
+    .all(communityId);
+  if (rows.length < 2) return [];
+  let total = 0;
+  const weights = [];
+  for (const row of rows) {
+    const text = String(row.participationCoef || "")
+      .replace(",", ".")
+      .trim();
+    if (!/^\d{1,3}(?:\.\d{1,4})?$/.test(text)) return [];
+    const units = Math.round(Number(text) * 10000);
+    if (!Number.isSafeInteger(units) || units < 1 || units > 1000000) return [];
+    total += units;
+    weights.push({ row, units });
+  }
+  const difference = 1000000 - total;
+  // Solo residuos de redondeo: hasta 0,0100 puntos porcentuales.
+  if (difference === 0 || Math.abs(difference) > 100) return [];
+  // En empate se ajusta el último: suele ser el que se deja para el final.
+  const target = weights.reduce((a, b) => (b.units >= a.units ? b : a));
+  const units = target.units + difference;
+  if (units < 1 || units > 1000000) return [];
+  db.prepare("UPDATE properties SET participationCoef = ? WHERE id = ?").run(
+    (units / 10000).toFixed(4),
+    target.row.id,
+  );
+  return propertyOwnerIds(target.row);
+}
+
+/**
  * Rearma propertyIds de todos los propietarios a partir de los ownerIds
  * de cada inmueble (relación N:M).
  */

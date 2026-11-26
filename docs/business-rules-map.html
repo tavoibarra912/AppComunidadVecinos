@@ -2099,9 +2099,17 @@
                   </td>
                 </tr>
                 <tr>
+                  <td>Cuota de comunidad</td>
+                  <td>
+                    Importe del último recibo vigente, expresado por mes. No se edita en la
+                    ficha: se gestiona con el acuerdo de cuotas de la comunidad.
+                  </td>
+                </tr>
+                <tr>
                   <td>Estado de recibos</td>
                   <td>
-                    Se calcula desde el libro financiero cuando existe; no es un campo que se pueda
+                    Se calcula siempre desde el libro financiero: «Al corriente», «Pagos pendientes»
+                    o «Sin recibos» si el inmueble aún no tiene ninguno. No es editable ni se puede
                     “marcar” a mano para ocultar deuda.
                   </td>
                 </tr>
@@ -2813,6 +2821,11 @@
                   sumen el total. Los tres criterios se pueden crear y editar desde la interfaz. El
                   modo mixto conserva qué inmuebles tienen importe fijo y reparte el resto por
                   coeficiente entre los demás.
+                </li>
+                <li>
+                  Al guardar un inmueble, si los coeficientes de la comunidad quedan a menos de
+                  0,01 % de 100 %, el residuo de redondeo se asigna al coeficiente mayor para que
+                  sumen exactamente 100,0000 %.
                 </li>
                 <li>
                   De 1 a 36 plazos, cada uno con importe y vencimiento propios. Vencimientos

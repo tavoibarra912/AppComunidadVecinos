@@ -175,7 +175,7 @@ function handlePropertyCommunityChange() {
 
 /**
  * El coeficiente es un porcentaje: se descartan letras y símbolos y solo se
- * admite un separador decimal con hasta cuatro decimales.
+ * admite un separador decimal. Al salir del campo se redondea a cuatro.
  */
 function sanitizeCoefficientInput() {
   const input = propertyForm.elements.participationCoef;
@@ -187,14 +187,30 @@ function sanitizeCoefficientInput() {
     const integer = cleaned.slice(0, separatorIndex).replace(/[^\d]/g, "");
     const decimals = cleaned
       .slice(separatorIndex + 1)
-      .replace(/[^\d]/g, "")
-      .slice(0, 4);
+      .replace(/[^\d]/g, "");
     value = `${integer}${cleaned[separatorIndex]}${decimals}`;
   }
   if (value !== input.value) input.value = value;
 }
 
+/** Redondea el porcentaje a cuatro decimales sin arrastrar errores binarios. */
+function roundCoefficient(value) {
+  const text = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(text);
+  if (!match || (match[2] || "").length <= 4) return text;
+  const fraction = `${match[2]}0000`;
+  let units = Number(match[1]) * 10000 + Number(fraction.slice(0, 4));
+  if (fraction[4] >= "5") units += 1;
+  return (units / 10000).toFixed(4);
+}
+
 propertyForm.elements.participationCoef?.addEventListener("input", sanitizeCoefficientInput);
+propertyForm.elements.participationCoef?.addEventListener("blur", () => {
+  const input = propertyForm.elements.participationCoef;
+  input.value = roundCoefficient(input.value);
+});
 
 function populatePropertyCurrencySelect(selected) {
   const select = propertyForm.elements.currency;
@@ -986,20 +1002,6 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
   renderPropertyTenantsTab();
   syncPropertyResidencyTab();
   syncPropertyOwnerRequirement();
-  propertyForm.elements.receiptStatus.value = property?.receiptStatus || "current";
-  propertyForm.elements.receiptStatus.closest("label").hidden = !!property?.hasFeeReceipts;
-  propertyForm.elements.communityFee.closest("label").hidden = !!property?.hasFeeReceipts;
-  let ledgerHint = propertyForm.querySelector("[data-fee-ledger-hint]");
-  if (!ledgerHint) {
-    ledgerHint = document.createElement("p");
-    ledgerHint.dataset.feeLedgerHint = "";
-    ledgerHint.className = "form-intro full";
-  }
-  // El aviso se lee antes que los importes: queda arriba de Moneda y Coeficiente.
-  propertyForm.querySelector('[data-property-pane="finance"] .form-grid')?.prepend(ledgerHint);
-  ledgerHint.hidden = !property?.hasFeeReceipts;
-  ledgerHint.textContent =
-    "La cuota y el estado de los pagos se calculan a partir de los recibos. Gestiona los cobros desde el menú Cuotas, seleccionando la comunidad.";
   propertyForm.elements.propertyType.value = property?.propertyType || "";
   if (property) {
     [
@@ -1015,7 +1017,6 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
       "participationCoef",
       "propertyUse",
       "energyCertificate",
-      "communityFee",
       "notes",
     ].forEach((key) => {
       if (propertyForm.elements[key]) {
@@ -1094,6 +1095,14 @@ const PROPERTY_OCCUPANCY_LABELS = {
 
 function propertyOccupancyLabel(property) {
   return PROPERTY_OCCUPANCY_LABELS[property?.occupancy] || "Sin especificar";
+}
+
+/** Estado de recibos derivado del libro financiero; nunca se edita en la ficha. */
+function propertyReceiptStatus(property) {
+  if (property?.receiptStatus === "pending")
+    return { text: "Pagos pendientes", tone: "doc-rejected" };
+  if (property?.receiptStatus === "current") return { text: "Al corriente", tone: "doc-approved" };
+  return { text: "Sin recibos", tone: "" };
 }
 
 /** Nombre del contacto principal, sea propietario residente o inquilino. */
@@ -1257,13 +1266,12 @@ export function renderProperties() {
         {
           key: "receipts",
           label: "Estado recibos",
-          value: (property) =>
-            property.receiptStatus === "pending" ? "Pagos pendientes" : "Al corriente",
+          value: (property) => propertyReceiptStatus(property).text,
           render: (property) => {
+            const status = propertyReceiptStatus(property);
             const badge = document.createElement("span");
-            badge.className = `status-badge ${property.receiptStatus === "pending" ? "doc-rejected" : "doc-approved"}`;
-            badge.textContent =
-              property.receiptStatus === "pending" ? "Pagos pendientes" : "Al corriente";
+            badge.className = `status-badge ${status.tone}`.trim();
+            badge.textContent = status.text;
             return badge;
           },
         },
@@ -1395,7 +1403,7 @@ export function openPropertyDetail(id) {
     ? linkedTenants.map((t) => `${t.name} ${t.surname}`).join(", ")
     : "Sin inquilinos";
   document.querySelector("#property-detail-receipts").textContent =
-    property.receiptStatus === "pending" ? "Pagos pendientes" : "Al corriente";
+    propertyReceiptStatus(property).text;
   document.querySelector("#property-detail-registry").textContent = [
     property.cadastralRef || "Sin referencia catastral",
     property.registryNumber ? `Finca ${property.registryNumber}` : "Sin finca registral",
@@ -1560,13 +1568,6 @@ makeSelectSearchable(document.querySelector("#property-owner-link-select"), "Bus
 makeSelectSearchable(document.querySelector("#property-tenant-link-select"), "Buscar inquilino…");
 
 // Territorio del inmueble: CP → municipio/provincia automáticos
-// Cuota de comunidad: solo valores de dinero (dígitos, coma o punto)
-const propertyFeeInput = propertyForm.elements.communityFee;
-if (propertyFeeInput) {
-  propertyFeeInput.addEventListener("input", () => {
-    propertyFeeInput.value = propertyFeeInput.value.replace(/[^0-9.,]/g, "").slice(0, 10);
-  });
-}
 // Superficie: solo enteros
 const propertyAreaInput = propertyForm.elements.areaM2;
 if (propertyAreaInput) {
@@ -1618,9 +1619,7 @@ propertyForm.addEventListener("submit", async (event) => {
           : selectedTenantIds[0] || ""
         : "";
   const cadastralRef = normalizeCadastralRef(values.cadastralRef);
-  const participationCoef = String(values.participationCoef || "")
-    .trim()
-    .replace(",", ".");
+  const participationCoef = roundCoefficient(values.participationCoef);
 
   const messages = [];
   if (!community) messages.push("Selecciona una comunidad existente.");
@@ -1678,8 +1677,6 @@ propertyForm.addEventListener("submit", async (event) => {
   } else if (selectedLocation.province !== values.province) {
     messages.push("El municipio debe pertenecer a la provincia seleccionada.");
   }
-  if (!["current", "pending"].includes(values.receiptStatus))
-    messages.push("Selecciona un estado de recibos válido.");
   if (cadastralRef) {
     if (!isValidCadastralRef(cadastralRef)) {
       messages.push("La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.");
@@ -1730,7 +1727,6 @@ propertyForm.addEventListener("submit", async (event) => {
     plot: values.plot.trim(),
     staircase: (values.staircase || "").trim(),
     energyCertificate: values.energyCertificate || "",
-    communityFee: (values.communityFee || "").trim(),
     cadastralRef,
     registryNumber: (values.registryNumber || "").trim(),
     floor: (values.floor || "").trim(),
@@ -1738,7 +1734,6 @@ propertyForm.addEventListener("submit", async (event) => {
     areaM2: (values.areaM2 || "").trim().replace(",", "."),
     participationCoef,
     propertyUse: values.propertyUse || "",
-    receiptStatus: values.receiptStatus,
     notes: (values.notes || "").trim(),
     postalCode: (values.postalCode || "").trim(),
     city: selectedLocation ? selectedLocation.name : "",
