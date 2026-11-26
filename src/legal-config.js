@@ -63,6 +63,7 @@ export const COOWNERSHIP_RULES = Object.freeze({
 export const MAJORITIES = Object.freeze({
   simple: "Mayoría simple de los asistentes",
   absoluta: "Mayoría absoluta de propietarios y cuotas",
+  dos_tercios: "Dos tercios de los presentes o representados",
   tres_quintos: "Tres quintos de propietarios y cuotas",
   unanimidad: "Unanimidad",
 });

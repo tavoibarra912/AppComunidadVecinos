@@ -9,6 +9,7 @@ import {
   normalizePropertyResidency,
 } from "../db.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
+import { legalConfigOf } from "../legal-config.js";
 import {
   balanceCommunityCoefficients,
   rebuildOwnersPropertyIds,
@@ -90,7 +91,9 @@ function validatePropertyPayload(
   if (errorObligatorio) return errorObligatorio;
   let community = null;
   if (data.communityId) {
-    community = db.prepare("SELECT id, name FROM communities WHERE id = ?").get(data.communityId);
+    community = db
+      .prepare("SELECT id, name, legalConfig FROM communities WHERE id = ?")
+      .get(data.communityId);
     if (!community) return "La comunidad indicada no existe.";
   }
   const ownerIds = Array.isArray(data.ownerIds) ? data.ownerIds.filter(Boolean) : [];
@@ -150,19 +153,22 @@ function validatePropertyPayload(
   }
 
   const participationCoef = normalizeParticipationCoef(data.participationCoef);
+  // En una asociación el coeficiente es informativo: solo se exige en la LPH.
+  const association = legalConfigOf(community).regimen === "asociacion";
   if (!participationCoef) {
-    return "El coeficiente de participación es obligatorio.";
-  }
-  if (!/^\d+(?:\.\d{1,4})?$/.test(participationCoef)) {
-    return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
-  }
-  const participationNumber = Number(participationCoef);
-  if (
-    !Number.isFinite(participationNumber) ||
-    participationNumber < 0.0001 ||
-    participationNumber > 100
-  ) {
-    return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
+    if (!association) return "El coeficiente de participación es obligatorio.";
+  } else {
+    if (!/^\d+(?:\.\d{1,4})?$/.test(participationCoef)) {
+      return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
+    }
+    const participationNumber = Number(participationCoef);
+    if (
+      !Number.isFinite(participationNumber) ||
+      participationNumber < 0.0001 ||
+      participationNumber > 100
+    ) {
+      return "El coeficiente de participación debe ser un porcentaje decimal entre 0,0001 y 100.";
+    }
   }
 
   const residencyError = validatePropertyResidency(data, ownerIds, existing, occupancyProvided);
