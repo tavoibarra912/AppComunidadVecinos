@@ -1515,7 +1515,7 @@ test("configuración: valida rangos y tipos antes de guardar", async () => {
   const settings = await admin("/admin/settings");
   assert.equal(settings.data.documentosMaxArchivos, 20);
   assert.equal(settings.data.duracionSesionHoras, 8);
-  assert.equal(settings.data.nombreAsociacion, "Asociación Peñarrubia");
+  assert.equal(settings.data.nombreAsociacion, "Asociación de Propietarios");
 });
 test("configuración: autorizaciones de inquilinos y avisos por tipo de recibo", async () => {
   for (const [payload, pattern] of [

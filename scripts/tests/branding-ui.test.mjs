@@ -38,13 +38,13 @@ function fixture(brandJson = {}) {
   const brandAnchor = element("a");
   brandAnchor.childNodes = [
     element("img", "topbar-brand-logo"),
-    textNode("peñarrubia"),
+    textNode("gestión de comunidades"),
     element("span"),
   ];
   const loginBrand = element("div");
   loginBrand.childNodes = [
     element("img", "login-brand-logo"),
-    textNode("peñarrubia"),
+    textNode("gestión de comunidades"),
     element("span"),
   ];
   const meta = element("meta");
@@ -56,7 +56,7 @@ function fixture(brandJson = {}) {
   elements.set("login-brand-logo", loginBrand.childNodes[0]);
   elements.set("home-greeting-title", element("h1", "home-greeting-title"));
   const document = {
-    title: "Peñarrubia · Comunidades y Propietarios",
+    title: "Gestión de Comunidades",
     getElementById: get,
     querySelector(selector) {
       if (selector === ".brand") return brandAnchor;
@@ -92,10 +92,10 @@ test("brand.js: aplica nombre, colores, título, descripción y saludo al boot",
   assert.equal(fx.loginBrand.childNodes[1].textContent, "Vecinos del Parque");
   assert.equal(fx.brandAnchor.attributes["aria-label"], "Inicio de Vecinos del Parque");
   assert.equal(fx.document.title, "Vecinos del Parque");
-  assert.match(fx.meta.attributes.content, /Asociación Vecinos del Parque/);
+  assert.match(fx.meta.attributes.content, /Gestión de comunidades/);
   assert.equal(
     fx.elements.get("home-greeting-title").textContent,
-    "Bienvenido a la gestión de Vecinos del Parque",
+    "Bienvenido a Vecinos del Parque",
   );
   assert.match(fx.elements.get("brand-vars").textContent, /--nav:#0f3057/);
   assert.match(fx.elements.get("brand-vars").textContent, /--brand:#e8743b/);
@@ -117,9 +117,9 @@ test("brand.js: JSON roto o incompleto cae a los valores por defecto sin romper"
   const fx = fixture();
   fx.elements.get("brand-json").textContent = "{invalid";
   const brand = fx.readInjectedBrand();
-  assert.equal(brand.nombre, "Peñarrubia");
+  assert.equal(brand.nombre, "Gestión de Comunidades");
   const applied = fx.applyBrand({ nombre: "   " });
-  assert.equal(applied.nombre, "Peñarrubia");
+  assert.equal(applied.nombre, "Gestión de Comunidades");
 });
 
 const communityLogo = `data:image/png;base64,${Buffer.from("comunidad").toString("base64")}`;
@@ -132,7 +132,7 @@ test("brand.js: sin sesión o con varias comunidades no hay marca por comunidad"
     currentUserId: "user-1",
     communities: [{ name: "Una", logoDataUrl: communityLogo }],
   });
-  assert.equal(single.nombre, "Una");
+  assert.equal(single.nombre, undefined);
   assert.equal(single.logoDataUrl, communityLogo);
   assert.equal(
     fx.getSingleCommunityBrandOverride({
@@ -156,26 +156,26 @@ test("brand.js: sin sesión o con varias comunidades no hay marca por comunidad"
   );
 });
 
-test("brand.js: una única comunidad sustituye nombre y logo sin tocar los colores globales", () => {
+test("brand.js: una única comunidad aporta logo y colores sin cambiar el nombre de la app", () => {
   const fx = fixture({ nombre: "Marca global", colorPrimario: "#0f3057", colorAcento: "#e8743b" });
   const globalBrand = fx.readInjectedBrand();
   const state = {
     currentUserId: "user-1",
     communities: [{ name: "Residencial Peñarrubia", logoDataUrl: communityLogo }],
   };
-  assert.equal(fx.getSingleCommunityBrandOverride(state).nombre, "Residencial Peñarrubia");
+  assert.equal(fx.getSingleCommunityBrandOverride(state).nombre, undefined);
   assert.equal(fx.getSingleCommunityBrandOverride(state).logoDataUrl, communityLogo);
   const brand = fx.effectiveBrand(globalBrand, state);
-  assert.equal(brand.nombre, "Residencial Peñarrubia");
+  assert.equal(brand.nombre, "Marca global");
   assert.equal(brand.logoDataUrl, communityLogo);
   assert.equal(brand.colorPrimario, "#0f3057");
   assert.equal(brand.colorAcento, "#e8743b");
   fx.applyBrand(brand);
-  assert.equal(fx.brandAnchor.childNodes[1].textContent, "Residencial Peñarrubia");
+  assert.equal(fx.brandAnchor.childNodes[1].textContent, "Marca global");
   assert.equal(fx.elements.get("topbar-brand-logo").src, communityLogo);
 });
 
-test("brand.js: la comunidad puede aportar solo logo o solo nombre", () => {
+test("brand.js: la comunidad aporta logo, pero no cambia el nombre de la app", () => {
   const fx = fixture({ nombre: "Marca global", logoDataUrl: "" });
   const globalBrand = fx.readInjectedBrand();
   const onlyLogo = fx.effectiveBrand(globalBrand, {
@@ -188,11 +188,11 @@ test("brand.js: la comunidad puede aportar solo logo o solo nombre", () => {
     currentUserId: "user-1",
     communities: [{ name: "Comunidad Norte", logoDataUrl: "" }],
   });
-  assert.equal(onlyName.nombre, "Comunidad Norte");
+  assert.equal(onlyName.nombre, "Marca global");
   assert.equal(onlyName.logoDataUrl, "");
 });
 
-test("brand.js: una única comunidad aplica su estilo (colores, tipografía y formato)", () => {
+test("brand.js: una única comunidad aplica su estilo sin cambiar el nombre de la app", () => {
   const fx = fixture({ nombre: "Marca global", colorPrimario: "#0f3057", colorAcento: "#e8743b" });
   const globalBrand = fx.readInjectedBrand();
   const state = {
@@ -217,7 +217,7 @@ test("brand.js: una única comunidad aplica su estilo (colores, tipografía y fo
   assert.equal(override.colorPrimario, "#0b6b3a");
   assert.equal(override.tipografia, "georgia");
   const brand = fx.effectiveBrand(globalBrand, state);
-  assert.equal(brand.nombre, "Residencial Verde");
+  assert.equal(brand.nombre, "Marca global");
   assert.equal(brand.colorPrimario, "#0b6b3a");
   assert.equal(brand.colorAcento, "#f2a900");
   assert.equal(brand.tipografia, "georgia");

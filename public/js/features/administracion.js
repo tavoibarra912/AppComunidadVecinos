@@ -1707,7 +1707,7 @@ function initCommunitySettings() {
 function renderSettings() {
   if (!settingsForm || !puedeAdministrar()) return;
   const s = state.settings || {};
-  settingsForm.elements.nombreAsociacion.value = s.nombreAsociacion || "Asociación Peñarrubia";
+  settingsForm.elements.nombreAsociacion.value = s.nombreAsociacion || "Asociación de Propietarios";
   settingsForm.elements.emailContacto.value = s.emailContacto || "";
   settingsForm.elements.telefonoContacto.value = s.telefonoContacto || "";
   settingsForm.elements.permitirRegistro.checked = s.permitirRegistro !== false;
@@ -1751,7 +1751,7 @@ function renderSettings() {
   const marca = s.marca || {};
   marcaTipografias = normalizeFontsForEditor(marca.tipografias);
   renderMarcaTipografias();
-  settingsForm.elements.marcaNombre.value = marca.nombre || "Peñarrubia";
+  settingsForm.elements.marcaNombre.value = marca.nombre || "Gestión de Comunidades";
   settingsForm.elements.marcaColorPrimario.value = colorValue(marca.colorPrimario, "#11273e");
   settingsForm.elements.marcaColorAcento.value = colorValue(marca.colorAcento, "#198b84");
   settingsForm.elements.marcaColorFondo.value = colorValue(marca.colorFondo, "#f7f9fb");

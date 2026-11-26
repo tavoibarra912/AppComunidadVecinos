@@ -1,7 +1,7 @@
 {
   "name": "app-comunidad-vecinos",
   "version": "1.0.0",
-  "description": "Gestión de comunidades, propietarios, inmuebles e inquilinos (Asociación Peñarrubia)",
+  "description": "Gestión de comunidades, propietarios, inmuebles e inquilinos",
   "type": "module",
   "main": "server.js",
   "scripts": {

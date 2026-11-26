@@ -654,7 +654,7 @@ const adminEmailSeeds = [
     ownerCommunity: "Residencial Peñarrubia",
     ownerPlot: "Parcela 14",
     subject:
-      "[Peñarrubia] Solicitud de verificación y aprobación de documentación - Propietario: Carlos Ruiz Mendoza (47895231P)",
+      "[Gestión de Comunidades] Solicitud de verificación y aprobación de documentación - Propietario: Carlos Ruiz Mendoza (47895231P)",
     date: "12/10/2026, 18:25",
     timestamp: Date.now() - 3600000,
     read: false,
@@ -888,8 +888,8 @@ export function seedIfEmpty() {
     // Los roles y usuarios base ya se inicializaron en db.js.
     db.prepare("INSERT OR IGNORE INTO settings (id, data) VALUES ('general', ?)").run(
       JSON.stringify({
-        nombreAsociacion: "Asociación Peñarrubia",
-        emailContacto: "admin@penarrubia.es",
+        nombreAsociacion: "Asociación de Propietarios",
+        emailContacto: "admin@example.com",
         telefonoContacto: "600000000",
         otpExpiraMinutos: 10,
         otpReenvioSegundos: 60,

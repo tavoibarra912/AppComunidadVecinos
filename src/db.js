@@ -1521,8 +1521,8 @@ export function normalizeDocumentTypes(value) {
 export function getSettings() {
   const row = db.prepare("SELECT data FROM settings WHERE id = 'general'").get();
   const defaults = {
-    nombreAsociacion: "Asociación Peñarrubia",
-    emailContacto: "admin@penarrubia.es",
+    nombreAsociacion: "Asociación de Propietarios",
+    emailContacto: "",
     telefonoContacto: "600000000",
     permitirRegistro: true,
     permitirRecuperacion: true,

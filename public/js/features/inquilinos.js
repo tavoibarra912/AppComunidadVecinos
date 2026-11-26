@@ -1157,7 +1157,7 @@ if (tenantBtnSampleContract)
       ...getFormTenantContext(),
       landlord: owner ? `${owner.name} ${owner.surname}` : "Propietario Arrendador",
       plot: prop?.plot || "Vivienda 2.º B",
-      communityName: prop?.communityName || "Residencial Peñarrubia",
+      communityName: prop?.communityName || "Comunidad",
       monthlyRent: tenantForm.elements.monthlyRent.value.trim() || "750",
       deposit: tenantForm.elements.deposit.value.trim() || "1500",
     };
