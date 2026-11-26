@@ -12,7 +12,7 @@ import { rebuildPropertyTenantReferences } from "./src/domain.js";
 import { startCommunicationWorker } from "./src/communication-worker.js";
 import { renderIndex } from "./src/branding.js";
 import { getSettings } from "./src/db.js";
-import { seedIfEmpty } from "./src/seed.js";
+import { seedDemoFees, seedIfEmpty } from "./src/seed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -25,7 +25,10 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 }
 
 // El entorno demo arranca con un censo completo sin sobrescribir bases existentes.
-if (process.env.NODE_ENV !== "production") seedIfEmpty();
+if (process.env.NODE_ENV !== "production") {
+  seedIfEmpty();
+  seedDemoFees();
+}
 rebuildPropertyTenantReferences();
 
 const app = express();
