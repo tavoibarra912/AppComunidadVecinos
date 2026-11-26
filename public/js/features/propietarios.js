@@ -165,13 +165,18 @@ const ownerDocumentsLibrary = ownerDocumentLibraryHost
       getData: () => ownerLibraryData(state.ui.editingOwnerId),
       settings: () => state.settings,
       countEl: "#owner-doc-count",
+      // Editar la ficha no autoriza a tocar el expediente: el servidor exige
+      // owner:manage o owner:documents:submit además de document:upload.
       canWrite: () =>
         !ownerDialogReadOnly &&
         !!state.ui.editingOwnerId &&
         (hasPermission("owner:manage", state.ui.editingOwnerId) ||
-          hasPermission("owner:edit", state.ui.editingOwnerId) ||
           hasPermission("owner:documents:submit", state.ui.editingOwnerId)) &&
         hasPermission("document:upload", state.ui.editingOwnerId),
+      canDelete: () =>
+        !ownerDialogReadOnly &&
+        !!state.ui.editingOwnerId &&
+        hasPermission("document:delete", state.ui.editingOwnerId),
       onChange: refreshOwnerLibraries,
       emptyText: "Subí documentación adicional del propietario y organizala en carpetas.",
     })

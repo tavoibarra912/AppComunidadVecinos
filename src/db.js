@@ -486,6 +486,7 @@ if (!db.prepare("SELECT id FROM roles WHERE nombre = 'super_admin'").get()) {
       "owner:edit",
       "owner:documents:submit",
       "property:read",
+      "fee:read",
       "tenant:read",
       "document:read",
       "document:upload",
@@ -582,6 +583,19 @@ if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'granular-permissio
     }
   }
   db.prepare("INSERT INTO schema_migrations (id) VALUES ('granular-permissions-v1')").run();
+}
+// Cuotas propias (v1): el rol Vecino necesita fee:read para ver «Mis cuotas».
+// El alcance sigue limitado en permissions.js: solo sus propios recibos; un
+// inquilino no tiene perfiles de propietario y sigue sin acceso.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'user-fee-read-v1'").get()) {
+  const role = db.prepare("SELECT id, permisos FROM roles WHERE nombre = 'user'").get();
+  const permisos = JSON.parse(role?.permisos || "[]");
+  if (role && !permisos.includes("fee:read"))
+    db.prepare("UPDATE roles SET permisos = ? WHERE id = ?").run(
+      JSON.stringify([...permisos, "fee:read"]),
+      role.id,
+    );
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('user-fee-read-v1')").run();
 }
 // Biblioteca documental (v1): los documentos existentes quedan en la raíz y
 // los roles que pueden gestionar archivos conservan también la lectura.

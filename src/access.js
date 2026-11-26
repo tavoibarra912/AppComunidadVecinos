@@ -422,10 +422,13 @@ export function notificationAccess(req, res, next) {
     const ownerId = req.body?.ownerId;
     if (!ownerId || !data.owners.some((o) => o.id === ownerId))
       return res.status(400).json({ error: "El propietario indicado no existe." });
+    // El residente puede dejar constancia en su propio buzón al enviar su
+    // documentación (acuse de recibo); se limita a avisos de información.
+    const selfReceipt = !adminInbox && permit("owner:documents:submit", ownerId);
     if (
       !(adminInbox
         ? permit("owner:documents:submit", ownerId) || permit("owner:manage", ownerId)
-        : permit("owner_notification:send", ownerId))
+        : permit("owner_notification:send", ownerId) || selfReceipt)
     )
       return deny(res);
     if (!adminInbox && !permit("document:approve", ownerId)) req.body.type = "info";

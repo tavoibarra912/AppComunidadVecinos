@@ -553,6 +553,69 @@ test("notificaciones: eliminar avisos y notificaciones con permiso", async () =>
   );
 });
 
+test("cuotas: el vecino consulta solo sus recibos y el inquilino sigue sin acceso", async () => {
+  const mine = await owner("/fees/mine");
+  assert.equal(mine.status, 200, JSON.stringify(mine.data));
+  assert.equal(mine.data.canManage, false);
+  const ownIds = db
+    .prepare("SELECT id FROM owners WHERE userId='user-urucp1'")
+    .all()
+    .map((row) => row.id);
+  for (const receipt of mine.data.receipts) {
+    const snapshot = JSON.parse(
+      db.prepare("SELECT snapshot FROM fee_receipts WHERE id=?").get(receipt.id).snapshot,
+    );
+    assert.ok(
+      snapshot.owners.some((o) => ownIds.includes(o.id)),
+      "el recibo debe pertenecer a un perfil del propio vecino",
+    );
+  }
+  // El inquilino no recibe cuotas por ser inquilino.
+  assert.equal((await tenant("/fees/mine")).status, 403);
+  // Y el vecino no puede gestionar la comunidad.
+  const communityId = (await owner("/bootstrap")).data.communities[0].id;
+  assert.equal(
+    (await owner(`/fees/communities/${communityId}/preview`, "POST", {})).status,
+    403,
+  );
+});
+
+test("avisos y documentos: el propietario no puede borrar lo que solo puede subir", async () => {
+  // Acuse en su propio buzón al enviar documentación: se admite, pero el
+  // servidor fuerza el tipo informativo porque no tiene document:approve.
+  const self = await owner("/notifications/owner-notifications", "POST", {
+    ownerId: "own-seed-1",
+    title: "Documentación enviada para aprobación",
+    type: "warning",
+    message: "Acuse del envío",
+  });
+  assert.equal(self.status, 201, JSON.stringify(self.data));
+  assert.equal(self.data.type, "info");
+  assert.ok(
+    (await owner("/notifications/owner-notifications")).data.some((n) => n.id === self.data.id),
+  );
+  // No puede escribir en el buzón de otro propietario.
+  const ajeno = await owner("/notifications/owner-notifications", "POST", {
+    ownerId: "own-seed-2",
+    title: "Aviso ajeno",
+    message: "No debería crearse",
+  });
+  assert.equal(ajeno.status, 403);
+
+  // En su expediente puede subir y renombrar, pero no eliminar.
+  const form = new FormData();
+  form.append("entityType", "owner");
+  form.append("entityId", "own-seed-1");
+  form.append("category", "document");
+  form.append("files", new Blob(["%PDF-1.4\n%%EOF"], { type: "application/pdf" }), "recibo.pdf");
+  const uploaded = await owner("/documents", "POST", form);
+  assert.equal(uploaded.status, 201, JSON.stringify(uploaded.data));
+  const id = uploaded.data[0].id;
+  assert.equal((await owner(`/documents/${id}`, "PATCH", { name: "recibo-2.pdf" })).status, 200);
+  assert.equal((await owner(`/documents/${id}`, "DELETE")).status, 403);
+  assert.equal((await admin(`/documents/${id}`, "DELETE")).status, 200);
+});
+
 test("roles personalizados: permisos efectivos, sin borrar roles asignados por ID", async () => {
   const role = await admin("/admin/roles", "POST", {
     nombre: "Lectura personalizada",
