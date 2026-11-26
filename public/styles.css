@@ -6215,6 +6215,15 @@ dialog.is-readonly .doc-file-actions .btn-delete {
   flex: 0 1 auto;
 }
 
+.notification-channel-group .checkbox-line {
+  flex: 1 1 180px;
+}
+
+.notification-channel-group .field-hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 .login-maintenance {
   margin: 0 0 18px;
   padding: 12px 14px;

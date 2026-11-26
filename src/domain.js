@@ -1,4 +1,9 @@
 import { db, normalizePropertyResidency } from "./db.js";
+import {
+  hasCommunityCommunications,
+  normalizeNotificationPreference,
+  serializeNotificationChannels,
+} from "../public/js/notification-channels.js";
 
 export function getLocalDateInputValue(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -314,6 +319,18 @@ export function upsertTenant(payload, tenantId) {
 
   const existing = tenantId ? db.prepare("SELECT * FROM tenants WHERE id = ?").get(tenantId) : null;
   const userId = payload.userId !== undefined ? payload.userId : existing?.userId || "";
+  const notificationPreference = hasCommunityCommunications(payload.authorizations)
+    ? normalizeNotificationPreference(
+        payload.notificationPreference ?? existing?.notificationPreference ?? "email",
+        {
+          emailVerified: payload.emailVerified ?? !!existing?.emailVerified,
+          phoneVerified: payload.phoneVerified ?? !!existing?.phoneVerified,
+          fallback: existing?.notificationPreference || "email",
+        },
+      )
+    : serializeNotificationChannels(
+        existing?.notificationPreference || payload.notificationPreference || "email",
+      );
   const ownerIds = propertyOwnerIds(property);
   if (!payload.ownerId) payload = { ...payload, ownerId: existing?.ownerId || ownerIds[0] || "" };
   if (!ownerIds.includes(payload.ownerId))
@@ -350,7 +367,7 @@ export function upsertTenant(payload, tenantId) {
       payload.phoneVerifiedAt || "",
       payload.emailVerified ? 1 : 0,
       payload.emailVerifiedAt || "",
-      payload.notificationPreference || "email",
+      notificationPreference,
       payload.currency || "EUR",
       JSON.stringify(payload.documents || {}),
       userId,
@@ -386,7 +403,7 @@ export function upsertTenant(payload, tenantId) {
       payload.phoneVerifiedAt || "",
       payload.emailVerified ? 1 : 0,
       payload.emailVerifiedAt || "",
-      payload.notificationPreference || "email",
+      notificationPreference,
       payload.currency || "EUR",
       JSON.stringify(payload.documents || {}),
       userId,

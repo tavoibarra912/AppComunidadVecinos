@@ -12,6 +12,7 @@ import {
 import { contactError, bankAccountError, identityDocumentError } from "../validation.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { avisarCambioOwner } from "../avisos-cambios.js";
+import { normalizeNotificationPreference } from "../../public/js/notification-channels.js";
 import { registerCascadeRoutes } from "../cascade-delete.js";
 import { removeEntityFiles } from "./documents.js";
 
@@ -63,16 +64,20 @@ function findOwner(id) {
 /** Campos LPH que no dependen del inmueble: se normalizan antes de guardar. */
 function ownerLphFields(data, existing = {}) {
   const votingRights = data.votingRights ?? existing.votingRights ?? "active";
-  const notificationPreference =
-    data.notificationPreference ?? existing.notificationPreference ?? "email";
+  const notificationPreference = normalizeNotificationPreference(
+    data.notificationPreference ?? existing.notificationPreference ?? "email",
+    {
+      emailVerified: data.emailVerified ?? existing.emailVerified ?? false,
+      phoneVerified: data.phoneVerified ?? existing.phoneVerified ?? false,
+      fallback: existing.notificationPreference || "email",
+    },
+  );
   return {
     votingRights: votingRights === "suspended" ? "suspended" : "active",
     legalRepresentative: String(data.legalRepresentative ?? existing.legalRepresentative ?? "")
       .trim()
       .slice(0, 100),
-    notificationPreference: ["email", "postal", "phone"].includes(notificationPreference)
-      ? notificationPreference
-      : "email",
+    notificationPreference,
   };
 }
 
