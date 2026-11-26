@@ -40,6 +40,10 @@ import {
   ownershipChanged,
   ownerSavedMessage,
 } from "../owner-self-service.js";
+import {
+  parseNotificationChannels,
+  serializeNotificationChannels,
+} from "../notification-channels.js";
 import { createDataTable } from "../table.js";
 import { createExportDropdown } from "../export-client.js";
 import { createDocumentLibrary } from "../document-library.js";
@@ -850,6 +854,8 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
       ) {
         if (key === "isMember") {
           ownerForm.elements[key].value = String(value);
+        } else if (key === "notificationPreference") {
+          setOwnerNotificationChannels(value);
         } else {
           ownerForm.elements[key].value = value || "";
         }
@@ -894,6 +900,7 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     tabDocsBadge.textContent = `${["dni", "bankReceipt", "propertyDeed"].filter((key) => editingDocs.current[key]).length}/3`;
   updateOwnerUserSelect(o ? o.userId || "" : "");
   updateCommunityTabGating();
+  resetContactVerification(o);
   updateOwnerLphFieldAccess();
   updateCanalOptions();
 
@@ -902,7 +909,6 @@ export function openOwnerEditor(id = null, defaultTab = "general", { readOnly = 
     state.ui.ownerEditorPropertyContext = null;
   }
 
-  resetContactVerification(o);
   applyOwnerDialogReadOnly(readOnly);
   switchOwnerDialogTab(defaultTab);
   // La foto del formulario se toma una vez cargados todos los datos: así abrir
@@ -1037,39 +1043,67 @@ function updateCommunityTabGating() {
 /** Los datos LPH los gestiona la administración; el propietario solo consulta los suyos. */
 function updateOwnerLphFieldAccess() {
   const locked = ownerDialogReadOnly || state.activeRole === "owner";
-  ["votingRights", "legalRepresentative", "notificationPreference"].forEach((name) => {
+  ["votingRights", "legalRepresentative"].forEach((name) => {
     const field = ownerForm.elements[name];
     if (!field) return;
     field.disabled = locked;
     field.closest("label")?.classList.toggle("field-locked", locked);
   });
+  for (const input of ownerNotificationInputs()) {
+    input.disabled = locked;
+    input.closest("label")?.classList.toggle("field-locked", locked);
+  }
+}
+
+function ownerNotificationInputs() {
+  return [...ownerForm.querySelectorAll('input[name="notificationPreference"]')];
+}
+
+function setOwnerNotificationChannels(value) {
+  const selected = new Set(parseNotificationChannels(value));
+  for (const input of ownerNotificationInputs()) input.checked = selected.has(input.value);
+}
+
+/** Devuelve undefined si el bloque está bloqueado para no imponer un valor. */
+function ownerNotificationPreferenceValue() {
+  const enabled = ownerNotificationInputs().filter((input) => !input.disabled);
+  if (!enabled.length) return undefined;
+  return serializeNotificationChannels(
+    enabled.filter((input) => input.checked).map((input) => input.value),
+  );
 }
 
 /** Opciones del canal habilitadas solo con el contacto correspondiente verificado. */
 function updateCanalOptions() {
-  const select = ownerForm.elements.notificationPreference;
-  if (!select) return;
-  const emailOption = select.querySelector('option[value="email"]');
-  const phoneOption = select.querySelector('option[value="phone"]');
-  const postalOption = select.querySelector('option[value="postal"]');
-  if (emailOption) {
-    const verified = contactVerify.email.verified;
-    emailOption.disabled = !verified;
-    emailOption.textContent = verified
-      ? "Correo electrónico"
-      : "Correo electrónico (pendiente de verificación)";
-    emailOption.style.color = verified ? "" : "#9aa7b5";
+  const inputs = ownerNotificationInputs();
+  if (!inputs.length) return;
+  const locked = ownerDialogReadOnly || state.activeRole === "owner";
+  const verifiedByChannel = {
+    email: contactVerify.email.verified,
+    phone: contactVerify.phone.verified,
+    postal: true,
+  };
+  const labels = {
+    email: "Correo electrónico",
+    postal: "Domicilio postal",
+    phone: "Teléfono / Mensajería",
+  };
+  for (const input of inputs) {
+    const verified = verifiedByChannel[input.value] !== false;
+    const unavailable = locked || !verified;
+    input.disabled = unavailable;
+    input.closest("label")?.classList.toggle("field-locked", unavailable);
+    const text = input.closest("label")?.querySelector(".checkbox-line-text");
+    if (text)
+      text.textContent = !verified && !locked
+        ? `${labels[input.value] || input.value} (pendiente de verificación)`
+        : labels[input.value] || input.value;
+    if (!verified && !locked) input.checked = false;
   }
-  if (phoneOption) {
-    const verified = contactVerify.phone.verified;
-    phoneOption.disabled = !verified;
-    phoneOption.textContent = verified
-      ? "Teléfono / Mensajería"
-      : "Teléfono / Mensajería (pendiente de verificación)";
-    phoneOption.style.color = verified ? "" : "#9aa7b5";
+  if (!locked && !inputs.some((input) => input.checked && !input.disabled)) {
+    const postal = inputs.find((input) => input.value === "postal");
+    if (postal) postal.checked = true;
   }
-  if (postalOption) postalOption.style.color = "";
-  if (select.selectedOptions[0]?.disabled) select.value = "postal";
 }
 
 export function openOwnerDetail(id) {
@@ -1793,6 +1827,8 @@ ownerForm.addEventListener("submit", async (event) => {
   // Las casillas participan en el aviso de cambios sin guardar; la API recibe
   // las diferencias tipadas, con la versión de cada inmueble, más abajo.
   delete data.residentPropertyIds;
+  const notificationPreference = ownerNotificationPreferenceValue();
+  if (notificationPreference !== undefined) data.notificationPreference = notificationPreference;
 
   [
     "name",

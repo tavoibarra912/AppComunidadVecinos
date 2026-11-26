@@ -222,6 +222,43 @@ test("upsertTenant: crea inquilino vinculado a inmueble y propietario", () => {
   assert.equal(tenant.propertyId, "prop-8");
 });
 
+test("upsertTenant: varios canales con autorización, verificación y conservación", () => {
+  createOwner("own-9");
+  createProperty("prop-11", "com-1", ["own-9"]);
+  const base = {
+    ownerId: "own-9",
+    propertyId: "prop-11",
+    name: "Inquilino",
+    surname: "Canales",
+    documentType: "DNI",
+    documentId: "22222222J",
+    contractStart: "2026-01-01",
+    phone: "600000001",
+    email: "canales@test.es",
+    authorizations: ["community_communications"],
+    emailVerified: true,
+    phoneVerified: true,
+    notificationPreference: "phone,postal,email",
+  };
+  upsertTenant(base, "tenant-test-2");
+  const saved = () =>
+    db.prepare("SELECT notificationPreference FROM tenants WHERE id = 'tenant-test-2'").get()
+      .notificationPreference;
+  assert.equal(saved(), "email,postal,phone");
+
+  upsertTenant(
+    { ...base, authorizations: [], notificationPreference: "email,phone" },
+    "tenant-test-2",
+  );
+  assert.equal(saved(), "email,postal,phone");
+
+  upsertTenant(
+    { ...base, emailVerified: false, phoneVerified: false, notificationPreference: "email,phone" },
+    "tenant-test-2",
+  );
+  assert.equal(saved(), "postal");
+});
+
 test("upsertTenant: falla si el inmueble no existe", () => {
   assert.throws(
     () =>

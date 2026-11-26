@@ -3718,17 +3718,26 @@
             </label>
             <p class="field-hint full">
               Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
-              están verificados en la pestaña Contacto y Domicilio. La preferencia se guarda en la
-              ficha; el envío de avisos usa las preferencias de la cuenta de usuario.
+              están verificados en la pestaña Contacto y Domicilio. Puedes elegir varios canales. La
+              preferencia se guarda en la ficha; el envío de avisos usa las preferencias de la
+              cuenta de usuario.
             </p>
-            <label class="full"
-              >Canal preferente de notificaciones (LPH art. 9) (opcional)
-              <select name="notificationPreference">
-                <option value="email" selected>Correo electrónico</option>
-                <option value="postal">Domicilio postal</option>
-                <option value="phone">Teléfono / Mensajería</option>
-              </select>
-            </label>
+            <fieldset class="full settings-checkgroup notification-channel-group">
+              <legend>Canal preferente de notificaciones (LPH art. 9) (opcional)</legend>
+              <label class="checkbox-line">
+                <input type="checkbox" name="notificationPreference" value="email" checked />
+                <span class="checkbox-line-text">Correo electrónico</span>
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" name="notificationPreference" value="postal" />
+                <span class="checkbox-line-text">Domicilio postal</span>
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" name="notificationPreference" value="phone" />
+                <span class="checkbox-line-text">Teléfono / Mensajería</span>
+              </label>
+              <span class="field-hint">Puedes elegir varios canales.</span>
+            </fieldset>
           </div>
         </section>
 
@@ -5084,16 +5093,24 @@
             </fieldset>
             <p class="field-hint full">
               Las opciones del canal se habilitan cuando el teléfono o el email correspondiente
-              están verificados en la pestaña Contacto y Domicilio.
+              están verificados en la pestaña Contacto y Domicilio. Puedes elegir varios canales.
             </p>
-            <label class="full"
-              >Canal preferente de notificaciones (LPH art. 9) (opcional)
-              <select name="notificationPreference">
-                <option value="email" selected>Correo electrónico</option>
-                <option value="postal">Domicilio postal</option>
-                <option value="phone">Teléfono / Mensajería</option>
-              </select>
-            </label>
+            <fieldset class="full settings-checkgroup notification-channel-group">
+              <legend>Canal preferente de notificaciones (LPH art. 9) (opcional)</legend>
+              <label class="checkbox-line">
+                <input type="checkbox" name="notificationPreference" value="email" checked />
+                <span class="checkbox-line-text">Correo electrónico</span>
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" name="notificationPreference" value="postal" />
+                <span class="checkbox-line-text">Domicilio postal</span>
+              </label>
+              <label class="checkbox-line">
+                <input type="checkbox" name="notificationPreference" value="phone" />
+                <span class="checkbox-line-text">Teléfono / Mensajería</span>
+              </label>
+              <span class="field-hint">Puedes elegir varios canales.</span>
+            </fieldset>
           </div>
         </section>
 

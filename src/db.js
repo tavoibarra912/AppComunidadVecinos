@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_BRAND } from "./branding.js";
 import { isTenantContractActive, localDateISO } from "../public/js/permissions.js";
+import { serializeNotificationChannels } from "../public/js/notification-channels.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = process.env.APP_DATA_DIR || path.join(__dirname, "..", "data");
@@ -1173,7 +1174,8 @@ export function ownerFromRow(row) {
     currency: row.currency,
     votingRights: row.votingRights || "active",
     legalRepresentative: row.legalRepresentative || "",
-    notificationPreference: row.notificationPreference || "email",
+    notificationPreference:
+      serializeNotificationChannels(row.notificationPreference || "email") || "email",
     userId: row.userId || "",
     notes: row.notes,
     propertyType: row.propertyType,
@@ -1358,7 +1360,8 @@ export function tenantFromRow(row) {
     phoneVerifiedAt: row.phoneVerifiedAt || "",
     emailVerified: !!row.emailVerified,
     emailVerifiedAt: row.emailVerifiedAt || "",
-    notificationPreference: row.notificationPreference || "email",
+    notificationPreference:
+      serializeNotificationChannels(row.notificationPreference || "email") || "email",
     currency: row.currency || "EUR",
     userId: row.userId || "",
     documents: parseJson(row.documents, {}),

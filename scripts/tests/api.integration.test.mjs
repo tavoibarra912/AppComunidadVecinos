@@ -690,16 +690,16 @@ test("propietario: la administración persiste los datos LPH en la ficha", async
       ...before,
       votingRights: "suspended",
       legalRepresentative: "Apoderado de Prueba · 12345678Z",
-      notificationPreference: "postal",
+      notificationPreference: "email,postal,phone",
     });
     assert.equal(changed.status, 200, JSON.stringify(changed.data));
     assert.equal(changed.data.votingRights, "suspended");
     assert.equal(changed.data.legalRepresentative, "Apoderado de Prueba · 12345678Z");
-    assert.equal(changed.data.notificationPreference, "postal");
+    assert.equal(changed.data.notificationPreference, "email,postal,phone");
     const saved = (await admin("/owners/own-seed-2")).data;
     assert.equal(saved.votingRights, "suspended");
     assert.equal(saved.legalRepresentative, "Apoderado de Prueba · 12345678Z");
-    assert.equal(saved.notificationPreference, "postal");
+    assert.equal(saved.notificationPreference, "email,postal,phone");
   } finally {
     await admin("/owners/own-seed-2", "PUT", {
       ...before,

@@ -36,6 +36,10 @@ import { openPropertyDetail, applyEditorReturnContext } from "./inmuebles.js";
 import { openOwnerDetail, openOwnerEditor } from "./propietarios.js";
 import { createDocumentLibrary } from "../document-library.js";
 import { ownerHasSameDocument } from "../tenant-form.js";
+import {
+  parseNotificationChannels,
+  serializeNotificationChannels,
+} from "../notification-channels.js";
 
 import { DocumentValidator, openDocViewer } from "../docs-engine.js";
 
@@ -178,30 +182,57 @@ function tenantResetContactVerification(t) {
   );
 }
 
+function tenantNotificationInputs() {
+  return [...tenantForm.querySelectorAll('input[name="notificationPreference"]')];
+}
+
+function setTenantNotificationChannels(value) {
+  const selected = new Set(parseNotificationChannels(value));
+  for (const input of tenantNotificationInputs()) input.checked = selected.has(input.value);
+}
+
+/** Devuelve undefined si el bloque está bloqueado para no imponer un valor. */
+function tenantNotificationPreferenceValue() {
+  const enabled = tenantNotificationInputs().filter((input) => !input.disabled);
+  if (!enabled.length) return undefined;
+  return serializeNotificationChannels(
+    enabled.filter((input) => input.checked).map((input) => input.value),
+  );
+}
+
 function tenantUpdateCanalOptions() {
-  const select = tenantForm.elements.notificationPreference;
-  if (!select) return;
-  const emailOption = select.querySelector('option[value="email"]');
-  const phoneOption = select.querySelector('option[value="phone"]');
-  const postalOption = select.querySelector('option[value="postal"]');
-  if (emailOption) {
-    const verified = tenantContactVerify.email.verified;
-    emailOption.disabled = !verified;
-    emailOption.textContent = verified
-      ? "Correo electrónico"
-      : "Correo electrónico (pendiente de verificación)";
-    emailOption.style.color = verified ? "" : "#9aa7b5";
+  const inputs = tenantNotificationInputs();
+  if (!inputs.length) return;
+  const authorized = !!tenantForm.querySelector(
+    'input[name="authorizations"][value="community_communications"]',
+  )?.checked;
+  const locked = tenantDialogReadOnly || !authorized;
+  const verifiedByChannel = {
+    email: tenantContactVerify.email.verified,
+    phone: tenantContactVerify.phone.verified,
+    postal: true,
+  };
+  const labels = {
+    email: "Correo electrónico",
+    postal: "Domicilio postal",
+    phone: "Teléfono / Mensajería",
+  };
+  for (const input of inputs) {
+    const verified = verifiedByChannel[input.value] !== false;
+    const unavailable = locked || !verified;
+    input.disabled = unavailable;
+    input.closest("label")?.classList.toggle("field-locked", unavailable);
+    const text = input.closest("label")?.querySelector(".checkbox-line-text");
+    if (text)
+      text.textContent = !verified && !locked
+        ? `${labels[input.value] || input.value} (pendiente de verificación)`
+        : labels[input.value] || input.value;
+    if (!verified && !locked) input.checked = false;
   }
-  if (phoneOption) {
-    const verified = tenantContactVerify.phone.verified;
-    phoneOption.disabled = !verified;
-    phoneOption.textContent = verified
-      ? "Teléfono / Mensajería"
-      : "Teléfono / Mensajería (pendiente de verificación)";
-    phoneOption.style.color = verified ? "" : "#9aa7b5";
+  if (!locked && !inputs.some((input) => input.checked && !input.disabled)) {
+    const postal = inputs.find((input) => input.value === "postal");
+    if (postal) postal.checked = true;
   }
-  if (postalOption) postalOption.style.color = "";
-  if (select.selectedOptions[0]?.disabled) select.value = "postal";
 }
 
 /**
@@ -210,12 +241,7 @@ function tenantUpdateCanalOptions() {
  * controles al abrir el editor, así que este estado debe aplicarse después.
  */
 function syncTenantNotificationPreference() {
-  const select = tenantForm.elements.notificationPreference;
-  if (!select) return;
-  const checkbox = tenantForm.querySelector(
-    'input[name="authorizations"][value="community_communications"]',
-  );
-  select.disabled = tenantDialogReadOnly || !(checkbox && checkbox.checked);
+  tenantUpdateCanalOptions();
 }
 
 function tenantRecords() {
@@ -629,6 +655,7 @@ export function openTenantEditor(
     tenantForm.elements.documentType.value = "DNI";
   }
   tenantNotes?.setValue(tenantForm.elements.authorizationNotes.value || "");
+  setTenantNotificationChannels(tenant?.notificationPreference || "email");
   renderTenantAuthorizations(Array.isArray(tenant?.authorizations) ? tenant.authorizations : []);
 
   updateTenantPropertyOptions(tenantOwnerSelect.value, editingTenantPropertyId || "");
@@ -1233,6 +1260,8 @@ tenantForm.addEventListener("submit", async (event) => {
   }
   const formData = new FormData(tenantForm);
   const values = Object.fromEntries(formData);
+  const notificationPreference = tenantNotificationPreferenceValue();
+  if (notificationPreference !== undefined) values.notificationPreference = notificationPreference;
   const phone = (values.phone || "").replace(/\D/g, "");
   const email = (values.email || "").trim().toLowerCase();
   const problems = [];
