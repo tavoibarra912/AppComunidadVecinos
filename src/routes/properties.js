@@ -145,9 +145,8 @@ function validatePropertyPayload(
   }
 
   let cadastralRef = normalizeCadastralRef(data.cadastralRef);
-  let requestedParcel = null;
+  const requestedParcel = data.parcelId ? findParcel(String(data.parcelId)) : null;
   if (data.parcelId) {
-    requestedParcel = findParcel(String(data.parcelId));
     if (!requestedParcel) return "La parcela indicada no existe.";
     if ((requestedParcel.communityId || "") !== (data.communityId || ""))
       return "La parcela indicada pertenece a otra comunidad.";
@@ -529,6 +528,16 @@ router.put(
     const existing = findProperty(req.params.id);
     if (!existing) return res.status(404).json({ error: "Inmueble no encontrado." });
     const data = { ...existing, ...req.body };
+    // La referencia pertenece al censo de la comunidad. Al trasladar el
+    // inmueble no se arrastra la ficha anterior: si el cliente reenvía el
+    // objeto completo, se descarta la referencia y la parcela de origen.
+    if ((data.communityId || "") !== existing.communityId) {
+      const incoming = normalizeCadastralRef(req.body.cadastralRef);
+      const current = normalizeCadastralRef(existing.cadastralRef);
+      if (!incoming || incoming === current) data.cadastralRef = "";
+      const parcel = data.parcelId ? findParcel(String(data.parcelId)) : null;
+      if (parcel && parcel.communityId !== data.communityId) data.parcelId = "";
+    }
     if (
       req.body.ownerPercentages &&
       typeof req.body.ownerPercentages === "object" &&

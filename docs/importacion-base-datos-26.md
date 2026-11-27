@@ -67,7 +67,7 @@ La carpeta de salida debe quedar dentro del proyecto y no puede ser `data/` ni
 | Propietario: observación | A       | `Referencia dentro de la comunidad de Regantes: <Ref.>`                   |
 | Inmueble: identificador  | O + P   | `I<número incremental> <dirección O + P>`                                 |
 | Inmueble: tipo / uso     | —       | `Parcela` (corrección del titular) / `Residencial` (Book1)                |
-| Inmueble: ref. catastral | F       | `Ref. Catastral` (formato, control y ausencia de repeticiones pendientes) |
+| Inmueble: ref. catastral | F       | `Ref. Catastral` (formato obligatorio; checksum inválido se conserva con aviso) |
 | Inmueble: dirección      | O + P   | Concatenadas con un espacio                                               |
 | Inmueble: superficie     | I       | `Superficie C.R.`                                                         |
 | Inmueble: CP             | T       | `Codigo Postal`                                                           |
@@ -88,11 +88,12 @@ Decisiones sobre el mapping:
   documentos del censo que aún fallan el formato o el control excluyen al
   propietario y su cuenta. Las filas sin documento tampoco crean identidades. Los usuarios y contraseñas
   siguen derivados del documento original, sin añadir ceros a las credenciales.
-- **Referencias catastrales**: las ausentes, de formato incorrecto o con caracteres
-  de control incorrectos excluyen el inmueble. Las referencias repetidas no son un
-  error: son unidades de la misma finca matriz y se importan agrupadas en una fila
-  de `parcels`, compartiendo referencia catastral. En el censo actual se excluyen
-  48B y 139F por ausencia; 140A/140B y 179A–179E quedan agrupadas en sus fincas.
+- **Referencias catastrales**: solo las ausentes o con formato incorrecto excluyen
+  el inmueble. Un checksum inválido se importa con advertencia para revisarlo después.
+  Las referencias repetidas no son un error: son unidades de la misma finca matriz y
+  se importan agrupadas en una fila de `parcels`, compartiendo referencia catastral.
+  En el censo actual se excluyen 48B y 139F por ausencia; 140A/140B y 179A–179E
+  quedan agrupadas en sus fincas, y cualquier control inválido queda avisado.
 - **Reglas independientes**: un documento inválido no elimina un inmueble con
   referencia válida; queda sin titular. Una referencia inválida no elimina un socio
   cuya identidad sea válida; queda sin ese vínculo. Nunca se enlazan filas solo por

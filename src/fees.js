@@ -1688,15 +1688,13 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
         `SELECT * FROM properties p WHERE communityId=?
       AND EXISTS (SELECT 1 FROM json_each(p.ownerIds) o WHERE o.value=?) ORDER BY plot, id`,
       )
-      .all(communityId, ownerId))
+      .all(communityId, ownerId)) {
+      const parcelRef = parcelById.get(entry.parcelId)?.cadastralRef || entry.cadastralRef;
       certificateProperties.set(
         entry.id,
-        `${entry.plot || entry.id}${
-          (parcelById.get(entry.parcelId)?.cadastralRef || entry.cadastralRef)
-            ? ` · ${parcelById.get(entry.parcelId)?.cadastralRef || entry.cadastralRef}`
-            : ""
-        }`,
+        `${entry.plot || entry.id}${parcelRef ? ` · ${parcelRef}` : ""}`,
       );
+    }
     const hasHistory = db
       .prepare(
         `SELECT 1 FROM fee_receipts r WHERE communityId=?

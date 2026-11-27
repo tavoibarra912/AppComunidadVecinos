@@ -3036,8 +3036,28 @@ test("parcelas: agrupa unidades de la misma finca y bloquea referencias de otra 
       undefined,
       "la última unidad elimina la parcela",
     );
+
+    // Un traslado con el objeto completo no arrastra la referencia de origen.
+    db.prepare(
+      "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,participationCoef) VALUES('prop-parcel-move','com-parcel-test','Parcelas Test','Unidad trasladada','vivienda','Calle Parcela 2','Madrid','50')",
+    ).run();
+    const moving = (await admin("/properties/prop-parcel-move")).data;
+    const located = await admin("/properties/prop-parcel-move", "PUT", {
+      ...moving,
+      cadastralRef: "7837301VG8173B0001TT",
+    });
+    assert.equal(located.status, 200, JSON.stringify(located.data));
+    const moved = await admin("/properties/prop-parcel-move", "PUT", {
+      ...located.data,
+      communityId: "com-seed-2",
+    });
+    assert.equal(moved.status, 200, JSON.stringify(moved.data));
+    assert.equal(moved.data.cadastralRef, "");
+    assert.equal(moved.data.parcelId, "");
   } finally {
-    db.prepare("DELETE FROM properties WHERE id IN ('prop-parcel-a','prop-parcel-b','prop-parcel-other')").run();
+    db.prepare(
+      "DELETE FROM properties WHERE id IN ('prop-parcel-a','prop-parcel-b','prop-parcel-other','prop-parcel-move')",
+    ).run();
     db.prepare("DELETE FROM parcels WHERE communityId='com-parcel-test'").run();
     db.prepare("DELETE FROM communities WHERE id='com-parcel-test'").run();
   }

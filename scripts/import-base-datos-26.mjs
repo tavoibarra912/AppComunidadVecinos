@@ -138,10 +138,9 @@ export function parseArea(raw) {
   return String(Math.round(number * 100) / 100);
 }
 
-/** Normaliza una referencia catastral con formato y control correctos. */
+/** Normaliza una referencia catastral. El control se valida por separado. */
 export function normalizeCadastralRef(raw) {
-  const value = normalizeCadastralReference(cellText(raw));
-  return cadastralReferenceProblem(value) ? "" : value;
+  return normalizeCadastralReference(cellText(raw));
 }
 
 /** Parser CSV mínimo con soporte de comillas y saltos de línea dentro de celdas. */
@@ -322,7 +321,9 @@ export function buildPlan(
   for (const cells of table.slice(headerIndex + 1)) {
     const plot = cellText(cells[COL.pcla]);
     const reference = normalizeCadastralRef(cells[COL.cadastralRef]);
-    if (!plot || !reference) continue;
+    const referenceProblem = cadastralReferenceProblem(reference);
+    if (!plot || !reference || referenceProblem === "missing" || referenceProblem === "format")
+      continue;
     if (!cadastralPlots.has(reference)) cadastralPlots.set(reference, new Set());
     cadastralPlots.get(reference).add(plot);
   }
@@ -393,21 +394,26 @@ export function buildPlan(
     const referenceProblem = cadastralReferenceProblem(row.cadastralRef);
     const cadastralRef = normalizeCadastralRef(row.cadastralRef);
     const repeatedReference = cadastralRef && cadastralPlots.get(cadastralRef)?.size > 1;
-    const importProperty = !referenceProblem;
-    if (!importProperty) {
+    // Un checksum inválido no impide importar: se conserva la referencia tal
+    // como viene del censo y se avisa para revisarla. Solo faltan datos cuando
+    // la referencia está ausente o no tiene el formato catastral.
+    const referenceUsable = referenceProblem === "" || referenceProblem === "checksum";
+    if (!referenceUsable) {
       const reason =
         referenceProblem === "missing"
           ? "referencia_ausente"
-          : referenceProblem === "format"
-            ? "referencia_formato"
-            : "referencia_control";
+          : "referencia_formato";
       const explanation =
         referenceProblem === "missing"
           ? "Referencia catastral ausente"
-          : referenceProblem === "format"
-            ? "Referencia catastral con formato incorrecto"
-            : "Referencia catastral con caracteres de control incorrectos";
+          : "Referencia catastral con formato incorrecto";
       exclude(rowNumber, row, "inmueble", reason, `${explanation}: no se importa el inmueble.`);
+    } else if (referenceProblem === "checksum") {
+      warn(
+        rowNumber,
+        row.pcla,
+        "Referencia catastral con caracteres de control incorrectos: se importa con advertencia.",
+      );
     } else if (repeatedReference) {
       // Un mismo terreno puede estar dividido en varias parcelas censadas: las
       // unidades comparten finca matriz y se importan agrupadas.
@@ -456,9 +462,9 @@ export function buildPlan(
         existing.email ||= row.email;
         existing.address ||= address;
         existing.postalCode ||= row.codigoPostal;
-        existing.cadastralRef ||= importProperty ? cadastralRef : "";
-        existing.areaM2 ||= importProperty ? row.areaM2 : "";
-        existing.plot ||= importProperty ? plot : "";
+        existing.cadastralRef ||= referenceUsable ? cadastralRef : "";
+        existing.areaM2 ||= referenceUsable ? row.areaM2 : "";
+        existing.plot ||= referenceUsable ? plot : "";
         existing.notes ||= rowNotes(row, row.cuotaSuperficie);
         if (existing.phone) existing.phoneVerified = 1;
         if (existing.email) existing.emailVerified = 1;
@@ -469,7 +475,7 @@ export function buildPlan(
             `El documento ${row.document} aparece con otro titular («${row.titular}» frente a «${existing.titular}»): se unifica la ficha.`,
           );
         }
-        if (importProperty) existing.propertyIds.push(`prop-base26-${slug(row.pcla)}`);
+        if (referenceUsable) existing.propertyIds.push(`prop-base26-${slug(row.pcla)}`);
       } else {
         const { name, surname } = splitTitular(row.titular);
         if (!name) warn(rowNumber, row.pcla, "Titular sin nombre utilizable.");
@@ -498,17 +504,17 @@ export function buildPlan(
           province: community.province,
           communityId: community.id,
           communityName: community.name,
-          plot: importProperty ? plot : "",
-          cadastralRef: importProperty ? cadastralRef : "",
-          areaM2: importProperty ? row.areaM2 : "",
+          plot: referenceUsable ? plot : "",
+          cadastralRef: referenceUsable ? cadastralRef : "",
+          areaM2: referenceUsable ? row.areaM2 : "",
           notes: rowNotes(row, row.cuotaSuperficie),
           titular: row.titular,
-          propertyIds: importProperty ? [`prop-base26-${slug(row.pcla)}`] : [],
+          propertyIds: referenceUsable ? [`prop-base26-${slug(row.pcla)}`] : [],
         });
       }
     }
 
-    if (!importProperty) continue;
+    if (!referenceUsable) continue;
     if (row.areaM2) totalArea += Number(row.areaM2);
 
     properties.push({
@@ -717,8 +723,9 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
   for (const parcel of parcels) {
     const reference = normalizeCadastralReference(parcel.cadastralRef);
     const key = `${parcel.communityId}\u0000${reference}`;
-    if (cadastralReferenceProblem(reference) || parcelKeys.has(key))
-      throw new Error("El plan contiene una parcela sin referencia válida o repetida.");
+    const referenceProblem = cadastralReferenceProblem(reference);
+    if (!reference || referenceProblem === "format" || parcelKeys.has(key))
+      throw new Error("El plan contiene una parcela sin referencia o con formato inválido, o repetida.");
     parcelKeys.add(key);
   }
   for (const owner of plan.owners) {
@@ -732,15 +739,17 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
   for (const property of plan.properties) {
     const reference = normalizeCadastralReference(property.cadastralRef);
     const parcel = parcelById.get(property.parcelId);
+    const referenceProblem = cadastralReferenceProblem(reference);
     if (
-      cadastralReferenceProblem(reference) ||
+      !reference ||
+      referenceProblem === "format" ||
       !parcel ||
       parcel.cadastralRef !== reference ||
       parcel.communityId !== property.communityId ||
       property.ownerIds.some((id) => !ownerIds.has(id))
     )
       throw new Error(
-        "El plan contiene una referencia catastral inválida, una parcela incoherente o un propietario inexistente.",
+        "El plan contiene una referencia ausente o con formato inválido, una parcela incoherente o un propietario inexistente.",
       );
   }
   if (process.env.NODE_ENV === "production") {

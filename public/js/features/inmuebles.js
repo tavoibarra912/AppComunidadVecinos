@@ -97,10 +97,6 @@ function selectedPropertyCommunityId() {
   return propertyForm.elements.communityId?.value || "";
 }
 
-function normalizeCadastralRef(value) {
-  return normalizeCadastralReference(value);
-}
-
 /** Comunidades conocidas de un propietario (principal + inmuebles vinculados). */
 function ownerCommunityIds(owner) {
   const ids = new Set();
@@ -184,6 +180,13 @@ function handlePropertyCommunityChange() {
   const removed = prunePropertyPeopleForCommunity(selectedPropertyCommunityId());
   syncPropertyCoefficientRequirement();
   updatePropertyParcelSelect();
+  // La referencia pertenece al censo de origen: no se arrastra al cambiar de
+  // comunidad. El selector de parcela ya quedó limpio en el paso anterior.
+  const reference = propertyForm.elements.cadastralRef;
+  if (reference) {
+    reference.value = "";
+    reference.readOnly = false;
+  }
   renderPropertyOwnersTab();
   renderPropertyTenantsTab();
   if (removed > 0) {
@@ -928,7 +931,6 @@ function syncPropertyCadastralFromParcel() {
   input.value = parcel.cadastralRef;
   input.readOnly = true;
 }
-
 
 export function updatePropertyPeopleSelectors(
   selectedOwnerIds = [],
@@ -1675,7 +1677,7 @@ if (propertyForm.elements.communityId) {
 propertyForm.elements.parcelId?.addEventListener("change", syncPropertyCadastralFromParcel);
 propertyForm.elements.cadastralRef?.addEventListener("input", () => {
   const input = propertyForm.elements.cadastralRef;
-  input.value = normalizeCadastralRef(input.value).slice(0, 20);
+  input.value = normalizeCadastralReference(input.value).slice(0, 20);
 });
 // Selects de vinculación de propietarios e inquilinos: mismo combo buscador que comunidad
 makeSelectSearchable(document.querySelector("#property-owner-link-select"), "Buscar propietario…");
@@ -1734,7 +1736,7 @@ propertyForm.addEventListener("submit", async (event) => {
           : selectedTenantIds[0] || ""
         : "";
   const selectedParcel = (state.parcels || []).find((parcel) => parcel.id === values.parcelId);
-  const cadastralRef = normalizeCadastralRef(
+  const cadastralRef = normalizeCadastralReference(
     selectedParcel?.cadastralRef || values.cadastralRef,
   );
   const participationCoef = roundCoefficient(values.participationCoef);
@@ -1804,8 +1806,10 @@ propertyForm.addEventListener("submit", async (event) => {
       (property) => property.id === state.ui.editingPropertyId,
     );
     const legacyReference =
-      (editingProperty && normalizeCadastralRef(editingProperty.cadastralRef) === cadastralRef) ||
-      (selectedParcel && normalizeCadastralRef(selectedParcel.cadastralRef) === cadastralRef);
+      (editingProperty &&
+        normalizeCadastralReference(editingProperty.cadastralRef) === cadastralRef) ||
+      (selectedParcel &&
+        normalizeCadastralReference(selectedParcel.cadastralRef) === cadastralRef);
     if (referenceProblem && !(referenceProblem === "checksum" && legacyReference)) {
       messages.push(
         referenceProblem === "checksum"
@@ -1819,7 +1823,7 @@ propertyForm.addEventListener("submit", async (event) => {
         (property) =>
           property.id !== state.ui.editingPropertyId &&
           property.communityId !== values.communityId &&
-          normalizeCadastralRef(property.cadastralRef) === cadastralRef,
+          normalizeCadastralReference(property.cadastralRef) === cadastralRef,
       );
       if (duplicate) {
         messages.push(

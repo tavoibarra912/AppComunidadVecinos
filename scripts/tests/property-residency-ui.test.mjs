@@ -245,6 +245,28 @@ test("el alta puede reutilizar una parcela y completa la referencia catastral", 
   }
 });
 
+test("cambiar de comunidad limpia la referencia y la parcela seleccionada", () => {
+  const f = fixture();
+  f.state.communities.push({ id: "c2", name: "Otra comunidad" });
+  try {
+    f.ui.openPropertyEditor();
+    const { document } = f.window;
+    const form = document.querySelector("#property-form");
+    form.elements.cadastralRef.value = "28055A013000540001WL";
+    form.elements.parcelId.replaceChildren(
+      new f.window.Option("Parcela", "parcel-1"),
+    );
+    form.elements.parcelId.value = "parcel-1";
+    form.elements.communityId.value = "c2";
+    form.elements.communityId.dispatchEvent(new f.window.Event("change", { bubbles: true }));
+    assert.equal(form.elements.cadastralRef.value, "");
+    assert.equal(form.elements.cadastralRef.readOnly, false);
+    assert.equal(form.elements.parcelId.value, "");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
 test("el alta sin ocupante se guarda como vacía y viaja en el payload", async () => {
   const f = await saveNewProperty("vacant");
   try {
