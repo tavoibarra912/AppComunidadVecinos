@@ -27,7 +27,13 @@ async function fixture(t) {
     new URL("../update-vm.sh", import.meta.url),
     path.join(source, "scripts/update-vm.sh"),
   );
-  for (const name of ["backup.sh", "prune-backups.sh", "backup.cron", "install-backup-schedule.sh"])
+  for (const name of [
+    "backup.sh",
+    "prune-backups.sh",
+    "backup.cron",
+    "install-backup-schedule.sh",
+    "verify-existing-data.mjs",
+  ])
     await copyFile(
       new URL(`../../deploy/${name}`, import.meta.url),
       path.join(source, "deploy", name),
@@ -57,6 +63,7 @@ if [[ "$1 $2" == 'image inspect' ]]; then
   printf '%s' "$IMAGE_REVISION"
 fi
 if [[ " $* " == *' exec -T api node '* && "\${FAIL_HEALTH:-}" == 1 ]]; then exit 1; fi
+if [[ "$1" == run && "\${FAIL_DATA_GUARD:-}" == 1 ]]; then exit 25; fi
 `,
     { mode: 0o755 },
   );
@@ -98,6 +105,12 @@ test(
     const trace = await readFile(f.trace, "utf8");
     assert.ok(trace.indexOf("image inspect") < trace.indexOf(" stop api"));
     assert.ok(!trace.includes("build --build-arg"));
+    assert.ok(trace.indexOf("--network none") < trace.indexOf("up -d --no-deps"));
+    assert.ok(trace.includes("APP_REQUIRE_EXISTING_DB=true"));
+    assert.equal(
+      await readFile(path.join(f.root, "data/penarrubia.db"), "utf8"),
+      "existing database",
+    );
     assert.ok(trace.includes("up -d --no-deps --pull never api"));
     assert.ok(
       !trace.includes(" start api"),
@@ -137,6 +150,36 @@ test("VM: una imagen ausente no detiene ni cambia producción", options, async (
   assert.notEqual(f.run({ FAIL_IMAGE: "1" }).status, 0);
   assert.ok(!(await readFile(f.trace, "utf8")).includes(" stop api"));
   assert.equal(await readFile(path.join(f.root, ".env"), "utf8"), originalEnv);
+});
+
+test(
+  "VM: si la nueva versión altera datos, aborta antes del cambio y reinicia la anterior",
+  options,
+  async (t) => {
+    const f = await fixture(t);
+    assert.notEqual(f.run({ FAIL_DATA_GUARD: "1" }).status, 0);
+    const trace = await readFile(f.trace, "utf8");
+    assert.ok(trace.includes(" start api"));
+    assert.ok(!trace.includes(" up -d"));
+    assert.equal(await readFile(path.join(f.root, ".env"), "utf8"), originalEnv);
+    assert.equal(
+      await readFile(path.join(f.root, "data/penarrubia.db"), "utf8"),
+      "existing database",
+    );
+    assert.ok(!(await readdir(f.root)).some((name) => name.startsWith(".deploy-check.")));
+  },
+);
+
+test("VM: rechaza una release que incluya una base local", options, async (t) => {
+  const f = await fixture(t);
+  await mkdir(path.join(f.root, "releases", sha, "data"));
+  await writeFile(path.join(f.root, "releases", sha, "data/penarrubia.db"), "replacement");
+  assert.notEqual(f.run().status, 0);
+  await assert.rejects(readFile(f.trace), /ENOENT/);
+  assert.equal(
+    await readFile(path.join(f.root, "data/penarrubia.db"), "utf8"),
+    "existing database",
+  );
 });
 
 test("VM: una imagen de otro commit no detiene ni cambia producción", options, async (t) => {

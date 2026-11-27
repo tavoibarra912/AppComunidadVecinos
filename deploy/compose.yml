@@ -9,6 +9,8 @@ services:
     environment:
       NODE_ENV: production
       APP_DEMO_PROFILES: "false"
+      APP_DEMO_DATA: "false"
+      APP_REQUIRE_EXISTING_DB: "true"
       HOST: 0.0.0.0
       PORT: "3000"
       APP_DATA_DIR: /app/data
@@ -19,8 +21,16 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     volumes:
-      - ./data:/app/data
-      - ./uploads:/app/uploads
+      - type: bind
+        source: ./data
+        target: /app/data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./uploads
+        target: /app/uploads
+        bind:
+          create_host_path: false
     networks:
       gateway:
         aliases: [comunidad-api]

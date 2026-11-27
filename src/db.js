@@ -12,6 +12,13 @@ import { serializeNotificationChannels } from "../public/js/notification-channel
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = process.env.APP_DATA_DIR || path.join(__dirname, "..", "data");
 export const UPLOADS_DIR = process.env.APP_UPLOADS_DIR || path.join(__dirname, "..", "uploads");
+if (
+  process.env.APP_REQUIRE_EXISTING_DB === "true" &&
+  !fs.existsSync(path.join(DATA_DIR, "penarrubia.db"))
+)
+  throw new Error(
+    "Falta la base de producción existente. Se cancela el arranque sin crear una base nueva.",
+  );
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 

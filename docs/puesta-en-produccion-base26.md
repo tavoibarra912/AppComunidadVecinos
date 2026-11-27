@@ -18,11 +18,34 @@ Los colores, las fuentes, el logo, el tamaño, los bordes y la densidad proceden
 de producción. El nombre y los demás ajustes permanecen como en la importación.
 El favicon se conserva en `public/favicon.svg`, dentro del código de la release.
 
-Todas las cuentas de la candidata reciben claves aleatorias; el censo local
-conserva sus claves de prueba. El archivo de accesos es privado, queda fuera de
-Git y no se incluye en el paquete de datos para el servidor. No repartir las
-claves hasta comprobar el cambio en producción. No existe una obligación técnica
-de cambio de contraseña en el primer acceso.
+Las contraseñas de origen se conservan sin modificarlas. Para el censo BASE 26,
+el acceso administrativo es `super_admin` / `super_admin`; los vecinos usan su
+usuario del documento en minúsculas, sin guiones ni espacios, y la contraseña
+es ese usuario seguido de `12345678`. Las contraseñas personalizadas también se
+conservan. El archivo privado de accesos solo recoge claves iniciales que
+coincidan con el hash guardado; queda fuera de Git y del paquete de datos del
+servidor. No se cambia ninguna contraseña al preparar una copia.
+
+La sustitución inicial ya se ejecutó el 27/11/2026. No repetir este procedimiento
+en actualizaciones posteriores: producción conserva sus datos y credenciales.
+
+## Protección de los siguientes deploys
+
+`AGENTS.md` establece que reemplazar/restaurar la base o cambiar credenciales
+requiere un pedido explícito nuevo del usuario. Un deploy de código no lo autoriza.
+
+`scripts/update-vm.sh` rechaza releases que incluyan `data/` o `uploads/`. Tras el
+respaldo y antes de cambiar de imagen, prueba el arranque de la nueva versión con
+copias privadas de esos directorios, sin red ni puertos. La comprobación rechaza
+el reemplazo del archivo SQLite, cambios en cuentas/contraseñas y modificaciones
+de los valores previamente guardados. Se permiten columnas/tablas nuevas que
+conserven esos valores; los cambios de datos requieren una migración autorizada
+por separado. Si falla el ensayo, vuelve a arrancar la imagen anterior con su
+base original y no restaura ninguna base automáticamente.
+
+Compose exige que los directorios persistentes existan y establece
+`APP_REQUIRE_EXISTING_DB=true`: si falta el archivo SQLite, el servidor falla en
+vez de crear otra base. El preparador de candidatas conserva los hashes de origen.
 
 Para probarla:
 
