@@ -70,7 +70,7 @@ export const COMMUNITY = Object.freeze({
   legalConfig: JSON.stringify({ regimen: "asociacion" }),
 });
 
-export const PROPERTY_TYPE = "vivienda"; // Mapping Book1: «Vivienda».
+export const PROPERTY_TYPE = "parcela"; // Censo BASE 26: parcelas, según corrección del titular.
 export const PROPERTY_USE = "residencial"; // Mapping Book1: «Residencial».
 
 const HEADER_MIN = 2; // «Pcla.» y «DNI» tienen que aparecer en el encabezado.

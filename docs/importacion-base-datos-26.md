@@ -66,7 +66,7 @@ La carpeta de salida debe quedar dentro del proyecto y no puede ser `data/` ni
 | Propietario: localidad   | U       | `Localidad` (la usa también el inmueble)                                  |
 | Propietario: observación | A       | `Referencia dentro de la comunidad de Regantes: <Ref.>`                   |
 | Inmueble: identificador  | O + P   | `I<número incremental> <dirección O + P>`                                 |
-| Inmueble: tipo / uso     | —       | `Vivienda` / `Residencial` (Book1)                                        |
+| Inmueble: tipo / uso     | —       | `Parcela` (corrección del titular) / `Residencial` (Book1)                |
 | Inmueble: ref. catastral | F       | `Ref. Catastral` (formato, control y ausencia de repeticiones pendientes) |
 | Inmueble: dirección      | O + P   | Concatenadas con un espacio                                               |
 | Inmueble: superficie     | I       | `Superficie C.R.`                                                         |

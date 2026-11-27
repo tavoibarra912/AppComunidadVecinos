@@ -46,6 +46,10 @@ try {
   try {
     assert.equal(copy.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
     assert.equal(copy.prepare("PRAGMA foreign_key_check").all().length, 0);
+    assert.equal(
+      copy.prepare("SELECT COUNT(*) AS n FROM properties WHERE propertyType <> 'parcela'").get().n,
+      0,
+    );
     for (const table of [
       "communities",
       "owners",
@@ -181,6 +185,7 @@ try {
   const boot = await (await fetch(`${base}/api/bootstrap`, { headers: { Cookie: cookie } })).json();
   assert.equal(boot.owners.length, 125);
   assert.equal(boot.properties.length, 131);
+  assert.ok(boot.properties.every((property) => property.propertyType === "parcela"));
   assert.equal(boot.users.length, 126);
   const pdf = await fetch(`${base}/api/documents/${documentId}/download`, {
     headers: { Cookie: cookie },

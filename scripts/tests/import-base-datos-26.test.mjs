@@ -102,6 +102,7 @@ test("arma el plan: unifica propietarios por DNI y vincula varios inmuebles", ()
   ]);
 
   assert.equal(plan.stats.inmuebles, 3);
+  assert.ok(plan.properties.every((property) => property.propertyType === "parcela"));
   assert.equal(plan.stats.propietarios, 1);
   assert.equal(plan.stats.usuarios, 1);
   assert.equal(plan.stats.inmueblesSinPropietario, 1);
@@ -212,6 +213,14 @@ test("escribe la base en una carpeta local aislada", async () => {
     assert.equal(settings.nombreAsociacion, "Plataforma de prueba");
     assert.equal(settings.marca.nombre, settings.nombreAsociacion);
     assert.equal(settings.marca.colorPrimario, "#11273e");
+    assert.equal(
+      db.prepare("SELECT propertyType FROM properties LIMIT 1").get().propertyType,
+      "parcela",
+    );
+    assert.equal(
+      db.prepare("SELECT propertyType FROM owners LIMIT 1").get().propertyType,
+      "parcela",
+    );
     const document = db.prepare("SELECT * FROM documents WHERE category='statutes'").get();
     assert.equal(document.entityId, plan.community.id);
     assert.equal(document.folderId, "");
