@@ -84,17 +84,26 @@ export async function prepareCandidate({ sourceDir, visualsFile, outputDir }) {
     credentials = [];
     db.exec("BEGIN IMMEDIATE");
     db.prepare("UPDATE settings SET data=? WHERE id='general'").run(JSON.stringify(settings));
-    for (const user of db.prepare("SELECT id,usuario,activo FROM users").all()) {
-      const password = crypto.randomBytes(24).toString("base64url");
-      const salt = crypto.randomBytes(16).toString("hex");
-      const hash = `scrypt:${salt}:${crypto.scryptSync(password, salt, 64).toString("hex")}`;
-      db.prepare(
-        "UPDATE users SET passwordHash=?,resetToken='',resetTokenExpira='' WHERE id=?",
-      ).run(hash, user.id);
-      credentials.push({ usuario: user.usuario, password, activo: !!user.activo });
+    for (const user of db.prepare("SELECT usuario,activo,passwordHash FROM users").all()) {
+      const initialPassword =
+        user.usuario === "super_admin"
+          ? "super_admin"
+          : user.usuario.toLowerCase().replace(/[-\s]/gu, "") + "12345678";
+      const [scheme, salt, hash] = String(user.passwordHash).split(":");
+      const matchesInitial =
+        scheme === "scrypt" &&
+        /^[a-f0-9]{32}$/.test(salt || "") &&
+        /^[a-f0-9]{128}$/.test(hash || "") &&
+        crypto.scryptSync(initialPassword, salt, 64).toString("hex") === hash;
+      credentials.push({
+        usuario: user.usuario,
+        ...(matchesInitial ? { password: initialPassword } : {}),
+        activo: !!user.activo,
+        passwordPreserved: true,
+      });
     }
     db.exec(
-      "DELETE FROM sessions; DELETE FROM password_recovery_requests; DELETE FROM password_recovery_mail;",
+      "UPDATE users SET resetToken='',resetTokenExpira=''; DELETE FROM sessions; DELETE FROM password_recovery_requests; DELETE FROM password_recovery_mail;",
     );
     db.prepare(
       "INSERT OR IGNORE INTO schema_migrations(id) VALUES('production-database-v1')",
@@ -120,7 +129,8 @@ export async function prepareCandidate({ sourceDir, visualsFile, outputDir }) {
       .update(await fs.readFile(path.join(output, "data/penarrubia.db")))
       .digest("hex"),
     associationNamePreserved: settings.nombreAsociacion,
-    credentialsRotated: credentials.length,
+    credentialsRotated: 0,
+    credentialsPreserved: credentials.length,
     productionChanged: false,
   };
   await fs.writeFile(path.join(output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", {

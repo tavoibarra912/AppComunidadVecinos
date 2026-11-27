@@ -69,7 +69,7 @@ try {
     const oldUsers = source.prepare("SELECT * FROM users ORDER BY id").all();
     assert.equal(users.length, 126);
     for (const [index, user] of users.entries()) {
-      assert.notEqual(user.passwordHash, oldUsers[index].passwordHash);
+      assert.equal(user.passwordHash, oldUsers[index].passwordHash);
       for (const key of Object.keys(user).filter(
         (key) => !["passwordHash", "resetToken", "resetTokenExpira"].includes(key),
       ))
@@ -101,7 +101,7 @@ try {
       "Integridad SQLite y relaciones",
       "Censo, cuentas y documentos conservados",
       "Solo apariencia de producción",
-      "126 contraseñas nuevas y ninguna sesión trasladada",
+      "Contraseñas conservadas y ninguna sesión trasladada",
     );
   } finally {
     source.close();

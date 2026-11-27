@@ -760,6 +760,14 @@ no se añaden créditos ni se cambia el plan automáticamente.
 
 ### Despliegue automático con GitHub Actions
 
+**Conservación de producción:** desplegar código no autoriza reemplazar o
+restaurar la base ni cambiar usuarios o contraseñas. Esas operaciones necesitan
+un pedido explícito del usuario; la carga inicial del Excel fue una excepción
+puntual. Ver [las reglas permanentes](AGENTS.md) y el
+[procedimiento y las protecciones](docs/puesta-en-produccion-base26.md).
+El deploy ensaya el arranque sobre una copia aislada y aborta si altera datos o
+credenciales existentes. Si falta la base, el servidor no crea una nueva.
+
 Cada actualización de la rama predeterminada del repositorio
 inicia **dos workflows independientes**, tanto si llega de un merge de PR como
 de un push directo. Ambos escuchan `push`: fusionar una PR no duplica el despliegue.

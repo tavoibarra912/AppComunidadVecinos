@@ -1,0 +1,9 @@
+---
+description: Conservar datos y credenciales de producción durante deploys
+alwaysApply: true
+---
+
+- Cumplir `AGENTS.md`, especialmente «Producción: datos y credenciales».
+- Un deploy de código conserva la base, adjuntos, configuración y todas las contraseñas existentes.
+- Reemplazar/restaurar/reimportar la base o cambiar credenciales requiere un pedido explícito nuevo del usuario. La carga inicial del Excel no es una autorización permanente.
+- Si el ensayo de `deploy/verify-existing-data.mjs` detecta modificaciones de datos o credenciales, detener el deploy. No saltarse la protección ni restaurar una base automáticamente.

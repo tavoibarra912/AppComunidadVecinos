@@ -16,13 +16,18 @@ test -f .env
 test -f data/penarrubia.db
 test -d uploads
 test -f deploy/compose.yml
+test -f "$source_root/deploy/verify-existing-data.mjs"
+# Una release de código no puede transportar datos para sustituir los del servidor.
+[[ ! -e "$source_root/data" && ! -e "$source_root/uploads" ]] || {
+  echo 'La release contiene datos operativos. Deploy bloqueado.' >&2; exit 1;
+}
 docker compose version >/dev/null
 docker network inspect opengym_default >/dev/null
 compose=(docker compose --project-directory "$app_root" --env-file "$app_root/.env" -f "$app_root/deploy/compose.yml")
 "${compose[@]}" config --quiet
 mkdir -p backups/deploys
 available_kb=$(df -Pk . | awk 'NR==2 {print $4}')
-required_kb=$(du -sk data uploads | awk '{sum+=$1} END {print sum+1048576}')
+required_kb=$(du -sk data uploads | awk '{sum+=$1} END {print sum*2+1048576}')
 (( available_kb >= required_kb )) || { echo 'Espacio insuficiente para imagen y backup; no se borra nada.' >&2; exit 1; }
 
 image="comunidad:$release_sha"
@@ -33,11 +38,13 @@ backup_dir="$app_root/backups/deploys"
 backup="$backup_dir/comunidad-$(date -u +%Y%m%dT%H%M%S)-$release_sha.tar.gz"
 backup_tmp=$(mktemp "$backup_dir/.comunidad.XXXXXX")
 env_tmp=''
+preflight=''
 launch_started=false
 cleanup() {
   status=$?
   if [[ -n "$backup_tmp" ]]; then rm -f -- "$backup_tmp"; fi
   if [[ -n "$env_tmp" ]]; then rm -f -- "$env_tmp"; fi
+  if [[ -n "$preflight" && "$preflight" == "$app_root"/.deploy-check.* ]]; then rm -rf -- "$preflight"; fi
   if (( status != 0 )) && [[ "$launch_started" == false ]]; then "${compose[@]}" start api; fi
 }
 trap cleanup EXIT
@@ -47,6 +54,23 @@ tar -czf "$backup_tmp" data uploads .env deploy/compose.yml
 tar -tzf "$backup_tmp" >/dev/null
 mv -- "$backup_tmp" "$backup"
 backup_tmp=''
+
+# Ensayar las migraciones sobre una copia: nunca sobre la única base viva.
+preflight=$(mktemp -d "$app_root/.deploy-check.XXXXXX")
+cp -a data uploads "$preflight/"
+COMUNIDAD_IMAGE="$image" docker compose --project-directory "$app_root" --env-file "$app_root/.env" \
+  -f "$source_root/deploy/compose.yml" config --format json > "$preflight/compose.json"
+docker run --rm --network none --read-only --memory 192m --cpus 0.5 --pids-limit 64 \
+  --cap-drop ALL --security-opt no-new-privileges:true \
+  --user "$(stat -c '%u:%g' data)" --env-file .env \
+  -e NODE_ENV=production -e APP_DATA_DIR=/app/data -e APP_UPLOADS_DIR=/app/uploads \
+  -e APP_DEMO_DATA=false -e APP_DEMO_PROFILES=false -e APP_REQUIRE_EXISTING_DB=true \
+  -e "PRODUCTION_APP_ROOT=$app_root" -e "EXPECTED_IMAGE=$image" \
+  --mount "type=bind,source=$preflight/data,target=/app/data" \
+  --mount "type=bind,source=$preflight/uploads,target=/app/uploads" \
+  --mount "type=bind,source=$source_root/deploy/verify-existing-data.mjs,target=/verify-existing-data.mjs,readonly" \
+  --mount "type=bind,source=$preflight/compose.json,target=/deploy-compose.json,readonly" \
+  --entrypoint node "$image" /verify-existing-data.mjs
 
 env_tmp=$(mktemp "$app_root/.env.release.XXXXXX")
 awk -v image="$image" '
@@ -60,6 +84,7 @@ cp "$source_root/deploy/compose.yml" deploy/compose.yml
 install -m 700 "$source_root/deploy/backup.sh" deploy/backup.sh
 install -m 700 "$source_root/deploy/prune-backups.sh" deploy/prune-backups.sh
 install -m 644 "$source_root/deploy/backup.cron" deploy/backup.cron
+install -m 644 "$source_root/deploy/verify-existing-data.mjs" deploy/verify-existing-data.mjs
 install -m 700 "$source_root/deploy/install-backup-schedule.sh" deploy/install-backup-schedule.sh
 mkdir -p deploy/systemd
 install -m 644 "$source_root"/deploy/systemd/* deploy/systemd/
