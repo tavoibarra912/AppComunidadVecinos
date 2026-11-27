@@ -89,18 +89,18 @@ Decisiones sobre el mapping:
   propietario y su cuenta. Las filas sin documento tampoco crean identidades. Los usuarios y contraseñas
   siguen derivados del documento original, sin añadir ceros a las credenciales.
 - **Referencias catastrales**: las ausentes, de formato incorrecto o con caracteres
-  de control incorrectos excluyen el inmueble. Las referencias repetidas pendientes
-  de confirmar excluyen todas sus parcelas: no se elige arbitrariamente la primera.
-  En el censo actual se excluyen 48B y 139F por ausencia, 140A/140B por una referencia
-  compartida y 179A–179E por otra, hasta corregir o confirmar la asignación en origen.
+  de control incorrectos excluyen el inmueble. Las referencias repetidas no son un
+  error: son unidades de la misma finca matriz y se importan agrupadas en una fila
+  de `parcels`, compartiendo referencia catastral. En el censo actual se excluyen
+  48B y 139F por ausencia; 140A/140B y 179A–179E quedan agrupadas en sus fincas.
 - **Reglas independientes**: un documento inválido no elimina un inmueble con
   referencia válida; queda sin titular. Una referencia inválida no elimina un socio
   cuya identidad sea válida; queda sin ese vínculo. Nunca se enlazan filas solo por
   coincidencia de nombre. No se crean enlaces a registros excluidos.
 - **Resultado del filtrado actual**: 125 propietarios y sus 125 usuarios (más
-  super_admin), 131 inmuebles y 20 incidencias de exclusión: seis documentos inválidos,
-  cinco filas sin documento y nueve inmuebles excluidos. No se generan avisos por
-  emails ausentes. El informe JSON incluye tipo, celda, parcela, titular y motivo.
+  super_admin), 138 inmuebles y 11 incidencias de exclusión: seis documentos inválidos
+  y cinco filas sin documento. No se generan avisos por emails ausentes. El informe
+  JSON incluye tipo, celda, parcela, titular y motivo, además de las parcelas creadas.
 - **La cuota de superficie (columna M) no se carga como cuota manual.** Desde el
   rediseño financiero la cuota y el estado de los recibos se derivan del libro de
   recibos; la app ya no acepta una cuota editable en el inmueble. El importe de M
@@ -132,8 +132,8 @@ PORT=3100 HOST=127.0.0.1 node server.js
 
 1. Revisar `import-report.json`: avisos por documentos incompletos, filas sin
    contacto, direcciones o referencias catastrales descartadas.
-2. Verificar en la app: 140 inmuebles, propietarios con varias parcelas, ficha de
-   un inmueble y una búsqueda por documento.
+2. Verificar en la app: 138 inmuebles, propietarios con varias parcelas, ficha de
+   una unidad con su finca matriz y una búsqueda por documento.
 3. Reimportar con `--force` tras corregir el Excel de origen.
 4. El pasaje a producción es un paso **aparte** (backup, ventana y autorización
    explícita); este script no lo hace.

@@ -186,14 +186,18 @@ test("escribe la base en una carpeta local aislada", async () => {
     assert.equal(result.totals.comunidades, 1);
     assert.equal(result.totals.propietarios, 1);
     assert.equal(result.totals.inmuebles, 1);
+    assert.equal(result.totals.parcelas, 1);
     assert.equal(result.totals.inmueblesSinTitular, 0);
     assert.ok(fs.existsSync(result.dbFile));
 
     const { DatabaseSync } = await import("node:sqlite");
     const db = new DatabaseSync(result.dbFile);
-    const property = db.prepare("SELECT plot, address, ownerIds FROM properties").get();
+    const property = db.prepare("SELECT plot, address, ownerIds, parcelId FROM properties").get();
     assert.equal(property.plot, "I1 Camino de la Barca, s/n");
     assert.match(property.ownerIds, /own-base26-44444444a/);
+    const parcel = db.prepare("SELECT id, cadastralRef FROM parcels").get();
+    assert.equal(property.parcelId, parcel.id);
+    assert.equal(parcel.cadastralRef, "06011A012002450000QE");
     const owner = db.prepare("SELECT dni, isMember, userId, propertyIds FROM owners").get();
     assert.equal(owner.dni, "44444444A");
     assert.equal(owner.isMember, 1);
@@ -234,7 +238,7 @@ test("escribe la base en una carpeta local aislada", async () => {
   }
 });
 
-test("excluye todas las subparcelas con referencia repetida y conserva el propietario válido sin vínculos huérfanos", () => {
+test("agrupa las subparcelas con referencia repetida en una misma finca matriz", () => {
   const plan = buildPlan([
     header(),
     row({
@@ -250,13 +254,20 @@ test("excluye todas las subparcelas con referencia repetida y conserva el propie
       cadastralRef: "28055A013000540001WL",
     }),
   ]);
-  assert.equal(plan.properties.length, 0);
+  assert.equal(plan.properties.length, 2);
   assert.equal(plan.owners.length, 1);
   assert.equal(plan.owners[0].document, "02819736M");
   assert.equal(plan.users[0].usuario, "2819736m");
-  assert.deepEqual(plan.owners[0].propertyIds, []);
-  assert.equal(plan.owners[0].cadastralRef, "");
-  assert.equal(plan.exclusions.filter((item) => item.tipo === "referencia_repetida").length, 2);
+  assert.deepEqual(
+    plan.owners[0].propertyIds.sort(),
+    ["prop-base26-179b", "prop-base26-179c"],
+  );
+  assert.equal(plan.parcels.length, 1);
+  assert.equal(plan.parcels[0].cadastralRef, "28055A013000540001WL");
+  assert.equal(plan.properties[0].parcelId, plan.parcels[0].id);
+  assert.equal(plan.properties[1].parcelId, plan.parcels[0].id);
+  assert.equal(plan.exclusions.filter((item) => item.tipo === "referencia_repetida").length, 0);
+  assert.ok(plan.warnings.some((warning) => warning.message.includes("finca matriz")));
 });
 
 test("excluye propietario y usuario con documento incorrecto y conserva el inmueble válido sin titular", () => {

@@ -223,6 +223,88 @@ test("migración: elimina las columnas manuales de cuota y estado de recibos", (
   }
 });
 
+test("migración: agrupa inmuebles con la misma referencia en una parcela", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-parcel-migration-test-"));
+  const dbPath = path.join(directory, "penarrubia.db");
+  const legacy = new DatabaseSync(dbPath);
+  legacy.exec(`
+    CREATE TABLE properties (
+      id TEXT PRIMARY KEY,
+      communityId TEXT NOT NULL DEFAULT '',
+      communityName TEXT NOT NULL DEFAULT '',
+      ownerIds TEXT NOT NULL DEFAULT '[]',
+      tenantIds TEXT NOT NULL DEFAULT '[]',
+      propertyType TEXT NOT NULL DEFAULT '',
+      plot TEXT NOT NULL DEFAULT '',
+      address TEXT NOT NULL DEFAULT '',
+      staircase TEXT NOT NULL DEFAULT '',
+      energyCertificate TEXT NOT NULL DEFAULT '',
+      communityFee TEXT NOT NULL DEFAULT '',
+      cadastralRef TEXT NOT NULL DEFAULT '',
+      registryNumber TEXT NOT NULL DEFAULT '',
+      floor TEXT NOT NULL DEFAULT '',
+      door TEXT NOT NULL DEFAULT '',
+      areaM2 TEXT NOT NULL DEFAULT '',
+      participationCoef TEXT NOT NULL DEFAULT '',
+      propertyUse TEXT NOT NULL DEFAULT '',
+      receiptStatus TEXT NOT NULL DEFAULT 'current',
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      notes TEXT NOT NULL DEFAULT '',
+      postalCode TEXT NOT NULL DEFAULT '',
+      city TEXT NOT NULL DEFAULT '',
+      province TEXT NOT NULL DEFAULT '',
+      currency TEXT NOT NULL DEFAULT '',
+      ownerPercentages TEXT NOT NULL DEFAULT '{}',
+      occupancy TEXT NOT NULL DEFAULT '',
+      residentOwnerIds TEXT NOT NULL DEFAULT '[]',
+      primaryResidentId TEXT NOT NULL DEFAULT ''
+    );
+  `);
+  const insert = legacy.prepare(
+    "INSERT INTO properties(id,communityId,plot,cadastralRef) VALUES(?,?,?,?)",
+  );
+  insert.run("legacy-unit-a", "com-legacy", "Unidad A", " 28055-a013 000540001 wl ");
+  insert.run("legacy-unit-b", "com-legacy", "Unidad B", "28055A013000540001WL");
+  insert.run("legacy-unit-c", "com-legacy", "Unidad C", "0301501YH0001A0007WX");
+  insert.run("legacy-unit-empty", "com-legacy", "Sin referencia", "");
+  legacy.close();
+  const url = new URL("../../src/db.js", import.meta.url).href;
+  const result = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", `const {db}=await import(${JSON.stringify(url)});db.close();`],
+    {
+      env: {
+        ...process.env,
+        APP_DATA_DIR: directory,
+        APP_UPLOADS_DIR: path.join(directory, "uploads"),
+      },
+      encoding: "utf8",
+    },
+  );
+  const check = new DatabaseSync(dbPath);
+  try {
+    assert.equal(result.status, 0, result.stderr);
+    const parcels = check.prepare("SELECT * FROM parcels ORDER BY cadastralRef").all();
+    assert.equal(parcels.length, 2);
+    assert.equal(parcels[0].cadastralRef, "0301501YH0001A0007WX");
+    assert.equal(parcels[1].cadastralRef, "28055A013000540001WL");
+    const units = check
+      .prepare("SELECT id, cadastralRef, parcelId FROM properties ORDER BY id")
+      .all();
+    const byId = new Map(units.map((unit) => [unit.id, unit]));
+    assert.equal(byId.get("legacy-unit-a").cadastralRef, "28055A013000540001WL");
+    assert.equal(byId.get("legacy-unit-b").cadastralRef, "28055A013000540001WL");
+    assert.equal(byId.get("legacy-unit-a").parcelId, byId.get("legacy-unit-b").parcelId);
+    assert.equal(byId.get("legacy-unit-empty").parcelId, "");
+    assert.ok(
+      check.prepare("SELECT id FROM schema_migrations WHERE id='property-parcels-v1'").get(),
+    );
+  } finally {
+    check.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("migracion: corrige los NIF heredados de las comunidades demo sin tocar los validos", () => {
   const directory = mkdtempSync(path.join(tmpdir(), "penarrubia-community-nif-test-"));
   const dbPath = path.join(directory, "penarrubia.db");

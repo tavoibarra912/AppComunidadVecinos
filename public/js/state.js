@@ -168,6 +168,7 @@ export const state = {
   communities: [],
   owners: [],
   properties: [],
+  parcels: [],
   tenants: [],
   adminEmails: [],
   ownerNotifications: [],
@@ -308,6 +309,7 @@ export async function refreshState() {
         state.communities = bootstrap.communities;
         state.owners = bootstrap.owners;
         state.properties = bootstrap.properties;
+        state.parcels = bootstrap.parcels || [];
         state.tenants = bootstrap.tenants;
         state.adminEmails = bootstrap.adminEmails;
         state.ownerNotifications = bootstrap.ownerNotifications;

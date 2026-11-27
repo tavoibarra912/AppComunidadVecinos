@@ -10,6 +10,13 @@ import {
 } from "../db.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { legalConfigOf } from "../legal-config.js";
+import { cadastralReferenceProblem, normalizeCadastralReference } from "../cadastral-reference.js";
+import {
+  cadastralReferenceInOtherCommunity,
+  cleanupOrphanParcels,
+  findParcel,
+  findOrCreateParcel,
+} from "../parcels.js";
 import {
   balanceCommunityCoefficients,
   rebuildOwnersPropertyIds,
@@ -54,9 +61,7 @@ function propertyPayload(property) {
 }
 
 function normalizeCadastralRef(value) {
-  return String(value || "")
-    .replace(/\s+/g, "")
-    .toUpperCase();
+  return normalizeCadastralReference(value);
 }
 
 function normalizeParticipationCoef(value) {
@@ -139,18 +144,40 @@ function validatePropertyPayload(
     }
   }
 
-  const cadastralRef = normalizeCadastralRef(data.cadastralRef);
+  let cadastralRef = normalizeCadastralRef(data.cadastralRef);
+  let requestedParcel = null;
+  if (data.parcelId) {
+    requestedParcel = findParcel(String(data.parcelId));
+    if (!requestedParcel) return "La parcela indicada no existe.";
+    if ((requestedParcel.communityId || "") !== (data.communityId || ""))
+      return "La parcela indicada pertenece a otra comunidad.";
+    const parcelRef = normalizeCadastralRef(requestedParcel.cadastralRef);
+    if (!parcelRef) return "La parcela indicada no tiene referencia catastral.";
+    if (cadastralRef && parcelRef !== cadastralRef)
+      return "La referencia catastral no coincide con la parcela elegida.";
+    cadastralRef = parcelRef;
+    data.cadastralRef = cadastralRef;
+  }
   if (cadastralRef) {
-    if (!/^[A-Z0-9]{20}$/.test(cadastralRef)) {
+    const problem = cadastralReferenceProblem(cadastralRef);
+    if (problem === "format") {
       return "La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.";
     }
-    const duplicate = db
-      .prepare(
-        "SELECT id FROM properties WHERE UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) = ? AND id <> ?",
-      )
-      .get(cadastralRef, excludeId);
-    if (duplicate && legalConfigOf(community).regimen !== "asociacion")
-      return "Ya existe otro inmueble con la misma referencia catastral.";
+    // Las fichas heredadas pueden conservar una referencia que no supera el
+    // control: solo se exige al crear o modificar la referencia.
+    const unchanged =
+      !!existing && normalizeCadastralRef(existing.cadastralRef) === cadastralRef;
+    // Reutilizar una parcela ya censada tampoco exige revalidar su referencia:
+    // las fincas heredadas pueden no superar el control y siguen agrupando
+    // unidades nuevas.
+    if (problem === "checksum" && !unchanged && !requestedParcel) {
+      return "La referencia catastral no supera la comprobación de caracteres de control.";
+    }
+    // Compartir referencia dentro de la comunidad es legítimo: son unidades de
+    // la misma parcela. En otra comunidad casi siempre es un error de tipeo.
+    if (cadastralReferenceInOtherCommunity(data.communityId, cadastralRef, excludeId)) {
+      return "Esa referencia catastral ya está asignada a una parcela de otra comunidad.";
+    }
   }
 
   const participationCoef = normalizeParticipationCoef(data.participationCoef);
@@ -300,12 +327,18 @@ function storeProperty(id, data, community) {
   const { occupancy } = residency;
   const residentOwnerIds = JSON.stringify(residency.residentOwnerIds);
   const primaryResidentId = residency.primaryResidentId;
+  // La parcela se deriva de la referencia: al cambiarla, la unidad se mueve a
+  // la finca correspondiente y la anterior se limpia si queda vacía.
+  const cadastralRef = normalizeCadastralRef(data.cadastralRef);
+  const parcel = cadastralRef
+    ? findOrCreateParcel({ communityId: data.communityId || "", cadastralRef })
+    : null;
   return db
     .prepare(
-      `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, cadastralRef,
+      `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot, address, staircase, energyCertificate, cadastralRef, parcelId,
        registryNumber, floor, door, areaM2, participationCoef, propertyUse, notes, postalCode, city, province, currency, ownerPercentages,
        occupancy, residentOwnerIds, primaryResidentId)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        communityId = excluded.communityId,
        communityName = excluded.communityName,
@@ -317,6 +350,7 @@ function storeProperty(id, data, community) {
        staircase = excluded.staircase,
        energyCertificate = excluded.energyCertificate,
        cadastralRef = excluded.cadastralRef,
+       parcelId = excluded.parcelId,
        registryNumber = excluded.registryNumber,
        floor = excluded.floor,
        door = excluded.door,
@@ -344,7 +378,8 @@ function storeProperty(id, data, community) {
       data.address || "",
       data.staircase || "",
       data.energyCertificate || "",
-      normalizeCadastralRef(data.cadastralRef),
+      cadastralRef,
+      parcel ? parcel.id : "",
       data.registryNumber || "",
       data.floor || "",
       data.door || "",
@@ -474,6 +509,7 @@ router.post("/", (req, res) => {
     // quién queda realmente en el inmueble.
     applyTenantLinkChanges(changes);
     storeProperty(id, data, community);
+    cleanupOrphanParcels();
     const adjustedOwners = balanceCommunityCoefficients(community?.id || "");
     syncAffectedOwners([...(Array.isArray(data.ownerIds) ? data.ownerIds : []), ...adjustedOwners]);
     rebuildOwnersPropertyIds();
@@ -520,6 +556,7 @@ router.put(
       const changes = tenantLinkChanges(existing.id, data, existing, req.user);
       applyTenantLinkChanges(changes);
       storeProperty(existing.id, data, community);
+      cleanupOrphanParcels();
       // El traslado deja los recibos en la comunidad de origen: se registra el
       // cambio para poder reconstruir dónde se emitió cada cargo.
       if ((community?.id || "") !== existing.communityId)
@@ -595,6 +632,7 @@ function deletePropertyNormal(req, res) {
     db.prepare("UPDATE tenants SET propertyId = '' WHERE propertyId = ?").run(existing.id);
     removeEntityFiles("property", existing.id);
     db.prepare("DELETE FROM properties WHERE id = ?").run(existing.id);
+    cleanupOrphanParcels();
     // Tras borrar el inmueble hay que renormalizar los datos del titular: si
     // era su último inmueble, no debe conservar comunidad, planta o coeficiente
     // del inmueble desaparecido; si era un socio sin inmueble, conserva su censo.

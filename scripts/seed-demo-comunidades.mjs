@@ -17,6 +17,7 @@ import {
 } from "../src/db.js";
 import { validatePost } from "../src/communication-validation.js";
 import { materialize } from "../src/communication-store.js";
+import { backfillParcels } from "../src/parcels.js";
 import { createSeedDocsDemo } from "../src/seed.js";
 
 if (process.env.NODE_ENV === "production") {
@@ -829,6 +830,7 @@ try {
       p.province,
     );
   }
+  backfillParcels();
   for (const t of inquilinos) {
     insertTenant.run(
       t.id,

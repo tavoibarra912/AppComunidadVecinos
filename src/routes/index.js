@@ -27,6 +27,7 @@ import { resourceAccess, notificationAccess } from "../access.js";
 import {
   listAdminEmails,
   listOwnerNotifications,
+  listParcels,
   listDocumentFoldersForEntities,
   listDocumentsForEntities,
   getSettings,
@@ -104,6 +105,10 @@ router.get("/bootstrap", (req, res) => {
   const readableIds = (rows) => rows.map((row) => row.id).filter(canReadDocuments);
   const communityIds = readableIds(visible.communities);
   const propertyIds = readableIds(visible.properties);
+  const parcelCommunityIds = new Set([
+    ...communityIds,
+    ...visible.properties.map((property) => property.communityId).filter(Boolean),
+  ]);
   const tenantIds = readableIds(visible.tenants);
   const communityDocuments = groupByEntity(listDocumentsForEntities("community", communityIds));
   const communityStatutes = groupByEntity(
@@ -136,6 +141,7 @@ router.get("/bootstrap", (req, res) => {
       documents: propertyDocuments.get(property.id) || [],
       documentFolders: propertyFolders.get(property.id) || [],
     })),
+    parcels: listParcels().filter((parcel) => parcelCommunityIds.has(parcel.communityId)),
     tenants: visible.tenants.map((tenant) => ({
       ...tenant,
       // `documents` contiene el expediente fijo (DNI, contrato…); la

@@ -8,6 +8,7 @@ import {
   listRoles,
 } from "./db.js";
 import { rebuildOwnersPropertyIds, syncPropertyTenantReferences } from "./domain.js";
+import { backfillParcels } from "./parcels.js";
 import crypto from "node:crypto";
 import { validatePost } from "./communication-validation.js";
 import { materialize } from "./communication-store.js";
@@ -810,6 +811,8 @@ export function seedIfEmpty() {
         p.province || comm?.province || "",
       );
     });
+    // Las parcelas se derivan de las referencias ya sembradas.
+    backfillParcels();
 
     ownerSeeds.forEach((o) => {
       insertOwner.run(
@@ -2062,6 +2065,7 @@ export function seedDemoComunidades() {
         p.province,
       );
     }
+    backfillParcels();
     for (const t2 of inquilinos) {
       insertTenant.run(
         t2.id,

@@ -4,6 +4,10 @@ import {
   cadastralReferenceProblem,
   normalizeCadastralReference,
 } from "../../src/cadastral-reference.js";
+import {
+  cadastralReferenceProblem as clientCadastralReferenceProblem,
+  normalizeCadastralReference as clientNormalizeCadastralReference,
+} from "../../public/js/utils.js";
 
 test("referencia catastral: comprueba formato y los dos caracteres de control", () => {
   for (const reference of [
@@ -25,4 +29,18 @@ test("referencia catastral: normaliza separadores y mayúsculas conservando el c
   assert.equal(normalizeCadastralReference(" 7837301-vg8173b 0001 tt "), "7837301VG8173B0001TT");
   assert.equal(cadastralReferenceProblem(" 7837301-vg8173b 0001 tt "), "");
   assert.equal(cadastralReferenceProblem("7837301/VG8173B0001TT"), "format");
+});
+
+test("el cliente aplica la misma normalización y checksum que el servidor", () => {
+  for (const reference of ["28055A013000540001WL", "9872023VH5797S0001AA", "123"]) {
+    assert.equal(
+      clientCadastralReferenceProblem(reference),
+      cadastralReferenceProblem(reference),
+      reference,
+    );
+  }
+  assert.equal(
+    clientNormalizeCadastralReference(" 7837301-vg8173b 0001 tt "),
+    normalizeCadastralReference(" 7837301-vg8173b 0001 tt "),
+  );
 });

@@ -5,6 +5,7 @@ import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
 import { communityNifError } from "./validation.js";
 import { normalizeStoredResidency } from "./domain.js";
+import { cleanupOrphanParcels } from "./parcels.js";
 import { CREDIT_DESTINATIONS, legalConfigOf } from "./legal-config.js";
 import { formatMoney } from "./fees.js";
 import { queueUploadCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
@@ -1299,6 +1300,7 @@ function apply(g, plan, req) {
     db.prepare("DELETE FROM owners WHERE id=?").run(id);
   }
   for (const id of deletedProperties) db.prepare("DELETE FROM properties WHERE id=?").run(id);
+  cleanupOrphanParcels();
   if (g.collection === "communities")
     db.prepare("DELETE FROM communities WHERE id=?").run(g.root.id);
   // Update only the links participating in this plan. Do not run global repairs

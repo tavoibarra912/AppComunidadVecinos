@@ -2964,6 +2964,85 @@ test("censo: una asociación conserva referencias catastrales compartidas entre 
   }
 });
 
+test("parcelas: agrupa unidades de la misma finca y bloquea referencias de otra comunidad", async () => {
+  const reference = "06011A012002450000QE";
+  db.prepare(
+    "INSERT INTO communities(id,name,nif,legalConfig) VALUES('com-parcel-test','Parcelas Test','G00000002','{\"regimen\":\"lph\"}')",
+  ).run();
+  const insert = db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,participationCoef) VALUES(?,?,'Parcelas Test',?,'vivienda','Calle Parcela 1','Madrid','50')",
+  );
+  insert.run("prop-parcel-a", "com-parcel-test", "Unidad A");
+  insert.run("prop-parcel-b", "com-parcel-test", "Unidad B");
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,participationCoef) VALUES('prop-parcel-other','com-seed-2','Edificio Los Olivos','Unidad ajena','vivienda','Calle Otra 1','Madrid','0.1000')",
+  ).run();
+  try {
+    const a = (await admin("/properties/prop-parcel-a")).data;
+    const savedA = await admin("/properties/prop-parcel-a", "PUT", {
+      ...a,
+      cadastralRef: reference,
+    });
+    assert.equal(savedA.status, 200, JSON.stringify(savedA.data));
+    assert.ok(savedA.data.parcelId);
+
+    const b = (await admin("/properties/prop-parcel-b")).data;
+    const savedB = await admin("/properties/prop-parcel-b", "PUT", {
+      ...b,
+      cadastralRef: reference,
+    });
+    assert.equal(savedB.status, 200, JSON.stringify(savedB.data));
+    assert.equal(savedB.data.parcelId, savedA.data.parcelId);
+    assert.equal(
+      db.prepare("SELECT COUNT(*) AS n FROM parcels WHERE communityId='com-parcel-test'").get().n,
+      1,
+    );
+
+    // Una unidad nueva puede colgar de una parcela existente sin repetir la
+    // referencia: el servidor la deriva de la parcela.
+    const reused = await admin("/properties/prop-parcel-b", "PUT", {
+      ...savedB.data,
+      cadastralRef: "",
+      parcelId: savedA.data.parcelId,
+    });
+    assert.equal(reused.status, 200, JSON.stringify(reused.data));
+    assert.equal(reused.data.cadastralRef, reference);
+    assert.equal(reused.data.parcelId, savedA.data.parcelId);
+
+    const other = (await admin("/properties/prop-parcel-other")).data;
+    const crossCommunity = await admin("/properties/prop-parcel-other", "PUT", {
+      ...other,
+      cadastralRef: reference,
+    });
+    assert.equal(crossCommunity.status, 400);
+    assert.match(crossCommunity.data.error, /otra comunidad/i);
+
+    const invalidChecksum = await admin("/properties/prop-parcel-b", "PUT", {
+      ...savedB.data,
+      parcelId: "",
+      cadastralRef: "9872023VH5797S0001AA",
+    });
+    assert.equal(invalidChecksum.status, 400);
+    assert.match(invalidChecksum.data.error, /control/i);
+
+    assert.equal((await admin("/properties/prop-parcel-a", "DELETE")).status, 200);
+    assert.ok(
+      db.prepare("SELECT 1 FROM parcels WHERE id=?").get(savedA.data.parcelId),
+      "la parcela debe sobrevivir mientras tenga unidades",
+    );
+    assert.equal((await admin("/properties/prop-parcel-b", "DELETE")).status, 200);
+    assert.equal(
+      db.prepare("SELECT 1 FROM parcels WHERE id=?").get(savedA.data.parcelId),
+      undefined,
+      "la última unidad elimina la parcela",
+    );
+  } finally {
+    db.prepare("DELETE FROM properties WHERE id IN ('prop-parcel-a','prop-parcel-b','prop-parcel-other')").run();
+    db.prepare("DELETE FROM parcels WHERE communityId='com-parcel-test'").run();
+    db.prepare("DELETE FROM communities WHERE id='com-parcel-test'").run();
+  }
+});
+
 test("censo: normaliza DNI sin ceros iniciales al guardar y conserva su letra", async () => {
   const created = await admin("/owners", "POST", {
     id: "owner-census-dni",
