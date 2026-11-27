@@ -9,7 +9,12 @@ import {
   syncOwnerProperties,
   rebuildOwnersPropertyIds,
 } from "../domain.js";
-import { contactError, bankAccountError, identityDocumentError } from "../validation.js";
+import {
+  contactError,
+  bankAccountError,
+  identityDocumentError,
+  normalizeIdentityDocument,
+} from "../validation.js";
 import { entityRequiredError, trimEntityFields } from "../entity-validation.js";
 import { avisarCambioOwner } from "../avisos-cambios.js";
 import { normalizeNotificationPreference } from "../../public/js/notification-channels.js";
@@ -47,9 +52,7 @@ function validateOwnerData(data) {
       .toUpperCase();
   }
   if (data.dni !== undefined) {
-    data.dni = String(data.dni || "")
-      .trim()
-      .toUpperCase();
+    data.dni = normalizeIdentityDocument(data.dni);
     const documentError = identityDocumentError(data.dni, data.documentType || "DNI");
     if (documentError) return documentError;
   }

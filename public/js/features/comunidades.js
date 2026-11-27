@@ -295,7 +295,7 @@ function applyCommunityReadonly() {
         element.closest("#community-editor-fees") ||
         element.closest(".doc-library") ||
         element.matches(
-          "button[data-community-tab],button[data-community-statutes-tab],#close-dialog",
+          "button[data-community-tab],button[data-community-statutes-tab],#close-dialog,#community-edit-property-search",
         ) ||
         (element.matches('[data-action="view"]') && element.closest("#community-tab-docs"));
       if (!allowed && "disabled" in element && !element.disabled) {
@@ -333,7 +333,7 @@ communityForm.addEventListener(
   (event) => {
     if (!communityReadonly) return;
     const allowed = event.target.closest(
-      'button[data-community-tab],button[data-community-statutes-tab],#close-dialog,#community-tab-docs [data-action="view"],#community-editor-fees,.doc-library',
+      'button[data-community-tab],button[data-community-statutes-tab],#close-dialog,#community-edit-property-search,#community-tab-docs [data-action="view"],#community-editor-fees,.doc-library',
     );
     if (!allowed) {
       event.preventDefault();
@@ -580,6 +580,8 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   communitySetVerifyStatus("phone", "pending", "Pendiente de verificación");
   communitySetVerifyStatus("email", "pending", "Pendiente de verificación");
   const c = state.communities.find((item) => item.id === id);
+  const propertySearch = document.querySelector("#community-edit-property-search");
+  if (propertySearch) propertySearch.value = "";
   const yearSelect = communityForm.elements.constitutionYear;
   yearSelect.replaceChildren(new Option("Sin especificar", ""));
   for (let year = new Date().getFullYear(); year >= 1000; year--)
@@ -598,6 +600,9 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
   switchCommunityEditorTab(defaultTab);
   switchCommunityStatutesTab("regime");
   setFormReadonly(communityForm, readonly);
+  if (propertySearch) propertySearch.disabled = false;
+  const propertyResults = document.querySelector("#community-edit-property-results");
+  if (propertyResults) propertyResults.textContent = "";
 
   if (c) {
     Object.entries(c).forEach(([key, value]) => {
@@ -612,6 +617,18 @@ export function openCommunityEditor(id = null, defaultTab = "details", readonly 
       }
     });
     communityTerritory?.set(c.city, c.province, c.postalCode);
+    for (const kind of ["phone", "email"]) {
+      communityContactVerify[kind].verified = !!c[`${kind}Verified`];
+      communitySetVerifyStatus(
+        kind,
+        c[`${kind}Verified`] ? "verified" : "pending",
+        c[`${kind}Verified`]
+          ? kind === "phone"
+            ? "✓ Teléfono verificado"
+            : "✓ Correo electrónico verificado"
+          : "Pendiente de verificación",
+      );
+    }
     renderCommunityEditorProperties(c);
   } else {
     const countEl = document.querySelector("#community-edit-property-count");
@@ -743,6 +760,31 @@ function revealCommunityValidationProblems(problems) {
 /** Lista de inmuebles vinculados dentro del diálogo de EDICIÓN (tab Inmuebles). */
 function renderCommunityEditorProperties(c) {
   const commProps = state.properties.filter((p) => p.communityId === c.id);
+  const normalizeSearch = (value) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const query = normalizeSearch(
+    document.querySelector("#community-edit-property-search")?.value,
+  ).trim();
+  const matches = commProps.filter((property) => {
+    const owners = propertyOwnerIds(property).map((id) =>
+      state.owners.find((owner) => owner.id === id),
+    );
+    return normalizeSearch(
+      [
+        property.plot,
+        property.address,
+        property.cadastralRef,
+        ...owners.map(
+          (owner) => `${owner?.name || ""} ${owner?.surname || ""} ${owner?.dni || ""}`,
+        ),
+      ].join(" "),
+    ).includes(query);
+  });
+  const results = document.querySelector("#community-edit-property-results");
+  if (results) results.textContent = `${matches.length} de ${commProps.length} inmuebles`;
   const countEl = document.querySelector("#community-edit-property-count");
   if (countEl) countEl.textContent = String(commProps.length);
   const tabEl = document.querySelector("#community-properties-tab");
@@ -763,7 +805,13 @@ function renderCommunityEditorProperties(c) {
     return;
   }
 
-  commProps.forEach((prop) => {
+  if (!matches.length) {
+    const empty = document.createElement("p");
+    empty.className = "form-intro";
+    empty.textContent = "No hay inmuebles que coincidan con la búsqueda.";
+    listEl.append(empty);
+  }
+  matches.forEach((prop) => {
     const card = document.createElement("div");
     card.className = "community-property-card";
 
@@ -823,6 +871,11 @@ function renderCommunityEditorProperties(c) {
     listEl.append(card);
   });
 }
+
+document.querySelector("#community-edit-property-search")?.addEventListener("input", () => {
+  const community = state.communities.find((item) => item.id === editingCommunityId);
+  if (community) renderCommunityEditorProperties(community);
+});
 
 // --- Tabs del editor de comunidad ---
 function switchCommunityStatutesTab(tab) {
@@ -1424,6 +1477,8 @@ async function persistCommunityDraft() {
 
   communityNotes?.sync();
   const data = Object.fromEntries(new FormData(communityForm));
+  data.phoneVerified = communityContactVerify.phone.verified;
+  data.emailVerified = communityContactVerify.email.verified;
   [
     "name",
     "nif",

@@ -27,10 +27,20 @@ async function fixture(t) {
     new URL("../update-vm.sh", import.meta.url),
     path.join(source, "scripts/update-vm.sh"),
   );
-  for (const name of ["backup.sh", "prune-backups.sh", "backup.cron"])
+  for (const name of ["backup.sh", "prune-backups.sh", "backup.cron", "install-backup-schedule.sh"])
     await copyFile(
       new URL(`../../deploy/${name}`, import.meta.url),
       path.join(source, "deploy", name),
+    );
+  await mkdir(path.join(source, "deploy/systemd"));
+  for (const name of [
+    "comunidad-backup@.service",
+    "comunidad-backup-daily.timer",
+    "comunidad-backup-weekly.timer",
+  ])
+    await copyFile(
+      new URL(`../../deploy/systemd/${name}`, import.meta.url),
+      path.join(source, "deploy/systemd", name),
     );
   await writeFile(path.join(root, "data/penarrubia.db"), "existing database");
   await writeFile(path.join(root, "data/provider-key"), "existing encryption key");
@@ -89,6 +99,10 @@ test(
     assert.ok(trace.indexOf("image inspect") < trace.indexOf(" stop api"));
     assert.ok(!trace.includes("build --build-arg"));
     assert.ok(trace.includes("up -d --no-deps --pull never api"));
+    assert.ok(
+      !trace.includes(" start api"),
+      "No debe admitir escrituras entre backup y actualización",
+    );
     assert.equal(
       await readFile(path.join(f.root, ".env"), "utf8"),
       originalEnv.replace("comunidad:previous", `comunidad:${sha}`),
@@ -103,8 +117,8 @@ test(
       "existing upload",
     );
     assert.equal((await readFile(path.join(f.root, ".deployed-release"), "utf8")).trim(), sha);
-    const [backup] = await readdir(path.join(f.root, "backups"));
-    const entries = spawnSync("tar", ["-tzf", path.join(f.root, "backups", backup)], {
+    const [backup] = await readdir(path.join(f.root, "backups/deploys"));
+    const entries = spawnSync("tar", ["-tzf", path.join(f.root, "backups/deploys", backup)], {
       encoding: "utf8",
     });
     for (const entry of [
@@ -150,7 +164,7 @@ test(
     const result = f.run({ FAIL_HEALTH: "1" });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /no pasó salud/);
-    assert.equal((await readdir(path.join(f.root, "backups"))).length, 1);
+    assert.equal((await readdir(path.join(f.root, "backups/deploys"))).length, 1);
     await assert.rejects(readFile(path.join(f.root, ".deployed-release")), /ENOENT/);
   },
 );

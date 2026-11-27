@@ -863,20 +863,30 @@ docker compose --project-directory . --env-file .env -f deploy/compose.yml ps
 bash deploy/backup.sh
 ```
 
-`deploy/backup.sh` detiene brevemente solo esta API, guarda base, documentos y
-`.env`, y la vuelve a arrancar incluso si falla el backup. La copia se escribe
-en un temporal, se comprueba que el tar se puede leer y solo entonces se
-publica; tras una copia correcta conserva solo las dos más recientes
-(`deploy/prune-backups.sh`) y no
-amplía el disco automáticamente. Las copias locales en la VM no cubren pérdida
-del disco: conservar también una copia privada fuera de ella.
+`deploy/backup.sh [daily|weekly]` detiene brevemente solo esta API y guarda base,
+documentos, clave de proveedores en `data/`, `.env` y Compose. La vuelve a arrancar
+incluso si falla la copia. El archivo se escribe en un temporal y se verifica
+antes de reemplazar atómicamente la copia anterior.
 
-Para programarla dos veces al mes (días 1 y 15, 03:30 UTC), desde la raíz de la
-aplicación:
+La política preparada es un diario a las **03:00 Europe/Madrid** y un semanal los
+domingos a las **03:15 Europe/Madrid**. Cada tipo conserva una copia independiente
+en `backups/daily/` y `backups/weekly/`. Los respaldos previos a los deploys están
+en `backups/deploys/`, conservando los dos últimos tras una publicación saludable.
+Ninguna de esas rotaciones elimina copias de los otros tipos. No se amplía el
+disco automáticamente. Las copias de la VM no cubren pérdida del disco.
+
+La activación se realiza una vez, durante la ventana de mantenimiento:
 
 ```bash
-(crontab -l 2>/dev/null | grep -v 'deploy/backup.sh'; cat deploy/backup.cron) | crontab -
+sudo bash deploy/install-backup-schedule.sh
+systemctl list-timers comunidad-backup-daily.timer comunidad-backup-weekly.timer
 ```
+
+El instalador sustituye el cron antiguo por timers con zona horaria explícita y
+guarda una copia del crontab anterior. No se activa desde un deploy normal.
+Ver el procedimiento de [carga inicial del censo y recuperación](docs/puesta-en-produccion-base26.md)
+para preparar y verificar la candidata local y realizar la sustitución excepcional
+de la base. La preparación local no cambia la programación del servidor.
 
 Para actualizar, fusionar una PR o hacer push a la rama
 predeterminada, y seguir los dos workflows de Actions. Para reintentar un fallo,

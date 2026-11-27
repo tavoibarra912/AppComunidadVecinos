@@ -205,9 +205,7 @@ function sanitizeCoefficientInput() {
   let value = cleaned;
   if (separatorIndex !== -1) {
     const integer = cleaned.slice(0, separatorIndex).replace(/[^\d]/g, "");
-    const decimals = cleaned
-      .slice(separatorIndex + 1)
-      .replace(/[^\d]/g, "");
+    const decimals = cleaned.slice(separatorIndex + 1).replace(/[^\d]/g, "");
     value = `${integer}${cleaned[separatorIndex]}${decimals}`;
   }
   if (value !== input.value) input.value = value;
@@ -1708,7 +1706,7 @@ propertyForm.addEventListener("submit", async (event) => {
           property.id !== state.ui.editingPropertyId &&
           normalizeCadastralRef(property.cadastralRef) === cadastralRef,
       );
-      if (duplicate) {
+      if (duplicate && !association) {
         messages.push(
           `Ya existe el inmueble "${duplicate.plot}" con la misma referencia catastral.`,
         );

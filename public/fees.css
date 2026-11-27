@@ -107,10 +107,51 @@
   font-size: 13px;
 }
 .fee-payment-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   padding: 14px;
-  border-radius: 5px;
+  border-radius: 6px;
   background: var(--canvas);
   font-variant-numeric: tabular-nums;
+}
+.fee-payment-summary > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fee-payment-summary > div + div {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+.fee-payment-summary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.fee-payment-summary strong {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.fee-payment-summary > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+/* Sin importe todavía no es un resumen: se muestra como una pista discreta. */
+.fee-payment-summary.is-empty {
+  padding: 0;
+  background: transparent;
+}
+.fee-payment-summary.is-empty > p {
+  color: var(--muted);
+  font-size: 13px;
+}
+/* Firefox dibuja además su propio icono de calendario: en este diálogo se quita
+   el de fondo para no duplicarlo. En Chromium se mantiene el icono propio. */
+@supports (-moz-appearance: none) {
+  #fee-dialog input[type="date"] {
+    background-image: none !important;
+    padding-right: 12px;
+  }
 }
 /* Título de bloque dentro de los diálogos largos (cobro, acuerdo, emisión). */
 .fee-form-section {
@@ -163,6 +204,35 @@
   border-radius: 4px;
   background: var(--canvas);
   font-size: 13px;
+}
+.fee-debt-label {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.fee-debt p {
+  margin: 5px 0 0;
+}
+/* Aviso que solo aparece cuando la API detecta un posible cobro duplicado. */
+.fee-duplicate {
+  display: grid;
+  gap: 6px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid #e8c78b;
+  border-radius: 6px;
+  background: #fffbeb;
+}
+.fee-duplicate p {
+  margin: 0;
+  color: #754c13;
+  font-size: 13px;
+}
+.fee-duplicate .fee-check {
+  padding: 4px 0 0;
 }
 .fee-check-all {
   border-bottom: 1px solid var(--line);
@@ -345,6 +415,12 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  max-height: min(92vh, 1100px);
+  overflow-y: auto;
+}
+#fee-dialog .dialog-header h2 {
+  margin: 0;
+  line-height: 1.25;
 }
 .fee-dialog-content label {
   display: grid;
@@ -360,8 +436,30 @@
 .fee-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 16px;
   margin: 18px 0;
+}
+/* Pie de los diálogos de cuotas: separa las acciones del formulario. */
+.fee-dialog-actions {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  align-items: center;
+}
+.fee-dialog-actions button {
+  margin: 0;
+}
+/* Botón de texto que acompaña a los iconos: mismo alto de 30 px. */
+.fee-dialog-actions .fee-dialog-text-action {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1;
 }
 .fee-form-grid label:has(input[type="checkbox"]) {
   display: flex;
@@ -479,6 +577,25 @@
   }
   .fee-form-grid {
     grid-template-columns: 1fr;
+  }
+  .fee-payment-summary {
+    grid-template-columns: 1fr;
+  }
+  .fee-payment-summary > div + div {
+    padding-top: 10px;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+  .fee-dialog-actions {
+    flex-wrap: wrap;
+  }
+  /* Los iconos conservan su caja de 30 px; solo el botón de texto puede crecer. */
+  .fee-dialog-actions button {
+    flex: 0 0 auto;
+  }
+  .fee-dialog-actions .fee-dialog-text-action {
+    flex: 1 1 auto;
   }
   .fee-summary {
     gap: 6px;
@@ -669,7 +786,8 @@
 /* ==========================================
    DERRAMAS
    ========================================== */
-.fee-assessments {
+.fee-assessments,
+.fee-services {
   margin: 26px 0;
   padding: 20px;
   border: 1px solid var(--line);

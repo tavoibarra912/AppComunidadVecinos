@@ -7,9 +7,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "dev:base26": "node scripts/run-base26.mjs",
     "restart": "node scripts/restart.mjs",
     "build:netlify": "node scripts/build-netlify.mjs",
     "test": "node --test scripts/tests/*.test.mjs",
+    "import:base26": "node scripts/import-base-datos-26.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

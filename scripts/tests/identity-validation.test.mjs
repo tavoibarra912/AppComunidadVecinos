@@ -9,6 +9,7 @@ import {
   isValidIdentityDocument,
   isValidNie,
   isValidNif,
+  normalizeIdentityDocument,
 } from "../../public/js/utils.js";
 
 test("DNI: 8 dígitos y letra de control módulo 23", () => {
@@ -94,4 +95,12 @@ test("detección de tipo y validación por tipo declarado", () => {
   assert.equal(isValidIdentityDocument("B12345674", "CIF"), true);
   assert.equal(isValidIdentityDocument("B12345674", "NIF"), true);
   assert.equal(isValidIdentityDocument("12345678Z", "NIF"), true);
+});
+
+test("DNI del censo: recupera ceros iniciales conservando el control original", () => {
+  assert.equal(normalizeIdentityDocument("2.819.736-m"), "02819736M");
+  assert.equal(isValidIdentityDocument("2819736M", "DNI"), true);
+  assert.equal(isValidIdentityDocument("275914J", "DNI"), false);
+  assert.equal(isValidIdentityDocument("22462593X", "DNI"), false);
+  assert.equal(isValidIdentityDocument("X4236505", "NIE"), false);
 });

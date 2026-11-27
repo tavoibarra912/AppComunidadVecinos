@@ -78,26 +78,20 @@ test("migración de roles: los roles viejos fueron eliminados", () => {
   assert.ok(!roles.includes("administrador"), "rol viejo 'administrador' aún existe");
   assert.ok(!roles.includes("propietario"), "rol viejo 'propietario' aún existe");
 });
-test("migración de inmuebles: referencia catastral normalizada y única", () => {
+test("migración de inmuebles: permite subparcelas con referencia matriz compartida", () => {
   const index = db
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_properties_cadastral_unique'",
-    )
+    .prepare("SELECT name FROM sqlite_master WHERE name='idx_properties_cadastral_unique'")
     .get();
-  assert.ok(index, "falta el índice único de referencia catastral");
-  db.prepare(
-    `INSERT INTO properties (id, communityId, propertyType, plot, cadastralRef)
-     VALUES ('prop-catastral-1', 'com-1', 'vivienda', 'Catastral 1', '12345678901234567890')`,
-  ).run();
-  assert.throws(
-    () =>
-      db
-        .prepare(
-          `INSERT INTO properties (id, communityId, propertyType, plot, cadastralRef)
-       VALUES ('prop-catastral-2', 'com-1', 'vivienda', 'Catastral 2', ' 12345678901234567890 ')`,
-        )
-        .run(),
-    /UNIQUE/i,
+  assert.equal(index, undefined);
+  const insert = db.prepare(
+    "INSERT INTO properties(id, communityId, propertyType, plot, cadastralRef) VALUES (?, 'com-1', 'vivienda', ?, '12345678901234567890')",
+  );
+  insert.run("prop-catastral-1", "Subparcela 1");
+  insert.run("prop-catastral-2", "Subparcela 2");
+  assert.equal(
+    db.prepare("SELECT COUNT(*) n FROM properties WHERE cadastralRef='12345678901234567890'").get()
+      .n,
+    2,
   );
 });
 

@@ -359,6 +359,8 @@ export function resourceAccess(req, res, next) {
     );
     if (documents.error) return res.status(400).json({ error: documents.error });
     req.body.documents = documents.documents;
+  }
+  if (["owners", "tenants", "communities"].includes(collection)) {
     // La verificación de contactos solo la concede el servidor: se consume un
     // reto confirmado por esta cuenta para el contacto exacto. Los flags
     // enviados por el navegador nunca se aceptan por sí solos.

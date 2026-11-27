@@ -97,8 +97,8 @@ router.post("/", (req, res) => {
   }
   const id = data.id || crypto.randomUUID();
   db.prepare(
-    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId, logoDataUrl, marca, legalConfig)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO communities (id, name, nif, phone, otherPhone, address, city, province, postalCode, email, iban, president, administrator, constitutionYear, reserveFund, notes, documents, currency, adminUserId, logoDataUrl, marca, legalConfig, phoneVerified, phoneVerifiedAt, emailVerified, emailVerifiedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     data.name,
@@ -122,6 +122,10 @@ router.post("/", (req, res) => {
     data.logoDataUrl || "",
     data.marca ? JSON.stringify(data.marca) : "{}",
     JSON.stringify(legalConfigFromValue(data.legalConfig)),
+    data.phoneVerified ? 1 : 0,
+    data.phoneVerifiedAt || "",
+    data.emailVerified ? 1 : 0,
+    data.emailVerifiedAt || "",
   );
   res.status(201).json(findCommunity(id));
 });
@@ -165,7 +169,7 @@ router.put(
     db.prepare(
       `UPDATE communities SET name = ?, nif = ?, phone = ?, otherPhone = ?, address = ?, city = ?,
        province = ?, postalCode = ?, email = ?, iban = ?, president = ?, administrator = ?,
-       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ?, logoDataUrl = ?, marca = ?, legalConfig = ? WHERE id = ?`,
+       constitutionYear = ?, reserveFund = ?, notes = ?, documents = ?, currency = ?, adminUserId = ?, logoDataUrl = ?, marca = ?, legalConfig = ?, phoneVerified = ?, phoneVerifiedAt = ?, emailVerified = ?, emailVerifiedAt = ? WHERE id = ?`,
     ).run(
       data.name,
       data.nif,
@@ -190,6 +194,10 @@ router.put(
         ? JSON.stringify({ ...(existing.marca || {}), ...data.marca })
         : JSON.stringify(existing.marca || {}),
       JSON.stringify(legalConfigFromValue(data.legalConfig ?? existing.legalConfig)),
+      data.phoneVerified ? 1 : 0,
+      data.phoneVerifiedAt || "",
+      data.emailVerified ? 1 : 0,
+      data.emailVerifiedAt || "",
       existing.id,
     );
     res.json(findCommunity(existing.id));

@@ -166,7 +166,11 @@ test("Comunidad Ver: campos y acciones bloqueados, pestañas y documento operabl
     f.w.communityUI.openCommunityEditor("c1", "details", true);
     await flush();
     const form = f.w.document.querySelector("#community-form");
-    assert.ok([...form.querySelectorAll("input,select,textarea")].every((el) => el.disabled));
+    assert.ok(
+      [
+        ...form.querySelectorAll("input:not(#community-edit-property-search),select,textarea"),
+      ].every((el) => el.disabled),
+    );
     assert.equal(form.querySelector('[data-community-tab="contact"]').disabled, false);
     form.querySelector('[data-community-tab="properties"]').click();
     assert.equal(f.w.document.querySelector("#community-tab-properties").hidden, false);
@@ -522,7 +526,60 @@ test("R-02: un error en Contacto y Domicilio abre esa pestaña y enfoca el prime
     assert.equal(f.w.document.activeElement, form.elements.phone);
     assert.equal(form.elements.phone.getAttribute("aria-invalid"), "true");
     assert.ok(summaries.some((message) => /phone/.test(message)));
-    assert.equal(summaries.some((message) => message.includes("..")), false);
+    assert.equal(
+      summaries.some((message) => message.includes("..")),
+      false,
+    );
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("Comunidad Inmuebles: busca por titular, dirección y referencia sin perder el total", () => {
+  const f = communityFixture();
+  try {
+    f.state.properties[0].address = "Calle Álamo 1";
+    f.state.properties[0].cadastralRef = "28055A013000540001WL";
+    f.state.properties.push({ id: "p2", communityId: "c1", plot: "I2 Río", ownerIds: [] });
+    f.w.communityUI.openCommunityEditor("c1", "properties", true);
+    const search = f.w.document.querySelector("#community-edit-property-search");
+    assert.equal(search.disabled, false);
+    for (const query of ["alamo", "titular", "28055A013000540001WL", "no existe", ""]) {
+      search.value = query;
+      search.dispatchEvent(new f.w.Event("input", { bubbles: true }));
+      const expected = query === "no existe" ? 0 : query === "" ? 2 : 1;
+      assert.equal(
+        f.w.document.querySelectorAll("#community-edit-properties-list .community-property-card")
+          .length,
+        expected,
+      );
+      assert.equal(
+        f.w.document.querySelector("#community-edit-property-results").textContent,
+        `${expected} de 2 inmuebles`,
+      );
+      assert.equal(f.w.document.querySelector("#community-edit-property-count").textContent, "2");
+    }
+    f.w.communityUI.closeCommunityEditor();
+    f.w.communityUI.openCommunityEditor("c1", "properties");
+    assert.equal(search.value, "");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("Comunidad: recupera la verificación persistida al abrir la ficha", () => {
+  const f = communityFixture();
+  try {
+    Object.assign(f.state.communities[0], { phoneVerified: true, emailVerified: true });
+    f.w.communityUI.openCommunityEditor("c1", "contact");
+    assert.equal(
+      f.w.document.querySelector("#community-phone-verify-status").dataset.estado,
+      "verified",
+    );
+    assert.equal(
+      f.w.document.querySelector("#community-email-verify-status").dataset.estado,
+      "verified",
+    );
   } finally {
     f.dom.window.close();
   }
