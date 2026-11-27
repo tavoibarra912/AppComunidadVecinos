@@ -163,10 +163,13 @@ const CIF_CONTROL_LETTERS = "JABCDEFGHI";
  * valida igual que «H28654325».
  */
 export function normalizeIdentityDocument(value) {
-  return String(value || "")
+  const normalized = String(value || "")
     .trim()
     .toUpperCase()
     .replace(/[\s.\/-]+/g, "");
+  // Los censos de Excel suelen omitir los ceros iniciales del DNI.
+  // Se conserva la letra original: el control sigue validándose después.
+  return /^\d{1,7}[A-Z]$/.test(normalized) ? normalized.padStart(9, "0") : normalized;
 }
 
 /** Valida un DNI español: 8 dígitos + letra de control (módulo 23). */

@@ -15,6 +15,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizeIdentityDocument, isValidIdentityDocument } from "../public/js/utils.js";
+import {
+  normalizeCadastralReference,
+  cadastralReferenceProblem,
+} from "../src/cadastral-reference.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -59,6 +64,8 @@ export const COMMUNITY = Object.freeze({
   constitutionYear: "1987",
   reserveFund: "0",
   currency: "EUR",
+  phoneVerified: true,
+  emailVerified: true,
   notes: "Censo importado desde «BASE DE DATOS 26».",
   legalConfig: JSON.stringify({ regimen: "asociacion" }),
 });
@@ -91,15 +98,13 @@ export function cellText(value) {
 
 /** Documento sin espacios, puntos ni guiones y en mayúsculas. */
 export function normalizeDocument(raw) {
-  return cellText(raw)
-    .toUpperCase()
-    .replace(/[\s.\-]/g, "");
+  return normalizeIdentityDocument(cellText(raw));
 }
 
 /** Tipo de documento por la forma del identificador (DNI, NIE o CIF). */
 export function detectDocumentType(document) {
   const value = normalizeDocument(document);
-  if (/^[XYZ]\d{7}[A-Z]$/.test(value)) return "NIE";
+  if (/^[XYZ]\d/.test(value)) return "NIE";
   if (/^[A-HJNPQRSUVW]\d{7}[A-Z0-9]$/.test(value)) return "CIF";
   return "DNI";
 }
@@ -133,12 +138,10 @@ export function parseArea(raw) {
   return String(Math.round(number * 100) / 100);
 }
 
-/** Normaliza una referencia catastral (20 alfanuméricos) o "" si no sirve. */
+/** Normaliza una referencia catastral con formato y control correctos. */
 export function normalizeCadastralRef(raw) {
-  const value = cellText(raw)
-    .toUpperCase()
-    .replace(/[\s.\-]/g, "");
-  return /^[A-Z0-9]{20}$/.test(value) ? value : "";
+  const value = normalizeCadastralReference(cellText(raw));
+  return cadastralReferenceProblem(value) ? "" : value;
 }
 
 /** Parser CSV mínimo con soporte de comillas y saltos de línea dentro de celdas. */
@@ -227,6 +230,62 @@ export async function readSheet({ file, sheet = SHEET_NAME }) {
   return { table, source, sheet: worksheet.name, extension };
 }
 
+/** Datos de configuración y comunidad de las columnas Campo/Observaciones/Valor de Book1. */
+export async function readMapping(file) {
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(path.resolve(file));
+  const rows = (name) => {
+    const sheet = workbook.getWorksheet(name);
+    if (!sheet) throw new Error(`Falta la hoja «${name}» en el mapping.`);
+    return sheet
+      .getSheetValues()
+      .filter(Boolean)
+      .map((row) => ({
+        field: cellText(row[1]),
+        notes: cellText(row[4]),
+        value: cellText(row[5]),
+      }));
+  };
+  const association = rows("Datos de la Asociacion");
+  const communityRows = rows("Comunidad");
+  const get = (list, prefix) => {
+    const row = list.find((item) => item.field.startsWith(prefix));
+    if (!row) throw new Error(`Falta el campo «${prefix}» en el mapping.`);
+    return row;
+  };
+  const settings = {
+    nombreAsociacion: get(association, "Nombre de la asociación").value,
+    emailContacto: get(association, "Email de contacto").value,
+    telefonoContacto: get(association, "Teléfono de contacto").value,
+  };
+  if (!settings.nombreAsociacion || !settings.emailContacto)
+    throw new Error("El mapping debe indicar nombre y email de la asociación.");
+  settings.marca = { nombre: settings.nombreAsociacion };
+  const community = { ...COMMUNITY };
+  for (const [key, prefix] of Object.entries({
+    name: "Identificador Comunidad",
+    nif: "NIF",
+    president: "Presidente",
+    administrator: "Administrador de Fincas",
+    constitutionYear: "Año de Constitución",
+    phone: "Teléfono Principal",
+    otherPhone: "Teléfono Secundario",
+    email: "Email",
+    address: "Dirección",
+    iban: "IBAN de la Comunidad",
+    reserveFund: "Fondo de reserva",
+  }))
+    community[key] = get(communityRows, prefix).value;
+  const postal = get(communityRows, "Código postal").value.match(/^(\d{5})\s*-\s*(.+)$/);
+  if (!postal) throw new Error("El código postal del mapping debe incluir código y localidad.");
+  community.postalCode = postal[1];
+  community.city = postal[2];
+  community.phoneVerified = /verificado/i.test(get(communityRows, "Teléfono Principal").notes);
+  community.emailVerified = /verificado/i.test(get(communityRows, "Email").notes);
+  return { community, settings };
+}
+
 /** Notas comunes de propietario e inmueble (Book1: Ref. de la comunidad de regantes). */
 export function rowNotes(row, cuotaSuperficie) {
   const notes = [];
@@ -240,7 +299,11 @@ export function rowNotes(row, cuotaSuperficie) {
  * Construye el plan de importación sin tocar ninguna base.
  * Devuelve comunidades, usuarios, propietarios, inmuebles y avisos.
  */
-export function buildPlan(table, headerIndex = findHeaderRow(table)) {
+export function buildPlan(
+  table,
+  headerIndex = findHeaderRow(table),
+  { community = COMMUNITY, settings, statutes } = {},
+) {
   if (headerIndex < 0) {
     throw new Error(
       "No encontré el encabezado de la hoja (hacen falta las columnas «Pcla.» y «DNI/NIF»).",
@@ -251,9 +314,36 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
   const owners = new Map();
   const properties = [];
   const seenPcla = new Map();
-  const seenCadastral = new Set();
+  const exclusions = [];
+  const invalidDocuments = new Set();
+  const cadastralPlots = new Map();
+  // Se evalúan todas las filas antes de importar: una repetición no permite
+  // elegir arbitrariamente la primera parcela como titular de esa referencia.
+  for (const cells of table.slice(headerIndex + 1)) {
+    const plot = cellText(cells[COL.pcla]);
+    const reference = normalizeCadastralRef(cells[COL.cadastralRef]);
+    if (!plot || !reference) continue;
+    if (!cadastralPlots.has(reference)) cadastralPlots.set(reference, new Set());
+    cadastralPlots.get(reference).add(plot);
+  }
+  const exclude = (rowNumber, row, entity, type, message) => {
+    exclusions.push({
+      fila: rowNumber,
+      parcela: row.pcla,
+      titular: row.titular,
+      celda: `${entity === "propietario_usuario" ? "G" : "F"}${rowNumber}`,
+      entidad: entity,
+      tipo: type,
+      valorExcel: cellText(
+        table[rowNumber - 1]?.[entity === "propietario_usuario" ? COL.dni : COL.cadastralRef],
+      ),
+      motivo: message,
+    });
+    warn(rowNumber, row.pcla, message);
+  };
   let emptyRows = 0;
   let totalArea = 0;
+  let sourceSequence = 0;
 
   for (let index = headerIndex + 1; index < table.length; index += 1) {
     const cells = table[index] || [];
@@ -272,6 +362,9 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
       titular: cellText(cells[COL.titular]),
       cadastralRef: cellText(cells[COL.cadastralRef]),
       document: normalizeDocument(cells[COL.dni]),
+      username: cellText(cells[COL.dni])
+        .toLowerCase()
+        .replace(/[\s.\/-]/g, ""),
       areaM2: parseArea(cells[COL.areaM2]),
       cuotaSuperficie: cellText(cells[COL.cuotaSuperficie]),
       tipoVia: cellText(cells[COL.tipoVia]),
@@ -296,14 +389,46 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
       continue;
     }
     seenPcla.set(row.pcla, rowNumber);
+    sourceSequence += 1;
+    const referenceProblem = cadastralReferenceProblem(row.cadastralRef);
+    const cadastralRef = normalizeCadastralRef(row.cadastralRef);
+    const repeatedReference = cadastralRef && cadastralPlots.get(cadastralRef)?.size > 1;
+    const importProperty = !referenceProblem && !repeatedReference;
+    if (!importProperty) {
+      const reason =
+        referenceProblem === "missing"
+          ? "referencia_ausente"
+          : referenceProblem === "format"
+            ? "referencia_formato"
+            : referenceProblem === "checksum"
+              ? "referencia_control"
+              : "referencia_repetida";
+      const explanation =
+        referenceProblem === "missing"
+          ? "Referencia catastral ausente"
+          : referenceProblem === "format"
+            ? "Referencia catastral con formato incorrecto"
+            : referenceProblem === "checksum"
+              ? "Referencia catastral con caracteres de control incorrectos"
+              : `Referencia catastral repetida entre parcelas ${[...cadastralPlots.get(cadastralRef)].join(", ")}, pendiente de confirmar`;
+      exclude(rowNumber, row, "inmueble", reason, `${explanation}: no se importa el inmueble.`);
+    }
+    const documentType = detectDocumentType(row.document);
+    const validDocument = !!row.document && isValidIdentityDocument(row.document, documentType);
+    if (!validDocument) {
+      if (row.document) invalidDocuments.add(row.document);
+      exclude(
+        rowNumber,
+        row,
+        "propietario_usuario",
+        row.document ? "documento_invalido" : "documento_ausente",
+        row.document
+          ? `Documento «${row.document}» con formato o control incorrecto: no se importan el propietario ni su usuario.`
+          : "Documento ausente: no se importan el propietario ni su usuario.",
+      );
+    }
     if (!row.titular)
       warn(rowNumber, row.pcla, "Fila sin titular: el inmueble queda sin propietario.");
-    else if (!row.document)
-      warn(
-        rowNumber,
-        row.pcla,
-        `Titular «${row.titular}» sin documento: el inmueble queda sin propietario.`,
-      );
 
     const address = [row.tipoVia, row.direccion].filter(Boolean).join(" ").trim();
     if (!address)
@@ -312,18 +437,10 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
     if (!row.localidad) warn(rowNumber, row.pcla, "Fila sin localidad: se usa la de la comunidad.");
     if (!row.telefonoMovil && !row.telefonoFijo)
       warn(rowNumber, row.pcla, "Fila sin teléfono: el propietario queda sin teléfono.");
-    if (!row.email) warn(rowNumber, row.pcla, "Fila sin email: el propietario queda sin email.");
 
     let ownerId = "";
-    if (row.document) {
-      const documentType = detectDocumentType(row.document);
-      const validFormat =
-        /^\d{7,8}[A-Z]$/.test(row.document) ||
-        /^[XYZ]\d{7}[A-Z]$/.test(row.document) ||
-        /^[A-HJNPQRSUVW]\d{7}[A-Z0-9]$/.test(row.document);
-      if (!validFormat)
-        warn(rowNumber, row.pcla, `Documento «${row.document}» con formato incompleto: revisalo.`);
-
+    const plot = `I${sourceSequence} ${address || `Parcela ${row.pcla}`}`;
+    if (validDocument && row.titular) {
       const existing = owners.get(row.document);
       if (existing) {
         ownerId = existing.id;
@@ -333,8 +450,9 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
         existing.email ||= row.email;
         existing.address ||= address;
         existing.postalCode ||= row.codigoPostal;
-        existing.cadastralRef ||= normalizeCadastralRef(row.cadastralRef);
-        existing.areaM2 ||= row.areaM2;
+        existing.cadastralRef ||= importProperty ? cadastralRef : "";
+        existing.areaM2 ||= importProperty ? row.areaM2 : "";
+        existing.plot ||= importProperty ? plot : "";
         existing.notes ||= rowNotes(row, row.cuotaSuperficie);
         if (existing.phone) existing.phoneVerified = 1;
         if (existing.email) existing.emailVerified = 1;
@@ -345,7 +463,7 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
             `El documento ${row.document} aparece con otro titular («${row.titular}» frente a «${existing.titular}»): se unifica la ficha.`,
           );
         }
-        existing.propertyIds.push(`prop-base26-${slug(row.pcla)}`);
+        if (importProperty) existing.propertyIds.push(`prop-base26-${slug(row.pcla)}`);
       } else {
         const { name, surname } = splitTitular(row.titular);
         if (!name) warn(rowNumber, row.pcla, "Titular sin nombre utilizable.");
@@ -362,6 +480,7 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
           surname,
           documentType,
           document: row.document,
+          username: row.username,
           email: row.email,
           phone,
           otherPhone: row.telefonoMovil ? row.telefonoFijo : "",
@@ -369,44 +488,28 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
           emailVerified: row.email ? 1 : 0,
           address,
           postalCode: row.codigoPostal,
-          city: row.localidad || COMMUNITY.city,
-          province: COMMUNITY.province,
-          communityId: COMMUNITY.id,
-          communityName: COMMUNITY.name,
-          plot: `Parcela ${row.pcla}`,
-          cadastralRef: normalizeCadastralRef(row.cadastralRef),
-          areaM2: row.areaM2,
+          city: row.localidad || community.city,
+          province: community.province,
+          communityId: community.id,
+          communityName: community.name,
+          plot: importProperty ? plot : "",
+          cadastralRef: importProperty ? cadastralRef : "",
+          areaM2: importProperty ? row.areaM2 : "",
           notes: rowNotes(row, row.cuotaSuperficie),
           titular: row.titular,
-          propertyIds: [`prop-base26-${slug(row.pcla)}`],
+          propertyIds: importProperty ? [`prop-base26-${slug(row.pcla)}`] : [],
         });
       }
     }
 
-    let cadastralRef = normalizeCadastralRef(row.cadastralRef);
-    if (row.cadastralRef && !cadastralRef)
-      warn(
-        rowNumber,
-        row.pcla,
-        `Referencia catastral «${row.cadastralRef}» no válida (20 caracteres): se guarda vacía.`,
-      );
-    // Varias subparcelas comparten la referencia del inmueble matriz y la app
-    // exige que sea única: se conserva en la primera y se avisa del resto.
-    if (cadastralRef && seenCadastral.has(cadastralRef)) {
-      warn(
-        rowNumber,
-        row.pcla,
-        `Referencia catastral ${cadastralRef} repetida en otra parcela: se guarda vacía.`,
-      );
-      cadastralRef = "";
-    } else if (cadastralRef) seenCadastral.add(cadastralRef);
+    if (!importProperty) continue;
     if (row.areaM2) totalArea += Number(row.areaM2);
 
     properties.push({
       id: `prop-base26-${slug(row.pcla)}`,
-      communityId: COMMUNITY.id,
-      communityName: COMMUNITY.name,
-      plot: `Parcela ${row.pcla}`,
+      communityId: community.id,
+      communityName: community.name,
+      plot,
       pcla: row.pcla,
       propertyType: PROPERTY_TYPE,
       propertyUse: PROPERTY_USE,
@@ -414,8 +517,8 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
       cadastralRef,
       areaM2: row.areaM2,
       postalCode: row.codigoPostal,
-      city: row.localidad || COMMUNITY.city,
-      province: COMMUNITY.province,
+      city: row.localidad || community.city,
+      province: community.province,
       ownerIds: ownerId ? [ownerId] : [],
       ownerPercentages: ownerId ? { [ownerId]: 100 } : {},
       occupancy: ownerId ? "owner" : "",
@@ -430,24 +533,30 @@ export function buildPlan(table, headerIndex = findHeaderRow(table)) {
     id: owner.userId,
     name: owner.name,
     surname: owner.surname,
-    usuario: owner.document.toLowerCase(),
+    usuario: owner.username,
     email: owner.email,
     role: "user",
-    password: `${owner.document.toLowerCase()}12345678`,
+    password: `${owner.username}12345678`,
   }));
 
   return {
-    community: COMMUNITY,
+    community,
+    settings,
+    statutes,
     owners: ownerList,
     users,
     properties,
     warnings,
+    exclusions,
     stats: {
       filas: table.length - headerIndex - 1,
       filasVacias: emptyRows,
       inmuebles: properties.length,
       propietarios: ownerList.length,
       usuarios: users.length,
+      documentosInvalidos: invalidDocuments.size,
+      filasSinDocumento: exclusions.filter((item) => item.tipo === "documento_ausente").length,
+      inmueblesExcluidos: exclusions.filter((item) => item.entidad === "inmueble").length,
       inmueblesConPropietario: properties.filter((property) => property.ownerIds.length).length,
       inmueblesSinPropietario: properties.filter((property) => !property.ownerIds.length).length,
       superficieTotal: Math.round(totalArea * 100) / 100,
@@ -475,9 +584,10 @@ export function writeReport(outDir, plan, meta) {
     },
     resumen: plan.stats,
     avisos: plan.warnings,
+    exclusiones: plan.exclusions,
     propietarios: plan.owners.map((owner) => ({
       id: owner.id,
-      usuario: owner.document.toLowerCase(),
+      usuario: owner.username,
       nombre: `${owner.name} ${owner.surname}`.trim(),
       documento: owner.document,
       email: owner.email,
@@ -487,6 +597,8 @@ export function writeReport(outDir, plan, meta) {
     inmuebles: plan.properties.map((property) => ({
       id: property.id,
       parcela: property.pcla,
+      identificador: property.plot,
+      referenciaCatastral: property.cadastralRef,
       direccion: property.address,
       superficie: property.areaM2,
       propietario: property.ownerIds[0] || "",
@@ -550,11 +662,70 @@ export function assertSafeOutDir(outDir) {
 
 /** Crea una base SQLite nueva en outDir/data con el plan completo. */
 export async function writeDatabase(plan, outDir, { force = false } = {}) {
+  // Antes de tocar una base existente, se valida también el plan recibido por
+  // API de módulo: no basta con confiar en que el llamante usó buildPlan().
+  const ownerIds = new Set(plan.owners.map((owner) => owner.id));
+  const userIds = new Set(plan.users.map((user) => user.id));
+  const propertyIds = new Set(plan.properties.map((property) => property.id));
+  const cadastralRefs = new Set();
+  if (
+    ownerIds.size !== plan.owners.length ||
+    userIds.size !== plan.users.length ||
+    propertyIds.size !== plan.properties.length ||
+    plan.users.length !== plan.owners.length
+  )
+    throw new Error("El plan de importación contiene identificadores o cuentas inconsistentes.");
+  for (const owner of plan.owners) {
+    if (
+      !isValidIdentityDocument(owner.document, owner.documentType) ||
+      !userIds.has(owner.userId) ||
+      owner.propertyIds.some((id) => !propertyIds.has(id))
+    )
+      throw new Error("El plan contiene un propietario inválido o vínculos inexistentes.");
+  }
+  for (const property of plan.properties) {
+    const reference = normalizeCadastralReference(property.cadastralRef);
+    if (
+      cadastralReferenceProblem(reference) ||
+      cadastralRefs.has(reference) ||
+      property.ownerIds.some((id) => !ownerIds.has(id))
+    )
+      throw new Error(
+        "El plan contiene una referencia catastral inválida, repetida o un propietario inexistente.",
+      );
+    cadastralRefs.add(reference);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Este importador es solo local: no se ejecuta con NODE_ENV=production.");
+  }
+  outDir = path.resolve(outDir);
+  if (
+    outDir === ROOT ||
+    ["data", "uploads"].some((name) => {
+      const dir = path.join(ROOT, name);
+      return outDir === dir || outDir.startsWith(`${dir}${path.sep}`);
+    })
+  )
+    throw new Error("No se puede reemplazar la base real de la aplicación.");
   const dataDir = path.join(outDir, "data");
   const uploadsDir = path.join(outDir, "uploads");
   const dbFile = path.join(dataDir, "penarrubia.db");
   if (fs.existsSync(dbFile) && !force) {
     throw new Error(`Ya existe una base importada en ${dbFile}. Usá --force para reemplazarla.`);
+  }
+  let backupDir;
+  if (force && fs.existsSync(dbFile)) {
+    backupDir = `${outDir}-backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+    fs.cpSync(outDir, backupDir, { recursive: true });
+    const { DatabaseSync, backup } = await import("node:sqlite");
+    const original = new DatabaseSync(dbFile, { readOnly: true });
+    try {
+      await backup(original, path.join(backupDir, "data", "penarrubia.db"));
+    } finally {
+      original.close();
+    }
+    for (const suffix of ["-wal", "-shm"])
+      fs.rmSync(path.join(backupDir, "data", `penarrubia.db${suffix}`), { force: true });
   }
   if (force) {
     fs.rmSync(dataDir, { recursive: true, force: true });
@@ -572,7 +743,7 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
     throw new Error("Este importador es solo local: no se ejecuta con NODE_ENV=production.");
   }
 
-  const { db } = await import("../src/db.js");
+  const { db, getSettings } = await import("../src/db.js");
   const { passwordRecord } = await import("../src/auth.js");
   const { rebuildOwnersPropertyIds } = await import("../src/domain.js");
   const now = new Date().toISOString();
@@ -626,6 +797,41 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
       community.notes,
       community.legalConfig,
     );
+    db.prepare(
+      `UPDATE communities SET phoneVerified=?, phoneVerifiedAt=?, emailVerified=?, emailVerifiedAt=? WHERE id=?`,
+    ).run(
+      community.phoneVerified ? 1 : 0,
+      community.phoneVerified ? now : "",
+      community.emailVerified ? 1 : 0,
+      community.emailVerified ? now : "",
+      community.id,
+    );
+    if (plan.settings) {
+      const defaults = getSettings();
+      const settings = {
+        ...defaults,
+        ...plan.settings,
+        marca: { ...defaults.marca, ...plan.settings.marca },
+      };
+      db.prepare("INSERT OR REPLACE INTO settings(id, data) VALUES('general', ?)").run(
+        JSON.stringify(settings),
+      );
+    }
+    if (plan.statutes) {
+      const storedName = "base26-estatutos.pdf";
+      fs.copyFileSync(plan.statutes.file, path.join(uploadsDir, storedName));
+      db.prepare(
+        `INSERT INTO documents(id, entityType, entityId, folderId, category, fileName, fileType, fileSize, uploadedAt, uploadedBy, uploadedByName, storedName)
+        VALUES(?, 'community', ?, '', 'statutes', ?, 'application/pdf', ?, ?, 'user-super-admin', 'super_admin', ?)`,
+      ).run(
+        "doc-base26-estatutos",
+        community.id,
+        path.basename(plan.statutes.file),
+        fs.statSync(plan.statutes.file).size,
+        now,
+        storedName,
+      );
+    }
     for (const user of plan.users) {
       insertUser.run(
         user.id,
@@ -706,7 +912,7 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
       .get().total,
   };
   db.close();
-  return { dbFile, dataDir, uploadsDir, totals };
+  return { dbFile, dataDir, uploadsDir, totals, backupDir };
 }
 
 function parseArgs(argv) {
@@ -716,6 +922,10 @@ function parseArgs(argv) {
     if (arg === "--file" || arg === "-f") options.file = argv[++index] || "";
     else if (arg === "--sheet") options.sheet = argv[++index] || SHEET_NAME;
     else if (arg === "--out") options.out = argv[++index] || DEFAULT_OUT_DIR;
+    else if (arg === "--mapping") options.mapping = argv[++index];
+    else if (arg === "--statutes") options.statutes = argv[++index];
+    else if (arg === "--statutes-date") options.statutesDate = argv[++index];
+    else if (arg === "--statutes-reference") options.statutesReference = argv[++index];
     else if (arg === "--write") options.write = true;
     else if (arg === "--force") options.force = true;
     else if (arg === "--help" || arg === "-h") options.help = true;
@@ -765,13 +975,36 @@ Opciones:
   --file, -f  Archivo .xlsm, .xlsx o .csv con la hoja «${SHEET_NAME}».
   --sheet     Nombre de la hoja (por defecto «${SHEET_NAME}»).
   --out       Carpeta local de salida (por defecto .local-test/base-26).
+  --mapping   Book1.xlsx: datos de asociación, marca y comunidad.
+  --statutes  PDF de los estatutos para adjuntar en la raíz de Estatutos.
+  --statutes-date       Fecha de aprobación leída del PDF (AAAA-MM-DD).
+  --statutes-reference  Nombre o referencia de la versión del PDF.
   --write     Crea <out>/data/penarrubia.db con los datos importados.
   --force     Reemplaza una base importada existente en <out>/data.`);
     return;
   }
   const outDir = assertSafeOutDir(options.out);
   const meta = await readSheet({ file: options.file, sheet: options.sheet });
-  const plan = buildPlan(meta.table);
+  const mapping = options.mapping ? await readMapping(options.mapping) : {};
+  if (options.statutes) {
+    const file = path.resolve(options.statutes);
+    if (!fs.existsSync(file) || fs.readFileSync(file).subarray(0, 5).toString() !== "%PDF-")
+      throw new Error("El archivo de estatutos debe ser un PDF existente.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(options.statutesDate || "") || !options.statutesReference)
+      throw new Error(
+        "Indicá --statutes-date (AAAA-MM-DD) y --statutes-reference según el documento.",
+      );
+    mapping.statutes = { file };
+    mapping.community = {
+      ...(mapping.community || COMMUNITY),
+      legalConfig: JSON.stringify({
+        regimen: "asociacion",
+        estatutos: { referencia: options.statutesReference, fechaAprobacion: options.statutesDate },
+      }),
+    };
+  }
+  const plan = buildPlan(meta.table, undefined, mapping);
+  const result = options.write ? await writeDatabase(plan, outDir, { force: options.force }) : null;
   const { reportPath, previewPath } = writeReport(outDir, plan, meta);
   printSummary(plan, meta, outDir);
   console.log("");
@@ -782,7 +1015,7 @@ Opciones:
     console.log("  Dry-run: no se creó ninguna base. Agregá --write para crear la copia local.");
     return;
   }
-  const result = await writeDatabase(plan, outDir, { force: options.force });
+  if (result.backupDir) console.log(`  Respaldo anterior: ${result.backupDir}`);
   console.log("");
   console.log(`  Base creada: ${result.dbFile}`);
   console.log(

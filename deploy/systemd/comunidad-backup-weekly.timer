@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup semanal de Comunidad el domingo a las 03:15 de Madrid
+
+[Timer]
+OnCalendar=Sun *-*-* 03:15:00 Europe/Madrid
+AccuracySec=1s
+Persistent=true
+Unit=comunidad-backup@weekly.service
+
+[Install]
+WantedBy=timers.target

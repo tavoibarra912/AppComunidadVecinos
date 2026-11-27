@@ -279,11 +279,15 @@ test("inmuebles: estado de recibos y cuota se calculan desde los recibos", async
   }
 });
 test("inmuebles: el guardado ajusta el residuo de redondeo de los coeficientes", async () => {
-  db.prepare("INSERT INTO communities(id,name,nif) VALUES('com-coef-adjust','Comunidad Ajuste','H00000001')").run();
+  db.prepare(
+    "INSERT INTO communities(id,name,nif) VALUES('com-coef-adjust','Comunidad Ajuste','H00000001')",
+  ).run();
   db.prepare(
     "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-coef-a','com-coef-adjust','Comunidad Ajuste','A','vivienda','Calle A 1','Madrid','[]','{}','50.0000'),('prop-coef-b','com-coef-adjust','Comunidad Ajuste','B','vivienda','Calle B 1','Madrid','[]','{}','49.9999')",
   ).run();
-  db.prepare("INSERT INTO communities(id,name,nif) VALUES('com-coef-gap','Comunidad Brecha','H00000002')").run();
+  db.prepare(
+    "INSERT INTO communities(id,name,nif) VALUES('com-coef-gap','Comunidad Brecha','H00000002')",
+  ).run();
   db.prepare(
     "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef) VALUES('prop-gap-a','com-coef-gap','Comunidad Brecha','A','vivienda','Calle A 1','Madrid','[]','{}','50.0000'),('prop-gap-b','com-coef-gap','Comunidad Brecha','B','vivienda','Calle B 1','Madrid','[]','{}','49.0000')",
   ).run();
@@ -673,10 +677,7 @@ test("cuotas: el vecino consulta solo sus recibos y el inquilino sigue sin acces
   assert.equal((await tenant("/fees/mine")).status, 403);
   // Y el vecino no puede gestionar la comunidad.
   const communityId = (await owner("/bootstrap")).data.communities[0].id;
-  assert.equal(
-    (await owner(`/fees/communities/${communityId}/preview`, "POST", {})).status,
-    403,
-  );
+  assert.equal((await owner(`/fees/communities/${communityId}/preview`, "POST", {})).status, 403);
 });
 
 test("avisos y documentos: el propietario no puede borrar lo que solo puede subir", async () => {
@@ -2880,4 +2881,106 @@ test("F07 · desvincular un inmueble comprueba su versión antes de modificar re
   assert.equal(response.status, 409, JSON.stringify(response.data));
   assert.deepEqual((await admin(`/owners/${owner.id}`)).data.propertyIds, owner.propertyIds);
   assert.ok((await admin(`/properties/${property.id}`)).data.ownerIds.includes(owner.id));
+});
+
+test("censo: contactos de comunidad verificados persisten, cambiar el valor exige un reto propio", async () => {
+  const created = await admin("/communities", "POST", {
+    id: "com-census-check",
+    name: "Asociación censo",
+    nif: "G00000000",
+    address: "Calle de prueba 1",
+    city: "Madrid",
+    legalConfig: { regimen: "asociacion" },
+    phone: "600123477",
+    email: "censo@example.com",
+    phoneVerified: true,
+    emailVerified: true,
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.equal(created.data.phoneVerified, false);
+  assert.equal(created.data.emailVerified, false);
+  db.prepare(
+    "UPDATE communities SET phoneVerified=1, emailVerified=1, phoneVerifiedAt='2026-11-26', emailVerifiedAt='2026-11-26' WHERE id=?",
+  ).run(created.data.id);
+  const original = (await admin("/communities/com-census-check")).data;
+  const preserved = await admin("/communities/com-census-check", "PUT", {
+    ...original,
+    name: "Asociación actualizada",
+  });
+  assert.equal(preserved.status, 200, JSON.stringify(preserved.data));
+  assert.equal(preserved.data.phoneVerified, true);
+  assert.equal(preserved.data.emailVerified, true);
+  const changed = await admin("/communities/com-census-check", "PUT", {
+    ...preserved.data,
+    phone: "600123466",
+    phoneVerified: true,
+  });
+  assert.equal(changed.status, 200, JSON.stringify(changed.data));
+  assert.equal(changed.data.phoneVerified, false);
+  assert.equal(changed.data.phoneVerifiedAt, "");
+  assert.equal(changed.data.emailVerified, true);
+  const challengeId = crypto.randomUUID(),
+    now = Date.now();
+  db.prepare(
+    "INSERT INTO contact_verification_challenges(id,tipo,destino,codigo,createdAt,expiresAt) VALUES(?,?,?,?,?,?)",
+  ).run(
+    challengeId,
+    "phone",
+    "600123466",
+    crypto.createHash("sha256").update("123456").digest("hex"),
+    now,
+    now + 60000,
+  );
+  const confirmed = await admin("/owners/contact/phone/confirm", "POST", {
+    challengeId,
+    code: "123456",
+  });
+  assert.equal(confirmed.status, 200);
+  const verified = await admin("/communities/com-census-check", "PUT", {
+    ...changed.data,
+    phoneVerified: true,
+  });
+  assert.equal(verified.status, 200, JSON.stringify(verified.data));
+  assert.equal(verified.data.phoneVerified, true);
+  assert.ok(verified.data.phoneVerifiedAt);
+  assert.ok(
+    db.prepare("SELECT consumedAt FROM contact_verification_challenges WHERE id=?").get(challengeId)
+      .consumedAt,
+  );
+});
+
+test("censo: una asociación conserva referencias catastrales compartidas entre subparcelas", async () => {
+  for (const id of ["census-subplot-1", "census-subplot-2"]) {
+    db.prepare(
+      "INSERT INTO properties(id,communityId,plot,propertyType,address,city) VALUES(?, 'com-census-check', ?, 'vivienda', 'Camino de prueba', 'Madrid')",
+    ).run(id, id);
+    const property = (await admin("/properties/" + id)).data;
+    const saved = await admin("/properties/" + id, "PUT", {
+      ...property,
+      cadastralRef: "28055A013000540001WL",
+    });
+    assert.equal(saved.status, 200, JSON.stringify(saved.data));
+    assert.equal(saved.data.cadastralRef, "28055A013000540001WL");
+  }
+});
+
+test("censo: normaliza DNI sin ceros iniciales al guardar y conserva su letra", async () => {
+  const created = await admin("/owners", "POST", {
+    id: "owner-census-dni",
+    name: "Prueba",
+    surname: "Censo",
+    dni: "2819736-M",
+    documentType: "DNI",
+    email: "dni@example.com",
+    phone: "600123455",
+    address: "Calle de prueba 1",
+    city: "Madrid",
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.equal(created.data.dni, "02819736M");
+  const rejected = await admin("/owners/owner-census-dni", "PUT", {
+    ...created.data,
+    dni: "22462593X",
+  });
+  assert.equal(rejected.status, 400);
 });

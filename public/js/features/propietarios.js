@@ -24,6 +24,7 @@ import {
   formatIban,
   maskIbanField,
   isValidIdentityDocument,
+  normalizeIdentityDocument,
   detectDocumentType,
   isValidIban,
   isValidPhone,
@@ -1095,9 +1096,10 @@ function updateCanalOptions() {
     input.closest("label")?.classList.toggle("field-locked", unavailable);
     const text = input.closest("label")?.querySelector(".checkbox-line-text");
     if (text)
-      text.textContent = !verified && !locked
-        ? `${labels[input.value] || input.value} (pendiente de verificación)`
-        : labels[input.value] || input.value;
+      text.textContent =
+        !verified && !locked
+          ? `${labels[input.value] || input.value} (pendiente de verificación)`
+          : labels[input.value] || input.value;
     if (!verified && !locked) input.checked = false;
   }
   if (!locked && !inputs.some((input) => input.checked && !input.disabled)) {
@@ -1663,7 +1665,7 @@ export function collectOwnerErrors() {
   }
 
   const docType = el("documentType")?.value || "DNI";
-  const dniVal = (el("dni")?.value || "").trim().toUpperCase();
+  const dniVal = normalizeIdentityDocument(el("dni")?.value);
   if (!dniVal) {
     errors.push("El " + docType + " es obligatorio.");
     marks.push("dni");
@@ -1672,7 +1674,7 @@ export function collectOwnerErrors() {
     marks.push("dni");
   } else if (
     state.owners.some(
-      (o) => (o.dni || "").trim().toUpperCase() === dniVal && o.id !== state.ui.editingOwnerId,
+      (o) => normalizeIdentityDocument(o.dni) === dniVal && o.id !== state.ui.editingOwnerId,
     )
   ) {
     errors.push("Ya existe otro propietario registrado con el documento " + dniVal + ".");
@@ -1851,7 +1853,7 @@ ownerForm.addEventListener("submit", async (event) => {
     data[key] = (data[key] || "").trim();
   });
 
-  data.dni = data.dni.toUpperCase();
+  data.dni = normalizeIdentityDocument(data.dni);
   data.isMember = ownerForm.elements.isMember.value === "true";
   data.phone = digitsOnly(data.phone, 9);
   data.otherPhone = digitsOnly(data.otherPhone, 9);

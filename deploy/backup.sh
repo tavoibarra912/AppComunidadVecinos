@@ -5,7 +5,10 @@ umask 077
 cd -- "$(dirname -- "$(realpath -- "$0")")/.."
 test -f data/penarrubia.db
 test -f .env
-mkdir -p backups
+kind=${1:-daily}
+case "$kind" in daily|weekly) ;; *) echo 'Uso: backup.sh [daily|weekly]' >&2; exit 2 ;; esac
+directory="backups/$kind"
+mkdir -p "$directory"
 
 # Mismo cerrojo que update-vm.sh: no copiar mientras se está desplegando.
 exec 9>.deploy.lock
@@ -21,24 +24,20 @@ if (( available_kb < required_kb )); then
   exit 1
 fi
 
-docker compose -f deploy/compose.yml --env-file .env --project-directory . stop api
 tmp=''
 cleanup() {
   if [[ -n "$tmp" ]]; then rm -f -- "$tmp"; fi
   docker compose -f deploy/compose.yml --env-file .env --project-directory . start api
 }
 trap cleanup EXIT
+docker compose -f deploy/compose.yml --env-file .env --project-directory . stop api
 
-stamp=$(date -u +%Y%m%dT%H%M%SZ)
-final="backups/comunidad-$stamp.tar.gz"
-# El temporal no coincide con comunidad-*.tar.gz: la retención nunca lo ve.
-tmp=$(mktemp "backups/.comunidad-$stamp.XXXXXX")
-tar -czf "$tmp" data uploads .env
+final="$directory/comunidad-$kind.tar.gz"
+# Reemplazo atómico: una copia fallida nunca destruye la anterior.
+tmp=$(mktemp "$directory/.comunidad.XXXXXX")
+tar -czf "$tmp" data uploads .env deploy/compose.yml
 # Un archivo truncado o corrupto no debe llegar nunca a la retención.
 tar -tzf "$tmp" >/dev/null
 mv -- "$tmp" "$final"
 tmp=''
-echo 'Backup privado completo. Copiar fuera de la VM para cubrir pérdida de disco.'
-if ! bash deploy/prune-backups.sh backups 2; then
-  echo 'Aviso: no se pudieron retirar copias antiguas.' >&2
-fi
+echo "Backup $kind verificado: $final. Copiar fuera de la VM para cubrir pérdida de disco."

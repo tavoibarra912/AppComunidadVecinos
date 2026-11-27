@@ -150,3 +150,8 @@ uploads/
 /.audit-*/
 /docs/auditoria-qa-*
 /audits/
+
+# QA local: informe, evidencias y salida de consola
+/qa-evidence/
+/QA-REPORT.md
+/test-output.txt

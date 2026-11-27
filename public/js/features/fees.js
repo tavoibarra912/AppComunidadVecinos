@@ -127,7 +127,18 @@ function tabBar(parent, items, active, select, label) {
   return nav;
 }
 let dialog = null,
-  dialogVersion = 0;
+  dialogVersion = 0,
+  dialogOpener = null,
+  lastFocusOutsideDialog = null;
+// Se registra desde la carga del módulo: el foco del disparador llega antes de
+// que exista el <dialog>, y al abrirlo el navegador puede moverlo a su interior.
+document.addEventListener(
+  "focusin",
+  (event) => {
+    if (!dialog || !dialog.contains(event.target)) lastFocusOutsideDialog = event.target;
+  },
+  true,
+);
 let fieldSequence = 0,
   pageKey = "",
   pageLoadedAt = "";
@@ -413,12 +424,18 @@ function certificateDialog(ctx) {
     body,
     "Documento informativo a fecha de hoy. Incluye todos los recibos del ámbito elegido, sin aplicar los filtros de la tabla. No sustituye una certificación formal de la comunidad.",
   );
-  const scope = field(body, "Ámbito del certificado *", "select", "propertyId", [
-    ["propertyId", "Inmueble"],
-    ["ownerId", "Propietario: todos sus inmuebles en esta comunidad"],
+  body.append(el("h3", "Datos del certificado", "fee-form-section"));
+  const grid = el("div", undefined, "fee-form-grid");
+  body.append(grid);
+  const scope = field(grid, "Ámbito del certificado *", "select", "propertyId", [
+    ["propertyId", "Un inmueble concreto"],
+    ["ownerId", "Un propietario y todos sus inmuebles"],
   ]);
-  const target = field(body, "Titular o inmueble *", "select");
+  scope.required = true;
+  hint(scope, "Elige si el certificado es de una parcela o de todos los inmuebles del titular.");
+  const target = field(grid, "Titular o inmueble *", "select");
   target.required = true;
+  hint(target, "El certificado se emite con la deuda a la fecha de hoy.");
   const properties = state.properties.filter((property) => property.communityId === ctx.id);
   const relatedOwners = new Set([
     ...properties.flatMap((property) => property.ownerIds || []),
@@ -448,28 +465,33 @@ function certificateDialog(ctx) {
   };
   scope.addEventListener("change", refreshTargets);
   refreshTargets();
-  body.append(
-    button(
-      "Descargar PDF",
-      async () => {
-        const version = dialogVersion,
-          selectedScope = scope.value,
-          selectedId = target.value;
-        const blob = await api.debtCertificate(ctx.id, selectedScope, selectedId);
-        if (version !== dialogVersion || !dialog.open) return;
-        const url = URL.createObjectURL(blob),
-          link = el("a");
-        link.href = url;
-        link.download = `certificado-deuda-${selectedScope === "propertyId" ? "inmueble" : "propietario"}-${selectedId}.pdf`;
-        body.append(link);
-        link.click();
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-        toast("Certificado generado.");
-      },
-      true,
-    ),
+  const download = button(
+    "Descargar PDF",
+    async () => {
+      const version = dialogVersion,
+        selectedScope = scope.value,
+        selectedId = target.value;
+      const blob = await api.debtCertificate(ctx.id, selectedScope, selectedId);
+      if (version !== dialogVersion || !dialog.open) return;
+      const url = URL.createObjectURL(blob),
+        link = el("a");
+      link.href = url;
+      link.download = `certificado-deuda-${selectedScope === "propertyId" ? "inmueble" : "propietario"}-${selectedId}.pdf`;
+      body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      toast("Certificado generado. Se ha descargado el PDF con la deuda a fecha de hoy.");
+    },
+    true,
   );
+  const cancel = iconButton("Cancelar", () => dialog.close(), "cancel", "close");
+  cancel.classList.add("btn-lg");
+  // Comparte alto con los iconos de acción aunque conserve su texto.
+  download.classList.add("fee-dialog-text-action");
+  const actions = el("div", undefined, "dialog-actions fee-dialog-actions");
+  actions.append(cancel, download);
+  body.append(actions);
 }
 
 function ensureDialog() {
@@ -483,6 +505,16 @@ function ensureDialog() {
     dialogVersion++;
     dialog.dataset.busy = "false";
     dialog.querySelector("[data-fee-close]").disabled = false;
+    const opener = dialogOpener;
+    dialogOpener = null;
+    if (!opener) return;
+    // El cierre nativo del <dialog> también recoloca el foco: se restaura en el
+    // mismo evento y otra vez en el siguiente frame para que no gane el navegador.
+    const restore = () => {
+      if (opener.isConnected) opener.focus();
+    };
+    restore();
+    requestAnimationFrame(restore);
   });
   dialog.addEventListener("cancel", (event) => {
     // El «cancel» del selector de archivos burbujea hasta aquí: no es Escape.
@@ -522,11 +554,22 @@ function open(title) {
   const body = dialog.querySelector("#fee-dialog-body");
   body.replaceChildren();
   dialog.querySelector("[data-fee-error]").hidden = true;
-  if (!dialog.open) dialog.showModal();
+  if (!dialog.open) {
+    const focused = document.activeElement;
+    dialogOpener =
+      focused instanceof HTMLElement && focused !== document.body && !dialog.contains(focused)
+        ? focused
+        : lastFocusOutsideDialog;
+    dialog.showModal();
+  }
   return body;
 }
 function hint(input, text) {
   const node = el("span", text, "fee-field-hint");
+  node.id = `${input.id}-hint`;
+  const described = (input.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+  described.push(node.id);
+  input.setAttribute("aria-describedby", described.join(" "));
   input.closest(".fee-field")?.append(node);
   return node;
 }
@@ -878,6 +921,7 @@ function renderPanel(root, ctx) {
     }
   }
   const refresh = iconButton("Actualizar", () => load(root, ctx), "info", "refresh");
+  if (certificate) tools.append(certificate);
   tools.append(refresh);
   root.append(tools);
   if (!assessmentTab && !serviceTab && !manage) informativeServiceNotice(root, ctx, data);
@@ -2848,51 +2892,81 @@ function paymentForm(ctx, receipt = null) {
   }
   const payer = field(
     grid,
-    "Pagador",
+    "Pagador *",
     "select",
     receipt?.snapshot.owners[0]?.id || [...owners.keys()][0],
     [...owners.entries()],
   );
+  payer.required = true;
   const value = euroField(grid, "Importe recibido (€)", receipt?.outstanding ?? "");
-  const paidOn = field(grid, "Fecha del cobro", "date", madridDate());
+  value.labels[0].textContent = "Importe recibido (€) *";
+  hint(value, "El sobrante quedará como saldo a favor del pagador.");
+  const paidOn = field(grid, "Fecha del cobro *", "date", madridDate());
   paidOn.max = madridDate();
   paidOn.required = true;
   const method = field(grid, "Forma de pago", "select", "transfer", Object.entries(methods));
-  const reference = field(grid, "Referencia bancaria", "text");
+  const reference = field(grid, "Referencia bancaria (opcional)", "text");
   reference.maxLength = 120;
+  reference.closest(".fee-field").classList.add("fee-field-wide");
+  hint(
+    reference,
+    "Nº de transferencia o concepto del ingreso. Si queda vacía, dos cobros con el mismo pagador, importe y fecha se consideran duplicados y pedirán confirmación.",
+  );
+  const duplicateBox = el("div", undefined, "fee-duplicate");
+  duplicateBox.hidden = true;
+  duplicateBox.append(
+    el("strong", "Posible cobro duplicado"),
+    el(
+      "p",
+      "Ya hay un cobro sin devolver con el mismo pagador, importe, fecha y referencia (la referencia vacía también cuenta). Si es un cobro distinto, confírmalo marcando la casilla.",
+    ),
+  );
   const duplicate = field(
-    grid,
+    duplicateBox,
     "Confirmo que es otro cobro si coincide con uno registrado",
     "checkbox",
     false,
   );
-  duplicate.closest("label").hidden = true;
-  const debt = el("p", undefined, "fee-debt");
-  debt.setAttribute("aria-live", "polite");
-  body.append(debt);
+  body.append(duplicateBox);
   body.append(el("h3", "2 · A qué recibos se aplica", "fee-form-section"));
+  const debt = el("div", undefined, "fee-debt");
+  debt.setAttribute("aria-live", "polite");
+  const debtText = el("p");
+  debt.append(el("span", "Situación del pagador", "fee-debt-label"), debtText);
+  body.append(debt);
   info(
     body,
-    "Se cubren primero los recibos más antiguos del pagador. Desmarca los que no quieras cobrar ahora; lo que sobre queda como saldo a favor suyo.",
+    "Se cubren primero los recibos más antiguos. Desmarca los que no quieras cobrar ahora.",
   );
   const selection = el("div", undefined, "fee-receipt-selection");
   body.append(selection);
-  const distribution = el("p", undefined, "fee-payment-summary");
+  const distribution = el("div", undefined, "fee-payment-summary");
   distribution.setAttribute("aria-live", "polite");
   body.append(distribution);
   let ids;
   function updateDistribution() {
     const text = value.value.trim();
     if (!/^\d{1,9}([.,]\d{1,2})?$/.test(text) || Number(text.replace(",", ".")) <= 0) {
-      distribution.textContent = text
-        ? "Revisa el importe: debe ser positivo y tener como máximo dos decimales."
-        : "Indica el importe recibido para ver su reparto entre recibos y saldo a favor.";
+      distribution.classList.add("is-empty");
+      distribution.replaceChildren(
+        el(
+          "p",
+          text
+            ? "Revisa el importe: debe ser positivo y tener como máximo dos decimales."
+            : "Indica el importe recibido para ver cómo se reparte entre recibos y saldo a favor.",
+        ),
+      );
       return;
     }
     const entered = Number(text.replace(",", "."));
     const cents = Number.isFinite(entered) && entered > 0 ? Math.round(entered * 100) : 0;
     const applied = Math.min(cents, ids?.total() || 0);
-    distribution.textContent = `Aplicado a recibos: ${money(applied)} · Saldo a favor: ${money(cents - applied)}`;
+    const appliedCell = el("div");
+    appliedCell.append(el("span", "Aplicado a recibos"), el("strong", money(applied)));
+    const creditCell = el("div");
+    creditCell.append(el("span", "Saldo a favor"), el("strong", money(cents - applied)));
+    distribution.classList.remove("is-empty");
+    distribution.replaceChildren(appliedCell, creditCell);
   }
   function update() {
     selection.replaceChildren();
@@ -2905,9 +2979,9 @@ function paymentForm(ctx, receipt = null) {
       for (const item of ids.inputs) item.input.checked = item.id === receipt.id;
     const pending = ids.inputs.reduce((sum, item) => sum + item.outstanding, 0);
     const payerName = owners.get(payer.value) || "";
-    debt.textContent = ids.inputs.length
+    debtText.textContent = ids.inputs.length
       ? `${payerName} debe ${money(pending)} en ${ids.inputs.length} ${ids.inputs.length === 1 ? "recibo pendiente" : "recibos pendientes"}.`
-      : `${payerName} no tiene recibos pendientes: el importe se guardará como saldo a favor.`;
+      : `${payerName} no tiene recibos pendientes.`;
     if (ids.inputs.length) {
       const bulk = field(
         selection,
@@ -2927,10 +3001,7 @@ function paymentForm(ctx, receipt = null) {
           updateDistribution();
         });
     } else {
-      info(
-        selection,
-        "Este pagador no tiene recibos pendientes. El cobro se guardará como saldo a favor.",
-      );
+      info(selection, "El cobro se guardará como saldo a favor del pagador.");
     }
     updateDistribution();
   }
@@ -2938,8 +3009,7 @@ function paymentForm(ctx, receipt = null) {
   value.addEventListener("input", updateDistribution);
   update();
   const requestId = crypto.randomUUID();
-  // Mismo guardado que el resto de la app: icono de disquete, sin texto y
-  // alineado a la derecha.
+  // Mismo guardado que el resto de la app: icono de disquete, sin texto.
   const save = iconButton(
     "Guardar cobro",
     async () => {
@@ -2956,12 +3026,12 @@ function paymentForm(ctx, receipt = null) {
         });
       } catch (error) {
         if (error.status === 409 && error.message.includes("Posible cobro duplicado"))
-          duplicate.closest("label").hidden = false;
+          duplicateBox.hidden = false;
         throw error;
       }
       dialog.close();
       await reloadAll();
-      toast("Cobro registrado.");
+      toast("Cobro registrado y aplicado a los recibos seleccionados.");
     },
     "save",
     "disk",
@@ -2970,8 +3040,10 @@ function paymentForm(ctx, receipt = null) {
   save.classList.add("btn-lg");
   // Enter en cualquier campo guarda, como en el resto de formularios de la app.
   save.dataset.feeDefaultAction = "";
+  const cancel = iconButton("Cancelar", () => dialog.close(), "cancel", "close");
+  cancel.classList.add("btn-lg");
   const actions = el("div", undefined, "dialog-actions fee-dialog-actions");
-  actions.append(save);
+  actions.append(cancel, save);
   body.append(actions);
 }
 function creditForm(ctx, payment) {

@@ -30,7 +30,9 @@
   <body>
     <header class="topbar">
       <a class="brand" href="#home" aria-label="Inicio de Gestión de Comunidades"
-        ><img id="topbar-brand-logo" class="brand-logo" alt="" hidden />gestión de comunidades<span>·</span></a
+        ><img id="topbar-brand-logo" class="brand-logo" alt="" hidden />gestión de comunidades<span
+          >·</span
+        ></a
       >
       <div class="topbar-actions">
         <a
@@ -222,9 +224,8 @@
     <div id="login-screen" class="login-screen" hidden>
       <div class="login-card">
         <div class="login-brand">
-          <img id="login-brand-logo" class="login-brand-logo" alt="" hidden />gestión de comunidades<span
-            >·</span
-          >
+          <img id="login-brand-logo" class="login-brand-logo" alt="" hidden />gestión de
+          comunidades<span>·</span>
         </div>
         <p class="login-maintenance" id="login-maintenance-notice" role="status" hidden></p>
 
@@ -1360,7 +1361,7 @@
                     >Días de margen tras el vencimiento para el primer aviso de impago.</span
                   ></label
                 >
-                <label
+                <label class="full"
                   >Repetición de vencidos (días; 0: una vez)<input
                     name="feeRepeatDays"
                     type="number"
@@ -1374,19 +1375,19 @@
                   ></label
                 >
                 <label class="checkbox-line"
-                  ><input name="feeInternal" type="checkbox" /><span class="checkbox-line-text"
-                    >Avisos de cuotas en el buzón de la app
-                    <span class="field-hint"
-                      >Añade el recordatorio al buzón interno de cada propietario afectado.</span
-                    ></span
-                  ></label
-                >
-                <label class="checkbox-line"
                   ><input name="feeEmail" type="checkbox" /><span class="checkbox-line-text"
                     >Avisos de cuotas por email a destinatarios con el canal habilitado
                     <span class="field-hint"
                       >Envía el recordatorio por correo a quien tenga activado el canal de
                       email.</span
+                    ></span
+                  ></label
+                >
+                <label class="checkbox-line"
+                  ><input name="feeInternal" type="checkbox" /><span class="checkbox-line-text"
+                    >Avisos de cuotas en el buzón de la app
+                    <span class="field-hint"
+                      >Añade el recordatorio al buzón interno de cada propietario afectado.</span
                     ></span
                   ></label
                 >
@@ -1421,7 +1422,7 @@
                     plazo.</span
                   ></label
                 >
-                <label
+                <label class="full"
                   >Repetición de vencidos (días; 0: una vez)<input
                     name="assessmentRepeatDays"
                     type="number"
@@ -1435,20 +1436,20 @@
                   ></label
                 >
                 <label class="checkbox-line"
-                  ><input name="assessmentInternal" type="checkbox" /><span
-                    class="checkbox-line-text"
-                    >Avisos de derramas en el buzón de la app
-                    <span class="field-hint"
-                      >Añade el aviso del plazo de derrama al buzón interno.</span
-                    ></span
-                  ></label
-                >
-                <label class="checkbox-line"
                   ><input name="assessmentEmail" type="checkbox" /><span class="checkbox-line-text"
                     >Avisos de derramas por email a destinatarios con el canal habilitado
                     <span class="field-hint"
                       >Envía el aviso del plazo por correo a quien tenga activado el canal de
                       email.</span
+                    ></span
+                  ></label
+                >
+                <label class="checkbox-line"
+                  ><input name="assessmentInternal" type="checkbox" /><span
+                    class="checkbox-line-text"
+                    >Avisos de derramas en el buzón de la app
+                    <span class="field-hint"
+                      >Añade el aviso del plazo de derrama al buzón interno.</span
                     ></span
                   ></label
                 >
@@ -1483,7 +1484,7 @@
                     servicio.</span
                   ></label
                 >
-                <label
+                <label class="full"
                   >Repetición de vencidos (días; 0: una vez)<input
                     name="serviceRepeatDays"
                     type="number"
@@ -1497,19 +1498,19 @@
                   ></label
                 >
                 <label class="checkbox-line"
-                  ><input name="serviceInternal" type="checkbox" /><span class="checkbox-line-text"
-                    >Avisos de servicios en el buzón de la app
-                    <span class="field-hint"
-                      >Añade el aviso del servicio al buzón interno de los propietarios.</span
-                    ></span
-                  ></label
-                >
-                <label class="checkbox-line"
                   ><input name="serviceEmail" type="checkbox" /><span class="checkbox-line-text"
                     >Avisos de servicios por email a destinatarios con el canal habilitado
                     <span class="field-hint"
                       >Envía el aviso del servicio por correo a quien tenga activado el canal de
                       email.</span
+                    ></span
+                  ></label
+                >
+                <label class="checkbox-line"
+                  ><input name="serviceInternal" type="checkbox" /><span class="checkbox-line-text"
+                    >Avisos de servicios en el buzón de la app
+                    <span class="field-hint"
+                      >Añade el aviso del servicio al buzón interno de los propietarios.</span
                     ></span
                   ></label
                 >
@@ -2706,6 +2707,16 @@
               </svg>
             </button>
           </div>
+          <label class="community-property-search"
+            >Buscar inmuebles
+            <input
+              id="community-edit-property-search"
+              type="search"
+              placeholder="Identificador, dirección, referencia catastral o propietario"
+              aria-controls="community-edit-properties-list"
+            />
+          </label>
+          <p id="community-edit-property-results" class="form-intro" role="status"></p>
           <div class="community-properties-list" id="community-edit-properties-list"></div>
         </section>
         <section
@@ -2955,7 +2966,8 @@
                   >Selecciona la referencia de mayoría que se mostrará junto a las consultas:
                   simple, absoluta, dos tercios, tres quintos o unanimidad. La aplicación presenta
                   los resultados y la regla elegida; no declara automáticamente que un acuerdo esté
-                  aprobado. Comprueba la mayoría que corresponde al asunto y a la convocatoria.</span
+                  aprobado. Comprueba la mayoría que corresponde al asunto y a la
+                  convocatoria.</span
                 ></label
               >
               <label class="community-legal-check"
@@ -7488,7 +7500,8 @@
             <div class="email-meta-row">
               <span class="email-meta-label">Asunto:</span>
               <span class="email-meta-value email-subject" id="email-subject-display"
-                >[Gestión de Comunidades] Solicitud de verificación y aprobación de documentación</span
+                >[Gestión de Comunidades] Solicitud de verificación y aprobación de
+                documentación</span
               >
             </div>
           </div>
@@ -8115,7 +8128,12 @@
             >
               Aviso de privacidad
             </button>
-            <a class="secondary-button" href="/informacion-tratamientos.html" target="_blank" rel="noopener">
+            <a
+              class="secondary-button"
+              href="/informacion-tratamientos.html"
+              target="_blank"
+              rel="noopener"
+            >
               Información de tratamientos
             </a>
           </div>

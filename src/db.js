@@ -236,6 +236,10 @@ function ensureColumns(table, definitions) {
 }
 
 ensureColumns("communities", {
+  phoneVerified: "INTEGER NOT NULL DEFAULT 0",
+  phoneVerifiedAt: "TEXT NOT NULL DEFAULT ''",
+  emailVerified: "INTEGER NOT NULL DEFAULT 0",
+  emailVerifiedAt: "TEXT NOT NULL DEFAULT ''",
   currency: "TEXT NOT NULL DEFAULT ''",
   adminUserId: "TEXT NOT NULL DEFAULT ''",
   logoDataUrl: "TEXT NOT NULL DEFAULT ''",
@@ -300,23 +304,12 @@ db.exec(
   "CREATE INDEX IF NOT EXISTS idx_documents_folder ON documents(entityType, entityId, folderId)",
 );
 
-// Referencias catastrales: se normalizan y, si no hay duplicados heredados,
-// se protege su unicidad también a nivel de base de datos.
+// Una referencia puede identificar la finca matriz de varias subparcelas de
+// una asociación. La API conserva la restricción para comunidades LPH.
+db.exec("DROP INDEX IF EXISTS idx_properties_cadastral_unique");
 db.exec(
   "UPDATE properties SET cadastralRef = UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) WHERE cadastralRef <> ''",
 );
-const duplicateCadastralRefs = db
-  .prepare(
-    `SELECT UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) AS ref, COUNT(*) AS total
-   FROM properties WHERE TRIM(cadastralRef) <> ''
-   GROUP BY UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) HAVING total > 1`,
-  )
-  .all();
-if (duplicateCadastralRefs.length === 0) {
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_properties_cadastral_unique
-           ON properties(UPPER(REPLACE(TRIM(cadastralRef), ' ', '')))
-           WHERE TRIM(cadastralRef) <> ''`);
-}
 
 // Roles del modelo de acceso: Super Admin / Admin General / Admin de
 // Comunidad / Usuario. Migración idempotente: si aún no existe
@@ -521,9 +514,7 @@ if (process.env.NODE_ENV === "production")
 // Régimen jurídico explícito (v1): las comunidades existentes conservan el
 // criterio LPH que ya aplicaban, pero guardado de forma explícita. Desde ahora
 // un certificado o una votación no pueden apoyarse en un régimen supuesto.
-if (
-  !db.prepare("SELECT id FROM schema_migrations WHERE id = 'explicit-legal-regime-v1'").get()
-) {
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'explicit-legal-regime-v1'").get()) {
   for (const row of db.prepare("SELECT id, legalConfig FROM communities").all()) {
     let parsed = null;
     try {
@@ -531,8 +522,7 @@ if (
     } catch {
       parsed = null;
     }
-    const config =
-      parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const config = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
     if (Object.hasOwn(LEGAL_REGIMES, config.regimen)) continue;
     db.prepare("UPDATE communities SET legalConfig=? WHERE id=?").run(
       JSON.stringify({ ...config, regimen: "lph" }),
@@ -1059,9 +1049,14 @@ ensureColumns("properties", {
 // La cuota y el estado de los recibos se derivan siempre del libro financiero.
 // Las columnas manuales quedaron inertes: se eliminan de las bases existentes
 // y el trigger de versión se reconstruye después con las columnas restantes.
-if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'property-finance-derived-v1'").get()) {
+if (
+  !db.prepare("SELECT id FROM schema_migrations WHERE id = 'property-finance-derived-v1'").get()
+) {
   db.exec("DROP TRIGGER IF EXISTS properties_edit_version");
-  const columns = db.prepare("PRAGMA table_info(properties)").all().map((row) => row.name);
+  const columns = db
+    .prepare("PRAGMA table_info(properties)")
+    .all()
+    .map((row) => row.name);
   for (const column of ["communityFee", "receiptStatus"]) {
     if (columns.includes(column)) db.exec(`ALTER TABLE properties DROP COLUMN ${column}`);
   }
@@ -1128,6 +1123,10 @@ export function hasCommunityFinancialActivity(id) {
 
 export function communityFromRow(row) {
   return {
+    phoneVerified: !!row.phoneVerified,
+    phoneVerifiedAt: row.phoneVerifiedAt || "",
+    emailVerified: !!row.emailVerified,
+    emailVerifiedAt: row.emailVerifiedAt || "",
     id: row.id,
     version: row.version,
     name: row.name,

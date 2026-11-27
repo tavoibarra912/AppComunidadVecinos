@@ -1839,3 +1839,24 @@ test("contadores UI: un error al borrar conserva las fotos pendientes y permite 
     f.dom.window.close();
   }
 });
+
+test("cuotas UI: al cerrar el diálogo el foco vuelve al disparador", async () => {
+  const f = fixture();
+  try {
+    f.w.feeTest.renderFeesPage();
+    await flush();
+    const trigger = [...f.w.document.querySelectorAll("button")].find(
+      (b) => b.textContent === "3 · Registrar cobro o anticipo",
+    );
+    assert.ok(trigger);
+    trigger.focus();
+    trigger.click();
+    await flush();
+    const dialog = f.w.document.querySelector("#fee-dialog");
+    assert.equal(dialog.open, true);
+    dialog.close();
+    assert.equal(f.w.document.activeElement, trigger);
+  } finally {
+    f.dom.window.close();
+  }
+});

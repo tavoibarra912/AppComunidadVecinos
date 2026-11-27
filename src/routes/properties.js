@@ -149,7 +149,8 @@ function validatePropertyPayload(
         "SELECT id FROM properties WHERE UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) = ? AND id <> ?",
       )
       .get(cadastralRef, excludeId);
-    if (duplicate) return "Ya existe otro inmueble con la misma referencia catastral.";
+    if (duplicate && legalConfigOf(community).regimen !== "asociacion")
+      return "Ya existe otro inmueble con la misma referencia catastral.";
   }
 
   const participationCoef = normalizeParticipationCoef(data.participationCoef);
@@ -225,10 +226,7 @@ function validatePropertyResidency(data, ownerIds, existing, occupancyProvided =
       return "Un inmueble sin ocupante no puede tener residentes ni inquilinos vinculados.";
   }
   const primaryResidentId = data.primaryResidentId || "";
-  if (
-    primaryResidentId &&
-    ![...residentOwnerIds, ...activeTenantIds].includes(primaryResidentId)
-  )
+  if (primaryResidentId && ![...residentOwnerIds, ...activeTenantIds].includes(primaryResidentId))
     return "El contacto principal debe ser uno de los residentes del inmueble.";
   return null;
 }
@@ -477,10 +475,7 @@ router.post("/", (req, res) => {
     applyTenantLinkChanges(changes);
     storeProperty(id, data, community);
     const adjustedOwners = balanceCommunityCoefficients(community?.id || "");
-    syncAffectedOwners([
-      ...(Array.isArray(data.ownerIds) ? data.ownerIds : []),
-      ...adjustedOwners,
-    ]);
+    syncAffectedOwners([...(Array.isArray(data.ownerIds) ? data.ownerIds : []), ...adjustedOwners]);
     rebuildOwnersPropertyIds();
     db.exec("COMMIT");
   } catch (error) {

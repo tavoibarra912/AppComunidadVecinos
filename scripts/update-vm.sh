@@ -20,7 +20,7 @@ docker compose version >/dev/null
 docker network inspect opengym_default >/dev/null
 compose=(docker compose --project-directory "$app_root" --env-file "$app_root/.env" -f "$app_root/deploy/compose.yml")
 "${compose[@]}" config --quiet
-mkdir -p backups
+mkdir -p backups/deploys
 available_kb=$(df -Pk . | awk 'NR==2 {print $4}')
 required_kb=$(du -sk data uploads | awk '{sum+=$1} END {print sum+1048576}')
 (( available_kb >= required_kb )) || { echo 'Espacio insuficiente para imagen y backup; no se borra nada.' >&2; exit 1; }
@@ -29,26 +29,41 @@ image="comunidad:$release_sha"
 # Solo aceptar la imagen del commit, sin construir en la VM de producción.
 revision=$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
 [[ "$revision" == "$release_sha" ]] || { echo 'La imagen cargada no corresponde al commit' >&2; exit 1; }
-backup="$app_root/backups/comunidad-$(date -u +%Y%m%dT%H%M%S)-$release_sha.tar.gz"
+backup_dir="$app_root/backups/deploys"
+backup="$backup_dir/comunidad-$(date -u +%Y%m%dT%H%M%S)-$release_sha.tar.gz"
+backup_tmp=$(mktemp "$backup_dir/.comunidad.XXXXXX")
+env_tmp=''
+launch_started=false
+cleanup() {
+  status=$?
+  if [[ -n "$backup_tmp" ]]; then rm -f -- "$backup_tmp"; fi
+  if [[ -n "$env_tmp" ]]; then rm -f -- "$env_tmp"; fi
+  if (( status != 0 )) && [[ "$launch_started" == false ]]; then "${compose[@]}" start api; fi
+}
+trap cleanup EXIT
 "${compose[@]}" stop api
-# Si falla la copia, volver a arrancar con la configuración anterior.
-trap '"${compose[@]}" start api' EXIT
-tar -czf "$backup" data uploads .env deploy/compose.yml
-"${compose[@]}" start api
-trap - EXIT
+# La API permanece detenida entre el backup y el cambio de versión.
+tar -czf "$backup_tmp" data uploads .env deploy/compose.yml
+tar -tzf "$backup_tmp" >/dev/null
+mv -- "$backup_tmp" "$backup"
+backup_tmp=''
 
 env_tmp=$(mktemp "$app_root/.env.release.XXXXXX")
-trap 'rm -f "$env_tmp"' EXIT
 awk -v image="$image" '
   /^COMUNIDAD_IMAGE=/ { if (!seen++) print "COMUNIDAD_IMAGE=" image; next }
   { print }
   END { if (!seen) print "COMUNIDAD_IMAGE=" image }
 ' .env > "$env_tmp"
 mv "$env_tmp" .env
+env_tmp=''
 cp "$source_root/deploy/compose.yml" deploy/compose.yml
 install -m 700 "$source_root/deploy/backup.sh" deploy/backup.sh
 install -m 700 "$source_root/deploy/prune-backups.sh" deploy/prune-backups.sh
 install -m 644 "$source_root/deploy/backup.cron" deploy/backup.cron
+install -m 700 "$source_root/deploy/install-backup-schedule.sh" deploy/install-backup-schedule.sh
+mkdir -p deploy/systemd
+install -m 644 "$source_root"/deploy/systemd/* deploy/systemd/
+launch_started=true
 "${compose[@]}" up -d --no-deps --pull never api
 
 for attempt in $(seq 1 60); do
@@ -58,7 +73,7 @@ for attempt in $(seq 1 60); do
       if (!r.ok || d.status !== "ok" || d.app !== "app-comunidad-vecinos" || d.release !== process.argv[1]) process.exit(1);
     }).catch(() => process.exit(1));
   ' "$release_sha" 2>/dev/null; then
-    if ! bash "$source_root/deploy/prune-backups.sh" "$app_root/backups" 2; then
+    if ! bash "$source_root/deploy/prune-backups.sh" "$backup_dir" 2; then
       echo 'Aviso: no se pudieron retirar copias antiguas.' >&2
     fi
     printf '%s\n' "$release_sha" > .deployed-release

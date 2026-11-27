@@ -37,7 +37,10 @@ function row({ pcla, titular, document, area, ...extra }) {
   cells[0] = extra.ref || "";
   cells[2] = pcla;
   cells[3] = titular;
-  cells[5] = extra.cadastralRef || "";
+  cells[5] =
+    extra.cadastralRef ??
+    ({ 1: "9872023VH5797S0001WX", 2: "7837301VG8173B0001TT", 3: "4A08169P03PRAT0001LR" }[pcla] ||
+      "06011A012002450000QE");
   cells[6] = document;
   cells[8] = area;
   cells[12] = extra.cuotaSuperficie || "";
@@ -107,12 +110,12 @@ test("arma el plan: unifica propietarios por DNI y vincula varios inmuebles", ()
   assert.equal(plan.owners[0].phone, "600000000");
   assert.equal(plan.users[0].usuario, "11111111h");
   assert.equal(plan.users[0].password, "11111111h12345678");
-  assert.equal(plan.properties[0].plot, "Parcela 1");
+  assert.equal(plan.properties[0].plot, "I1 Camino de la Barca, s/n");
   assert.equal(plan.properties[0].address, "Camino de la Barca, s/n");
   assert.equal(plan.properties[0].city, "Estremera");
   assert.equal(plan.properties[0].ownerIds[0], plan.owners[0].id);
   assert.deepEqual(plan.properties[2].ownerIds, []);
-  assert.ok(plan.warnings.some((warning) => warning.message.includes("sin propietario")));
+  assert.ok(plan.exclusions.some((item) => item.tipo === "documento_ausente"));
 });
 
 test("usa la dirección de la parcela si la fila no tiene dirección", () => {
@@ -142,7 +145,9 @@ test("descarta referencias catastrales inválidas y las reporta", () => {
       cadastralRef: "123",
     }),
   ]);
-  assert.equal(plan.properties[0].cadastralRef, "");
+  assert.equal(plan.properties.length, 0);
+  assert.equal(plan.owners.length, 1);
+  assert.deepEqual(plan.owners[0].propertyIds, []);
   assert.ok(plan.warnings.some((warning) => warning.message.includes("catastral")));
 });
 
@@ -160,6 +165,22 @@ test("escribe la base en una carpeta local aislada", async () => {
         email: "elena@example.com",
       }),
     ]);
+    plan.settings = {
+      nombreAsociacion: "Plataforma de prueba",
+      emailContacto: "admin@example.com",
+      telefonoContacto: "34600000000",
+      marca: { nombre: "Plataforma de prueba" },
+    };
+    const statutesFile = path.join(outDir, "estatutos.pdf");
+    fs.writeFileSync(statutesFile, "%PDF-1.4\nstatutes-test");
+    plan.statutes = { file: statutesFile };
+    plan.community = {
+      ...plan.community,
+      legalConfig: JSON.stringify({
+        regimen: "asociacion",
+        estatutos: { referencia: "Estatutos 2024", fechaAprobacion: "2024-05-12" },
+      }),
+    };
     const result = await writeDatabase(plan, outDir, { force: true });
     assert.equal(result.totals.comunidades, 1);
     assert.equal(result.totals.propietarios, 1);
@@ -170,17 +191,131 @@ test("escribe la base en una carpeta local aislada", async () => {
     const { DatabaseSync } = await import("node:sqlite");
     const db = new DatabaseSync(result.dbFile);
     const property = db.prepare("SELECT plot, address, ownerIds FROM properties").get();
-    assert.equal(property.plot, "Parcela 10");
+    assert.equal(property.plot, "I1 Camino de la Barca, s/n");
     assert.match(property.ownerIds, /own-base26-44444444a/);
     const owner = db.prepare("SELECT dni, isMember, userId, propertyIds FROM owners").get();
     assert.equal(owner.dni, "44444444A");
     assert.equal(owner.isMember, 1);
     assert.match(owner.userId, /user-base26-/);
     assert.match(owner.propertyIds, /prop-base26-10/);
-    const community = db.prepare("SELECT name, legalConfig FROM communities").get();
+    const community = db
+      .prepare("SELECT name, legalConfig, phoneVerified, emailVerified FROM communities")
+      .get();
     assert.match(community.name, /Peña Rubia/);
     assert.equal(JSON.parse(community.legalConfig).regimen, "asociacion");
+    assert.equal(community.phoneVerified, 1);
+    assert.equal(community.emailVerified, 1);
+    assert.equal(JSON.parse(community.legalConfig).estatutos.fechaAprobacion, "2024-05-12");
+    const settings = JSON.parse(
+      db.prepare("SELECT data FROM settings WHERE id='general'").get().data,
+    );
+    assert.equal(settings.nombreAsociacion, "Plataforma de prueba");
+    assert.equal(settings.marca.nombre, settings.nombreAsociacion);
+    assert.equal(settings.marca.colorPrimario, "#11273e");
+    const document = db.prepare("SELECT * FROM documents WHERE category='statutes'").get();
+    assert.equal(document.entityId, plan.community.id);
+    assert.equal(document.folderId, "");
+    assert.deepEqual(
+      fs.readFileSync(path.join(result.uploadsDir, document.storedName)),
+      fs.readFileSync(statutesFile),
+    );
     db.close();
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+test("excluye todas las subparcelas con referencia repetida y conserva el propietario válido sin vínculos huérfanos", () => {
+  const plan = buildPlan([
+    header(),
+    row({
+      pcla: "179B",
+      titular: "Ana Torres",
+      document: "2819736M",
+      cadastralRef: "28055A013000540001WL",
+    }),
+    row({
+      pcla: "179C",
+      titular: "Ana Torres",
+      document: "02819736M",
+      cadastralRef: "28055A013000540001WL",
+    }),
+  ]);
+  assert.equal(plan.properties.length, 0);
+  assert.equal(plan.owners.length, 1);
+  assert.equal(plan.owners[0].document, "02819736M");
+  assert.equal(plan.users[0].usuario, "2819736m");
+  assert.deepEqual(plan.owners[0].propertyIds, []);
+  assert.equal(plan.owners[0].cadastralRef, "");
+  assert.equal(plan.exclusions.filter((item) => item.tipo === "referencia_repetida").length, 2);
+});
+
+test("excluye propietario y usuario con documento incorrecto y conserva el inmueble válido sin titular", () => {
+  const plan = buildPlan([
+    header(),
+    row({ pcla: "1", titular: "Titular Prueba", document: "22462593X" }),
+  ]);
+  assert.equal(plan.owners.length, 0);
+  assert.equal(plan.users.length, 0);
+  assert.equal(plan.properties.length, 1);
+  assert.deepEqual(plan.properties[0].ownerIds, []);
+  assert.deepEqual(plan.properties[0].residentOwnerIds, []);
+  assert.deepEqual(plan.properties[0].ownerPercentages, {});
+  assert.equal(plan.properties[0].primaryResidentId, "");
+  assert.equal(plan.properties[0].occupancy, "");
+  assert.ok(plan.exclusions.some((item) => item.tipo === "documento_invalido"));
+});
+
+test("referencia ausente o con control incorrecto excluye el inmueble, sin descartar una identidad válida", () => {
+  for (const cadastralRef of ["", "9872023VH5797S0001AA"]) {
+    const plan = buildPlan([
+      header(),
+      row({ pcla: "1", titular: "Ana Torres", document: "11111111H", cadastralRef }),
+    ]);
+    assert.equal(plan.properties.length, 0);
+    assert.equal(plan.owners.length, 1);
+    assert.equal(plan.users.length, 1);
+    assert.deepEqual(plan.owners[0].propertyIds, []);
+    assert.equal(plan.exclusions[0].entidad, "inmueble");
+  }
+});
+
+test("las exclusiones conservan la numeración de origen y los emails vacíos no generan incidencias", () => {
+  const plan = buildPlan([
+    header(),
+    row({ pcla: "1", titular: "Ana Torres", document: "11111111H", cadastralRef: "" }),
+    row({ pcla: "2", titular: "Ana Torres", document: "11111111H", email: "" }),
+  ]);
+  assert.equal(plan.properties[0].plot, "I2 Camino de la Barca, s/n");
+  assert.deepEqual(plan.owners[0].propertyIds, ["prop-base26-2"]);
+  assert.equal(plan.owners[0].plot, plan.properties[0].plot);
+  assert.ok(!plan.warnings.some((warning) => /email/i.test(warning.message)));
+});
+
+test("una fila con DNI ausente no crea ni vincula identidades por coincidencia de nombre", () => {
+  const plan = buildPlan([
+    header(),
+    row({ pcla: "1", titular: "Ana Torres", document: "11111111H" }),
+    row({ pcla: "2", titular: "Ana Torres", document: "" }),
+  ]);
+  assert.equal(plan.owners.length, 1);
+  assert.deepEqual(plan.properties[1].ownerIds, []);
+  assert.equal(plan.stats.filasSinDocumento, 1);
+});
+
+test("rechaza un plan adulterado antes de tocar archivos de una base anterior", async () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "base26-invalid-"));
+  try {
+    fs.mkdirSync(path.join(outDir, "data"));
+    const marker = path.join(outDir, "data", "sentinel.txt");
+    fs.writeFileSync(marker, "preservar");
+    const plan = buildPlan([
+      header(),
+      row({ pcla: "1", titular: "Ana Torres", document: "11111111H" }),
+    ]);
+    plan.owners[0].document = "22462593X";
+    await assert.rejects(writeDatabase(plan, outDir, { force: true }), /inválido/);
+    assert.equal(fs.readFileSync(marker, "utf8"), "preservar");
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
