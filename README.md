@@ -531,8 +531,11 @@ nuevo después de revisar el proveedor. «Aceptado por SMTP» no confirma entreg
 ### Marca (white-label)
 
 En **Administración → Configuración General → Marca** se personalizan nombre
-visible, color principal, color de acento y logo (PNG, JPG, SVG o WebP, máx.
-225 KB). La marca se guarda en `settings/general` y se valida en el servidor
+visible, color principal, color de acento, tamaño del logo (100–300 %) y logo
+(PNG, JPG, SVG o WebP, máx. 225 KB). El porcentaje escala el logo de la
+pantalla de acceso y el de la barra superior; el 100 % conserva el tamaño de
+diseño y la cabecera tiene un tope para no desbordar la barra. La marca se
+guarda en `settings/general` y se valida en el servidor
 (solo `admin:settings`). No hay endpoint público de marca ni dominio
 customizable: el servidor incrusta nombre y variables de color en el propio
 `index.html` al servirlo (bloque `<script type="application/json">` + un

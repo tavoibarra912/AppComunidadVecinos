@@ -40,6 +40,7 @@ export const DEFAULT_BRAND = Object.freeze({
   tipografiaBotones: "inter",
   tipografias: Object.freeze([]),
   tamanoBase: 14,
+  escalaLogo: 100,
   radioBordes: 5,
   densidad: "normal",
 });
@@ -124,6 +125,7 @@ export function brandOf(settings = {}) {
     tipografiaBotones: pick(marca.tipografiaBotones),
     tipografias,
     tamanoBase: numberOr(marca.tamanoBase, DEFAULT_BRAND.tamanoBase, 12, 18),
+    escalaLogo: numberOr(marca.escalaLogo, DEFAULT_BRAND.escalaLogo, 100, 300),
     radioBordes: numberOr(marca.radioBordes, DEFAULT_BRAND.radioBordes, 0, 16),
     densidad: TEXT_DENSITIES.includes(marca.densidad) ? marca.densidad : DEFAULT_BRAND.densidad,
   };
@@ -193,6 +195,13 @@ export function validateBrand(marca) {
   )
     return "El tamaño base del texto debe estar entre 12 y 18 px.";
   if (
+    marca.escalaLogo !== undefined &&
+    (!Number.isFinite(Number(marca.escalaLogo)) ||
+      Number(marca.escalaLogo) < 100 ||
+      Number(marca.escalaLogo) > 300)
+  )
+    return "El tamaño del logo debe estar entre 100 y 300 %.";
+  if (
     marca.radioBordes !== undefined &&
     (!Number.isFinite(Number(marca.radioBordes)) ||
       Number(marca.radioBordes) < 0 ||
@@ -241,8 +250,9 @@ export function brandStyle(brand = DEFAULT_BRAND) {
   const tipografiaTitulos = fontFamily(brand.tipografiaTitulos || brand.tipografia);
   const tipografiaBotones = fontFamily(brand.tipografiaBotones || brand.tipografia);
   const tamanoBase = numberOr(brand.tamanoBase, DEFAULT_BRAND.tamanoBase, 12, 18);
+  const escalaLogo = numberOr(brand.escalaLogo, DEFAULT_BRAND.escalaLogo, 100, 300) / 100;
   const radioBordes = numberOr(brand.radioBordes, DEFAULT_BRAND.radioBordes, 0, 16);
-  return `${fontFaces}:root:root{--nav:${color("colorPrimario")};--brand:${acento};--brand-dark:color-mix(in srgb,${acento} 80%,black);--canvas:${color("colorFondo")};--surface:${color("colorSuperficie")};--ink:${color("colorTexto")};--muted:${color("colorTextoSuave")};--line:${color("colorBorde")};--font-ui:${tipografia};--font-heading:${tipografiaTitulos};--font-button:${tipografiaBotones};--font-size-base:${tamanoBase}px;--radius:${radioBordes}px}`;
+  return `${fontFaces}:root:root{--nav:${color("colorPrimario")};--brand:${acento};--brand-dark:color-mix(in srgb,${acento} 80%,black);--canvas:${color("colorFondo")};--surface:${color("colorSuperficie")};--ink:${color("colorTexto")};--muted:${color("colorTextoSuave")};--line:${color("colorBorde")};--font-ui:${tipografia};--font-heading:${tipografiaTitulos};--font-button:${tipografiaBotones};--font-size-base:${tamanoBase}px;--logo-scale:${escalaLogo};--radius:${radioBordes}px}`;
 }
 
 const PUBLIC_FALLBACK = Object.freeze({

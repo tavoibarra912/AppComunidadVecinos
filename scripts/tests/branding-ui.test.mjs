@@ -84,6 +84,7 @@ test("brand.js: aplica nombre, colores, título, descripción y saludo al boot",
     colorPrimario: "#0f3057",
     colorAcento: "#e8743b",
     logoDataUrl: "",
+    escalaLogo: 150,
   });
   const brand = fx.readInjectedBrand();
   assert.equal(brand.nombre, "Vecinos del Parque");
@@ -99,9 +100,19 @@ test("brand.js: aplica nombre, colores, título, descripción y saludo al boot",
   );
   assert.match(fx.elements.get("brand-vars").textContent, /--nav:#0f3057/);
   assert.match(fx.elements.get("brand-vars").textContent, /--brand:#e8743b/);
+  assert.match(fx.elements.get("brand-vars").textContent, /--logo-scale:1\.5/);
   // El logo siempre está disponible: sin logo configurado se usa el por defecto.
   assert.equal(fx.elements.get("topbar-brand-logo").hidden, false);
   assert.match(fx.elements.get("topbar-brand-logo").src, /logo-default\.svg$/);
+});
+test("brand.js: el tamaño del logo se acota entre el 100 % y el 300 %", () => {
+  const fx = fixture({ nombre: "X", escalaLogo: 900 });
+  const brand = fx.applyBrand();
+  assert.equal(brand.escalaLogo, 300);
+  assert.match(fx.elements.get("brand-vars").textContent, /--logo-scale:3\b/);
+  const small = fx.applyBrand({ ...fx.readInjectedBrand(), escalaLogo: 20 });
+  assert.equal(small.escalaLogo, 100);
+  assert.match(fx.elements.get("brand-vars").textContent, /--logo-scale:1\b/);
 });
 test("brand.js: logo se muestra con data URL y usa el por defecto sin él", () => {
   const logo = `data:image/png;base64,${Buffer.from("x").toString("base64")}`;
