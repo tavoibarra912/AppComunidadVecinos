@@ -77,6 +77,7 @@ test("marca por defecto: sin settings guardadas devuelve los valores de fábrica
   assert.match(brandStyle(DEFAULT_BRAND), /--line:#e4e9ef/);
   assert.match(brandStyle(DEFAULT_BRAND), /--font-ui:Inter/);
   assert.match(brandStyle(DEFAULT_BRAND), /--font-size-base:14px/);
+  assert.match(brandStyle(DEFAULT_BRAND), /--logo-scale:1\b/);
   assert.match(brandStyle(DEFAULT_BRAND), /--radius:5px/);
 });
 test("brandOf: estilo de interfaz validado y acotado", () => {
@@ -89,6 +90,7 @@ test("brandOf: estilo de interfaz validado y acotado", () => {
       colorBorde: "#dddddd",
       tipografia: "georgia",
       tamanoBase: 40,
+      escalaLogo: 900,
       radioBordes: -3,
       densidad: "amplia",
     },
@@ -100,6 +102,7 @@ test("brandOf: estilo de interfaz validado y acotado", () => {
   assert.equal(brand.colorBorde, "#dddddd");
   assert.equal(brand.tipografia, "georgia");
   assert.equal(brand.tamanoBase, 18);
+  assert.equal(brand.escalaLogo, 300);
   assert.equal(brand.radioBordes, 0);
   assert.equal(brand.densidad, "amplia");
   const invalid = brandOf({
@@ -107,6 +110,7 @@ test("brandOf: estilo de interfaz validado y acotado", () => {
       colorFondo: "rojo",
       tipografia: "comic",
       tamanoBase: "x",
+      escalaLogo: "mucho",
       radioBordes: 99,
       densidad: "extrema",
     },
@@ -114,6 +118,7 @@ test("brandOf: estilo de interfaz validado y acotado", () => {
   assert.equal(invalid.colorFondo, DEFAULT_BRAND.colorFondo);
   assert.equal(invalid.tipografia, "inter");
   assert.equal(invalid.tamanoBase, 14);
+  assert.equal(invalid.escalaLogo, 100);
   assert.equal(invalid.radioBordes, 16);
   assert.equal(invalid.densidad, "normal");
 });
@@ -210,6 +215,9 @@ test("validateBrand: acepta, rechaza y limita como corresponde", () => {
   assert.match(validateBrand({ colorTexto: "#12345" }), /texto/i);
   assert.match(validateBrand({ tipografia: "comic" }), /tipografía/i);
   assert.match(validateBrand({ tamanoBase: 30 }), /tamaño base/i);
+  assert.match(validateBrand({ escalaLogo: 40 }), /tamaño del logo/i);
+  assert.match(validateBrand({ escalaLogo: 320 }), /tamaño del logo/i);
+  assert.equal(validateBrand({ escalaLogo: 160 }), null);
   assert.match(validateBrand({ radioBordes: -1 }), /radio de bordes/i);
   assert.match(validateBrand({ densidad: "extrema" }), /densidad/i);
   assert.equal(

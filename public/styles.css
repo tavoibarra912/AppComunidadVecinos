@@ -117,7 +117,7 @@ legend,
 }
 
 .brand-logo {
-  height: 26px;
+  height: clamp(26px, calc(26px * var(--logo-scale, 1)), 46px);
   width: auto;
   margin-right: 9px;
   vertical-align: -6px;
@@ -125,8 +125,8 @@ legend,
 
 .login-brand-logo {
   display: block;
-  max-width: 220px;
-  max-height: 72px;
+  max-width: min(calc(220px * var(--logo-scale, 1)), 100%);
+  max-height: min(calc(72px * var(--logo-scale, 1)), 42vh);
   margin: 0 auto 14px;
   object-fit: contain;
 }

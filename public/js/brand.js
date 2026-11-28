@@ -37,6 +37,7 @@ const FALLBACK = {
   tipografiaBotones: "inter",
   tipografias: [],
   tamanoBase: 14,
+  escalaLogo: 100,
   radioBordes: 5,
   densidad: "normal",
 };
@@ -136,8 +137,9 @@ export function brandStyle(brand = FALLBACK) {
   const tipografiaTitulos = fontFamily(brand.tipografiaTitulos || brand.tipografia);
   const tipografiaBotones = fontFamily(brand.tipografiaBotones || brand.tipografia);
   const tamanoBase = numberOr(brand.tamanoBase, FALLBACK.tamanoBase, 12, 18);
+  const escalaLogo = numberOr(brand.escalaLogo, FALLBACK.escalaLogo, 100, 300) / 100;
   const radioBordes = numberOr(brand.radioBordes, FALLBACK.radioBordes, 0, 16);
-  return `${fontFaces}:root:root{--nav:${color("colorPrimario")};--brand:${acento};--brand-dark:color-mix(in srgb,${acento} 80%,black);--canvas:${color("colorFondo")};--surface:${color("colorSuperficie")};--ink:${color("colorTexto")};--muted:${color("colorTextoSuave")};--line:${color("colorBorde")};--font-ui:${tipografia};--font-heading:${tipografiaTitulos};--font-button:${tipografiaBotones};--font-size-base:${tamanoBase}px;--radius:${radioBordes}px}`;
+  return `${fontFaces}:root:root{--nav:${color("colorPrimario")};--brand:${acento};--brand-dark:color-mix(in srgb,${acento} 80%,black);--canvas:${color("colorFondo")};--surface:${color("colorSuperficie")};--ink:${color("colorTexto")};--muted:${color("colorTextoSuave")};--line:${color("colorBorde")};--font-ui:${tipografia};--font-heading:${tipografiaTitulos};--font-button:${tipografiaBotones};--font-size-base:${tamanoBase}px;--logo-scale:${escalaLogo};--radius:${radioBordes}px}`;
 }
 
 function setBrandText(root, name) {
@@ -177,6 +179,7 @@ export function applyBrand(brand = readInjectedBrand()) {
     tipografiaBotones: pickFont(brand.tipografiaBotones),
     tipografias,
     tamanoBase: numberOr(brand.tamanoBase, FALLBACK.tamanoBase, 12, 18),
+    escalaLogo: numberOr(brand.escalaLogo, FALLBACK.escalaLogo, 100, 300),
     radioBordes: numberOr(brand.radioBordes, FALLBACK.radioBordes, 0, 16),
     densidad: DENSITIES.includes(brand.densidad) ? brand.densidad : "normal",
   };

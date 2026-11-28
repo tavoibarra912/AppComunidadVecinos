@@ -1772,6 +1772,7 @@ function renderSettings() {
     marcaTipografias,
   );
   settingsForm.elements.marcaTamanoBase.value = marca.tamanoBase ?? 14;
+  settingsForm.elements.marcaEscalaLogo.value = marca.escalaLogo ?? 100;
   settingsForm.elements.marcaRadioBordes.value = marca.radioBordes ?? 5;
   settingsForm.elements.marcaDensidad.value = DENSIDADES.includes(marca.densidad)
     ? marca.densidad
@@ -1818,6 +1819,7 @@ function readMarca() {
           ...(font.dataUrl ? { dataUrl: font.dataUrl } : {}),
         })),
         tamanoBase: numericValue(settingsForm.elements.marcaTamanoBase, 14, 12, 18),
+        escalaLogo: numericValue(settingsForm.elements.marcaEscalaLogo, 100, 100, 300),
         radioBordes: numericValue(settingsForm.elements.marcaRadioBordes, 5, 0, 16),
         densidad: settingsForm.elements.marcaDensidad.value,
       };

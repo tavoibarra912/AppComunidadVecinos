@@ -568,10 +568,12 @@ test("marca de plataforma: un rol de solo estilo guarda únicamente la marca", a
   assert.equal(f.q("#settings-estilo-aplicacion").hidden, false);
   assert.equal(f.q('#settings-subtabs [data-settings-tab="asociacion"]').hidden, true);
   f.q('[name="marcaNombre"]').value = "Asociación con estilo";
+  f.q('[name="marcaEscalaLogo"]').value = "180";
   await f.submit();
   assert.equal(f.requests.at(-1).kind, "settings");
   assert.deepEqual(Object.keys(f.requests.at(-1).data), ["marca"]);
   assert.equal(f.requests.at(-1).data.marca.nombre, "Asociación con estilo");
+  assert.equal(f.requests.at(-1).data.marca.escalaLogo, 180);
   assert.equal(f.messages.at(-1), "Estilo guardado.");
 });
 
