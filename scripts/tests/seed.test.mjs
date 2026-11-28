@@ -73,6 +73,17 @@ test("arranque desde cero: siembra sin duplicar roles y crea perfiles con contra
     db.prepare("SELECT adminUserId FROM communities WHERE id = 'com-seed-1'").get().adminUserId,
     "user-ca1",
   );
+  // Las referencias del censo demo se agrupan en parcelas desde la siembra.
+  const parcels = db.prepare("SELECT COUNT(*) AS n FROM parcels").get().n;
+  assert.ok(parcels > 0);
+  assert.equal(
+    db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM properties WHERE TRIM(cadastralRef) <> '' AND parcelId = ''",
+      )
+      .get().n,
+    0,
+  );
 });
 
 test("demo de cuotas: los coeficientes suman 100 y todos los inmuebles tienen titular", () => {

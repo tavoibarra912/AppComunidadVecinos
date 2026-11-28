@@ -138,10 +138,9 @@ export function parseArea(raw) {
   return String(Math.round(number * 100) / 100);
 }
 
-/** Normaliza una referencia catastral con formato y control correctos. */
+/** Normaliza una referencia catastral. El control se valida por separado. */
 export function normalizeCadastralRef(raw) {
-  const value = normalizeCadastralReference(cellText(raw));
-  return cadastralReferenceProblem(value) ? "" : value;
+  return normalizeCadastralReference(cellText(raw));
 }
 
 /** Parser CSV mínimo con soporte de comillas y saltos de línea dentro de celdas. */
@@ -322,7 +321,9 @@ export function buildPlan(
   for (const cells of table.slice(headerIndex + 1)) {
     const plot = cellText(cells[COL.pcla]);
     const reference = normalizeCadastralRef(cells[COL.cadastralRef]);
-    if (!plot || !reference) continue;
+    const referenceProblem = cadastralReferenceProblem(reference);
+    if (!plot || !reference || referenceProblem === "missing" || referenceProblem === "format")
+      continue;
     if (!cadastralPlots.has(reference)) cadastralPlots.set(reference, new Set());
     cadastralPlots.get(reference).add(plot);
   }
@@ -393,25 +394,36 @@ export function buildPlan(
     const referenceProblem = cadastralReferenceProblem(row.cadastralRef);
     const cadastralRef = normalizeCadastralRef(row.cadastralRef);
     const repeatedReference = cadastralRef && cadastralPlots.get(cadastralRef)?.size > 1;
-    const importProperty = !referenceProblem && !repeatedReference;
-    if (!importProperty) {
+    // Un checksum inválido no impide importar: se conserva la referencia tal
+    // como viene del censo y se avisa para revisarla. Solo faltan datos cuando
+    // la referencia está ausente o no tiene el formato catastral.
+    const referenceUsable = referenceProblem === "" || referenceProblem === "checksum";
+    if (!referenceUsable) {
       const reason =
         referenceProblem === "missing"
           ? "referencia_ausente"
-          : referenceProblem === "format"
-            ? "referencia_formato"
-            : referenceProblem === "checksum"
-              ? "referencia_control"
-              : "referencia_repetida";
+          : "referencia_formato";
       const explanation =
         referenceProblem === "missing"
           ? "Referencia catastral ausente"
-          : referenceProblem === "format"
-            ? "Referencia catastral con formato incorrecto"
-            : referenceProblem === "checksum"
-              ? "Referencia catastral con caracteres de control incorrectos"
-              : `Referencia catastral repetida entre parcelas ${[...cadastralPlots.get(cadastralRef)].join(", ")}, pendiente de confirmar`;
+          : "Referencia catastral con formato incorrecto";
       exclude(rowNumber, row, "inmueble", reason, `${explanation}: no se importa el inmueble.`);
+    } else if (referenceProblem === "checksum") {
+      warn(
+        rowNumber,
+        row.pcla,
+        "Referencia catastral con caracteres de control incorrectos: se importa con advertencia.",
+      );
+    } else if (repeatedReference) {
+      // Un mismo terreno puede estar dividido en varias parcelas censadas: las
+      // unidades comparten finca matriz y se importan agrupadas.
+      warn(
+        rowNumber,
+        row.pcla,
+        `Referencia catastral compartida con las parcelas ${[...cadastralPlots.get(cadastralRef)]
+          .filter((value) => value !== row.pcla)
+          .join(", ")}: se agrupan en la misma finca matriz.`,
+      );
     }
     const documentType = detectDocumentType(row.document);
     const validDocument = !!row.document && isValidIdentityDocument(row.document, documentType);
@@ -450,9 +462,9 @@ export function buildPlan(
         existing.email ||= row.email;
         existing.address ||= address;
         existing.postalCode ||= row.codigoPostal;
-        existing.cadastralRef ||= importProperty ? cadastralRef : "";
-        existing.areaM2 ||= importProperty ? row.areaM2 : "";
-        existing.plot ||= importProperty ? plot : "";
+        existing.cadastralRef ||= referenceUsable ? cadastralRef : "";
+        existing.areaM2 ||= referenceUsable ? row.areaM2 : "";
+        existing.plot ||= referenceUsable ? plot : "";
         existing.notes ||= rowNotes(row, row.cuotaSuperficie);
         if (existing.phone) existing.phoneVerified = 1;
         if (existing.email) existing.emailVerified = 1;
@@ -463,7 +475,7 @@ export function buildPlan(
             `El documento ${row.document} aparece con otro titular («${row.titular}» frente a «${existing.titular}»): se unifica la ficha.`,
           );
         }
-        if (importProperty) existing.propertyIds.push(`prop-base26-${slug(row.pcla)}`);
+        if (referenceUsable) existing.propertyIds.push(`prop-base26-${slug(row.pcla)}`);
       } else {
         const { name, surname } = splitTitular(row.titular);
         if (!name) warn(rowNumber, row.pcla, "Titular sin nombre utilizable.");
@@ -492,17 +504,17 @@ export function buildPlan(
           province: community.province,
           communityId: community.id,
           communityName: community.name,
-          plot: importProperty ? plot : "",
-          cadastralRef: importProperty ? cadastralRef : "",
-          areaM2: importProperty ? row.areaM2 : "",
+          plot: referenceUsable ? plot : "",
+          cadastralRef: referenceUsable ? cadastralRef : "",
+          areaM2: referenceUsable ? row.areaM2 : "",
           notes: rowNotes(row, row.cuotaSuperficie),
           titular: row.titular,
-          propertyIds: importProperty ? [`prop-base26-${slug(row.pcla)}`] : [],
+          propertyIds: referenceUsable ? [`prop-base26-${slug(row.pcla)}`] : [],
         });
       }
     }
 
-    if (!importProperty) continue;
+    if (!referenceUsable) continue;
     if (row.areaM2) totalArea += Number(row.areaM2);
 
     properties.push({
@@ -515,6 +527,7 @@ export function buildPlan(
       propertyUse: PROPERTY_USE,
       address: address || `Parcela ${row.pcla}`,
       cadastralRef,
+      parcelId: "",
       areaM2: row.areaM2,
       postalCode: row.codigoPostal,
       city: row.localidad || community.city,
@@ -526,6 +539,26 @@ export function buildPlan(
       primaryResidentId: ownerId,
       notes: rowNotes(row, row.cuotaSuperficie),
     });
+  }
+
+  // Finca matriz: una parcela por referencia catastral. Las unidades que
+  // comparten referencia quedan enlazadas a la misma parcela.
+  const parcels = [];
+  const parcelsByReference = new Map();
+  for (const property of properties) {
+    if (!property.cadastralRef) continue;
+    let parcel = parcelsByReference.get(property.cadastralRef);
+    if (!parcel) {
+      parcel = {
+        id: `parcel-base26-${slug(property.cadastralRef)}`,
+        communityId: community.id,
+        cadastralRef: property.cadastralRef,
+        name: "",
+      };
+      parcelsByReference.set(property.cadastralRef, parcel);
+      parcels.push(parcel);
+    }
+    property.parcelId = parcel.id;
   }
 
   const ownerList = [...owners.values()];
@@ -546,12 +579,14 @@ export function buildPlan(
     owners: ownerList,
     users,
     properties,
+    parcels,
     warnings,
     exclusions,
     stats: {
       filas: table.length - headerIndex - 1,
       filasVacias: emptyRows,
       inmuebles: properties.length,
+      parcelas: parcels.length,
       propietarios: ownerList.length,
       usuarios: users.length,
       documentosInvalidos: invalidDocuments.size,
@@ -599,9 +634,15 @@ export function writeReport(outDir, plan, meta) {
       parcela: property.pcla,
       identificador: property.plot,
       referenciaCatastral: property.cadastralRef,
+      parcelaId: property.parcelId,
       direccion: property.address,
       superficie: property.areaM2,
       propietario: property.ownerIds[0] || "",
+    })),
+    parcelas: (plan.parcels || []).map((parcel) => ({
+      id: parcel.id,
+      referenciaCatastral: parcel.cadastralRef,
+      unidades: plan.properties.filter((property) => property.parcelId === parcel.id).length,
     })),
   };
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -667,14 +708,26 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
   const ownerIds = new Set(plan.owners.map((owner) => owner.id));
   const userIds = new Set(plan.users.map((user) => user.id));
   const propertyIds = new Set(plan.properties.map((property) => property.id));
-  const cadastralRefs = new Set();
+  const parcels = plan.parcels || [];
+  const parcelIds = new Set(parcels.map((parcel) => parcel.id));
+  const parcelById = new Map(parcels.map((parcel) => [parcel.id, parcel]));
+  const parcelKeys = new Set();
   if (
     ownerIds.size !== plan.owners.length ||
     userIds.size !== plan.users.length ||
     propertyIds.size !== plan.properties.length ||
+    parcelIds.size !== parcels.length ||
     plan.users.length !== plan.owners.length
   )
     throw new Error("El plan de importación contiene identificadores o cuentas inconsistentes.");
+  for (const parcel of parcels) {
+    const reference = normalizeCadastralReference(parcel.cadastralRef);
+    const key = `${parcel.communityId}\u0000${reference}`;
+    const referenceProblem = cadastralReferenceProblem(reference);
+    if (!reference || referenceProblem === "format" || parcelKeys.has(key))
+      throw new Error("El plan contiene una parcela sin referencia o con formato inválido, o repetida.");
+    parcelKeys.add(key);
+  }
   for (const owner of plan.owners) {
     if (
       !isValidIdentityDocument(owner.document, owner.documentType) ||
@@ -685,15 +738,19 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
   }
   for (const property of plan.properties) {
     const reference = normalizeCadastralReference(property.cadastralRef);
+    const parcel = parcelById.get(property.parcelId);
+    const referenceProblem = cadastralReferenceProblem(reference);
     if (
-      cadastralReferenceProblem(reference) ||
-      cadastralRefs.has(reference) ||
+      !reference ||
+      referenceProblem === "format" ||
+      !parcel ||
+      parcel.cadastralRef !== reference ||
+      parcel.communityId !== property.communityId ||
       property.ownerIds.some((id) => !ownerIds.has(id))
     )
       throw new Error(
-        "El plan contiene una referencia catastral inválida, repetida o un propietario inexistente.",
+        "El plan contiene una referencia ausente o con formato inválido, una parcela incoherente o un propietario inexistente.",
       );
-    cadastralRefs.add(reference);
   }
   if (process.env.NODE_ENV === "production") {
     throw new Error("Este importador es solo local: no se ejecuta con NODE_ENV=production.");
@@ -769,9 +826,12 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
   );
   const insertProperty = db.prepare(
     `INSERT INTO properties (id, communityId, communityName, ownerIds, tenantIds, propertyType, plot,
-       address, cadastralRef, areaM2, participationCoef, propertyUse, notes, postalCode, city,
+       address, cadastralRef, parcelId, areaM2, participationCoef, propertyUse, notes, postalCode, city,
        province, currency, ownerPercentages, occupancy, residentOwnerIds, primaryResidentId)
-     VALUES (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, 'EUR', ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, 'EUR', ?, ?, ?, ?)`,
+  );
+  const insertParcel = db.prepare(
+    "INSERT INTO parcels (id, communityId, cadastralRef, name) VALUES (?, ?, ?, ?)",
   );
 
   db.exec("BEGIN");
@@ -871,6 +931,9 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
         owner.userId,
       );
     }
+    for (const parcel of plan.parcels || []) {
+      insertParcel.run(parcel.id, parcel.communityId, parcel.cadastralRef, parcel.name || "");
+    }
     for (const property of plan.properties) {
       insertProperty.run(
         property.id,
@@ -881,6 +944,7 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
         property.plot,
         property.address,
         property.cadastralRef,
+        property.parcelId,
         property.areaM2,
         property.propertyUse,
         property.notes,
@@ -907,6 +971,7 @@ export async function writeDatabase(plan, outDir, { force = false } = {}) {
     usuarios: db.prepare("SELECT COUNT(*) AS total FROM users").get().total,
     propietarios: db.prepare("SELECT COUNT(*) AS total FROM owners").get().total,
     inmuebles: db.prepare("SELECT COUNT(*) AS total FROM properties").get().total,
+    parcelas: db.prepare("SELECT COUNT(*) AS total FROM parcels").get().total,
     inmueblesSinTitular: db
       .prepare("SELECT COUNT(*) AS total FROM properties WHERE ownerIds = '[]'")
       .get().total,

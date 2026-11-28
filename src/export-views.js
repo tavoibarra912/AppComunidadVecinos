@@ -162,6 +162,8 @@ export const TABLE_VIEWS = {
     [
       ["community", "Comunidad"],
       ["plot", "Inmueble"],
+      ["parcelRef", "Parcela"],
+      ["parcelUnit", "Unidad"],
       ["address", "Dirección"],
       ["city", "Municipio"],
       ["owners", "Propietario(s)"],
@@ -173,44 +175,61 @@ export const TABLE_VIEWS = {
     ],
     (user) => {
       const { visible, permits } = context(user);
-      return visible.properties.map((p) => ({
-        id: p.id,
-        __groupValues: { plot: p.plot },
-        communityId: p.communityId,
-        community:
-          visible.communities.find((c) => c.id === p.communityId)?.name ||
-          p.communityName ||
-          "Sin comunidad",
-        plot: `${p.plot || "Inmueble"} · ${{ parcela: "Parcela", vivienda: "Vivienda", local: "Local", garaje: "Plaza de garaje", trastero: "Trastero" }[p.propertyType] || "Inmueble"}${(p.ownerIds || []).length ? "" : " · Sin propietario"}`,
-        address: p.address,
-        city: visible.communities.find((c) => c.id === p.communityId)?.city || "",
-        owners:
-          visible.owners
-            .filter((o) => (p.ownerIds || []).includes(o.id))
-            .map(name)
-            .join(", ") || "Sin propietario",
-        tenants:
-          visible.tenants
-            .filter(
-              (t) =>
-                t.propertyId === p.id &&
-                (!t.contractStart || t.contractStart <= new Date().toISOString().slice(0, 10)) &&
-                (!t.contractEnd || t.contractEnd >= new Date().toISOString().slice(0, 10)),
-            )
-            .map(name)
-            .join(", ") || "Sin inquilino",
-        occupancy: OCCUPANCY_LABELS[p.occupancy] || "Sin especificar",
-        primaryResident: residentName(visible, p.primaryResidentId) || "Sin contacto",
-        receipts:
-          p.receiptStatus === "pending"
-            ? "Pagos pendientes"
-            : p.receiptStatus === "current"
-              ? "Al corriente"
-              : "Sin recibos",
-        documents: permits("document:read", p.id)
-          ? listDocumentsForEntities("property", [p.id]).length
-          : 0,
-      }));
+      const parcelById = new Map(
+        db.prepare("SELECT id, cadastralRef FROM parcels").all().map((parcel) => [parcel.id, parcel]),
+      );
+      const parcelUnits = new Map();
+      for (const property of visible.properties) {
+        if (!property.parcelId) continue;
+        const units = parcelUnits.get(property.parcelId) || [];
+        units.push(property);
+        parcelUnits.set(property.parcelId, units);
+      }
+      return visible.properties.map((p) => {
+        const units = parcelUnits.get(p.parcelId) || [];
+        const unitIndex = units.findIndex((item) => item.id === p.id);
+        const parcelRef = parcelById.get(p.parcelId)?.cadastralRef || p.cadastralRef || "";
+        return {
+          id: p.id,
+          __groupValues: { parcelRef, plot: p.plot },
+          communityId: p.communityId,
+          community:
+            visible.communities.find((c) => c.id === p.communityId)?.name ||
+            p.communityName ||
+            "Sin comunidad",
+          plot: `${p.plot || "Inmueble"} · ${{ parcela: "Parcela", vivienda: "Vivienda", local: "Local", garaje: "Plaza de garaje", trastero: "Trastero" }[p.propertyType] || "Inmueble"}${(p.ownerIds || []).length ? "" : " · Sin propietario"}`,
+          parcelRef,
+          parcelUnit: units.length > 1 ? `${unitIndex + 1} de ${units.length}` : "",
+          address: p.address,
+          city: visible.communities.find((c) => c.id === p.communityId)?.city || "",
+          owners:
+            visible.owners
+              .filter((o) => (p.ownerIds || []).includes(o.id))
+              .map(name)
+              .join(", ") || "Sin propietario",
+          tenants:
+            visible.tenants
+              .filter(
+                (t) =>
+                  t.propertyId === p.id &&
+                  (!t.contractStart || t.contractStart <= new Date().toISOString().slice(0, 10)) &&
+                  (!t.contractEnd || t.contractEnd >= new Date().toISOString().slice(0, 10)),
+              )
+              .map(name)
+              .join(", ") || "Sin inquilino",
+          occupancy: OCCUPANCY_LABELS[p.occupancy] || "Sin especificar",
+          primaryResident: residentName(visible, p.primaryResidentId) || "Sin contacto",
+          receipts:
+            p.receiptStatus === "pending"
+              ? "Pagos pendientes"
+              : p.receiptStatus === "current"
+                ? "Al corriente"
+                : "Sin recibos",
+          documents: permits("document:read", p.id)
+            ? listDocumentsForEntities("property", [p.id]).length
+            : 0,
+        };
+      });
     },
   ),
   owners: table(

@@ -67,7 +67,7 @@ La carpeta de salida debe quedar dentro del proyecto y no puede ser `data/` ni
 | Propietario: observación | A       | `Referencia dentro de la comunidad de Regantes: <Ref.>`                   |
 | Inmueble: identificador  | O + P   | `I<número incremental> <dirección O + P>`                                 |
 | Inmueble: tipo / uso     | —       | `Parcela` (corrección del titular) / `Residencial` (Book1)                |
-| Inmueble: ref. catastral | F       | `Ref. Catastral` (formato, control y ausencia de repeticiones pendientes) |
+| Inmueble: ref. catastral | F       | `Ref. Catastral` (formato obligatorio; checksum inválido se conserva con aviso) |
 | Inmueble: dirección      | O + P   | Concatenadas con un espacio                                               |
 | Inmueble: superficie     | I       | `Superficie C.R.`                                                         |
 | Inmueble: CP             | T       | `Codigo Postal`                                                           |
@@ -88,19 +88,20 @@ Decisiones sobre el mapping:
   documentos del censo que aún fallan el formato o el control excluyen al
   propietario y su cuenta. Las filas sin documento tampoco crean identidades. Los usuarios y contraseñas
   siguen derivados del documento original, sin añadir ceros a las credenciales.
-- **Referencias catastrales**: las ausentes, de formato incorrecto o con caracteres
-  de control incorrectos excluyen el inmueble. Las referencias repetidas pendientes
-  de confirmar excluyen todas sus parcelas: no se elige arbitrariamente la primera.
-  En el censo actual se excluyen 48B y 139F por ausencia, 140A/140B por una referencia
-  compartida y 179A–179E por otra, hasta corregir o confirmar la asignación en origen.
+- **Referencias catastrales**: solo las ausentes o con formato incorrecto excluyen
+  el inmueble. Un checksum inválido se importa con advertencia para revisarlo después.
+  Las referencias repetidas no son un error: son unidades de la misma finca matriz y
+  se importan agrupadas en una fila de `parcels`, compartiendo referencia catastral.
+  En el censo actual se excluyen 48B y 139F por ausencia; 140A/140B y 179A–179E
+  quedan agrupadas en sus fincas, y cualquier control inválido queda avisado.
 - **Reglas independientes**: un documento inválido no elimina un inmueble con
   referencia válida; queda sin titular. Una referencia inválida no elimina un socio
   cuya identidad sea válida; queda sin ese vínculo. Nunca se enlazan filas solo por
   coincidencia de nombre. No se crean enlaces a registros excluidos.
 - **Resultado del filtrado actual**: 125 propietarios y sus 125 usuarios (más
-  super_admin), 131 inmuebles y 20 incidencias de exclusión: seis documentos inválidos,
-  cinco filas sin documento y nueve inmuebles excluidos. No se generan avisos por
-  emails ausentes. El informe JSON incluye tipo, celda, parcela, titular y motivo.
+  super_admin), 138 inmuebles y 11 incidencias de exclusión: seis documentos inválidos
+  y cinco filas sin documento. No se generan avisos por emails ausentes. El informe
+  JSON incluye tipo, celda, parcela, titular y motivo, además de las parcelas creadas.
 - **La cuota de superficie (columna M) no se carga como cuota manual.** Desde el
   rediseño financiero la cuota y el estado de los recibos se derivan del libro de
   recibos; la app ya no acepta una cuota editable en el inmueble. El importe de M
@@ -111,6 +112,20 @@ Decisiones sobre el mapping:
   como una sola ficha con varios inmuebles vinculados.
 - Las filas sin documento generan el inmueble **sin propietario** y un aviso; no se
   inventan identidades.
+
+## Fincas matriz y unidades
+
+El importador crea una fila de `parcels` por cada combinación de comunidad y
+referencia catastral normalizada. Las unidades que comparten referencia quedan
+enlazadas a la misma parcela mediante `properties.parcelId`; no se duplican
+recibos ni titulares por pertenecer a la misma finca. Una referencia ausente o
+con formato inválido no crea parcela; una referencia con checksum inválido sí la
+crea y queda advertida para revisión.
+
+El informe incluye el listado de `parcelas` con sus unidades, y cada inmueble
+conserva su `parcelId`. En la app, la ficha muestra «Unidad X de N» cuando la
+finca tiene varias unidades; la exportación y los certificados muestran la
+referencia de la parcela y, cuando corresponde, la unidad.
 
 ## Cómo probar la copia
 
@@ -131,9 +146,10 @@ PORT=3100 HOST=127.0.0.1 node server.js
 ## Antes de pensar en producción
 
 1. Revisar `import-report.json`: avisos por documentos incompletos, filas sin
-   contacto, direcciones o referencias catastrales descartadas.
-2. Verificar en la app: 140 inmuebles, propietarios con varias parcelas, ficha de
-   un inmueble y una búsqueda por documento.
+   contacto, direcciones y referencias catastrales con checksum inválido (se
+   importan con aviso, no se descartan).
+2. Verificar en la app: 138 inmuebles, propietarios con varias parcelas, ficha de
+   una unidad con su finca matriz y una búsqueda por documento.
 3. Reimportar con `--force` tras corregir el Excel de origen.
 4. El pasaje a producción es un paso **aparte** (backup, ventana y autorización
    explícita); este script no lo hace.

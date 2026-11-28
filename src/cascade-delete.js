@@ -5,6 +5,7 @@ import { allowed, policyData } from "./security.js";
 import { recordAudit } from "./audit.js";
 import { communityNifError } from "./validation.js";
 import { normalizeStoredResidency } from "./domain.js";
+import { cleanupOrphanParcels } from "./parcels.js";
 import { CREDIT_DESTINATIONS, legalConfigOf } from "./legal-config.js";
 import { formatMoney } from "./fees.js";
 import { queueUploadCleanup, processFeeProofCleanup } from "./fee-proof-cleanup.js";
@@ -1106,11 +1107,11 @@ function apply(g, plan, req) {
       for (const id of ownerIds) changedOwners.add(id);
       const cid = action.action === "orphan" ? "" : action.newCommunityId || temporaryId;
       const community = db.prepare("SELECT name FROM communities WHERE id=?").get(cid);
-      db.prepare("UPDATE properties SET communityId=?,communityName=? WHERE id=?").run(
-        cid,
-        community?.name || "",
-        p.id,
-      );
+      // La referencia catastral pertenece al censo de origen: el traslado no
+      // arrastra la parcela anterior a la comunidad destino.
+      db.prepare(
+        "UPDATE properties SET communityId=?,communityName=?,cadastralRef='',parcelId='' WHERE id=?",
+      ).run(cid, community?.name || "", p.id);
     }
   }
   for (const t of g.tenants) {
@@ -1299,6 +1300,7 @@ function apply(g, plan, req) {
     db.prepare("DELETE FROM owners WHERE id=?").run(id);
   }
   for (const id of deletedProperties) db.prepare("DELETE FROM properties WHERE id=?").run(id);
+  cleanupOrphanParcels();
   if (g.collection === "communities")
     db.prepare("DELETE FROM communities WHERE id=?").run(g.root.id);
   // Update only the links participating in this plan. Do not run global repairs

@@ -118,6 +118,75 @@ test("bootstrap: propietario e inquilino solo reciben datos de sus perfiles", as
   );
   assert.ok(rent.data.owners.every((o) => !o.iban && !o.dni));
 });
+test("bootstrap: las parcelas se limitan a los inmuebles visibles de cada cuenta", async () => {
+  db.prepare(
+    "INSERT INTO communities(id,name,nif,legalConfig) VALUES('com-parcel-privacy','Parcelas Privadas','G00000003','{\"regimen\":\"lph\"}')",
+  ).run();
+  const insertParcel = db.prepare(
+    "INSERT INTO parcels(id,communityId,cadastralRef,name) VALUES(?,?,?,'Finca de prueba')",
+  );
+  insertParcel.run("parcel-privacy-mine", "com-parcel-privacy", "06011A012002450000QE");
+  insertParcel.run("parcel-privacy-neighbor", "com-parcel-privacy", "06011A012002460000QF");
+  insertParcel.run("parcel-privacy-other", "com-seed-2", "06011A012002470000QG");
+  const insertProperty = db.prepare(
+    `INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,ownerIds,ownerPercentages,participationCoef,cadastralRef,parcelId)
+     VALUES(?,?,?,?,'vivienda','Calle Privacidad 1','Madrid',?,'{}','1.0000',?,?)`,
+  );
+  insertProperty.run(
+    "prop-privacy-mine",
+    "com-parcel-privacy",
+    "Parcelas Privadas",
+    "Unidad propia",
+    JSON.stringify(["own-seed-1"]),
+    "06011A012002450000QE",
+    "parcel-privacy-mine",
+  );
+  insertProperty.run(
+    "prop-privacy-neighbor",
+    "com-parcel-privacy",
+    "Parcelas Privadas",
+    "Unidad vecina",
+    JSON.stringify(["own-seed-2"]),
+    "06011A012002460000QF",
+    "parcel-privacy-neighbor",
+  );
+  insertProperty.run(
+    "prop-privacy-other",
+    "com-seed-2",
+    "Edificio Los Olivos",
+    "Unidad externa",
+    JSON.stringify(["own-seed-3"]),
+    "06011A012002470000QG",
+    "parcel-privacy-other",
+  );
+  try {
+    const parcelIdsOfVisibleProperties = (boot) =>
+      boot.properties.map((property) => property.parcelId).filter(Boolean);
+    const adminBoot = (await admin("/bootstrap")).data;
+    const ownerBoot = (await owner("/bootstrap")).data;
+    const tenantBoot = (await tenant("/bootstrap")).data;
+    // La respuesta no puede contener parcelas ajenas a los inmuebles visibles.
+    for (const boot of [adminBoot, ownerBoot, tenantBoot])
+      assert.deepEqual(
+        boot.parcels.map((parcel) => parcel.id).sort(),
+        parcelIdsOfVisibleProperties(boot).sort(),
+      );
+    // El administrador ve todas las fincas del censo.
+    assert.ok(adminBoot.parcels.some((parcel) => parcel.id === "parcel-privacy-neighbor"));
+    assert.ok(adminBoot.parcels.some((parcel) => parcel.id === "parcel-privacy-other"));
+    // El propietario solo abre su unidad: nada de la finca vecina ni de otra comunidad.
+    assert.ok(ownerBoot.properties.some((property) => property.id === "prop-privacy-mine"));
+    assert.ok(!ownerBoot.properties.some((property) => property.id === "prop-privacy-neighbor"));
+    const ownerParcels = ownerBoot.parcels.map((parcel) => parcel.id);
+    assert.ok(ownerParcels.includes("parcel-privacy-mine"));
+    assert.ok(!ownerParcels.includes("parcel-privacy-neighbor"));
+    assert.ok(!ownerParcels.includes("parcel-privacy-other"));
+  } finally {
+    db.prepare("DELETE FROM properties WHERE id LIKE 'prop-privacy-%'").run();
+    db.prepare("DELETE FROM parcels WHERE id LIKE 'parcel-privacy-%'").run();
+    db.prepare("DELETE FROM communities WHERE id='com-parcel-privacy'").run();
+  }
+});
 test("copropietarios: el alta conserva titulares y porcentajes coherentes", async () => {
   const originalProperty = (await admin("/properties/prop-seed-1")).data;
   const reserved = await admin("/properties/prop-seed-1", "PUT", {
@@ -2961,6 +3030,170 @@ test("censo: una asociación conserva referencias catastrales compartidas entre 
     });
     assert.equal(saved.status, 200, JSON.stringify(saved.data));
     assert.equal(saved.data.cadastralRef, "28055A013000540001WL");
+  }
+});
+
+test("parcelas: agrupa unidades de la misma finca y bloquea referencias de otra comunidad", async () => {
+  const reference = "06011A012002450000QE";
+  db.prepare(
+    "INSERT INTO communities(id,name,nif,legalConfig) VALUES('com-parcel-test','Parcelas Test','G00000002','{\"regimen\":\"lph\"}')",
+  ).run();
+  const insert = db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,participationCoef) VALUES(?,?,'Parcelas Test',?,'vivienda','Calle Parcela 1','Madrid','50')",
+  );
+  insert.run("prop-parcel-a", "com-parcel-test", "Unidad A");
+  insert.run("prop-parcel-b", "com-parcel-test", "Unidad B");
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,participationCoef) VALUES('prop-parcel-other','com-seed-2','Edificio Los Olivos','Unidad ajena','vivienda','Calle Otra 1','Madrid','0.1000')",
+  ).run();
+  let relocatedParcelId = "";
+  try {
+    const a = (await admin("/properties/prop-parcel-a")).data;
+    const savedA = await admin("/properties/prop-parcel-a", "PUT", {
+      ...a,
+      cadastralRef: reference,
+    });
+    assert.equal(savedA.status, 200, JSON.stringify(savedA.data));
+    assert.ok(savedA.data.parcelId);
+
+    const b = (await admin("/properties/prop-parcel-b")).data;
+    const savedB = await admin("/properties/prop-parcel-b", "PUT", {
+      ...b,
+      cadastralRef: reference,
+    });
+    assert.equal(savedB.status, 200, JSON.stringify(savedB.data));
+    assert.equal(savedB.data.parcelId, savedA.data.parcelId);
+    assert.equal(
+      db.prepare("SELECT COUNT(*) AS n FROM parcels WHERE communityId='com-parcel-test'").get().n,
+      1,
+    );
+
+    // Una unidad nueva puede colgar de una parcela existente sin repetir la
+    // referencia: el servidor la deriva de la parcela.
+    const reused = await admin("/properties/prop-parcel-b", "PUT", {
+      ...savedB.data,
+      cadastralRef: "",
+      parcelId: savedA.data.parcelId,
+    });
+    assert.equal(reused.status, 200, JSON.stringify(reused.data));
+    assert.equal(reused.data.cadastralRef, reference);
+    assert.equal(reused.data.parcelId, savedA.data.parcelId);
+
+    const other = (await admin("/properties/prop-parcel-other")).data;
+    const crossCommunity = await admin("/properties/prop-parcel-other", "PUT", {
+      ...other,
+      cadastralRef: reference,
+    });
+    assert.equal(crossCommunity.status, 400);
+    assert.match(crossCommunity.data.error, /otra comunidad/i);
+
+    const invalidChecksum = await admin("/properties/prop-parcel-b", "PUT", {
+      ...savedB.data,
+      parcelId: "",
+      cadastralRef: "9872023VH5797S0001AA",
+    });
+    assert.equal(invalidChecksum.status, 400);
+    assert.match(invalidChecksum.data.error, /control/i);
+
+    assert.equal((await admin("/properties/prop-parcel-a", "DELETE")).status, 200);
+    assert.ok(
+      db.prepare("SELECT 1 FROM parcels WHERE id=?").get(savedA.data.parcelId),
+      "la parcela debe sobrevivir mientras tenga unidades",
+    );
+    assert.equal((await admin("/properties/prop-parcel-b", "DELETE")).status, 200);
+    assert.equal(
+      db.prepare("SELECT 1 FROM parcels WHERE id=?").get(savedA.data.parcelId),
+      undefined,
+      "la última unidad elimina la parcela",
+    );
+
+    // Un traslado con el objeto completo no arrastra la referencia de origen.
+    db.prepare(
+      "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,participationCoef) VALUES('prop-parcel-move','com-parcel-test','Parcelas Test','Unidad trasladada','vivienda','Calle Parcela 2','Madrid','50')",
+    ).run();
+    const moving = (await admin("/properties/prop-parcel-move")).data;
+    const located = await admin("/properties/prop-parcel-move", "PUT", {
+      ...moving,
+      cadastralRef: "7837301VG8173B0001TT",
+    });
+    assert.equal(located.status, 200, JSON.stringify(located.data));
+    const moved = await admin("/properties/prop-parcel-move", "PUT", {
+      ...located.data,
+      communityId: "com-seed-2",
+    });
+    assert.equal(moved.status, 200, JSON.stringify(moved.data));
+    assert.equal(moved.data.cadastralRef, "");
+    assert.equal(moved.data.parcelId, "");
+    assert.equal(
+      db.prepare("SELECT COUNT(*) AS n FROM parcels WHERE communityId='com-parcel-test'").get().n,
+      0,
+      "el traslado no deja una parcela huérfana en el origen",
+    );
+    // Ya en la comunidad destino, la ficha adopta una referencia del censo nuevo
+    // y su finca matriz se crea allí, no en el origen.
+    const relocated = await admin("/properties/prop-parcel-move", "PUT", {
+      ...moved.data,
+      cadastralRef: "7837301VG8173B0001TT",
+    });
+    assert.equal(relocated.status, 200, JSON.stringify(relocated.data));
+    relocatedParcelId = relocated.data.parcelId;
+    assert.ok(relocatedParcelId);
+    assert.equal(
+      db.prepare("SELECT communityId FROM parcels WHERE id=?").get(relocatedParcelId).communityId,
+      "com-seed-2",
+    );
+  } finally {
+    db.prepare(
+      "DELETE FROM properties WHERE id IN ('prop-parcel-a','prop-parcel-b','prop-parcel-other','prop-parcel-move')",
+    ).run();
+    db.prepare("DELETE FROM parcels WHERE communityId='com-parcel-test'").run();
+    if (relocatedParcelId) db.prepare("DELETE FROM parcels WHERE id=?").run(relocatedParcelId);
+    db.prepare("DELETE FROM communities WHERE id='com-parcel-test'").run();
+  }
+});
+test("parcelas: un fallo a mitad del traslado revierte comunidad, referencia y parcela", async () => {
+  db.prepare(
+    "INSERT INTO communities(id,name,nif,legalConfig) VALUES('com-parcel-rollback','Parcelas Rollback','G00000004','{\"regimen\":\"lph\"}')",
+  ).run();
+  db.prepare(
+    "INSERT INTO properties(id,communityId,communityName,plot,propertyType,address,city,participationCoef) VALUES('prop-parcel-rollback','com-parcel-rollback','Parcelas Rollback','Unidad con rollback','vivienda','Calle Rollback 1','Madrid','50')",
+  ).run();
+  try {
+    const origin = (await admin("/properties/prop-parcel-rollback")).data;
+    const located = await admin("/properties/prop-parcel-rollback", "PUT", {
+      ...origin,
+      cadastralRef: "06011A012002450000QE",
+    });
+    assert.equal(located.status, 200, JSON.stringify(located.data));
+    assert.ok(located.data.parcelId);
+    // Falla después de guardar la ficha: el traslado debe revertirse entero.
+    db.exec(`CREATE TRIGGER parcel_transfer_failure AFTER UPDATE ON properties
+      WHEN NEW.id='prop-parcel-rollback' AND NEW.communityId <> OLD.communityId
+      BEGIN SELECT RAISE(ABORT, 'fallo simulado'); END`);
+    const failed = await admin("/properties/prop-parcel-rollback", "PUT", {
+      ...located.data,
+      communityId: "com-seed-2",
+    });
+    assert.equal(failed.status, 500, JSON.stringify(failed.data));
+    const after = db
+      .prepare("SELECT communityId,cadastralRef,parcelId FROM properties WHERE id='prop-parcel-rollback'")
+      .get();
+    assert.equal(after.communityId, "com-parcel-rollback");
+    assert.equal(after.cadastralRef, "06011A012002450000QE");
+    assert.equal(after.parcelId, located.data.parcelId);
+    assert.ok(db.prepare("SELECT 1 FROM parcels WHERE id=?").get(located.data.parcelId));
+    assert.equal(
+      db
+        .prepare("SELECT COUNT(*) AS n FROM parcels WHERE communityId='com-seed-2' AND cadastralRef=?")
+        .get("06011A012002450000QE").n,
+      0,
+      "el fallo no deja una parcela en la comunidad destino",
+    );
+  } finally {
+    db.exec("DROP TRIGGER IF EXISTS parcel_transfer_failure");
+    db.prepare("DELETE FROM properties WHERE id='prop-parcel-rollback'").run();
+    db.prepare("DELETE FROM parcels WHERE communityId='com-parcel-rollback'").run();
+    db.prepare("DELETE FROM communities WHERE id='com-parcel-rollback'").run();
   }
 });
 

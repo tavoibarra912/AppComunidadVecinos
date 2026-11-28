@@ -84,6 +84,12 @@ function fixture(tenantCreateAllowed = true) {
     requirePermission: () => true,
     toast: (message) => calls.toasts.push(message),
     isValidCadastralRef: () => true,
+    normalizeCadastralReference: (value) =>
+      String(value ?? "")
+        .trim()
+        .toUpperCase()
+        .replace(/[\s.\-]/g, ""),
+    cadastralReferenceProblem: () => "",
     isValidDecimal: () => true,
     makeSelectSearchable: noop,
     showValidationErrors: (messages) => calls.validationErrors.push(messages),
@@ -208,6 +214,54 @@ test("el alta ocupada por el propietario marca al titular como residente y princ
     assert.equal(payload.occupancy, "owner");
     assert.equal(JSON.stringify(payload.residentOwnerIds), JSON.stringify(["o1"]));
     assert.equal(payload.primaryResidentId, "o1");
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("el alta puede reutilizar una parcela y completa la referencia catastral", async () => {
+  const f = fixture();
+  const reference = "28055A013000540001WL";
+  f.state.parcels = [{ id: "parcel-1", communityId: "c1", cadastralRef: reference }];
+  try {
+    f.ui.openPropertyEditor();
+    const { document } = f.window;
+    const form = document.querySelector("#property-form");
+    fillRequiredPropertyFields(form, document);
+    form.elements.communityId.dispatchEvent(new f.window.Event("change", { bubbles: true }));
+    const select = form.elements.parcelId;
+    assert.equal(select.options.length, 2);
+    select.value = "parcel-1";
+    select.dispatchEvent(new f.window.Event("change", { bubbles: true }));
+    assert.equal(form.elements.cadastralRef.value, reference);
+    assert.equal(form.elements.cadastralRef.readOnly, true);
+    form.dispatchEvent(new f.window.Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+    assert.equal(f.calls.properties.length, 1);
+    assert.equal(f.calls.properties[0].parcelId, "parcel-1");
+    assert.equal(f.calls.properties[0].cadastralRef, reference);
+  } finally {
+    f.dom.window.close();
+  }
+});
+
+test("cambiar de comunidad limpia la referencia y la parcela seleccionada", () => {
+  const f = fixture();
+  f.state.communities.push({ id: "c2", name: "Otra comunidad" });
+  try {
+    f.ui.openPropertyEditor();
+    const { document } = f.window;
+    const form = document.querySelector("#property-form");
+    form.elements.cadastralRef.value = "28055A013000540001WL";
+    form.elements.parcelId.replaceChildren(
+      new f.window.Option("Parcela", "parcel-1"),
+    );
+    form.elements.parcelId.value = "parcel-1";
+    form.elements.communityId.value = "c2";
+    form.elements.communityId.dispatchEvent(new f.window.Event("change", { bubbles: true }));
+    assert.equal(form.elements.cadastralRef.value, "");
+    assert.equal(form.elements.cadastralRef.readOnly, false);
+    assert.equal(form.elements.parcelId.value, "");
   } finally {
     f.dom.window.close();
   }

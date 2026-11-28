@@ -27,6 +27,7 @@ import { resourceAccess, notificationAccess } from "../access.js";
 import {
   listAdminEmails,
   listOwnerNotifications,
+  listParcels,
   listDocumentFoldersForEntities,
   listDocumentsForEntities,
   getSettings,
@@ -104,6 +105,12 @@ router.get("/bootstrap", (req, res) => {
   const readableIds = (rows) => rows.map((row) => row.id).filter(canReadDocuments);
   const communityIds = readableIds(visible.communities);
   const propertyIds = readableIds(visible.properties);
+  // La finca matriz se expone solo si el usuario ve alguna de sus unidades.
+  // Filtrar por comunidad entregaba a un residente las referencias de las
+  // unidades vecinas que no puede abrir.
+  const parcelIds = new Set(
+    visible.properties.map((property) => property.parcelId).filter(Boolean),
+  );
   const tenantIds = readableIds(visible.tenants);
   const communityDocuments = groupByEntity(listDocumentsForEntities("community", communityIds));
   const communityStatutes = groupByEntity(
@@ -136,6 +143,7 @@ router.get("/bootstrap", (req, res) => {
       documents: propertyDocuments.get(property.id) || [],
       documentFolders: propertyFolders.get(property.id) || [],
     })),
+    parcels: listParcels().filter((parcel) => parcelIds.has(parcel.id)),
     tenants: visible.tenants.map((tenant) => ({
       ...tenant,
       // `documents` contiene el expediente fijo (DNI, contrato…); la

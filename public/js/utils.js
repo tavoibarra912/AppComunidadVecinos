@@ -277,9 +277,39 @@ export function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((value || "").trim());
 }
 
+const CADASTRAL_WEIGHTS = [13, 15, 12, 5, 4, 17, 9, 21, 3, 7, 1];
+const CADASTRAL_LETTERS = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+const CADASTRAL_CONTROLS = "MQWERTYUIOPASDFGHJKLBZX";
+
+export function normalizeCadastralReference(value) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s.\-]/g, "");
+}
+
+function cadastralControl(part) {
+  const total = [...part].reduce((sum, char, index) => {
+    const value = /^\d$/.test(char) ? Number(char) : CADASTRAL_LETTERS.indexOf(char) + 1;
+    return sum + value * CADASTRAL_WEIGHTS[index];
+  }, 0);
+  return CADASTRAL_CONTROLS[total % 23];
+}
+
+export function cadastralReferenceProblem(value) {
+  const reference = normalizeCadastralReference(value);
+  if (!reference) return "missing";
+  if (!/^[A-ZÑ0-9]{18}[A-Z]{2}$/.test(reference)) return "format";
+  const unit = reference.slice(14, 18);
+  const expected =
+    cadastralControl(reference.slice(0, 7) + unit) +
+    cadastralControl(reference.slice(7, 14) + unit);
+  return expected === reference.slice(18) ? "" : "checksum";
+}
+
 export function isValidCadastralRef(value) {
   if (!value) return true;
-  return /^[A-Z0-9]{20}$/.test(value.replace(/\s+/g, "").toUpperCase());
+  return cadastralReferenceProblem(value) === "";
 }
 
 export function isValidDecimal(value, min, max) {

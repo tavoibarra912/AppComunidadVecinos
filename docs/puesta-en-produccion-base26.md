@@ -80,7 +80,8 @@ apariencia, login, permisos, descarga de estatutos y reinicio sin demo. Guarda
    únicamente el `.db` sobre archivos WAL/SHM antiguos. Conservar los directorios
    anteriores para recuperación. Usar la imagen correspondiente al código probado.
 6. Arrancar la API y verificar HTTPS, 1 comunidad, 125 propietarios, 131 inmuebles,
-   126 cuentas, estatutos, apariencia y acceso administrativo y de un vecino.
+   sus parcelas derivadas, 126 cuentas, estatutos, apariencia y acceso administrativo
+   y de un vecino.
    Revisar los resultados de GCP y Netlify: son publicaciones independientes.
 7. Con la aplicación ya validada, activar la política de backups descrita abajo.
    Comprobar sus primeras copias y la próxima ejecución antes de abrir acceso y
@@ -90,6 +91,21 @@ Si falla antes de abrir el acceso, detener la API y recuperar juntos código,
 directorios de datos, adjuntos y configuración anteriores. Después de abrirla,
 preservar primero cualquier dato nuevo antes de restaurar. Un rollback de imagen
 por sí solo no revierte migraciones de SQLite.
+
+Volver a la imagen inmediatamente anterior a las parcelas es compatible con sus
+datos: esa versión ya no recrea `idx_properties_cadastral_unique` (se retiró en
+`4410d6a`) y su código ignora la tabla `parcels` y la columna
+`properties.parcelId`, que quedan sin usar. Una imagen anterior a `4410d6a` sí
+vuelve a exigir una referencia única por inmueble y no arranca si hay fincas
+compartidas. Antes de volver a esa imagen, comprobar duplicados; si devuelve
+filas, restaurar el respaldo previo a la migración en lugar de reutilizar la
+base actual:
+
+```sql
+SELECT communityId, cadastralRef, COUNT(*) AS unidades
+FROM properties WHERE TRIM(cadastralRef) <> ''
+GROUP BY communityId, cadastralRef HAVING COUNT(*) > 1;
+```
 
 ## Política de backups acordada
 

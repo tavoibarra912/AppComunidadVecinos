@@ -1659,6 +1659,9 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
       .all(communityId)
       .map((row) => [row.id, row]),
   );
+  const parcelById = new Map(
+    db.prepare("SELECT * FROM parcels").all().map((parcel) => [parcel.id, parcel]),
+  );
   // Un inmueble trasladado ya no figura en esta comunidad, pero sus recibos
   // históricos sí. Se incorpora para no perder el porcentaje que la comunidad
   // eligió usar como «último conocido» al certificar su deuda.
@@ -1685,8 +1688,13 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
         `SELECT * FROM properties p WHERE communityId=?
       AND EXISTS (SELECT 1 FROM json_each(p.ownerIds) o WHERE o.value=?) ORDER BY plot, id`,
       )
-      .all(communityId, ownerId))
-      certificateProperties.set(entry.id, entry.plot || entry.id);
+      .all(communityId, ownerId)) {
+      const parcelRef = parcelById.get(entry.parcelId)?.cadastralRef || entry.cadastralRef;
+      certificateProperties.set(
+        entry.id,
+        `${entry.plot || entry.id}${parcelRef ? ` · ${parcelRef}` : ""}`,
+      );
+    }
     const hasHistory = db
       .prepare(
         `SELECT 1 FROM fee_receipts r WHERE communityId=?
@@ -1816,6 +1824,16 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
     debtRule.mostrarRepartoInterno && debtRule.porcentajesHistoricos !== "omitir";
   const money = (cents) => formatMoney(cents, community.currency || "EUR");
   const certificateOutstanding = individualExpression ? imputableOutstanding : totalOutstanding;
+  const propertyParcel = property?.parcelId ? parcelById.get(property.parcelId) : null;
+  const parcelUnits = propertyParcel
+    ? db
+        .prepare("SELECT id FROM properties WHERE parcelId=? ORDER BY plot, id")
+        .all(property.parcelId)
+    : [];
+  const parcelUnit =
+    propertyParcel && parcelUnits.length > 1
+      ? ` · unidad ${parcelUnits.findIndex((row) => row.id === property.id) + 1} de ${parcelUnits.length}`
+      : "";
 
   // Generate PDF using pdfkit
   const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
@@ -1885,6 +1903,9 @@ export function generateDebtCertificate({ communityId, ownerId, propertyId, acto
     }
     if (property) {
       doc.text(`Inmueble: ${property.plot}`);
+      if (propertyParcel)
+        doc.text(`Parcela: ${propertyParcel.cadastralRef || "Sin referencia"}${parcelUnit}`);
+      else if (property.cadastralRef) doc.text(`Referencia catastral: ${property.cadastralRef}`);
       if (property.staircase) doc.text(`Escalera: ${property.staircase}`);
       if (property.floor) doc.text(`Planta: ${property.floor}`);
       if (property.door) doc.text(`Puerta: ${property.door}`);

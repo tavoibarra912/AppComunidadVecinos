@@ -1154,6 +1154,10 @@
                 </li>
                 <li>Un traslado financiero no mezcla monedas.</li>
                 <li>
+                  Una referencia catastral compartida solo agrupa unidades de la misma comunidad;
+                  al trasladar un inmueble no se arrastra.
+                </li>
+                <li>
                   Un borrado con dependencias no se ejecuta si el plan cambió entre la vista previa
                   y la confirmación.
                 </li>
@@ -1604,7 +1608,10 @@
               <tbody>
                 <tr>
                   <td><strong>Comunidad</strong></td>
-                  <td>1:N inmuebles; 1 configuración jurídica; 0..1 cuenta administradora</td>
+                  <td>
+                    1:N inmuebles; 1:N parcelas; 1 configuración jurídica; 0..1 cuenta
+                    administradora
+                  </td>
                   <td>
                     El inmueble pertenece a una sola comunidad. La configuración no se comparte
                     entre comunidades.
@@ -1612,10 +1619,18 @@
                 </tr>
                 <tr>
                   <td><strong>Inmueble</strong></td>
-                  <td>N:M propietarios; 1:N contratos; 1 coeficiente</td>
+                  <td>N:M propietarios; 1:N contratos; 1 coeficiente; 0..1 parcela</td>
                   <td>
                     La copropiedad no duplica el recibo. El coeficiente se usa para repartos, no
                     para crear titulares.
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Parcela</strong></td>
+                  <td>N:1 comunidad; 1:N inmuebles</td>
+                  <td>
+                    Agrupa unidades con la misma referencia dentro de una comunidad. No cruza
+                    comunidades y se elimina cuando queda sin unidades.
                   </td>
                 </tr>
                 <tr>
@@ -2089,8 +2104,23 @@
                 <tr>
                   <td>Referencia catastral</td>
                   <td>
-                    Exactamente 20 caracteres alfanuméricos y única entre todos los inmuebles; se
-                    normaliza.
+                    Se normaliza a mayúsculas sin espacios, puntos ni guiones: 20 caracteres
+                    alfanuméricos. La misma referencia puede repetirse entre unidades de una
+                    comunidad porque identifica una finca matriz; no puede reutilizarse en otra
+                    comunidad. Al crear o editar una referencia nueva se exige un checksum válido;
+                    las fichas y parcelas heredadas pueden conservar una referencia con checksum
+                    inválido para no perder el censo.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Parcela / finca matriz</td>
+                  <td>
+                    Se deriva de la referencia: una parcela por comunidad y referencia. Agrupa
+                    varias unidades sin crear recibos ni titulares por sí misma. Al elegir una
+                    parcela en la ficha, la referencia se completa y queda bloqueada. Si la última
+                    unidad cambia de referencia o se elimina, la parcela huérfana se borra. Sin
+                    referencia no se crea parcela. El bootstrap expone solo las parcelas de los
+                    inmuebles que la cuenta puede abrir, nunca todas las de la comunidad.
                   </td>
                 </tr>
                 <tr>
@@ -2128,7 +2158,10 @@
                     Se bloquea si el inmueble está incluido en una derrama o servicio no anulado
                     (aunque siga en borrador). El traslado normal con titulares ya vinculados a otra
                     comunidad también puede rechazarse; el flujo avanzado permite mover inmuebles,
-                    titulares y deuda con un plan explícito.
+                    titulares y deuda con un plan explícito. La referencia y la parcela pertenecen al
+                    censo de origen: se limpian al mover y no se arrastran a la comunidad destino.
+                    Si el guardado falla, la transacción revierte también comunidad, referencia y
+                    parcela, sin dejar una finca huérfana.
                   </td>
                 </tr>
               </tbody>
@@ -2139,7 +2172,7 @@
           <div class="flow" aria-label="Sincronización de datos del inmueble">
             <div class="flow-step">
               <span class="n">01</span><b>Se guarda el inmueble</b
-              ><span>Comunidad, identificación, coeficiente y titulares.</span>
+              ><span>Comunidad, identificación, coeficiente, titulares y parcela derivada.</span>
             </div>
             <div class="flow-step">
               <span class="n">02</span><b>Se actualizan titulares</b
@@ -2147,7 +2180,7 @@
             </div>
             <div class="flow-step">
               <span class="n">03</span><b>Se copian datos derivados</b
-              ><span>Comunidad, planta, puerta, coeficiente, referencia y uso.</span>
+              ><span>Comunidad, planta, puerta, coeficiente, referencia, parcela y uso.</span>
             </div>
             <div class="flow-step">
               <span class="n">04</span><b>Se preserva el censo</b
@@ -2164,8 +2197,8 @@
           </div>
 
           <p class="source">
-            Implementación: <code>src/routes/properties.js</code>, <code>src/domain.js</code>,
-            <code>src/fees.js</code>.
+            Implementación: <code>src/routes/properties.js</code>, <code>src/parcels.js</code>,
+            <code>src/db.js</code>, <code>src/domain.js</code>, <code>src/fees.js</code>.
           </p>
         </section>
 

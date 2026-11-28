@@ -104,12 +104,24 @@ db.exec(`
     staircase TEXT NOT NULL DEFAULT '',
     energyCertificate TEXT NOT NULL DEFAULT '',
     cadastralRef TEXT NOT NULL DEFAULT '',
+    parcelId TEXT NOT NULL DEFAULT '',
     registryNumber TEXT NOT NULL DEFAULT '',
     floor TEXT NOT NULL DEFAULT '',
     door TEXT NOT NULL DEFAULT '',
     areaM2 TEXT NOT NULL DEFAULT '',
     participationCoef TEXT NOT NULL DEFAULT '',
     propertyUse TEXT NOT NULL DEFAULT '',
+    createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- Finca matriz: varias unidades (subparcelas, pisos de una segregación)
+  -- pueden compartir la misma referencia catastral porque pertenecen a ella.
+  CREATE TABLE IF NOT EXISTS parcels (
+    id TEXT PRIMARY KEY,
+    communityId TEXT NOT NULL DEFAULT '',
+    cadastralRef TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -311,12 +323,63 @@ db.exec(
   "CREATE INDEX IF NOT EXISTS idx_documents_folder ON documents(entityType, entityId, folderId)",
 );
 
-// Una referencia puede identificar la finca matriz de varias subparcelas de
-// una asociación. La API conserva la restricción para comunidades LPH.
+// Una referencia puede identificar la finca matriz de varias subparcelas. La
+// unicidad se traslada a la parcela y deja de aplicarse a cada inmueble.
 db.exec("DROP INDEX IF EXISTS idx_properties_cadastral_unique");
 db.exec(
-  "UPDATE properties SET cadastralRef = UPPER(REPLACE(TRIM(cadastralRef), ' ', '')) WHERE cadastralRef <> ''",
+  `UPDATE properties SET cadastralRef = UPPER(REPLACE(REPLACE(REPLACE(TRIM(cadastralRef), ' ', ''), '.', ''), '-', ''))
+   WHERE cadastralRef <> ''`,
 );
+
+// La unicidad vive en la parcela (finca matriz) y no en cada unidad: una
+// referencia puede repetirse entre los inmuebles que la componen.
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_parcels_community_ref
+    ON parcels(communityId, cadastralRef) WHERE TRIM(cadastralRef) <> '';
+  CREATE INDEX IF NOT EXISTS idx_parcels_cadastral ON parcels(cadastralRef);
+`);
+
+ensureColumns("properties", { parcelId: "TEXT NOT NULL DEFAULT ''" });
+db.exec("CREATE INDEX IF NOT EXISTS idx_properties_parcel ON properties(parcelId)");
+
+// La tabla de marcas se crea también más abajo para bases antiguas; aquí hace
+// falta antes de registrar la migración de parcelas.
+db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY)");
+
+// Migración v1 del modelo de parcelas: cada (comunidad, referencia) existente
+// pasa a ser una parcela y sus inmuebles quedan colgados de ella. Las
+// referencias vacías se dejan sin parcela. Es idempotente por la marca de
+// schema_migrations, pero también tolera una segunda ejecución.
+if (!db.prepare("SELECT id FROM schema_migrations WHERE id = 'property-parcels-v1'").get()) {
+  const parcelIdFor = (communityId, cadastralRef) => {
+    const existing = db
+      .prepare("SELECT id FROM parcels WHERE communityId = ? AND cadastralRef = ?")
+      .get(communityId, cadastralRef);
+    if (existing) return existing.id;
+    const id = crypto.randomUUID();
+    db.prepare(
+      "INSERT INTO parcels (id, communityId, cadastralRef, name) VALUES (?, ?, ?, ?)",
+    ).run(id, communityId, cadastralRef, "");
+    return id;
+  };
+  const groups = db
+    .prepare(
+      `SELECT communityId, UPPER(REPLACE(REPLACE(REPLACE(TRIM(cadastralRef), ' ', ''), '.', ''), '-', '')) AS cadastralRef
+       FROM properties WHERE TRIM(cadastralRef) <> ''
+       GROUP BY communityId, UPPER(REPLACE(REPLACE(REPLACE(TRIM(cadastralRef), ' ', ''), '.', ''), '-', ''))`,
+    )
+    .all();
+  const link = db.prepare(
+    `UPDATE properties SET parcelId = ?
+     WHERE communityId = ? AND UPPER(REPLACE(REPLACE(REPLACE(TRIM(cadastralRef), ' ', ''), '.', ''), '-', '')) = ?`,
+  );
+  for (const group of groups) {
+    const parcelId = parcelIdFor(group.communityId, group.cadastralRef);
+    link.run(parcelId, group.communityId, group.cadastralRef);
+  }
+  db.exec("UPDATE properties SET parcelId = '' WHERE TRIM(cadastralRef) = ''");
+  db.prepare("INSERT INTO schema_migrations (id) VALUES ('property-parcels-v1')").run();
+}
 
 // Roles del modelo de acceso: Super Admin / Admin General / Admin de
 // Comunidad / Usuario. Migración idempotente: si aún no existe
@@ -1083,9 +1146,9 @@ ensureColumns("tenants", {
 // Backfill puntual: los inmuebles previos heredan la ubicación de su comunidad
 db.exec(`
   UPDATE properties
-  SET city = (SELECT city FROM communities WHERE communities.id = properties.communityId),
-      province = (SELECT province FROM communities WHERE communities.id = properties.communityId),
-      postalCode = (SELECT postalCode FROM communities WHERE communities.id = properties.communityId)
+  SET city = COALESCE((SELECT city FROM communities WHERE communities.id = properties.communityId), ''),
+      province = COALESCE((SELECT province FROM communities WHERE communities.id = properties.communityId), ''),
+      postalCode = COALESCE((SELECT postalCode FROM communities WHERE communities.id = properties.communityId), '')
   WHERE city = '' AND communityId <> ''
 `);
 
@@ -1332,6 +1395,7 @@ export function propertyFromRow(
       ? (latestFee.amount / (JSON.parse(latestFee.snapshot).months || 1) / 100).toFixed(2)
       : "",
     cadastralRef: row.cadastralRef,
+    parcelId: row.parcelId || "",
     registryNumber: row.registryNumber,
     floor: row.floor,
     door: row.door,
@@ -1474,6 +1538,24 @@ export function listProperties() {
     .prepare("SELECT * FROM properties ORDER BY plot")
     .all()
     .map((row) => propertyFromRow(row, financial, residency));
+}
+
+export function parcelFromRow(row) {
+  return {
+    id: row.id,
+    communityId: row.communityId || "",
+    cadastralRef: row.cadastralRef || "",
+    name: row.name || "",
+    notes: row.notes || "",
+    createdAt: row.createdAt,
+  };
+}
+
+export function listParcels() {
+  return db
+    .prepare("SELECT * FROM parcels ORDER BY cadastralRef, name, id")
+    .all()
+    .map(parcelFromRow);
 }
 
 export function listTenants() {

@@ -527,8 +527,19 @@ test("regresión: la referencia de conciliación se completa tras la revisión s
 });
 
 test("regresión: el documento del traslado se completa tras la revisión sin invalidar el token", async () => {
-  const f = fixture(),
-    p = await plan("communities", f.c1);
+  const f = fixture();
+  const parcelId = `${f.p1}-parcel`;
+  insert("parcels", {
+    id: parcelId,
+    communityId: f.c1,
+    cadastralRef: "7837301VG8173B0001TT",
+  });
+  db.prepare("UPDATE properties SET cadastralRef=?, parcelId=? WHERE id=?").run(
+    "7837301VG8173B0001TT",
+    parcelId,
+    f.p1,
+  );
+  const p = await plan("communities", f.c1);
   p.actions.properties[f.p1] = { action: "reassign_community", newCommunityId: f.target };
   p.actions.finance = "reassign_community";
   p.actions.posts = "reassign_community";
@@ -545,6 +556,9 @@ test("regresión: el documento del traslado se completa tras la revisión sin in
   assert.equal(r.data.settlement.transferDocument, "Acta de la junta de 2026-11-01");
   assert.equal(get("fee_receipts", f.r1).communityId, f.target);
   assert.equal(get("properties", f.p1).communityId, f.target);
+  assert.equal(get("properties", f.p1).cadastralRef, "");
+  assert.equal(get("properties", f.p1).parcelId, "");
+  assert.equal(get("parcels", parcelId), undefined);
 });
 
 test("comunidad: borrar todo incluye inquilinos, dependencias financieras y publicaciones, preservando titulares externos", async () => {

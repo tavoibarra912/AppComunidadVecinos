@@ -17,7 +17,8 @@ import {
 } from "../state.js";
 import {
   toast,
-  isValidCadastralRef,
+  cadastralReferenceProblem,
+  normalizeCadastralReference,
   isValidDecimal,
   makeSelectSearchable,
   showValidationErrors,
@@ -94,12 +95,6 @@ let editingPrimaryResidentId = "";
 
 function selectedPropertyCommunityId() {
   return propertyForm.elements.communityId?.value || "";
-}
-
-function normalizeCadastralRef(value) {
-  return String(value || "")
-    .replace(/\s+/g, "")
-    .toUpperCase();
 }
 
 /** Comunidades conocidas de un propietario (principal + inmuebles vinculados). */
@@ -184,6 +179,14 @@ function syncPropertyCoefficientRequirement() {
 function handlePropertyCommunityChange() {
   const removed = prunePropertyPeopleForCommunity(selectedPropertyCommunityId());
   syncPropertyCoefficientRequirement();
+  updatePropertyParcelSelect();
+  // La referencia pertenece al censo de origen: no se arrastra al cambiar de
+  // comunidad. El selector de parcela ya quedó limpio en el paso anterior.
+  const reference = propertyForm.elements.cadastralRef;
+  if (reference) {
+    reference.value = "";
+    reference.readOnly = false;
+  }
   renderPropertyOwnersTab();
   renderPropertyTenantsTab();
   if (removed > 0) {
@@ -868,6 +871,67 @@ function updatePropertyCommunitySelect(selectedId = "") {
   if (current) select.value = current;
 }
 
+/** Parcelas (fincas matriz) censadas en una comunidad. */
+function parcelsForCommunity(communityId) {
+  return (state.parcels || []).filter(
+    (parcel) => parcel.communityId === communityId && parcel.cadastralRef,
+  );
+}
+
+function propertyParcelUnitCount(parcelId) {
+  return state.properties.filter((property) => property.parcelId === parcelId).length;
+}
+
+function propertyParcelUnits(parcelId) {
+  if (!parcelId) return [];
+  return state.properties
+    .filter((property) => property.parcelId === parcelId)
+    .sort(
+      (a, b) =>
+        String(a.plot || "").localeCompare(String(b.plot || ""), "es", { numeric: true }) ||
+        String(a.id || "").localeCompare(String(b.id || "")),
+    );
+}
+
+function propertyParcelUnitLabel(property) {
+  const units = propertyParcelUnits(property.parcelId);
+  if (units.length < 2) return "";
+  return `Unidad ${units.findIndex((item) => item.id === property.id) + 1} de ${units.length}`;
+}
+
+/**
+ * Puebla el selector de parcela con las fincas de la comunidad elegida. Al
+ * seleccionar una, la referencia catastral se completa y queda bloqueada: la
+ * unidad pasa a ser una más de esa finca matriz.
+ */
+function updatePropertyParcelSelect(selectedId = "") {
+  const select = propertyForm.elements.parcelId;
+  if (!select) return;
+  select.replaceChildren(new Option("Sin parcela (referencia propia)", ""));
+  parcelsForCommunity(selectedPropertyCommunityId()).forEach((parcel) => {
+    const units = propertyParcelUnitCount(parcel.id);
+    const suffix = units
+      ? ` · ${units} ${units === 1 ? "unidad" : "unidades"}`
+      : "";
+    select.add(new Option(`${parcel.cadastralRef}${suffix}`, parcel.id));
+  });
+  select.value = selectedId || "";
+  syncPropertyCadastralFromParcel();
+}
+
+function syncPropertyCadastralFromParcel() {
+  const select = propertyForm.elements.parcelId;
+  const input = propertyForm.elements.cadastralRef;
+  if (!select || !input) return;
+  const parcel = (state.parcels || []).find((item) => item.id === select.value);
+  if (!parcel) {
+    input.readOnly = false;
+    return;
+  }
+  input.value = parcel.cadastralRef;
+  input.readOnly = true;
+}
+
 export function updatePropertyPeopleSelectors(
   selectedOwnerIds = [],
   selectedTenantIds = [],
@@ -1043,6 +1107,7 @@ export function openPropertyEditor(id = null, defaultTab = "general", readonly =
     });
     propertyTerritory?.set(property.city, property.province, property.postalCode);
   }
+  updatePropertyParcelSelect(property?.parcelId || "");
   syncPropertyCoefficientRequirement();
   propertyNotes?.setValue(propertyForm.elements.notes.value || "");
   document.querySelector("#property-dialog-title").textContent = property
@@ -1194,6 +1259,31 @@ export function renderProperties() {
           value: (property) =>
             state.communities.find((item) => item.id === property.communityId)?.city || "",
           defaultVisible: true,
+        },
+        {
+          key: "parcel",
+          label: "Parcela",
+          value: (property) => property.cadastralRef || "",
+          defaultVisible: true,
+          render: (property) => {
+            const cell = document.createElement("div");
+            if (!property.cadastralRef) {
+              cell.textContent = "Sin referencia";
+              return cell;
+            }
+            const reference = document.createElement("span");
+            reference.className = "community-name";
+            reference.textContent = property.cadastralRef;
+            cell.append(reference);
+            const unitLabel = propertyParcelUnitLabel(property);
+            if (unitLabel) {
+              const sub = document.createElement("small");
+              sub.className = "community-property-sub";
+              sub.textContent = unitLabel;
+              cell.append(sub);
+            }
+            return cell;
+          },
         },
         {
           key: "owners",
@@ -1423,10 +1513,12 @@ export function openPropertyDetail(id) {
     : "Sin inquilinos";
   document.querySelector("#property-detail-receipts").textContent =
     propertyReceiptStatus(property).text;
-  document.querySelector("#property-detail-registry").textContent = [
-    property.cadastralRef || "Sin referencia catastral",
-    property.registryNumber ? `Finca ${property.registryNumber}` : "Sin finca registral",
-  ].join(" · ");
+  const parcelUnitLabel = propertyParcelUnitLabel(property);
+  document.querySelector("#property-detail-registry").textContent =
+    [
+      property.cadastralRef || "Sin referencia catastral",
+      property.registryNumber ? `Finca ${property.registryNumber}` : "Sin finca registral",
+    ].join(" · ") + (parcelUnitLabel ? ` · ${parcelUnitLabel.toLowerCase()}` : "");
   document.querySelector("#property-detail-characteristics").textContent =
     [
       property.floor && `Planta ${property.floor}`,
@@ -1582,6 +1674,11 @@ if (propertyForm.elements.communityId) {
   makeSelectSearchable(propertyForm.elements.communityId, "Buscar comunidad…");
   propertyForm.elements.communityId.addEventListener("change", handlePropertyCommunityChange);
 }
+propertyForm.elements.parcelId?.addEventListener("change", syncPropertyCadastralFromParcel);
+propertyForm.elements.cadastralRef?.addEventListener("input", () => {
+  const input = propertyForm.elements.cadastralRef;
+  input.value = normalizeCadastralReference(input.value).slice(0, 20);
+});
 // Selects de vinculación de propietarios e inquilinos: mismo combo buscador que comunidad
 makeSelectSearchable(document.querySelector("#property-owner-link-select"), "Buscar propietario…");
 makeSelectSearchable(document.querySelector("#property-tenant-link-select"), "Buscar inquilino…");
@@ -1638,7 +1735,10 @@ propertyForm.addEventListener("submit", async (event) => {
           ? editingPrimaryResidentId
           : selectedTenantIds[0] || ""
         : "";
-  const cadastralRef = normalizeCadastralRef(values.cadastralRef);
+  const selectedParcel = (state.parcels || []).find((parcel) => parcel.id === values.parcelId);
+  const cadastralRef = normalizeCadastralReference(
+    selectedParcel?.cadastralRef || values.cadastralRef,
+  );
   const participationCoef = roundCoefficient(values.participationCoef);
 
   const messages = [];
@@ -1697,18 +1797,37 @@ propertyForm.addEventListener("submit", async (event) => {
   } else if (selectedLocation.province !== values.province) {
     messages.push("El municipio debe pertenecer a la provincia seleccionada.");
   }
+  if (selectedParcel && selectedParcel.communityId !== values.communityId) {
+    messages.push("La parcela elegida pertenece a otra comunidad.");
+  }
   if (cadastralRef) {
-    if (!isValidCadastralRef(cadastralRef)) {
-      messages.push("La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.");
-    } else {
+    const referenceProblem = cadastralReferenceProblem(cadastralRef);
+    const editingProperty = state.properties.find(
+      (property) => property.id === state.ui.editingPropertyId,
+    );
+    const legacyReference =
+      (editingProperty &&
+        normalizeCadastralReference(editingProperty.cadastralRef) === cadastralRef) ||
+      (selectedParcel &&
+        normalizeCadastralReference(selectedParcel.cadastralRef) === cadastralRef);
+    if (referenceProblem && !(referenceProblem === "checksum" && legacyReference)) {
+      messages.push(
+        referenceProblem === "checksum"
+          ? "La referencia catastral no supera la comprobación de caracteres de control."
+          : "La referencia catastral debe tener exactamente 20 caracteres alfanuméricos.",
+      );
+    } else if (values.communityId) {
+      // Compartir referencia en la misma comunidad es legítimo (unidades de la
+      // misma finca); en otra comunidad casi siempre es un error de tipeo.
       const duplicate = state.properties.find(
         (property) =>
           property.id !== state.ui.editingPropertyId &&
-          normalizeCadastralRef(property.cadastralRef) === cadastralRef,
+          property.communityId !== values.communityId &&
+          normalizeCadastralReference(property.cadastralRef) === cadastralRef,
       );
-      if (duplicate && !association) {
+      if (duplicate) {
         messages.push(
-          `Ya existe el inmueble "${duplicate.plot}" con la misma referencia catastral.`,
+          `Esa referencia catastral ya está asignada a "${duplicate.plot}" en otra comunidad.`,
         );
       }
     }
@@ -1747,6 +1866,7 @@ propertyForm.addEventListener("submit", async (event) => {
     plot: values.plot.trim(),
     staircase: (values.staircase || "").trim(),
     energyCertificate: values.energyCertificate || "",
+    parcelId: values.parcelId || "",
     cadastralRef,
     registryNumber: (values.registryNumber || "").trim(),
     floor: (values.floor || "").trim(),
