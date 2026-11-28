@@ -113,6 +113,20 @@ Decisiones sobre el mapping:
 - Las filas sin documento generan el inmueble **sin propietario** y un aviso; no se
   inventan identidades.
 
+## Fincas matriz y unidades
+
+El importador crea una fila de `parcels` por cada combinación de comunidad y
+referencia catastral normalizada. Las unidades que comparten referencia quedan
+enlazadas a la misma parcela mediante `properties.parcelId`; no se duplican
+recibos ni titulares por pertenecer a la misma finca. Una referencia ausente o
+con formato inválido no crea parcela; una referencia con checksum inválido sí la
+crea y queda advertida para revisión.
+
+El informe incluye el listado de `parcelas` con sus unidades, y cada inmueble
+conserva su `parcelId`. En la app, la ficha muestra «Unidad X de N» cuando la
+finca tiene varias unidades; la exportación y los certificados muestran la
+referencia de la parcela y, cuando corresponde, la unidad.
+
 ## Cómo probar la copia
 
 ```bash
@@ -132,7 +146,8 @@ PORT=3100 HOST=127.0.0.1 node server.js
 ## Antes de pensar en producción
 
 1. Revisar `import-report.json`: avisos por documentos incompletos, filas sin
-   contacto, direcciones o referencias catastrales descartadas.
+   contacto, direcciones y referencias catastrales con checksum inválido (se
+   importan con aviso, no se descartan).
 2. Verificar en la app: 138 inmuebles, propietarios con varias parcelas, ficha de
    una unidad con su finca matriz y una búsqueda por documento.
 3. Reimportar con `--force` tras corregir el Excel de origen.

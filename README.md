@@ -401,7 +401,8 @@ public/
 
 - `communities`: datos de la comunidad + documentación adjunta.
 - `owners`: datos personales, verificación de contacto, IBAN y **expediente de documentación** (JSON del motor de validación client-side).
-- `properties`: inmuebles con **uno o más propietarios** (`ownerIds`, N:M) y **uno o más inquilinos** (`tenantIds`), pertenecientes a una única comunidad.
+- `properties`: inmuebles con **uno o más propietarios** (`ownerIds`, N:M) y **uno o más inquilinos** (`tenantIds`), pertenecientes a una única comunidad. `parcelId` apunta a su finca matriz cuando tiene referencia catastral.
+- `parcels`: fincas matriz derivadas de la referencia catastral, únicas por comunidad; agrupan los inmuebles/unidades que comparten referencia y se eliminan cuando quedan sin unidades.
 - `tenants`: inquilinos con propietario e inmueble, contrato (tipo, renta, fianza, teléfono de emergencia) y autorizaciones.
 - `documents`: archivos subidos (por entidad: comunidad, inmueble o inquilino), con carpeta, categoría (`document` o `statutes`), autor de la subida y archivo en disco.
 - `document_folders`: carpetas por entidad, con jerarquía (`parentId`) y nombre normalizado para evitar duplicados por nivel.
@@ -568,7 +569,7 @@ protección de sus copias de seguridad para producción.
 
 ## API (resumen)
 
-- `GET /api/bootstrap` — estado permitido para el usuario autenticado.
+- `GET /api/bootstrap` — estado permitido para el usuario autenticado; incluye el `parcelId` de cada inmueble visible y **solo** las parcelas/fincas matriz de esos inmuebles: un residente no recibe las referencias de las unidades vecinas que no puede abrir.
 - `POST/PUT/DELETE /api/{communities|owners|properties|tenants}` — CRUD; el servidor resuelve la reasignación de inmuebles entre propietarios y el rearme de relaciones.
 - `GET /api/documents?entityType=&entityId=&category=` — documentos y carpetas de la entidad.
 - `POST /api/documents` (multipart: `entityType`, `entityId`, `folderId`, `category`, `files[]`) · `PATCH /api/documents/:id` (renombrar o mover) · `POST /api/documents/:id/replace` · `DELETE /api/documents/:id` · `GET /api/documents/:id/download` · `GET /api/documents/:id/preview` (sólo PDF e imágenes).
@@ -605,6 +606,8 @@ protección de sus copias de seguridad para producción.
 ### Inmuebles
 
 - CRUD completo por comunidad con propietario, tipo, identificador, datos catastrales opcionales, estado de recibos e inquilino vinculado.
+- **Finca matriz y referencia catastral**: la misma referencia dentro de una comunidad agrupa varias unidades en una sola parcela; en otra comunidad se rechaza. La referencia se normaliza y, al elegir una parcela, se completa y bloquea. Al cambiar de comunidad se limpian referencia y parcela, porque pertenecen al censo de origen.
+- Los checksums inválidos se toleran en fichas y parcelas heredadas y en la importación BASE 26, donde quedan avisados; una referencia nueva sí debe superar el control. La ficha, la tabla, la exportación y los certificados muestran la referencia y, cuando corresponde, «Unidad X de N».
 - La pestaña **Propietarios** del alta empieza con la **ocupación del inmueble**: se indica si vivirá el propietario (opción predeterminada, sin contrato y con la pestaña Inquilinos deshabilitada) u otra persona (se habilita la pestaña Inquilinos para asociar o crear su ficha). En un inmueble ya creado la pregunta no se muestra y la pestaña Inquilinos está siempre disponible.
 - Documentación con biblioteca de archivos y carpetas, disponible también en la ficha de consulta.
 
@@ -957,6 +960,7 @@ El inventario ejecutable es `src/export-inventory.js`, con las proyecciones auto
 Inventario de vistas habilitadas:
 
 - Comunidades, inmuebles, propietarios e inquilinos: permiso de lectura y `<entidad>:export`, con comprobación por recurso. En propietarios se mantienen solo los vínculos visibles para la cuenta.
+- En inmuebles, la exportación añade **Parcela** y **Unidad** y conserva la agrupación por finca matriz.
 - Administración de usuarios y roles: `admin:users` / `admin:roles` y `admin:export`; se excluyen contraseñas, sesiones, tokens e identificadores de proveedores de acceso.
 - Auditoría: `audit:read` y `audit:export`, restringidos a roles autorizados; conserva el filtro de evento y el orden de más reciente a más antiguo.
 - Recibos, saldos a favor y cobros/devoluciones: `fee:read` y `fee:export`, con las reglas de lectura del recibo y del pagador.
