@@ -1107,11 +1107,11 @@ function apply(g, plan, req) {
       for (const id of ownerIds) changedOwners.add(id);
       const cid = action.action === "orphan" ? "" : action.newCommunityId || temporaryId;
       const community = db.prepare("SELECT name FROM communities WHERE id=?").get(cid);
-      db.prepare("UPDATE properties SET communityId=?,communityName=? WHERE id=?").run(
-        cid,
-        community?.name || "",
-        p.id,
-      );
+      // La referencia catastral pertenece al censo de origen: el traslado no
+      // arrastra la parcela anterior a la comunidad destino.
+      db.prepare(
+        "UPDATE properties SET communityId=?,communityName=?,cadastralRef='',parcelId='' WHERE id=?",
+      ).run(cid, community?.name || "", p.id);
     }
   }
   for (const t of g.tenants) {
